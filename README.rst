@@ -4,16 +4,16 @@ NEAT (NEural Analysis Toolkit)
 Introduction
 ------------
 
-NEAT is a python library that allows for the study of neuronal integration in morphological neuron models using (semi-) analytical techniques. For now, NEAT accepts morphologies in the *de facto* standard .swc format [#f1]_.
+NEAT is a python library that allows for the study of neuronal integration in morphological neuron models using (semi-) analytical techniques. For now, NEAT accepts morphologies in the *de facto* standard .swc format [#f1]_ .
 
 NEAT implements:
 
-* The separation of variables method to compute the Green's function associated with a morphology [#f2]_, [#f3]_, [#f4]_, [#f5]_.
-* The neural evaluation tree framework [#f6]_.
+* The separation of variables method to compute the Green's function associated with a morphology [#f2]_ , [#f3]_ , [#f4]_ , [#f5]_ .
+* The neural evaluation tree framework [#f6]_ .
 * Various tools to plot, analyze and interact with neuronal morphologies
 * A c++ simulator that simulates the NET formalism (currently implementation only for passive single neurons with AMPA, NMDA or GABA synapses)
 
-Note: NEAT will be extended in the future to implement the Green's function calculation for cell with linearized ion channel distributions [#f7]_. The :code:`neat.channels` module is currently being developed for this. It is not functional yet.
+Note: NEAT will be extended in the future to implement the Green's function calculation for cells with linearized ion channel distributions [#f7]_ . The :code:`neat.channels` module is currently being developed for this. It is not functional yet.
 
 Installation
 ------------
@@ -25,6 +25,10 @@ Check out the git repository and install using :code:`setup.py`
     git clone https://github.com/WillemWybo/NEAT
     cd NEAT
     python setup.py install
+
+To test the installation (requires :code:`pytest`)
+::
+    sh run_tests.sh
 
 
 References
