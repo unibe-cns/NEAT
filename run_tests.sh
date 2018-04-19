@@ -1,0 +1,3 @@
+cd tests/
+pytest
+cd ..
