@@ -39,7 +39,6 @@ setup(
               'neat.trees',
               'neat.tools',
               'neat.tools.fittools',
-              'neat.tools.netfittools',
               'neat.tools.plottools',
               'neat.channels'],
     ext_modules=[ext],

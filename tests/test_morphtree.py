@@ -481,7 +481,7 @@ class TestMorphTree():
         pl.figure('plot 1d test orig')
         # original tree
         lines = self.tree.plot1D(pl.gca(), parr, c='r')
-        assert self.tree.xaxis[-1] == 250.
+        assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
         assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
         assert np.allclose(lines[0].get_data()[1], parr[0:5])
         assert np.allclose(lines[1].get_data()[1], parr[5:])
@@ -500,7 +500,7 @@ class TestMorphTree():
         self.tree.treetype = 'computational'
         pl.figure('plot 1d test comp')
         lines = self.tree.plot1D(pl.gca(), parr, c='r')
-        assert self.tree.xaxis[-1] == 250.
+        assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
         assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
         assert np.allclose(lines[0].get_data()[1], parr[0:5])
         assert np.allclose(lines[1].get_data()[1], parr[5:])

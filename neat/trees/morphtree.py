@@ -54,7 +54,9 @@ def computationalTreetypeDecorator(fun):
         if self._computational_root == None:
             raise AttributeError('No computational tree has been defined, ' + \
                                   'and this function requires one. Use ' + \
-                                  ':fun:`MorphTree.setCompTree()`')
+                                  ':func:`MorphTree.setCompTree()` or its ' + \
+                                  'overwritten version in one of the derived' + \
+                                  'classes')
         current_treetype = self.treetype
         self.treetype = 'computational'
         res = fun(self, *args, **kwargs)
@@ -98,6 +100,7 @@ class MorphLoc(object):
                 If x-coordinate of location is not in ``[0,1]``
         '''
         self.reftree = reftree
+
         loc = copy.deepcopy(loc)
         if isinstance(loc, tuple):
             x = float(loc[1])
@@ -119,6 +122,7 @@ class MorphLoc(object):
                 self.loc = loc
         elif isinstance(loc, MorphLoc):
             self.__dict__.update(copy.deepcopy(loc.__dict__))
+            self.reftree = reftree
         else:
             raise TypeError('Not a valid location type, should be tuple or dict')
 
@@ -212,7 +216,7 @@ class MorphLoc(object):
                 Lloc = self.comp_loc['x']*compnode.L
                 if Lloc > L0 and Lloc <= L1:
                     self.loc = {'node': pathnode.index,
-                                'x': (Lloc-L0) / pathnode.L}
+                                'x': (Lloc-L0-1e-8) / pathnode.L}
                 L0 = L1
             if self.loc['x'] > 1. or self.loc['x'] < 0.:
                 raise ValueError('x-value should be in [0,1]')
@@ -288,11 +292,11 @@ class MorphNode(SNode):
         self.R = R
 
     def getChildNodes(self, skipinds=(2,3)):
-        if self.index == 1:
-            return [cnode for cnode in self._child_nodes
-                                if cnode.index not in skipinds]
-        else:
-            return super(MorphNode, self).getChildNodes()
+        # if self.index == 1:
+        # else:
+        #     return super(MorphNode, self).getChildNodes()
+        return [cnode for cnode in self._child_nodes \
+                      if cnode.index not in skipinds]
 
     def setChildNodes(self, cnodes):
         return super(MorphNode, self).setChildNodes(cnodes)
@@ -322,13 +326,13 @@ class MorphTree(STree):
     '''
 
     def __init__(self, file_n=None, types=[1,3,4]):
+        self._treetype = 'original' # alternative 'computational'
         if file_n != None:
-            self.readSwcTreeFromFile(file_n, types=types)
-            self._original_root = self.root
+            self.readSWCTreeFromFile(file_n, types=types)
+            # self._original_root = self.root
         else:
             self._original_root = None
         self._computational_root = None
-        self.treetype = 'original' # alternative 'computational'
         # to store sets of locations on the morphology
         self.locs = {}
         self._nids_orig = {}; self._nids_comp = {}
@@ -362,6 +366,22 @@ class MorphTree(STree):
         for cnode in node.getChildNodes():
             for inode in self.__iter__(cnode, skip_inds=skip_inds):
                 if node.index not in skip_inds: yield inode
+
+    def getRoot(self):
+        if self.treetype == 'original':
+            return self._original_root
+        else:
+            return self._computational_root
+
+    def setRoot(self, node):
+        if self.treetype == 'original':
+            node.parent_node = None
+            self._original_root = node
+        else:
+            node.parent_node = None
+            self._computational_root = node
+
+    root = property(getRoot, setRoot)
 
     def getNodes(self, recompute_flag=0, skip_inds=(2,3)):
         '''
@@ -502,7 +522,7 @@ class MorphTree(STree):
         '''
         return MorphNode(node_index, p3d)
 
-    def readSwcTreeFromFile(self, file_n, types=[1,3,4]):
+    def readSWCTreeFromFile(self, file_n, types=[1,3,4]):
         '''
         Non-specific for a "tree data structure"
         Read and load a morphology from an SWC file and parse it into
@@ -1513,7 +1533,7 @@ class MorphTree(STree):
         '''
         Distributes locations as uniform as possible, i.e. for a given distance
         between locations `dx`, locations are distributed equidistantly on each
-        given node in the computational tree so that and their amount is computed
+        given node in the computational tree and their amount is computed
         so that the distance in between them is as close to `dx` as possible.
         Depth-first ordering.
 
@@ -1800,8 +1820,8 @@ class MorphTree(STree):
             cmap: :class:`matplotlib.colors.Colormap` instance
                 If provided, the lines will be colored according to the branch
                 to which they belong, in colors specified by the colormap
-            args, kwargs:
-                arguments for :func:`matplotlib.pyplot.plot`
+            kwargs:
+                keyword arguments for :func:`matplotlib.pyplot.plot`
 
         Returns
         -------
@@ -1858,6 +1878,10 @@ class MorphTree(STree):
         Color the x-axis of a plot according to the morphology.
 
         !!! Has to be called after all lines are plotted !!!
+
+        Furthermor, node colors have to be set first. This can be done with
+        :func:`MorphTree.setNodeColors()` or manually by adding a 'color' entry
+        to the ``MorphNode.content`` dictionary
 
         Parameters
         ----------
@@ -1920,9 +1944,14 @@ class MorphTree(STree):
                 the ax object on which the plot will be drawn
             node_arg:
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`
-            cs: dict {int: float}
-                node indices are keys and the float value will correspond to the
-                plotted color
+            cs: dict {int: float}, None or 'x_color'
+                If dict, node indices are keys and the float value will
+                correspond to the plotted color. If None, the color of the tree
+                will be the one specified in ``plotargs``. If 'node_color', colors
+                will be those stored on the nodes. Note that choosing this option
+                when there are nodes without 'color' as an entry in ``node.content``
+                will result in an error. Node colors can be set with
+                :func:`MorphTree.setNodeColor()``
             cmap: :class:`matplotlib.colors.Colormap` instance
             use_radius: bool
                 If ``True``, uses the swc radius for the width of the line
@@ -1964,7 +1993,7 @@ class MorphTree(STree):
                 Width of the scale bar
         '''
         # default cmap
-        if cmap == None:
+        if cmap is None:
             cmap = cm.get_cmap('jet')
         # ensure color is indicated by the 'c'-parameter in `plotargs`
         if 'color' in plotargs:
@@ -1973,7 +2002,9 @@ class MorphTree(STree):
         elif 'c' not in plotargs:
             plotargs['c'] = 'k'
         # define a norm for the colors, if defined
-        if cs != None:
+        if cs == 'x_color':
+            cs = {node.index: node.content['color'] for node in self}
+        if cs is not None:
             max_cs = cs[max(cs, key=cs.__getitem__)] # works for dict and list
             min_cs = cs[min(cs, key=cs.__getitem__)] # works for dict and list
             norm = pl.Normalize(vmin=min_cs, vmax=max_cs)
@@ -2226,6 +2257,8 @@ class MorphTree(STree):
             # add new node
             new_tree.addNodeWithParent(new_node, new_pnode)
             new_nodes.append(new_node)
+            # set new node as next parent node
+            new_pnode = new_node
         # continue with the children
         for cnode in node.child_nodes:
-            self._addNodesToTree(cnode, new_node, new_tree, new_nodes, name)
+            self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)

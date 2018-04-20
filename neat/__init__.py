@@ -21,5 +21,3 @@ from neat.trees.sovtree import SOVNode
 from neat.trees.netree import NET
 from neat.trees.netree import NETNode
 from neat.trees.netree import Kernel
-
-from neat.tools.netfittools.netfitter import NETFitter
