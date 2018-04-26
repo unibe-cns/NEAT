@@ -1,0 +1,6 @@
+*~
+.pytest_cache/
+__version__.pyc
+build/
+neat/tools/simtools/netsim.cpp
+tests/__pycache__/
