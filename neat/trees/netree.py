@@ -18,7 +18,7 @@ import copy
 
 
 class Kernel(object):
-    def __init__(self, kernel, name=None):
+    def __init__(self, kernel):
         # set kernel time scales and exponential prefactors
         if isinstance(kernel, dict):
             self.a = copy.deepcopy(kernel['a'])
@@ -42,8 +42,6 @@ class Kernel(object):
             self.c = np.array(self.c)
         # compute steady state impedance
         self.k_bar = np.sum(self.c / self.a).real
-        # store the name of the kernel
-        self.name = None
 
     def __getitem__(self, ind):
         if ind == 0: return self.a
@@ -66,6 +64,16 @@ class Kernel(object):
         else:
             a = np.concatenate((self.a, kernel.a))
             c = np.concatenate((self.c, kernel.c))
+        return Kernel((a, c))
+
+    def __sub__(self, kernel):
+        if kernel.a.shape[0] == self.a.shape[0] and \
+           np.allclose(kernel.a, self.a):
+            a = copy.copy(self.a)
+            c = self.c - kernel.c
+        else:
+            a = np.concatenate((self.a, kernel.a))
+            c = np.concatenate((self.c, -kernel.c))
         return Kernel((a, c))
 
     def __str__(self):

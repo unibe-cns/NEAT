@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as pl
 
 import pytest
-from neat import SOVTree, SOVNode
+from neat import SOVTree, SOVNode, Kernel
+import neat.tools.kernelextraction as ke
 
 
 # import morphologyReader as morphR
@@ -98,8 +99,28 @@ class TestSOVTree():
         assert np.allclose(z_mat_a - z_mat_a.T, np.zeros(z_mat_a.shape))
         for ii, z_row in enumerate(z_mat_a):
             assert np.argmax(z_row) == ii
+        # test Fourrier impedance matrix
+        ft = ke.FourrierTools(np.arange(0.,100.,0.1))
+        z_mat_ft = self.tree.calcImpedanceMatrix(name='1', eps=1e-10, freqs=ft.s)
+        print z_mat_ft[ft.ind_0s,:,:]
+        print z_mat_a
+        assert np.allclose(z_mat_ft[ft.ind_0s,:,:].real, \
+                           z_mat_a, atol=1e-1) # check steady state
+        assert np.allclose(z_mat_ft - np.transpose(z_mat_ft, axes=(0,2,1)), \
+                           np.zeros(z_mat_ft.shape)) # check symmetry
+        assert np.allclose(z_mat_ft[:ft.ind_0s,:,:].real, \
+                           z_mat_ft[ft.ind_0s+1:,:,:][::-1,:,:].real) # check real part even
+        assert np.allclose(z_mat_ft[:ft.ind_0s,:,:].imag, \
+                          -z_mat_ft[ft.ind_0s+1:,:,:][::-1,:,:].imag) # check imaginary part odd
+
+
 
         # import matplotlib.pyplot as pl
+        # pl.plot(ft.s.imag, z_mat_ft[:,2,4].real, 'b')
+        # pl.plot(ft.s.imag, z_mat_ft[:,2,4].imag, 'r')
+        # pl.show()
+
+
         # self.tree.distributeLocsUniform(dx=4., name='NET_eval')
         # print [str(loc) for loc in self.tree.getLocs(name='NET_eval')]
         # z_m = self.tree.calcImpedanceMatrix(name='NET_eval', eps=1e-10)
@@ -124,12 +145,19 @@ class TestSOVTree():
         self.loadTTree()
         self.tree.calcSOVEquations()
         # construct the NET
-        net = self.tree.constructNET(dg=20)
+        net = self.tree.constructNET(dz=20.)
         # print str(net)
-
+        # contruct the NET with linear terms
+        net, lin_terms = self.tree.constructNET(dz=20., add_lin_terms=True)
+        # check if correct
+        alphas, gammas = self.tree.getImportantModes(name='NET_eval',
+                                                eps=1e-4, sort_type='timescale')
+        for ii, lin_term in enumerate(lin_terms):
+            z_k_trans = net.getReducedTree([0,ii]).getRoot().z_kernel + lin_term
+            assert np.abs(z_k_trans.k_bar - Kernel((alphas, gammas[:,0]*gammas[:,ii])).k_bar) < 1e-8
 
 
 if __name__ == '__main__':
     tsov = TestSOVTree()
-    tsov.testSOVCalculation()
+    # tsov.testSOVCalculation()
     tsov.testNETDerivation()

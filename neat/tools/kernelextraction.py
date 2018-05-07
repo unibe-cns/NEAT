@@ -971,7 +971,8 @@ class fExpFitter(Fitter):
 
 def create_logspace_freqarray(fmax=7, base=10, num=200):
     a = np.logspace(1, fmax, num=num, base=base)
-    b = np.linspace(-base, base, num=num/2+(num/2)%2)[:-1]
+    b = np.linspace(-base, base, num=num/2+1)
+    # b = np.linspace(-base, base, num=num/2+(num/2)%2)[:-1]
     return 1j * np.concatenate((-a[::-1], b[1:-1], a))
 
 
@@ -996,7 +997,7 @@ class FourrierTools(object):
         # create the frequency points at which to evaluate the transform
         self.s = create_logspace_freqarray(fmax=fmax, base=base, num=num)
         self.t = tarr
-        self.ind_0s = int(len(self.s)/2.)
+        self.ind_0s = len(self.s) / 2
         # create the quadrature matrix
         self.set_quad()
         self.set_quad_inv()
@@ -1009,9 +1010,12 @@ class FourrierTools(object):
         c = np.zeros((len(s), N), dtype=complex)
         Nr = np.arange(1,N-1)[np.newaxis,:]
         sc = s[:,np.newaxis]
-        c[:,0:1]   = (-1. + ( np.exp(-sc*dt) - 1. ) / (-sc*dt)) / (-sc)
-        c[:,1:-1]  = (np.exp(-sc*dt*(Nr+1)) - 2.*np.exp(-sc*dt*Nr) + np.exp(-sc*dt*(Nr-1)) ) / (sc**2 * dt)
-        c[:,N-1:N] = (np.exp(-sc*dt*N) - ( np.exp(-sc*dt*N) - np.exp(-sc*dt*(N-1)) ) / (-sc*dt)) / (-sc)
+        np.divide(-1. + (np.exp(-sc*dt) - 1.), sc**2 * dt, \
+                                out=c[:,0:1], where=np.abs(sc)>1e-12)
+        np.divide(np.exp(-sc*dt*(Nr+1)) - 2.*np.exp(-sc*dt*Nr) + np.exp(-sc*dt*(Nr-1)), sc**2 * dt,
+                                out=c[:,1:-1], where=np.abs(sc)>1e-12)
+        np.divide(np.exp(-sc*dt*N) - np.exp(-sc*dt*N) + np.exp(-sc*dt*(N-1)), sc**2 * dt,
+                                out=c[:,N-1:N], where=np.abs(sc)>1e-12)
         self.c = c
 
     def set_quad_inv(self):
@@ -1019,8 +1023,14 @@ class FourrierTools(object):
         s = self.s[np.newaxis,:]
         ic = np.zeros((len(self.t), len(self.s)), dtype=complex)
         # compute integrals
-        I1 = (np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t)) / (1j*t)
-        I2 = ((s[:,1:]-s[:,:-1]).imag * np.exp(s[:,1:]*t) - (np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t)) /(1j*t) ) / (1j*t)
+        # I1 = (np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t)) / (1j*t)
+        # I2 = ((s[:,1:]-s[:,:-1]).imag * np.exp(s[:,1:]*t) - (np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t)) /(1j*t) ) / (1j*t)
+        I1 =  np.divide(np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t), 1j*t,
+                        out=np.zeros_like(ic[:,:-1]), where=np.abs(t)>1e-12)
+        I2_ = np.divide(np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t), 1j*t,
+                        out=np.zeros_like(ic[:,:-1]), where=np.abs(t)>1e-12)
+        I2 =  np.divide((s[:,1:]-s[:,:-1]).imag * np.exp(s[:,1:]*t) - I2_, 1j*t,
+                        out=np.zeros_like(ic[:,:-1]), where=np.abs(t)>1e-12)
         # compute matrix elements
         ic[:,0] = I1[:,0] - I2[:,0] / (s[:,1] - s[:,0]).imag
         ic[:,1:-1] = I1[:,1:] - I2[:,1:] / (s[:,2:] - s[:,1:-1]).imag + I2[:,:-1] / (s[:,1:-1] - s[:,:-2]).imag

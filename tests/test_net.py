@@ -70,6 +70,15 @@ class TestNET():
         k5 = k1 + k3
         assert np.abs(k5.k_bar - 5.) < 1e-12
         assert len(k5.a) == 3
+        # test subtraction
+        k6 = k2 - k1
+        assert len(k6.a) == 2
+        assert np.allclose(k6.c, np.array([2.,20]))
+        assert np.abs(k6.k_bar - 4.) < 1e-12
+        k7 = k1 - k3
+        assert len(k7.a) == 3
+        assert np.allclose(k7.c, np.array([2.,20.,-1.]))
+        assert np.abs(k7.k_bar - 3.) < 1e-12
 
     def testBasic(self):
         self.loadTree()
@@ -153,7 +162,7 @@ class TestNET():
 if __name__ == '__main__':
     tnet = TestNET()
     # tnet.testNodeFunctionalities()
-    # tnet.testKernels()
+    tnet.testKernels()
     # tnet.testBasic()
     # tnet.testCompartmentalization()
-    tnet.testPlotting(pshow=1)
+    # tnet.testPlotting(pshow=1)

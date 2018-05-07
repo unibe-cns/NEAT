@@ -15,7 +15,7 @@ import copy
 import morphtree
 from morphtree import MorphLoc
 from phystree import PhysNode, PhysTree
-from netree import NETNode, NET
+from netree import NETNode, NET, Kernel
 
 from neat.tools.fittools import zerofinding as zf
 from neat.tools.fittools import histogramsegmentation as hs
@@ -484,7 +484,7 @@ class SOVTree(PhysTree):
         return alphas[inds_sort], gammas[inds_sort,:]
 
     def calcImpedanceMatrix(self, locs=None, sov_data=None, name=None,
-                                  eps=1e-4, mem_limit=500):
+                                  eps=1e-4, mem_limit=500, freqs=None):
         '''
         Compute the impedance matrix for a set of locations
 
@@ -506,6 +506,10 @@ class SOVTree(PhysTree):
             mem_limit: int
                 parameter governs whether the fast (but memory intense) method
                 or the slow method is used
+            freqs: np.ndarray of complex or None (default)
+                if ``None``, returns the steady state impedance matrix, if
+                a array of complex numbers, returns the impedance matrix for
+                each Fourrier frequency in the array
 
         Returns
         -------
@@ -522,25 +526,56 @@ class SOVTree(PhysTree):
         else:
             raise IOError('At least one of the kwargs `locs`, `sov_data` or \
                             `name` must not be ``None``')
-        # construct the 2d steady state matrix
-        y_activation = 1. / alphas
-        # compute the matrix, methods depends on memory limit
-        if gammas.shape[1] < mem_limit and gammas.shape[0] < int(mem_limit/2.):
-            z_mat = np.sum(gammas[:,:,np.newaxis] * \
-                           gammas[:,np.newaxis,:] * \
-                           y_activation[:,np.newaxis,np.newaxis], 0).real
+        n_loc = gammas.shape[1]
+        if freqs is None:
+            # construct the 2d steady state matrix
+            y_activation = 1. / alphas
+            # compute the matrix, methods depends on memory limit
+            if gammas.shape[1] < mem_limit and gammas.shape[0] < int(mem_limit/2.):
+                z_mat = np.sum(gammas[:,:,np.newaxis] * \
+                               gammas[:,np.newaxis,:] * \
+                               y_activation[:,np.newaxis,np.newaxis], 0).real
+            else:
+                z_mat = np.zeros((n_loc, n_loc))
+                for ii, jj in itertools.product(xrange(n_loc), xrange(n_loc)):
+                    z_mat[ii,jj] = np.sum(gammas[:,ii] * \
+                                          gammas[:,jj] * \
+                                          y_activation).real
         else:
-            n_loc = gammas.shape[1]
-            z_mat = np.zeros((n_loc, n_loc))
+            # construct the 3d fourrier matrix
+            y_activation = 1e3 / (alphas[np.newaxis,:]*1e3 + freqs[:,np.newaxis])
+            z_mat = np.zeros((len(freqs), n_loc, n_loc), dtype=complex)
             for ii, jj in itertools.product(xrange(n_loc), xrange(n_loc)):
-                z_mat[ii,jj] = np.sum(gammas[:,ii] * \
-                                      gammas[:,jj] * \
-                                      y_activation).real
+                z_mat[:,ii,jj] = np.sum(gammas[np.newaxis,:,ii] * \
+                                        gammas[np.newaxis,:,jj] * \
+                                        y_activation, 1)
         return z_mat
 
-    def constructNET(self, dg=50., dg_lin=2., dx=10., eps=1e-4,
+    def constructNET(self, dz=50., dx=10., eps=1e-4,
                         use_hist=False, add_lin_terms=True,
                         pprint=False):
+        '''
+        Construct a Neural Evaluation Tree (NET) for this cell
+
+        Parameters
+        ----------
+            dz: float
+                the impedance step for the NET model derivation
+            dx: float
+                the distance step to evaluate the impedance matrix
+            eps: float
+                the cutoff threshold in relative importance below which modes
+                are truncated
+            use_hist: bool
+                whether or not to use histogram segmentations to find well
+                separated parts of the dendritic tree (such ass apical tree)
+            add_lin_terms:
+                take into account that the optained NET will be used in conjunction
+                with linear terms
+
+        Returns
+            :class:`NETree`
+        '''
         # create a set of location at which to evaluate the impedance matrix
         self.distributeLocsUniform(dx=dx, name='NET_eval')
         # compute the z_mat matrix
@@ -551,15 +586,19 @@ class SOVTree(PhysTree):
         self._addLayerA(net, None,
                         z_mat, alphas, gammas,
                         0., 0, np.arange(len(self.getLocs('NET_eval'))),
-                        dg=dg, dg_lin=dg_lin,
+                        dz=dz,
                         use_hist=use_hist, add_lin_terms=add_lin_terms,
                         pprint=pprint)
-        return net
+        if add_lin_terms:
+            lin_terms = self.computeLinTerms(net, sov_data=(alphas, gammas))
+            return net, lin_terms
+        else:
+            return net
 
     def _addLayerA(self, net, pnode,
                         z_mat, alphas, gammas,
                         z_max_prev, z_ind_0, true_loc_inds,
-                        dg=100., dg_lin=2.,
+                        dz=100.,
                         use_hist=True, add_lin_terms=False,
                         pprint=False):
         # create a histogram
@@ -653,7 +692,7 @@ class SOVTree(PhysTree):
                     # check where new dendritic branches start
                     z_diag = z_mat[k_inds, k_inds]
                     z_x0   = z_mat[k_inds, 0]
-                    b_inds = np.where(np.abs(z_diag - z_x0) < dg / 2.)[0][1:].tolist()
+                    b_inds = np.where(np.abs(z_diag - z_x0) < dz / 2.)[0][1:].tolist()
                     if len(b_inds) > 0:
                         if b_inds[0] != 1:
                             b_inds = [1] + b_inds
@@ -673,7 +712,7 @@ class SOVTree(PhysTree):
                         # move further in the tree
                         self._addLayerB(net, node,
                                     z_mat_new, alphas, gammas,
-                                    z_max, k_inds[i0:i1], dg=dg,
+                                    z_max, k_inds[i0:i1], dz=dz,
                                     use_hist=use_hist, add_lin_terms=add_lin_terms)
                 else:
                     # make new z_mat matrix
@@ -689,12 +728,12 @@ class SOVTree(PhysTree):
                         # move further in the tree
                         self._addLayerB(net, node,
                                 z_mat_new, alphas, gammas,
-                                z_max, k_seq, dg=dg,
+                                z_max, k_seq, dz=dz,
                                 use_hist=use_hist, add_lin_terms=add_lin_terms)
 
     def _addLayerB(self, net, pnode,
                 z_mat, alphas, gammas,
-                z_max_prev, true_loc_inds, dg=100.,
+                z_max_prev, true_loc_inds, dz=100.,
                 use_hist=True, pprint=False, add_lin_terms=False):
         # print stuff
         if pprint:
@@ -713,12 +752,12 @@ class SOVTree(PhysTree):
         else:
             # histogram GF
             n_bins = max(int(z_mat.size/50.),
-                         int((np.max(z_mat) - np.min(z_mat))/dg))
+                         int((np.max(z_mat) - np.min(z_mat))/dz))
             if n_bins > 1:
                 if np.all(np.diff(z_diag) > 0):
                     z_min = z_max_prev
-                    z_max = z_min + dg
-                    if pprint: print '--> +', dg
+                    z_max = z_min + dz
+                    if pprint: print '--> +', dz
                 elif use_hist:
                     z_hist = np.histogram(z_mat.flatten(), n_bins, density=False)
                     # find the histogram partition
@@ -735,13 +774,13 @@ class SOVTree(PhysTree):
                         z_max = z_histx[s_ind[i]]
                     ii = np.argmax(z_hist[0][s_ind[0]:s_ind[i]])
                     z_avg = z_hist[0][ii]
-                    if z_max - z_min > dg:
-                        z_max = z_min + dg
+                    if z_max - z_min > dz:
+                        z_max = z_min + dz
                     if pprint: print '--> hist: +', str(z_max - z_min)
                 else:
                     z_min = z_max_prev
-                    z_max = z_min + dg
-                    if pprint: print '--> +', dg
+                    z_max = z_min + dz
+                    if pprint: print '--> +', dz
             else:
                 z_min = z_max_prev
                 z_max = np.max(z_mat)
@@ -749,7 +788,7 @@ class SOVTree(PhysTree):
         d_inds = np.where(z_diag <= z_max+1e-15)[0]
         # make sure that there is at least one element in the layer
         while len(d_inds) == 0:
-            z_max += dg
+            z_max += dz
             d_inds = np.where(z_diag <= z_max+1e-15)[0]
 
         # identify different domains
@@ -800,10 +839,27 @@ class SOVTree(PhysTree):
                 true_loc_inds_new = true_loc_inds[ind0:ind1]
                 self._addLayerB(net, node,
                             z_mat_new, alphas, gammas,
-                            z_max, true_loc_inds_new, dg=dg,
+                            z_max, true_loc_inds_new, dz=dz,
                             use_hist=use_hist, pprint=pprint)
 
     def _subtractParentKernels(self, gammas, pnode):
         if pnode != None:
             gammas -= pnode.z_kernel['c']
             self._subtractParentKernels(gammas, pnode.parent_node)
+
+    def computeLinTerms(self, net, sov_data=None, eps=1e-4):
+        if sov_data != None:
+            alphas = sov_data[0]
+            gammas = sov_data[1]
+        else:
+            alphas, gammas = self.getImportantModes(name='NET_eval', eps=eps)
+        lin_terms = []
+        for ii, loc in enumerate(self.getLocs('NET_eval')):
+            # create the true kernel
+            z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
+            # compute the NET approximation kernel
+            z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
+            # compute the lin term
+            lin_terms.append(z_k_true - z_k_net)
+        return lin_terms
+
