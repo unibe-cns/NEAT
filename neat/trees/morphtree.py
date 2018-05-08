@@ -21,6 +21,7 @@ import warnings
 import copy
 
 from stree import SNode, STree
+from compartmenttree import CompartmentNode, CompartmentTree
 
 
 def originalTreetypeDecorator(fun):
@@ -2262,3 +2263,27 @@ class MorphTree(STree):
         # continue with the children
         for cnode in node.child_nodes:
             self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
+
+    def createCompartmentTree(self):
+        counter = [0]
+        compartment_root = CompartmentNode(counter[0])
+        compartment_tree = CompartmentTree(root=compartment_root)
+        counter[0] += 1
+        for cnode in self.root.child_nodes:
+            self._addCompartmentNodesToTree(cnode,
+                                            compartment_root, compartment_tree,
+                                            counter)
+        return compartment_tree
+
+    def _addCompartmentNodesToTree(self, node,
+                                   compartment_pnode, compartment_tree,
+                                   counter):
+        compartment_node = CompartmentNode(counter[0])
+        compartment_tree.addNodeWithParent(compartment_node, compartment_pnode)
+        counter[0] += 1
+        for cnode in node.child_nodes:
+            self._addCompartmentNodesToTree(cnode,
+                                            compartment_node, compartment_tree,
+                                            counter)
+
+
