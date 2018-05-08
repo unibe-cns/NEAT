@@ -513,8 +513,10 @@ class SOVTree(PhysTree):
 
         Returns
         -------
-            np.ndarray of floats (ndim = 2)
-                the impedance matrix
+            np.ndarray of floats (ndim = 2 or 3)
+                the impedance matrix, steady state if `freqs` is ``None``, the
+                frequency dependent impedance matrix if `freqs` is given, with
+                the frequency dependence at the first dimension
         '''
         if name is not None:
             alphas, gammas = self.getImportantModes(name=name, eps=eps)

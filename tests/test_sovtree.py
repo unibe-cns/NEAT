@@ -6,8 +6,6 @@ from neat import SOVTree, SOVNode, Kernel
 import neat.tools.kernelextraction as ke
 
 
-# import morphologyReader as morphR
-
 class TestSOVTree():
     def loadTTree(self):
         '''

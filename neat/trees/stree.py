@@ -200,7 +200,8 @@ class STree(object):
             node = self.root
         tree_string = '>>> Tree'
         for iternode in self.__iter__(node):
-            tree_string += '\n    ' + node.__str__(with_parent=True)
+            tree_string += '\n    ' + iternode.__str__(with_parent=True)
+        return tree_string
 
     def getNodes(self, recompute_flag=1):
         '''
