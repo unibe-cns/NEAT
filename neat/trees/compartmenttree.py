@@ -97,8 +97,9 @@ class CompartmentTree(STree):
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
         '''
-        gc_mat = self.calcConductanceMatrix()
-        if freqs is not None:
+        if freqs is None:
+            gc_mat = self.calcConductanceMatrix()
+        else:
             gc_mat = self.calcConductanceMatrix().astype(complex)[np.newaxis,:,:] * \
                      np.ones(len(freqs), dtype=complex)[:,np.newaxis,np.newaxis]
             for node in self:

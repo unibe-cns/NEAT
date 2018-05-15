@@ -2,6 +2,7 @@
 File contains:
 
     - :class:`SOVNode`
+    - :class:`SomaSOVNode`
     - :class:`SOVTree`
 
 Author: W. Wybo
