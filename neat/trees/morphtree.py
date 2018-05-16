@@ -249,6 +249,11 @@ class MorphNode(SNode):
         super(MorphNode, self).__init__(index)
         if p3d != None:
             self.setP3D(*p3d)
+        else:
+            # bogus values, to overwrite
+            self.setP3D(np.array([0.,0.,0.]), 1., 1)
+            self.L = 1.
+            self.R = 1.
 
     def setP3D(self, xyz, R, swc_type):
         '''
@@ -361,12 +366,13 @@ class MorphTree(STree):
             :class:`MorphNode`
                 Nodes in the tree
         '''
-        if node == None:
+        if node is None:
             node = self.root
-        if node.index not in skip_inds: yield node
-        for cnode in node.getChildNodes():
-            for inode in self.__iter__(cnode, skip_inds=skip_inds):
-                if node.index not in skip_inds: yield inode
+        if node is not None:
+            if node.index not in skip_inds: yield node
+            for cnode in node.getChildNodes():
+                for inode in self.__iter__(cnode, skip_inds=skip_inds):
+                    if node.index not in skip_inds: yield inode
 
     def getRoot(self):
         if self.treetype == 'original':
@@ -512,7 +518,7 @@ class MorphTree(STree):
     treetype = property(getTreetype, setTreetype)
 
 
-    def createCorrespondingNode(self, node_index, p3d):
+    def createCorrespondingNode(self, node_index, p3d=None):
         '''
         Creates a node with the given index corresponding to the tree class.
 
@@ -521,7 +527,7 @@ class MorphTree(STree):
             node_index: int
                 index of the new node
         '''
-        return MorphNode(node_index, p3d)
+        return MorphNode(node_index, p3d=p3d)
 
     def readSWCTreeFromFile(self, file_n, types=[1,3,4]):
         '''
@@ -2286,4 +2292,41 @@ class MorphTree(STree):
                                             compartment_node, compartment_tree,
                                             counter)
 
+    def __copy__(self, new_tree=None):
+        '''
+        experimental, untested
 
+        Fill the ``new_tree`` with it's corresponding nodes in the same
+        structure as ``self``, and copies all node variables that both tree
+        classes have in common
+
+        Parameters
+        ----------
+        new_tree: :class:`STree` or derived class (default is ``None``)
+            the tree class in which the ``self`` is copied. If ``None``,
+            returns a copy of ``self``.
+
+        Returns
+        -------
+        The new tree instance
+        '''
+        if new_tree is None:
+            new_tree = self.__class__()
+
+        current_treetype = self.treetype
+        self.treetype = 'original'
+        super(MorphTree, self).__copy__(new_tree=new_tree)
+        try:
+            # set the computational tree
+            self.treetype = 'computational'
+            new_node = new_tree.createCorrespondingNode(self.root.index)
+            self.root.__copy__(new_node=new_node)
+            new_tree._computational_root = new_node
+            new_tree.treetype = 'computational'
+            self._recurseCopy(self.root, new_tree)
+        except ValueError:
+            pass
+        self.treetype = current_treetype
+        new_tree.treetype = current_treetype
+
+        return new_tree

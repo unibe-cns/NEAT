@@ -73,17 +73,39 @@ class SNode(object):
                             str([str(cnode) for cnode in self.child_nodes])
         return node_string
 
-    def __copy__(self) : # customization of copy.copy
-        ret = SNode(self.index)
-        for child in self._child_nodes :
-            ret.addChild(child)
-        try:
-            ret.content = self.content
-        except AttributeError:
-            # no content variable set
-            pass
-        ret.setParentNode(self._parent_node)
-        return ret
+    # def __copy__(self) : # customization of copy.copy
+    #     ret = SNode(self.index)
+    #     for child in self._child_nodes :
+    #         ret.addChild(child)
+    #     try:
+    #         ret.content = self.content
+    #     except AttributeError:
+    #         # no content variable set
+    #         pass
+    #     ret.setParentNode(self._parent_node)
+    #     return ret
+
+    def __copy__(self, new_node=None):
+        '''
+        experimental, untested
+        '''
+        if new_node is None:
+            # new_node = self.__class__(self.index)
+            for child in self._child_nodes :
+                ret.addChild(child)
+            try:
+                ret.content = self.content
+            except AttributeError:
+                # no content variable set
+                pass
+            ret.setParentNode(self._parent_node)
+        else:
+            orig_keys = set(self.__dict__.keys()) - {'_parent_node', '_child_nodes'}
+            copy_keys = orig_keys.intersection(set(new_node.__dict__.keys()))
+            for key in copy_keys:
+                new_node.__dict__[key] = copy.deepcopy(self.__dict__[key])
+            return new_node
+
 
 
 class STree(object):
@@ -685,3 +707,38 @@ class STree(object):
             if pnode != None:
                 node, cnode = self.upBifurcationNode(pnode, cnode=node)
         return node, cnode
+
+    def __copy__(self, new_tree=None):
+        '''
+        experimental, untested
+
+        Fill the ``new_tree`` with it's corresponding nodes in the same
+        structure as ``self``, and copies all node variables that both tree
+        classes have in common
+
+        Parameters
+        ----------
+        new_tree: :class:`STree` or derived class (default is ``None``)
+            the tree class in which the ``self`` is copied. If ``None``,
+            returns a copy of ``self``.
+
+        Returns
+        -------
+        The new tree instance
+        '''
+        if new_tree is None:
+            new_tree = self.__class__()
+
+        new_node = new_tree.createCorrespondingNode(self.root.index)
+        self.root.__copy__(new_node=new_node)
+        new_tree.setRoot(new_node)
+        self._recurseCopy(self.root, new_tree)
+
+        return new_tree
+
+    def _recurseCopy(self, pnode, new_tree):
+        for node in pnode.child_nodes:
+            new_node = new_tree.createCorrespondingNode(node.index)
+            node.__copy__(new_node=new_node)
+            new_tree.addNodeWithParent(new_node, new_tree[pnode.index])
+            self._recurseCopy(node, new_tree)

@@ -27,7 +27,7 @@ def consecutive(data, stepsize=1):
 
 
 class SOVNode(PhysNode):
-    def __init__(self, index, p3d):
+    def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
     def setSOV(self, tau_0=0.02):
@@ -159,7 +159,7 @@ class SomaSOVNode(SOVNode):
         :function:`setQVals`
         :function:`_findLocalPoles`
     '''
-    def __init__(self, index, p3d):
+    def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
     def setSOV(self, tau_0=0.02):
@@ -256,7 +256,7 @@ class SOVTree(PhysTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super(SOVTree, self).__init__(file_n=file_n, types=types)
 
-    def createCorrespondingNode(self, node_index, p3d):
+    def createCorrespondingNode(self, node_index, p3d=None):
         '''
         Creates a node with the given index corresponding to the tree class.
 
@@ -266,9 +266,9 @@ class SOVTree(PhysTree):
                 index of the new node
         '''
         if node_index == 1:
-            return SomaSOVNode(node_index, p3d)
+            return SomaSOVNode(node_index, p3d=p3d)
         else:
-            return SOVNode(node_index, p3d)
+            return SOVNode(node_index, p3d=p3d)
 
     @morphtree.computationalTreetypeDecorator
     def getSOVMatrices(self, locs=None, name=None):

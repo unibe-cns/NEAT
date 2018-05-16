@@ -54,7 +54,7 @@ class GreensNode(PhysNode):
             val += 1. / snode.collapseBranchToRoot()
         self.z_proximal = 1. / val
 
-    def collapseBranchToLeaf(self)
+    def collapseBranchToLeaf(self):
         return self.z_c * (self.z_proximal * np.cosh(self.gamma * self.L_) + \
                            self.z_c * np.sinh(self.gamma * self.L_)) / \
                           (self.z_proximal * np.sinh(self.gamma * self.L_) +
@@ -97,7 +97,7 @@ class SomaGreensNode(GreensNode):
     def setImpedance(self, freqs):
         self.z_soma = calcMembranceImpedance(freqs)
 
-    def collapseBranchToLeaf()
+    def collapseBranchToLeaf():
         return self.z_soma
 
 

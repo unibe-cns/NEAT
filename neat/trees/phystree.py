@@ -18,9 +18,15 @@ from morphtree import MorphNode, MorphTree
 
 
 class PhysNode(MorphNode):
-    def __init__(self, index, p3d):
+    def __init__(self, index, p3d=None,
+                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         super(PhysNode, self).__init__(index, p3d)
         self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
+        # biophysical parameters
+        self.c_m = c_m # uF/cm^2
+        self.r_a = r_a # MOhm*cm
+        self.g_shunt = g_shunt
+        self.e_eq = e_eq
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
         '''
@@ -36,7 +42,7 @@ class PhysNode(MorphNode):
                 A point-like shunt, located at x=1 on the node. Defaults to 0.
         '''
         self.c_m = c_m # uF/cm^2
-        self.r_a = r_a # MOhm*cm 
+        self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt
 
     def addCurrent(self, current_type, g_max, e_rev):
@@ -66,7 +72,7 @@ class PhysNode(MorphNode):
         '''
         self.e_eq = e_eq
 
-    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):   
+    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):
         gsum = 0.
         i_eq = 0.
         for channel_name in set(self.currents.keys()) - set('L'):
@@ -81,7 +87,7 @@ class PhysNode(MorphNode):
         if self.c_m / (tau_m_target*1e-3) < gsum:
             warnings.warn('Membrane time scale is chosen largen than \
                            possible, decreasing membrane time scale')
-            tau_m_target = cm / (gsum+300.) 
+            tau_m_target = cm / (gsum+300.)
         else:
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
@@ -99,12 +105,13 @@ class PhysNode(MorphNode):
 class PhysTree(MorphTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super(PhysTree, self).__init__(file_n=file_n, types=types)
-        # set basic physiology parameters (c_m = 1.0 uF/cm^2 and 
+        # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
         # r_a = 0.0001 MOhm*cm)
         for node in self:
             node.setPhysiology(1.0, 100./1e6)
 
-    def createCorrespondingNode(self, node_index, p3d):
+    def createCorrespondingNode(self, node_index, p3d=None,
+                                      c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         '''
         Creates a node with the given index corresponding to the tree class.
 
@@ -113,7 +120,7 @@ class PhysTree(MorphTree):
             node_index: int
                 index of the new node
         '''
-        return PhysNode(node_index, p3d)
+        return PhysNode(node_index, p3d=p3d)
 
     def addCurrent(self, current_type, g_max_distr, e_rev, node_arg=None,
                         fill_tree=0, eval_type='pas'):
@@ -127,17 +134,17 @@ class PhysTree(MorphTree):
             g_max_distr: float, dict or :func:`float -> float`
                 If float, the maximal conductance is set to this value for all
                 the nodes specified in `node_arg`. If it is a function, the input
-                must specify the distance from the soma (micron) and the output 
+                must specify the distance from the soma (micron) and the output
                 the ion channel density (uS/cm^2) at that distance. If it is a
-                dict, keys are the node indices and values the ion channel 
+                dict, keys are the node indices and values the ion channel
                 densities (uS/cm^2).
             node_arg:
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None
             eval_type: {'pas', 'lin'}
-                Specifies the way the ion channel is evaluated in calculations. 
-                'pas' means that only the passive conductance at the local 
-                equilibrium potential is incorporated, whereas 'lin' means that 
+                Specifies the way the ion channel is evaluated in calculations.
+                'pas' means that only the passive conductance at the local
+                equilibrium potential is incorporated, whereas 'lin' means that
                 the full semi-active channel is evaluated.
         '''
         for node in self._convertNodeArgToNodes(node_arg):
@@ -168,7 +175,7 @@ class PhysTree(MorphTree):
         '''
         assert tau_m_target > 0.
         for node in self:
-            node.fitLeakCurrent(e_eq_target=e_eq_target, 
+            node.fitLeakCurrent(e_eq_target=e_eq_target,
                                   tau_m_target=tau_m_target)
 
     def computeEquilibirumPotential(self):
@@ -184,7 +191,7 @@ class PhysTree(MorphTree):
                 np.abs(node.R - pnode.R) < eps and \
                 set(node.currents.keys()) == set(pnode.currents.keys()) and
                 not sum([sum([np.abs(curr[0] - pnode.currents[key][0]) > eps,
-                              np.abs(curr[1] - pnode.currents[key][1]) > eps]) 
+                              np.abs(curr[1] - pnode.currents[key][1]) > eps])
                          for key, curr in node.currents.iteritems()])):
                 comp_nodes.append(pnode)
         super(PhysTree, self).setCompTree(compnodes=comp_nodes)
@@ -238,7 +245,7 @@ class PhysTree(MorphTree):
     #         # set the last element
     #         j = i+1
     #         matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_) 
+    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_)
     #         matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
     #         locs.append({'node': node._index, 'x': 1.})
     #     numel_l[0] = numel+len(xvals)-1
