@@ -102,7 +102,6 @@ class MorphLoc(object):
         '''
         self.reftree = reftree
 
-        loc = copy.deepcopy(loc)
         if isinstance(loc, tuple):
             x = float(loc[1])
             if x > 1. or x < 0.:
@@ -122,7 +121,9 @@ class MorphLoc(object):
             else:
                 self.loc = loc
         elif isinstance(loc, MorphLoc):
-            self.__dict__.update(copy.deepcopy(loc.__dict__))
+            self.__dict__.update({key: copy.deepcopy(val)
+                                  for key, val in loc.__dict__.iteritems()
+                                  if key != 'reftree'})
             self.reftree = reftree
         else:
             raise TypeError('Not a valid location type, should be tuple or dict')
