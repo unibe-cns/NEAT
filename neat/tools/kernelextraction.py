@@ -60,6 +60,7 @@ class ExpFitter(Fitter):
             [c]: numpy array, exponentail magnitudes
             [rms]: float, root mean square error of the data
         '''
+        # deg += 1
         # stepsize
         h = x[1] - x[0]
         #Build matrix
@@ -1010,27 +1011,36 @@ class FourrierTools(object):
         c = np.zeros((len(s), N), dtype=complex)
         Nr = np.arange(1,N-1)[np.newaxis,:]
         sc = s[:,np.newaxis]
-        np.divide(-1. + (np.exp(-sc*dt) - 1.), sc**2 * dt, \
-                                out=c[:,0:1], where=np.abs(sc)>1e-12)
+        mask_arr = np.abs(sc)>1e-12
+        # first frequency integral
+        np.divide(np.exp(-sc*dt) - 1., -sc*dt, out=c[:,0:1], where=mask_arr)
+        np.divide(-1. + c[:,0:1], -sc, out=c[:,0:1], where=mask_arr)
+        c[np.where(np.logical_not(mask_arr))[0],0] = dt / 2.
+        # middle integrals
         np.divide(np.exp(-sc*dt*(Nr+1)) - 2.*np.exp(-sc*dt*Nr) + np.exp(-sc*dt*(Nr-1)), sc**2 * dt,
-                                out=c[:,1:-1], where=np.abs(sc)>1e-12)
-        np.divide(np.exp(-sc*dt*N) - np.exp(-sc*dt*N) + np.exp(-sc*dt*(N-1)), sc**2 * dt,
-                                out=c[:,N-1:N], where=np.abs(sc)>1e-12)
+                                out=c[:,1:-1], where=mask_arr)
+        c[np.where(np.logical_not(mask_arr))[0],1:-1] = dt
+        # last frequency integral
+        np.divide(np.exp(-sc*dt*N) - np.exp(-sc*dt*(N-1)), -sc*dt, out=c[:,N-1:N], where=mask_arr)
+        np.divide(np.exp(-sc*dt*N) - c[:,N-1:N], -sc, out=c[:,N-1:N], where=mask_arr)
+        c[np.where(np.logical_not(mask_arr))[0],N-1] = dt / 2.
         self.c = c
 
     def set_quad_inv(self):
         t = self.t[:,np.newaxis]*1e-3
         s = self.s[np.newaxis,:]
         ic = np.zeros((len(self.t), len(self.s)), dtype=complex)
+        mask_arr = np.abs(t)>1e-12
         # compute integrals
-        # I1 = (np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t)) / (1j*t)
-        # I2 = ((s[:,1:]-s[:,:-1]).imag * np.exp(s[:,1:]*t) - (np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t)) /(1j*t) ) / (1j*t)
         I1 =  np.divide(np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t), 1j*t,
-                        out=np.zeros_like(ic[:,:-1]), where=np.abs(t)>1e-12)
+                        out=np.zeros_like(ic[:,:-1]), where=mask_arr)
+        I1[np.where(np.logical_not(mask_arr))[0],:] = (s[:,1:] - s[:,:-1]) / 1j
         I2_ = np.divide(np.exp(s[:,1:]*t) - np.exp(s[:,:-1]*t), 1j*t,
-                        out=np.zeros_like(ic[:,:-1]), where=np.abs(t)>1e-12)
+                        out=np.zeros_like(ic[:,:-1]), where=mask_arr)
+        # I2_[0,:] = s[:,1:] - s[:,:-1] / 1j
         I2 =  np.divide((s[:,1:]-s[:,:-1]).imag * np.exp(s[:,1:]*t) - I2_, 1j*t,
-                        out=np.zeros_like(ic[:,:-1]), where=np.abs(t)>1e-12)
+                        out=np.zeros_like(ic[:,:-1]), where=mask_arr)
+        I2[0:1,:] = s[:,1:] * (s[:,1:] - s[:,:-1])
         # compute matrix elements
         ic[:,0] = I1[:,0] - I2[:,0] / (s[:,1] - s[:,0]).imag
         ic[:,1:-1] = I1[:,1:] - I2[:,1:] / (s[:,2:] - s[:,1:-1]).imag + I2[:,:-1] / (s[:,1:-1] - s[:,:-2]).imag
@@ -1081,7 +1091,7 @@ class expExtractor(object):
             FEF = fExpFitter()
             ak, ck, pk, rms = FEF.fitFExp(self.s_f, self.k_f, rtol=1e-2, deg=N, maxiter=20,
                             initpoles='log10', realpoles=True, zerostart=False, constrained=True, reduce_numexp=False)
-            ak *= 1e-3; ck *= 1e-3  # convert units to ms
+            ak *= 1e-3; #ck *= 1e-3  # convert units to ms
             # also try time domain approach
             if N < 10:
                 EF = ExpFitter()
@@ -1102,10 +1112,41 @@ class expExtractor(object):
             self.kfit[N] = {'a': ak, 'c': ck, 'p': pk}
         return self.kfit[N]
 
+    def fit_vector(self, N, atol=5e-2, pprint=True, store=True):
+        FEF = fExpFitter()
+        ak, ck, pk, rms = FEF.fitFExp(self.s_f, self.k_f, rtol=1e-2, deg=N, maxiter=20,
+                        initpoles='log10', realpoles=True, zerostart=False, constrained=True, reduce_numexp=False)
+        ak *= 1e-3; #ck *= 1e-3  # convert units to ms
+        if rms > atol and pprint:
+            print 'No sane fit achieved for N=' + str(N)
+            print 'RMSE:', rms
+        res = {'a': ak, 'c': ck, 'p': pk}
+        if store:
+            self.kfit[N] = res
+        return res
+
+    def fit_prony(self, N, atol=5e-2, pprint=True, store=True):
+        EF = ExpFitter()
+        if 'k_t' not in self.__dict__:
+            k_t = EF.sumExp(self.tarr, -self.kfit[30]['a'], self.kfit[30]['c'])
+        else:
+            k_t = self.k_t
+        ak, ck, rms = EF.PronyExpFit(N, self.tarr, k_t)
+        ak *= -1.
+        # ck *= 1e-3
+        pk = np.zeros(ak.shape, dtype=bool)
+        if rms > atol and pprint:
+            print 'No sane fit achieved for N=' + str(N)
+            print 'RMSE:', rms
+        res = {'a': ak, 'c': ck, 'p': pk}
+        if store:
+            self.kfit[N] = res
+        return res
+
     def k_freq(self, N):
         self(N)
         FEF = fExpFitter()
-        return FEF.sumFExp(self.s_f, self.kfit[N]['a']*1e3, self.kfit[N]['c']*1e3)
+        return FEF.sumFExp(self.s_f, self.kfit[N]['a']*1e3, self.kfit[N]['c'])
 
     def k_time(self, N):
         self(N)
@@ -1131,7 +1172,7 @@ class simpleExpExtractor(expExtractor):
         self.k_t = arr
         # create a smoothing window if arr hasn't gone to zero yet
         if arr[-1] > 1e-9:
-            vwindow = np.cos((np.pi/2.)*(self.t_arr/self.t_arr[-1]))
+            vwindow = np.cos((np.pi/2.)*(self.tarr/self.tarr[-1]))
         else:
             vwindow = np.ones(self.tarr.shape)
         # compute Fourrier transform
