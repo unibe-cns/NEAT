@@ -958,8 +958,10 @@ class MorphTree(STree):
                 locs_.append(copy.copy(loc))
             if locs_[-1]['node'] == 1: n1 += 1
         if n1 > 1:
-            raise ValueError('There can only be one location on the soma, \
-                             multiple soma location occur in input')
+            # raise ValueError('There can only be one location on the soma, \
+            #                  multiple soma location occur in input')
+            warnings.warn('There are multiple locations on the soma in this set ' + \
+                          'locations, this can cause issues in certain functions')
         self.locs[name] = locs_
         self._nids_orig[name] = np.array([loc['node'] for loc in locs_])
         self._xs_orig[name] = np.array([loc['x'] for loc in locs_])
@@ -1039,7 +1041,7 @@ class MorphTree(STree):
 
     def getNodeIndices(self, name):
         '''
-        Returns an array of nodes of locations of a specified name
+        Returns an array of node indices of locations of a specified name
 
         Parameters
         ----------
@@ -1936,7 +1938,7 @@ class MorphTree(STree):
             self.addScalebar(ax, borderpad=borderpad)
         ax.axes.get_xaxis().set_visible(False)
 
-    def plot2DMorphology(self, ax, node_arg=None, cs=None, cmap=None,
+    def plot2DMorphology(self, ax, node_arg=None, cs=None, cminmax=None, cmap=None,
                             use_radius=1, draw_soma_circle=1,
                             plotargs={}, textargs={},
                             marklocs=[], locargs={},
@@ -1955,11 +1957,16 @@ class MorphTree(STree):
             cs: dict {int: float}, None or 'x_color'
                 If dict, node indices are keys and the float value will
                 correspond to the plotted color. If None, the color of the tree
-                will be the one specified in ``plotargs``. If 'node_color', colors
-                will be those stored on the nodes. Note that choosing this option
-                when there are nodes without 'color' as an entry in ``node.content``
-                will result in an error. Node colors can be set with
-                :func:`MorphTree.setNodeColor()``
+                will be the one specified in ``plotargs``. Note that the dict
+                does not have to contain all node indices. The ones that are not
+                featured in the dict are plot in the color specified in ``plotargs``.
+                If 'node_color', colors will be those stored on the nodes. Note
+                that choosing this option when there are nodes without 'color'
+                as an entry in ``node.content`` will result in an error. Node
+                colors can be set with :func:`MorphTree.setNodeColor()``
+            cminmax: (float, float) or None (default)
+                The min and max values of the color scale (if cs is provided).
+                If None, the min and max values of cs are used.
             cmap: :class:`matplotlib.colors.Colormap` instance
             use_radius: bool
                 If ``True``, uses the swc radius for the width of the line
@@ -2013,8 +2020,12 @@ class MorphTree(STree):
         if cs == 'x_color':
             cs = {node.index: node.content['color'] for node in self}
         if cs is not None:
-            max_cs = cs[max(cs, key=cs.__getitem__)] # works for dict and list
-            min_cs = cs[min(cs, key=cs.__getitem__)] # works for dict and list
+            if cminmax is None:
+                max_cs = cs[max(cs, key=cs.__getitem__)] # works for dict and list
+                min_cs = cs[min(cs, key=cs.__getitem__)] # works for dict and list
+            else:
+                min_cs = cminmax[0]
+                max_cs = cminmax[1]
             norm = pl.Normalize(vmin=min_cs, vmax=max_cs)
         # ensure linewidth is indicated as 'lw' in plotargs
         if 'linewidth' in plotargs:
@@ -2052,10 +2063,10 @@ class MorphTree(STree):
             if node.parent_node is None:
                 # node is soma, draw as circle if necessary
                 if draw_soma_circle:
-                    if cs is None:
-                        pcolor = plotargs['c']
-                    else:
+                    if cs is not None and node.index in cs:
                         plotargs['c'] = cmap(norm(cs[node.index]))
+                    else:
+                        plotargs['c'] = plotargs_orig['c']
                     circ = patches.Circle(node.xyz[0:2], node.R,
                                           color=plotargs['c'])
                     ax.add_patch(circ)
@@ -2065,8 +2076,10 @@ class MorphTree(STree):
             else:
                 # plot line segment associated with node
                 nxyz = node.xyz; pxyz = node.parent_node.xyz
-                if cs is not None:
+                if cs is not None and node.index in cs:
                     plotargs['c'] = cmap(norm(cs[node.index]))
+                else:
+                    plotargs['c'] = plotargs_orig['c']
                 if use_radius:
                     plotargs['lw'] = plotargs_orig['lw'] * node.R
                 ax.plot([pxyz[0], nxyz[0]], [pxyz[1], nxyz[1]], **plotargs)
@@ -2199,7 +2212,20 @@ class MorphTree(STree):
         pl.show()
 
     @originalTreetypeDecorator
-    def createNewTree(self, name):
+    def findCommonRoot(self, name):
+        self._tryName(name)
+        # get the node indices of nodes
+        node_inds = self.getNodeIndices(name)
+        # find the paths to the root
+        paths = [set(self.pathToRoot(self[node_ind])) for node_ind in node_inds]
+        # possible roots
+        roots = list(set.intersection(*paths))
+        # return the node of highest order
+        rootind = np.argmax([self.orderOfNode(node) for node in roots])
+        return roots[rootind]
+
+    @originalTreetypeDecorator
+    def createNewTree(self, name, fake_soma=False):
         '''
         Creates a new tree where the locs of a given 'name' are now the nodes.
 
@@ -2208,6 +2234,10 @@ class MorphTree(STree):
             name: string
                 the name under which the locations are stored that should be
                 used to create the new tree
+            fake_soma: bool (default `False`)
+                if `True`, finds the common root of the set of locations and
+                uses that as the soma of the new tree. If `False`, the real soma
+                is used.
 
         Returns
         -------
@@ -2217,22 +2247,30 @@ class MorphTree(STree):
         self._tryName(name)
         # create new tree
         new_tree = MorphTree()
-        # start the recursion
-        ninds = self.getLocindsOnNode(name, self[1])
-        # make soma node
-        snode = self[1]
+        if fake_soma:
+            # find the common root of the set of locations
+            snode = self.findCommonRoot(name)
+        else:
+            # use the soma as root
+            snode = self[1]
         p3d = (snode.xyz, snode.R, snode.swc_type)
         new_snode = self.createCorrespondingNode(1, p3d)
         new_snode.L = snode.L
         new_tree.setRoot(new_snode)
         new_nodes = [new_snode]
         # make two other soma nodes
-        for cnode in snode.getChildNodes(skipinds=[]):
-            if cnode.index in [2,3]:
-                p3d = (cnode.xyz, cnode.R, cnode.swc_type)
-                new_cnode = self.createCorrespondingNode(cnode.index, p3d)
+        if fake_soma:
+            for index in [2,3]:
+                new_cnode = self.createCorrespondingNode(index, p3d)
                 new_tree.addNodeWithParent(new_cnode, new_snode)
                 new_nodes.append(new_cnode)
+        else:
+            for cnode in snode.getChildNodes(skipinds=[]):
+                if cnode.index in [2,3]:
+                    p3d = (cnode.xyz, cnode.R, cnode.swc_type)
+                    new_cnode = self.createCorrespondingNode(cnode.index, p3d)
+                    new_tree.addNodeWithParent(new_cnode, new_snode)
+                    new_nodes.append(new_cnode)
         # make rest of tree
         for cnode in snode.child_nodes:
             self._addNodesToTree(cnode, new_snode, new_tree, new_nodes, name)
@@ -2251,7 +2289,8 @@ class MorphTree(STree):
         xs = self.xs[name]
         # check which locinds are on the branch
         ninds = self.getLocindsOnNode(name, node)
-        for ind in ninds:
+        order_inds = np.argsort(xs[ninds])
+        for ind in np.array(ninds)[order_inds]:
             index = len(new_nodes) + 1
             # new coordinates
             new_xyz = node.parent_node.xyz * (1.-xs[ind]) + node.xyz * xs[ind]
