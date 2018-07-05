@@ -2310,7 +2310,60 @@ class MorphTree(STree):
         for cnode in node.child_nodes:
             self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
 
-    def createCompartmentTree(self):
+    @originalTreetypeDecorator
+    def createCompartmentTree(self, name):
+        '''
+        Creates a new tree where the locs of a given 'name' are now the nodes.
+
+        Parameters
+        ----------
+            name: string
+                the name under which the locations are stored that should be
+                used to create the new tree
+            fake_soma: bool (default `False`)
+                if `True`, finds the common root of the set of locations and
+                uses that as the soma of the new tree. If `False`, the real soma
+                is used.
+
+        Returns
+        -------
+            :class:`MorphTree`
+                The new tree.
+        '''
+        self._tryName(name)
+        # create new tree
+        new_tree = CompartmentTree()
+        # find the common root of the set of locations
+        snode = self.findCommonRoot(name)
+        # create the new root node
+        # new_snode = self.createCorrespondingNode(1, p3d)
+        # new_nodes = [new_snode]
+        # make rest of tree
+        for cnode in snode.child_nodes:
+            self._addNodesToTree(cnode, new_snode, new_tree, new_nodes, name)
+
+        return new_tree
+
+    def _addNodesToTree(self, node, new_pnode, new_tree, new_nodes, name):
+        # get the specified locs
+        xs = self.xs[name]
+        # check which locinds are on the branch
+        ninds = self.getLocindsOnNode(name, node)
+        order_inds = np.argsort(xs[ninds])
+        for ind in np.array(ninds)[order_inds]:
+            index = len(new_nodes) + 1
+            # make new node
+            new_node = CompartmentNode(index, loc_ind)
+            # add new node
+            new_tree.addNodeWithParent(new_node, new_pnode)
+            new_nodes.append(new_node)
+            # set new node as next parent node
+            new_pnode = new_node
+        # continue with the children
+        for cnode in node.child_nodes:
+            self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
+
+    def createCompartmentTree(self, name):
         counter = [0]
         compartment_root = CompartmentNode(counter[0])
         compartment_tree = CompartmentTree(root=compartment_root)

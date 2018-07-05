@@ -28,8 +28,10 @@ class CompartmentNode(SNode):
             Coupling conductance of compartment with parent compartment (uS).
             Ignore if node is the root
     '''
-    def __init__(self, index, ca=1., g_c=0., g_l=1e-2):
+    def __init__(self, index, loc_ind=None, ca=1., g_c=0., g_l=1e-2):
         super(CompartmentNode, self).__init__(index)
+        # location index this node corresponds to
+        self.loc_ind = loc_ind
         # compartment params
         self.ca = ca   # capacitance (uF)
         self.g_c = g_c # coupling conductance (uS)
@@ -234,9 +236,7 @@ class CompartmentTree(STree):
             ValueError: if no freq = 0 is found in ``freqs`` and no steady state
                 impedance matrix is given
         '''
-        if 'z_mat' in kwargs:
-            z_mat = kwargs['z_mat']
-        else:
+        if z_mat is None:
             try:
                 ind0 = np.where(np.abs(freqs) < 1e-12)[0]
                 z_mat = zf_mat[ind0,:,:].real
