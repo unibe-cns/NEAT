@@ -11,10 +11,9 @@ import numpy as np
 
 import warnings
 
-from neat.channels import ionchannels as ionc
-
 import morphtree
 from morphtree import MorphNode, MorphTree
+from neat.channels import channelcollection
 
 
 class PhysNode(MorphNode):
@@ -102,7 +101,7 @@ class PhysNode(MorphNode):
         self.currents['L'] = (g_l, e_l)
         self.e_eq = e_eq_target
 
-    def getGTot(self, v=None):
+    def getGTot(self, v=None, channel_storage=None):
         '''
         Get the total conductance of the membrane at a steady state given voltage,
         if nothing is given, the equilibrium potential is used to compute membrane

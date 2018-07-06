@@ -185,11 +185,11 @@ class IonChannel(object):
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
     def computeLinear(self, v, freqs):
-        dp_dx_arr , df_dv_arr, df_dx_arr = self.computeDerivatives(v)
+        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v)
         lin_f = np.zeros_like(freqs)
-        for ind, dp_dx_ in dp_dx_arr:
-            df_dv_ = df_dv_arr[ind]
-            df_dx_ = df_dx_arr[ind]
+        for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
+            df_dv_ = df_dv_arr[ind] * 1e3 # convert to 1 / s
+            df_dx_ = df_dx_arr[ind] * 1e3 # convert to 1 / s
             # add to the impedance contribution
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f

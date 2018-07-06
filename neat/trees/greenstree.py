@@ -15,6 +15,8 @@ import copy
 import morphtree
 from morphtree import MorphLoc
 from phystree import PhysNode, PhysTree
+from neat.channels import channelcollection
+
 
 
 class GreensNode(PhysNode):
@@ -26,6 +28,22 @@ class GreensNode(PhysNode):
         self.L_ = self.L * 1e-4 # convert to cm
 
     def calcMembraneImpedance(self, freqs, channel_storage=None):
+        '''
+        Compute the impedance of the membrane at the node
+
+        Parameters
+        ----------
+        freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
+            The frequencies at which the impedance is to be evaluated
+        channel_storage: dict of ion channels (optional)
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+
+        Returns
+        -------
+        `np.ndarray` (``dtype=complex``, ``ndim=1``)
+            The membrane impedance
+        '''
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
@@ -184,8 +202,8 @@ class GreensTree(PhysTree):
 
         Parameters
         ----------
-            node_index: int
-                index of the new node
+        node_index: `int`
+            index of the new node
         '''
         if node_index == 1:
             return SomaGreensNode(node_index, p3d)
@@ -194,6 +212,17 @@ class GreensTree(PhysTree):
 
     @morphtree.computationalTreetypeDecorator
     def setImpedance(self, freqs, pprint=False):
+        '''
+        Set the boundary impedances for each node in the tree
+
+        Parameters
+        ----------
+        freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
+            frequencies at which the impedances will be evaluated
+        pprint: bool (default ``False``)
+            whether or not to print info on the progression of the algorithm
+
+        '''
         self.freqs = freqs
         # set the node specific impedances
         for node in self:
@@ -238,13 +267,13 @@ class GreensTree(PhysTree):
 
         Parameters
         ----------
-            loc1, loc2: dict, tuples or `:class:MorphLoc`
-                Two locations between which the transfer impedance is computed
+        loc1, loc2: dict, tuples or `:class:MorphLoc`
+            Two locations between which the transfer impedance is computed
 
         Returns
         -------
-            nd.ndarray (dtype = complex, ndim = 1)
-                The transfer impedance as a function of frequency
+        nd.ndarray (dtype = complex, ndim = 1)
+            The transfer impedance as a function of frequency
         '''
         # cast to morphlocs
         loc1 = MorphLoc(loc1, self)
@@ -287,20 +316,20 @@ class GreensTree(PhysTree):
 
         Parameters
         ----------
-            locarg: list of locations or string
-                if ``list`` of locations, specifies the locations for which the
-                impedance matrix is evaluated, if ``string``, specifies the
-                name under which a set of location is stored
+        locarg: `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            impedance matrix is evaluated, if ``string``, specifies the
+            name under which a set of location is stored
 
         Returns
         -------
-            np.ndarray (dtype = complex, ndim = 3)
-                the impedance matrix, first dimension corresponds to the
-                frequency, second and third dimensions contain the impedance
-                matrix at that frequency
+        `np.ndarray` (``dtype = complex``, ``ndim = 3``)
+            the impedance matrix, first dimension corresponds to the
+            frequency, second and third dimensions contain the impedance
+            matrix at that frequency
         '''
         if isinstance(locarg, list):
-            locs = [MorphLoc(loc) for loc in locs]
+            locs = [MorphLoc(loc, self) for loc in locarg]
         elif isinstance(locarg, str):
             locs = self.getLocs(locarg)
         else:

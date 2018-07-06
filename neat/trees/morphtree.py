@@ -973,6 +973,20 @@ class MorphTree(STree):
         self._nids_comp[name] = np.array([loc['node'] for loc in self.locs[name]])
         self._xs_comp[name] = np.array([loc['x'] for loc in self.locs[name]])
 
+    @originalTreetypeDecorator
+    def addLoc(self, loc, name):
+        loc = MorphLoc(loc, self)
+        self.locs[name].append(loc)
+        self._nids_orig[name] = np.concatenate((self._nids_orig[name], [loc['node']]))
+        self._xs_orig[name] = np.concatenate((self._xs_orig[name], [loc['x']]))
+        if self._computational_root != None:
+            self._addCompLoc(loc, name)
+
+    @computationalTreetypeDecorator
+    def _addCompLoc(loc, name):
+        self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc['node']]))
+        self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc['x']]))
+
     def removeLocs(self, name):
         '''
         Remove a set of locations of a given name
