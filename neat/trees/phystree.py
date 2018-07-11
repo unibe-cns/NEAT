@@ -44,7 +44,7 @@ class PhysNode(MorphNode):
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt
 
-    def addCurrent(self, current_type, g_max, e_rev, channel_storage=None):
+    def addCurrent(self, current_type, g_max, e_rev=None, channel_storage=None):
         '''
         Add an ion channel current at this node. ('L' as `current_type`
         signifies the leak current)
@@ -58,6 +58,8 @@ class PhysNode(MorphNode):
             e_rev: float
                 the reversal potential of the current (mV)
         '''
+        if e_rev is None:
+            e_rev = channelcollection.E_REV_DICT[current_type]
         self.currents[current_type] = (g_max, e_rev)
         if channel_storage is not None and current_type not in channel_storage:
             channel_storage[current_type] = \
@@ -159,7 +161,7 @@ class PhysTree(MorphTree):
         '''
         return PhysNode(node_index, p3d=p3d)
 
-    def addCurrent(self, current_type, g_max_distr, e_rev, node_arg=None,
+    def addCurrent(self, current_type, g_max_distr, e_rev=None, node_arg=None,
                         fill_tree=0, eval_type='pas'):
         '''
         Adds a channel to the morphology.
