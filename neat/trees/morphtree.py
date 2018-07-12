@@ -311,6 +311,10 @@ class MorphNode(SNode):
     child_nodes = property(getChildNodes, setChildNodes)
 
 
+    def __str__(self):
+        return super(MorphNode, self).__str__()
+
+
 class MorphTree(STree):
     '''
     Subclass of simple tree that implements neuronal morphologies. Reads in

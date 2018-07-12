@@ -38,28 +38,30 @@ class CompartmentNode(SNode):
         self.g_c = g_c # coupling conductance (uS)
         # self.g_l = g_l # leak conductance (uS)
         self.e_eq = e_eq # equilibrium potential (mV)
-        self.currents = {'L': (g_l, e_eq)} # ion channel currents and reversals
+        self.currents = {'L': [g_l, e_eq]} # ion channel currents and reversals
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(CompartmentNode, self).__str__()
         if self.parent_node is not None:
             node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
-        node_string += ' --- (g_c = ' + str(self.g_c) + \
-                        ' uS, g_l = ' + str(self.currents['L'][0]) + \
-                        ' uS, c = ' + str(self.ca) + ' uF)'
+        node_string += ' --- (g_c = ' + str(self.g_c) + ' uS, ' + \
+                       ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS' \
+                            for cname, cpar in self.currents.iteritems()]) + \
+                       ', c = ' + str(self.ca) + ' uF)'
         return node_string
 
     def addCurrent(self, current_type, e_rev=None, channel_storage=None):
         if e_rev is None:
             e_rev = channelcollection.E_REV_DICT[current_type]
-        self.currents[current_type] = (g_max, e_rev)
+        self.currents[current_type] = [0., e_rev]
         if channel_storage is not None and current_type not in channel_storage:
             channel_storage[current_type] = \
                 eval('channelcollection.' + current_type + '()')
 
-    def calcMembraneConductanceTerms(self, freqs=None, channel_storage=None):
+    def calcMembraneConductanceTerms(self, freqs=None,
+                                     channel_names=None, channel_storage=None):
         '''
-        Compute the membrane impedance terms and return them as a list
+        Compute the membrane impedance terms and return them as a `dict`
 
         Parameters
         ----------
@@ -75,8 +77,11 @@ class CompartmentNode(SNode):
             Each entry in the dict is of the same type as ``freqs`` and is the
             impedance term of a channel
         '''
+        if channel_names is None: channel_names = self.currents.keys()
         imp_terms = {'L': 1.} # leak conductance has 1 as prefactor
-        for channel_name in set(self.currents.keys()) - set('L'):
+        for channel_name in set(channel_names) - set('L'):
+            if channel_name not in self.currents:
+                self.addCurrent(channel_name, channel_storage=channel_storage)
             e = self.currents[channel_name][1]
             # create the ionchannel object
             if channel_storage is not None:
@@ -84,12 +89,35 @@ class CompartmentNode(SNode):
             else:
                 channel = eval('channelcollection.' + channel_name + '()')
             # add channel contribution to membrane impedance
-            imp_aux -= (e - self.e_eq) * \
-                       channel.computeLinear(self.e_eq, freqs)
+            imp_aux = - (e - self.e_eq) * \
+                        channel.computeLinear(self.e_eq, freqs)
             imp_aux += channel.computePOpen(self.e_eq)
             imp_terms[channel_name] = imp_aux
 
         return imp_terms
+
+    def getGTot(self, v=None, channel_names=None, channel_storage=None):
+        if channel_names is None: channel_names = self.currents.keys()
+        g_tot = self.currents['L'][0] if 'L' in channel_names else 0.
+        v = self.e_eq if v is None else v
+        for channel_name in channel_names:
+            if channel_name != 'L':
+                g, e = self.currents[channel_name]
+                # create the ionchannel object
+                if channel_storage is not None:
+                    channel = channel_storage[channel_name]
+                else:
+                    channel = eval('channelcollection.' + channel_name + '()')
+                g_tot += g * channel.computePOpen(v)
+
+        return g_tot
+
+    def setGTot(self, illegal):
+        raise AttributeError("`g_tot` is a read-only attribute, set the leak " + \
+                             "conductance by calling ``func:addCurrent`` with " + \
+                             " \'L\' as `current_type`")
+
+    g_tot = property(getGTot, setGTot)
 
 
 class CompartmentTree(STree):
@@ -129,7 +157,7 @@ class CompartmentTree(STree):
             node.addCurrent(current_type, e_rev=e_rev,
                             channel_storage=self.channel_storage)
 
-    def calcImpedanceMatrix(self, freqs=None):
+    def calcImpedanceMatrix(self, freqs=0.):
         return np.linalg.inv(self.calcSystemMatrix(freqs=freqs))
 
     def calcConductanceMatrix(self):
@@ -144,7 +172,7 @@ class CompartmentTree(STree):
         g_mat = np.zeros((len(self), len(self)))
         for node in self:
             ii = node.index
-            g_mat[ii, ii] += node.currents['L'][0] + node.g_c
+            g_mat[ii, ii] += node.g_tot + node.g_c
             if node.parent_node is not None:
                 jj = node.parent_node.index
                 g_mat[jj,jj] += node.g_c
@@ -152,7 +180,7 @@ class CompartmentTree(STree):
                 g_mat[jj,ii] -= node.g_c
         return g_mat
 
-    def calcSystemMatrix(self, freqs=None):
+    def calcSystemMatrix(self, freqs=0., channel_names=None):
         '''
         Constructs the matrix of conductance and capacitance terms of the model
         for each frequency provided in ``freqs``
@@ -169,16 +197,34 @@ class CompartmentTree(STree):
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
         '''
-        if freqs is None:
-            gc_mat = self.calcConductanceMatrix()
-        else:
-            gc_mat = self.calcConductanceMatrix().astype(complex)[np.newaxis,:,:] * \
-                     np.ones(len(freqs), dtype=complex)[:,np.newaxis,np.newaxis]
-            for node in self:
-                gc_mat[:, node.index, node.index] += freqs * node.ca
-        return gc_mat
+        no_freq_dim = False
+        if isinstance(freqs, float) or isinstance(freqs, complex):
+            freqs = np.array([freqs])
+            no_freq_dim = True
+        if channel_names is None:
+            channel_names = ['L'] + self.channel_storage.keys()
+        s_mat = np.zeros((len(freqs), len(self), len(self)))
+        for node in self:
+            ii = node.index
+            # set the capacitance contribution
+            s_mat[:,ii,ii] += freqs * node.ca
+            # set the coupling conductances
+            s_mat[:,ii,ii] += node.g_c
+            if node.parent_node is not None:
+                jj = node.parent_node.index
+                s_mat[:,jj,jj] += node.g_c
+                s_mat[:,ii,jj] -= node.g_c
+                s_mat[:,jj,ii] -= node.g_c
+            # set the ion channel contributions
+            g_terms = node.calcMembraneConductanceTerms(freqs=freqs,
+                                                    channel_names=channel_names)
+            s_mat[:,ii,ii] += sum([node.currents[c_name][0] * g_term \
+                                   for c_name, g_term in g_terms.iteritems()])
+        if no_freq_dim:
+            s_mat = s_mat[0,:,:]
+        return s_mat
 
-    def computeG(self, z_mat_arg, e_eqs=None):
+    def computeGMC(self, z_mat_arg, e_eqs=None, channel_names=None):
         '''
         Fit the models' conductances to a given steady state impedance matrix.
 
@@ -200,6 +246,8 @@ class CompartmentTree(STree):
         elif isinstance(e_eqs, float):
             self.setEEq(e_eq)
             e_eqs = [self.getEEq() for _ in z_mat_arg]
+        if channel_names is None:
+            channel_names = ['L'] + self.channel_storage.keys()
         # do the fit
         mats_feature = []
         vecs_target = []
@@ -207,8 +255,8 @@ class CompartmentTree(STree):
             # set equilibrium conductances
             self.setEEq(e_eq)
             # create the matrices for linear fit
-            g_struct = self.toStructureTensorG()
-            tensor_feature = np.einsum('ij,jkl-ikl', z_mat, g_struct)
+            g_struct = self._toStructureTensorGMC(channel_names)
+            tensor_feature = np.einsum('ij,jkl->ikl', z_mat, g_struct)
             tshape = tensor_feature.shape
             mat_feature_aux = np.reshape(tensor_feature,
                                          (tshape[0]*tshape[1], tshape[2]))
@@ -221,7 +269,7 @@ class CompartmentTree(STree):
         res = la.lstsq(mat_feature, vec_target)
         g_vec = res[0]
         # set the conductances
-        self._toTreeG(g_vec)
+        self._toTreeGMC(g_vec, channel_names)
         # g_struct = self._toStructureTensorG()
         # # fitting matrix for linear model
         # tensor_feature = np.einsum('ij,jkl->ikl', z_mat, g_struct)
@@ -233,18 +281,19 @@ class CompartmentTree(STree):
         # # set the conductances
         # self._toTreeG(g_vec)
 
-    def _toStructureTensorG(self):
-        g_vec = self._toVecG()
+    def _toStructureTensorGMC(self, channel_names):
+        g_vec = self._toVecGMC(channel_names)
         g_struct = np.zeros((len(self), len(self), len(g_vec)))
         kk = 0 # counter
         for node in self:
             ii = node.index
             g_terms = node.calcMembraneConductanceTerms(0.,
-                                        channel_storage=self.channel_storage)
+                                        channel_storage=self.channel_storage,
+                                        channel_names=channel_names)
             if node.parent_node == None:
                 # membrance conductance elements
-                for channel_name in self.currents:
-                    g_struct[0, 0, kk] += g_term[channel_name]
+                for channel_name in channel_names:
+                    g_struct[0, 0, kk] += g_terms[channel_name]
                     kk += 1
             else:
                 jj = node.parent_node.index
@@ -255,35 +304,35 @@ class CompartmentTree(STree):
                 g_struct[ii, ii, kk] += 1.
                 kk += 1
                 # membrance conductance elements
-                for g_term in imp_terms.itervalues():
-                    g_struct[ii, ii, kk] += g_term[channel_name]
+                for channel_name in channel_names:
+                    g_struct[ii, ii, kk] += g_terms[channel_name]
                     kk += 1
         return g_struct
 
-    def _toVecG(self):
+    def _toVecGMC(self, channel_names):
         '''
         Place all conductances to be fitted in a single vector
         '''
         g_list = []
         for node in self:
             if node.parent_node is None:
-                g_list.extend([current[0] for current in node.currents.itervalues()])
+                g_list.extend([node.currents[c_name][0] for c_name in channel_names])
             else:
                 g_list.extend([node.g_c] + \
-                              [current[0] for current in node.currents.itervalues()])
+                              [node.currents[c_name][0] for c_name in channel_names])
         return np.array(g_list)
 
-    def _toTreeG(self, g_vec):
+    def _toTreeGMC(self, g_vec, channel_names):
         kk = 0 # counter
         for ii, node in enumerate(self):
             if node.parent_node is None:
-                for channel_name in node.currents:
+                for channel_name in channel_names:
                     node.currents[channel_name][0] = g_vec[kk]
                     kk += 1
             else:
                 node.g_c = g_vec[kk]
                 kk += 1
-                for channel_name in node.currents:
+                for channel_name in channel_names:
                     node.currents[channel_name][0] = g_vec[kk]
                     kk += 1
             # if node.parent_node is None:
@@ -292,7 +341,94 @@ class CompartmentTree(STree):
             #     node.g_c = g_vec[2*ii-1]
             #     node.currents['L'][0] = g_vec[2*ii]
 
-    def computeC(self, freqs, zf_mat):
+
+    def computeGM(self, z_mat_arg, e_eqs=None, freqs=0., channel_names=None):
+        '''
+        Fit the models' conductances to a given steady state impedance matrix.
+
+        Parameters
+        ----------
+        z_mat_arg: np.ndarray (ndim = 2, dtype = float or complex) or
+                   list of np.ndarray (ndim = 2, dtype = float or complex)
+            If a single array, represents the steady state impedance matrix,
+            If a list of arrays, represents the steady state impedance
+            matrices for each equilibrium potential in ``e_eqs``
+        e_eqs: np.ndarray (ndim = 1, dtype = float) or float
+            The equilibirum potentials in each compartment for each
+            evaluation of ``z_mat``
+        '''
+        if isinstance(z_mat_arg, np.ndarray):
+            z_mat_arg = [z_mat_arg]
+        if e_eqs is None:
+            e_eqs = [self.getEEq() for _ in z_mat_arg]
+        elif isinstance(e_eqs, float):
+            self.setEEq(e_eq)
+            e_eqs = [self.getEEq() for _ in z_mat_arg]
+        if channel_names is None:
+            channel_names = ['L'] + self.channel_storage.keys()
+        if isinstance(freqs, float) or isinstance(freqs, complex):
+            freqs = np.array([freqs])
+        other_channel_names = list(set(self.channel_storage.keys()) - set(channel_names))
+        # do the fit
+        mats_feature = []
+        vecs_target = []
+        for z_mat, e_eq in zip(z_mat_arg, e_eqs):
+            # set equilibrium conductances
+            self.setEEq(e_eq)
+            # feature matrix
+            g_struct = self._toStructureTensorGM(channel_names=channel_names)
+            tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+            tshape = tensor_feature.shape
+            mat_feature_aux = np.reshape(tensor_feature,
+                                         (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+            # target vector
+            g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names)
+            zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
+            mat_target_aux = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+            vec_target_aux = np.reshape(mat_target_aux, (tshape[0]*tshape[1]*tshape[2],))
+            # store feature matrix and target vector for this voltage
+            mats_feature.append(mat_feature_aux)
+            vecs_target.append(vec_target_aux)
+        mat_feature = np.concatenate(mats_feature, 0)
+        vec_target = np.concatenate(vecs_target)
+        # linear regression fit
+        res = la.lstsq(mat_feature, vec_target)
+        g_vec = res[0]
+        # set the conductances
+        self._toTreeGMC(g_vec, channel_names=channel_names)
+
+    def _toStructureTensorGM(self, freqs, channel_names):
+        g_vec = self._toVecGM(channel_names)
+        g_struct = np.zeros((len(freqs), len(self), len(self), len(g_vec)))
+        kk = 0 # counter
+        for node in self:
+            ii = node.index
+            g_terms = node.calcMembraneConductanceTerms(freqs,
+                                        channel_storage=self.channel_storage,
+                                        channel_names=channel_names)
+            # membrance conductance elements
+            for channel_name in channel_names:
+                g_struct[:,ii,ii,kk] += g_terms[channel_name]
+                kk += 1
+        return g_struct
+
+    def _toVecGM(self, channel_names):
+        '''
+        Place all conductances to be fitted in a single vector
+        '''
+        g_list = []
+        for node in self:
+            g_list.extend([node.currents[c_name][0] for c_name in channel_names])
+        return np.array(g_list)
+
+    def _toTreeGM(self, g_vec, channel_names):
+        kk = 0 # counter
+        for ii, node in enumerate(self):
+            for channel_name in channel_names:
+                node.currents[channel_name][0] = g_vec[kk]
+                kk += 1
+
+    def computeC(self, freqs, zf_mat, channel_names=None):
         '''
         Fit the models' capacitances to a given impedance matrix.
 
@@ -313,8 +449,8 @@ class CompartmentTree(STree):
         tshape = tensor_feature.shape
         mat_feature = np.reshape(tensor_feature, (tshape[0]*tshape[1]*tshape[2], tshape[3]))
         # target vector
-        g_mat = self.calcConductanceMatrix()
-        zg_prod = np.einsum('oij,jk->oik', zf_mat, g_mat)
+        g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names)
+        zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target,(tshape[0]*tshape[1]*tshape[2],))
         # linear regression fit

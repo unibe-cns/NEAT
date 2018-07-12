@@ -95,7 +95,7 @@ class PhysNode(MorphNode):
         if self.c_m / (tau_m_target*1e-3) < gsum:
             warnings.warn('Membrane time scale is chosen larger than \
                            possible, decreasing membrane time scale')
-            tau_m_target = cm / (gsum+300.)
+            tau_m_target = self.c_m / (gsum+300.)
         else:
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
@@ -128,7 +128,7 @@ class PhysNode(MorphNode):
                 channel = channel_storage[channel_name]
             else:
                 channel = eval('channelcollection.' + channel_name + '()')
-            g_tot += g * channel.computePOpen(self.e_eq)
+            g_tot += g * channel.computePOpen(v)
 
         return g_tot
 
@@ -138,6 +138,17 @@ class PhysNode(MorphNode):
                              " \'L\' as `current_type`")
 
     g_tot = property(getGTot, setGTot)
+
+
+    def __str__(self, with_parent=False, with_children=False):
+        node_string = super(PhysNode, self).__str__()
+        if self.parent_node is not None:
+            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
+        node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
+                       ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
+                            for cname, cpar in self.currents.iteritems()]) + \
+                       ', c_m = ' + str(self.c_m) + ' uF/cm^2)'
+        return node_string
 
 
 class PhysTree(MorphTree):
