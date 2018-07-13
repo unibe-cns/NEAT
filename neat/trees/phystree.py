@@ -172,8 +172,7 @@ class PhysTree(MorphTree):
         '''
         return PhysNode(node_index, p3d=p3d)
 
-    def addCurrent(self, current_type, g_max_distr, e_rev=None, node_arg=None,
-                        fill_tree=0, eval_type='pas'):
+    def addCurrent(self, current_type, g_max_distr, e_rev=None, node_arg=None):
         '''
         Adds a channel to the morphology.
 
@@ -191,11 +190,6 @@ class PhysTree(MorphTree):
             node_arg:
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None
-            eval_type: {'pas', 'lin'}
-                Specifies the way the ion channel is evaluated in calculations.
-                'pas' means that only the passive conductance at the local
-                equilibrium potential is incorporated, whereas 'lin' means that
-                the full semi-active channel is evaluated.
         '''
         # add the ion channel to the nodes
         for node in self._convertNodeArgToNodes(node_arg):
