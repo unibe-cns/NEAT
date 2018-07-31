@@ -298,12 +298,12 @@ class MorphNode(SNode):
         '''
         self.R = R
 
-    def getChildNodes(self, skipinds=(2,3)):
+    def getChildNodes(self, skip_inds=(2,3)):
         # if self.index == 1:
         # else:
         #     return super(MorphNode, self).getChildNodes()
         return [cnode for cnode in self._child_nodes \
-                      if cnode.index not in skipinds]
+                      if cnode.index not in skip_inds]
 
     def setChildNodes(self, cnodes):
         return super(MorphNode, self).setChildNodes(cnodes)
@@ -352,6 +352,49 @@ class MorphTree(STree):
         self.d2b = {}
         self.leafinds = {}
 
+    def __getitem__(self, index, skip_inds=(2,3)):
+        '''
+        Returns the node with given index, if no such node is in the tree, None
+        is returned.
+
+        Parameters
+        ----------
+            index: int
+                the index of the node to be found
+
+        Returns:
+            :class:`SNode` or None
+        '''
+        return self._findNode(self.root, index, skip_inds=skip_inds)
+
+    def _findNode(self, node, index, skip_inds=(2,3)):
+        """
+        Sweet breadth-first/stack iteration to replace the recursive call.
+        Traverses the tree until it finds the node you are looking for.
+        Returns SNode when found and None when not found
+
+        Parameters
+        ----------
+            node: :class:`SNode` (optional)
+                node where the search is started
+            index: int
+                the index of the node to be found
+
+        Returns
+        -------
+            :class:`SNode`
+        """
+        stack = [];
+        stack.append(node)
+        while len(stack) != 0:
+            for cnode in stack:
+                if cnode.index == index:
+                    return cnode
+                else:
+                    stack.remove(cnode)
+                    stack.extend(cnode.getChildNodes(skip_inds=skip_inds))
+        return None # Not found!
+
     def __iter__(self, node=None, skip_inds=(2,3)):
         '''
         Overloaded iterator from parent class that avoids iterating over the
@@ -375,7 +418,7 @@ class MorphTree(STree):
             node = self.root
         if node is not None:
             if node.index not in skip_inds: yield node
-            for cnode in node.getChildNodes():
+            for cnode in node.getChildNodes(skip_inds=skip_inds):
                 for inode in self.__iter__(cnode, skip_inds=skip_inds):
                     if node.index not in skip_inds: yield inode
 
@@ -443,8 +486,8 @@ class MorphTree(STree):
             node_list: list of :class:`MorphNode`
         '''
         if node.index not in skip_inds: node_list.append(node)
-        for cnode in node.getChildNodes():
-            self._gatherNodes(cnode, node_list=node_list)
+        for cnode in node.getChildNodes(skip_inds=skip_inds):
+            self._gatherNodes(cnode, node_list=node_list, skip_inds=skip_inds)
 
     def getLeafs(self, recompute_flag=0):
         '''
@@ -479,7 +522,7 @@ class MorphTree(STree):
             list of :class:`MorphNode`
                 List of all nodes in the basal subtree
         '''
-        return [node for node in self if node.swc_type in [1,3]]
+        return [node for node in self if node.swc_type in [3]]
 
     def getNodesInApicalSubtree(self):
         '''
@@ -490,7 +533,7 @@ class MorphTree(STree):
             list of :class:`MorphNode`
                 List of all nodes in the apical subtree
         '''
-        return [node for node in self if node.swc_type in [1,4]]
+        return [node for node in self if node.swc_type in [4]]
 
     def getNodesInAxonalSubtree(self):
         '''
@@ -501,7 +544,7 @@ class MorphTree(STree):
             list of :class:`MorphNode`
                 List of all nodes in the apical subtree
         '''
-        return [node for node in self if node.swc_type in [1,2]]
+        return [node for node in self if node.swc_type in [2]]
 
     def setTreetype(self, treetype):
         if treetype == 'original':
@@ -521,7 +564,6 @@ class MorphTree(STree):
         return self._treetype
 
     treetype = property(getTreetype, setTreetype)
-
 
     def createCorrespondingNode(self, node_index, p3d=None):
         '''
@@ -987,7 +1029,7 @@ class MorphTree(STree):
             self._addCompLoc(loc, name)
 
     @computationalTreetypeDecorator
-    def _addCompLoc(loc, name):
+    def _addCompLoc(self, loc, name):
         self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc['node']]))
         self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc['x']]))
 
@@ -2283,7 +2325,7 @@ class MorphTree(STree):
                 new_tree.addNodeWithParent(new_cnode, new_snode)
                 new_nodes.append(new_cnode)
         else:
-            for cnode in snode.getChildNodes(skipinds=[]):
+            for cnode in snode.getChildNodes(skip_inds=[]):
                 if cnode.index in [2,3]:
                     p3d = (cnode.xyz, cnode.R, cnode.swc_type)
                     new_cnode = self.createCorrespondingNode(cnode.index, p3d)
@@ -2358,11 +2400,11 @@ class MorphTree(STree):
         # new_nodes = [new_snode]
         # make rest of tree
         for cnode in snode.child_nodes:
-            self._addNodesToTree(cnode, new_snode, new_tree, new_nodes, name)
+            self._addCompNodesToTree(cnode, new_snode, new_tree, new_nodes, name)
 
         return new_tree
 
-    def _addNodesToTree(self, node, new_pnode, new_tree, new_nodes, name):
+    def _addCompNodesToTree(self, node, new_pnode, new_tree, new_nodes, name):
         # get the specified locs
         xs = self.xs[name]
         # check which locinds are on the branch
@@ -2381,27 +2423,27 @@ class MorphTree(STree):
         for cnode in node.child_nodes:
             self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
 
-    def createCompartmentTree(self, name):
-        counter = [0]
-        compartment_root = CompartmentNode(counter[0])
-        compartment_tree = CompartmentTree(root=compartment_root)
-        counter[0] += 1
-        for cnode in self.root.child_nodes:
-            self._addCompartmentNodesToTree(cnode,
-                                            compartment_root, compartment_tree,
-                                            counter)
-        return compartment_tree
+    # def createCompartmentTree(self, name):
+    #     counter = [0]
+    #     compartment_root = CompartmentNode(counter[0])
+    #     compartment_tree = CompartmentTree(root=compartment_root)
+    #     counter[0] += 1
+    #     for cnode in self.root.child_nodes:
+    #         self._addCompartmentNodesToTree(cnode,
+    #                                         compartment_root, compartment_tree,
+    #                                         counter)
+    #     return compartment_tree
 
-    def _addCompartmentNodesToTree(self, node,
-                                   compartment_pnode, compartment_tree,
-                                   counter):
-        compartment_node = CompartmentNode(counter[0])
-        compartment_tree.addNodeWithParent(compartment_node, compartment_pnode)
-        counter[0] += 1
-        for cnode in node.child_nodes:
-            self._addCompartmentNodesToTree(cnode,
-                                            compartment_node, compartment_tree,
-                                            counter)
+    # def _addCompartmentNodesToTree(self, node,
+    #                                compartment_pnode, compartment_tree,
+    #                                counter):
+    #     compartment_node = CompartmentNode(counter[0])
+    #     compartment_tree.addNodeWithParent(compartment_node, compartment_pnode)
+    #     counter[0] += 1
+    #     for cnode in node.child_nodes:
+    #         self._addCompartmentNodesToTree(cnode,
+    #                                         compartment_node, compartment_tree,
+    #                                         counter)
 
     def __copy__(self, new_tree=None):
         '''

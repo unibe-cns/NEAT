@@ -39,7 +39,7 @@ class SNode(object):
 
     child_nodes = property(getChildNodes, setChildNodes)
 
-    def addChild(self,child_node):
+    def addChild(self, child_node):
         self._child_nodes.append(child_node)
 
     def getContent(self):
@@ -62,7 +62,10 @@ class SNode(object):
         self._child_nodes.remove(child_node)
 
     def __getitem__(self, key):
-        return self.content[key]
+        return self._content[key]
+
+    def __setitem__(self, key, value):
+        self._content[key] = value
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = 'SNode ' + str(self.index)
@@ -224,6 +227,13 @@ class STree(object):
         for iternode in self.__iter__(node):
             tree_string += '\n    ' + iternode.__str__(with_parent=True)
         return tree_string
+
+    def checkOrdered(self):
+        '''
+        Check if the indices of the tree are number in the same order as they
+        appear in the iterator
+        '''
+        return range(len(self)) == [node.index for node in self]
 
     def getNodes(self, recompute_flag=1):
         '''
@@ -739,6 +749,6 @@ class STree(object):
     def _recurseCopy(self, pnode, new_tree):
         for node in pnode.child_nodes:
             new_node = new_tree.createCorrespondingNode(node.index)
-            node.__copy__(new_node=new_node)
+            new_node = node.__copy__(new_node=new_node)
             new_tree.addNodeWithParent(new_node, new_tree[pnode.index])
             self._recurseCopy(node, new_tree)

@@ -61,7 +61,9 @@ class PhysNode(MorphNode):
         if e_rev is None:
             e_rev = channelcollection.E_REV_DICT[current_type]
         self.currents[current_type] = (g_max, e_rev)
-        if channel_storage is not None and current_type not in channel_storage:
+        if current_type is not 'L' and \
+           channel_storage is not None and \
+           current_type not in channel_storage:
             channel_storage[current_type] = \
                 eval('channelcollection.' + current_type + '()')
 
@@ -93,9 +95,9 @@ class PhysNode(MorphNode):
             gsum += g_chan
             i_eq += i_chan
         if self.c_m / (tau_m_target*1e-3) < gsum:
-            warnings.warn('Membrane time scale is chosen larger than \
-                           possible, decreasing membrane time scale')
-            tau_m_target = self.c_m / (gsum+300.)
+            warnings.warn('Membrane time scale is chosen larger than ' + \
+                          'possible, adding small leak conductance')
+            tau_m_target = self.c_m / (gsum + 20.)
         else:
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
@@ -198,7 +200,7 @@ class PhysTree(MorphTree):
                 g_max = g_max_distr
             elif type(g_max_distr) == dict:
                 g_max = g_max_distr[node.index]
-            elif hasattr('__call__'):
+            elif hasattr(g_max_distr, '__call__'):
                 d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
                 g_max = g_max_distr(d2s)
             else:

@@ -14,6 +14,8 @@ import scipy.linalg as la
 from stree import SNode, STree
 from neat.channels import channelcollection
 
+import copy
+
 
 class CompartmentNode(SNode):
     '''
@@ -51,12 +53,13 @@ class CompartmentNode(SNode):
         return node_string
 
     def addCurrent(self, current_type, e_rev=None, channel_storage=None):
-        if e_rev is None:
-            e_rev = channelcollection.E_REV_DICT[current_type]
-        self.currents[current_type] = [0., e_rev]
-        if channel_storage is not None and current_type not in channel_storage:
-            channel_storage[current_type] = \
-                eval('channelcollection.' + current_type + '()')
+        if current_type is not 'L':
+            if e_rev is None:
+                e_rev = channelcollection.E_REV_DICT[current_type]
+            self.currents[current_type] = [0., e_rev]
+            if channel_storage is not None and current_type not in channel_storage:
+                channel_storage[current_type] = \
+                    eval('channelcollection.' + current_type + '()')
 
     def calcMembraneConductanceTerms(self, freqs=None,
                                      channel_names=None, channel_storage=None):
@@ -141,7 +144,7 @@ class CompartmentTree(STree):
             e_eq = e_eq * np.ones(len(self))
         for ii, node in enumerate(self): node.e_eq = e_eq[ii]
 
-    def getEEq(self, e_eq):
+    def getEEq(self):
         return np.array([node.e_eq for node in self])
 
     def addCurrent(self, current_type, e_rev=None):
@@ -157,8 +160,9 @@ class CompartmentTree(STree):
             node.addCurrent(current_type, e_rev=e_rev,
                             channel_storage=self.channel_storage)
 
-    def calcImpedanceMatrix(self, freqs=0.):
-        return np.linalg.inv(self.calcSystemMatrix(freqs=freqs))
+    def calcImpedanceMatrix(self, freqs=0., channel_names=None):
+        return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
+                                                channel_names=channel_names))
 
     def calcConductanceMatrix(self):
         '''
@@ -180,7 +184,7 @@ class CompartmentTree(STree):
                 g_mat[jj,ii] -= node.g_c
         return g_mat
 
-    def calcSystemMatrix(self, freqs=0., channel_names=None):
+    def calcSystemMatrix(self, freqs=0., channel_names=None, with_ca=True):
         '''
         Constructs the matrix of conductance and capacitance terms of the model
         for each frequency provided in ``freqs``
@@ -203,11 +207,11 @@ class CompartmentTree(STree):
             no_freq_dim = True
         if channel_names is None:
             channel_names = ['L'] + self.channel_storage.keys()
-        s_mat = np.zeros((len(freqs), len(self), len(self)))
+        s_mat = np.zeros((len(freqs), len(self), len(self)), dtype=freqs.dtype)
         for node in self:
             ii = node.index
             # set the capacitance contribution
-            s_mat[:,ii,ii] += freqs * node.ca
+            if with_ca: s_mat[:,ii,ii] += freqs * node.ca
             # set the coupling conductances
             s_mat[:,ii,ii] += node.g_c
             if node.parent_node is not None:
@@ -267,7 +271,7 @@ class CompartmentTree(STree):
         vec_target = np.concatenate(vecs_target)
         # linear regression fit
         res = la.lstsq(mat_feature, vec_target)
-        g_vec = res[0]
+        g_vec = res[0].real
         # set the conductances
         self._toTreeGMC(g_vec, channel_names)
         # g_struct = self._toStructureTensorG()
@@ -342,14 +346,15 @@ class CompartmentTree(STree):
             #     node.currents['L'][0] = g_vec[2*ii]
 
 
-    def computeGM(self, z_mat_arg, e_eqs=None, freqs=0., channel_names=None):
+    def computeGM(self, z_mat_arg, e_eqs=None, freqs=0., channel_names=None,
+                        other_channel_names=None):
         '''
-        Fit the models' conductances to a given steady state impedance matrix.
+        Fit the models' conductances to a given impedance matrix.
 
         Parameters
         ----------
-        z_mat_arg: np.ndarray (ndim = 2, dtype = float or complex) or
-                   list of np.ndarray (ndim = 2, dtype = float or complex)
+        z_mat_arg: np.ndarray (ndim = 2 or 3, dtype = float or complex) or
+                   list of np.ndarray (ndim = 2 or 3, dtype = float or complex)
             If a single array, represents the steady state impedance matrix,
             If a list of arrays, represents the steady state impedance
             matrices for each equilibrium potential in ``e_eqs``
@@ -357,8 +362,19 @@ class CompartmentTree(STree):
             The equilibirum potentials in each compartment for each
             evaluation of ``z_mat``
         '''
+        if isinstance(freqs, float) or isinstance(freqs, complex):
+            freqs = np.array([freqs])
         if isinstance(z_mat_arg, np.ndarray):
             z_mat_arg = [z_mat_arg]
+        # convert to 3d matrices if they are two dimensional
+        z_mat_arg_ = []
+        for z_mat in z_mat_arg:
+            if z_mat.ndim == 2:
+                z_mat_arg_.append(z_mat[np.newaxis,:,:])
+            else:
+                z_mat_arg_.append(z_mat)
+            assert z_mat_arg_[-1].shape[0] == freqs.shape[0]
+        z_mat_arg = z_mat_arg_
         if e_eqs is None:
             e_eqs = [self.getEEq() for _ in z_mat_arg]
         elif isinstance(e_eqs, float):
@@ -366,9 +382,8 @@ class CompartmentTree(STree):
             e_eqs = [self.getEEq() for _ in z_mat_arg]
         if channel_names is None:
             channel_names = ['L'] + self.channel_storage.keys()
-        if isinstance(freqs, float) or isinstance(freqs, complex):
-            freqs = np.array([freqs])
-        other_channel_names = list(set(self.channel_storage.keys()) - set(channel_names))
+        if other_channel_names == None:
+            other_channel_names = list(set(self.channel_storage.keys()) - set(channel_names))
         # do the fit
         mats_feature = []
         vecs_target = []
@@ -376,14 +391,14 @@ class CompartmentTree(STree):
             # set equilibrium conductances
             self.setEEq(e_eq)
             # feature matrix
-            g_struct = self._toStructureTensorGM(channel_names=channel_names)
+            g_struct = self._toStructureTensorGM(freqs=freqs, channel_names=channel_names)
             tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
             tshape = tensor_feature.shape
             mat_feature_aux = np.reshape(tensor_feature,
                                          (tshape[0]*tshape[1]*tshape[2], tshape[3]))
             # target vector
             g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names)
-            zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
+            zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
             mat_target_aux = np.eye(len(self))[np.newaxis,:,:] - zg_prod
             vec_target_aux = np.reshape(mat_target_aux, (tshape[0]*tshape[1]*tshape[2],))
             # store feature matrix and target vector for this voltage
@@ -393,13 +408,13 @@ class CompartmentTree(STree):
         vec_target = np.concatenate(vecs_target)
         # linear regression fit
         res = la.lstsq(mat_feature, vec_target)
-        g_vec = res[0]
+        g_vec = res[0].real
         # set the conductances
-        self._toTreeGMC(g_vec, channel_names=channel_names)
+        self._toTreeGM(g_vec, channel_names=channel_names)
 
     def _toStructureTensorGM(self, freqs, channel_names):
         g_vec = self._toVecGM(channel_names)
-        g_struct = np.zeros((len(freqs), len(self), len(self), len(g_vec)))
+        g_struct = np.zeros((len(freqs), len(self), len(self), len(g_vec)), dtype=freqs.dtype)
         kk = 0 # counter
         for node in self:
             ii = node.index
@@ -449,7 +464,8 @@ class CompartmentTree(STree):
         tshape = tensor_feature.shape
         mat_feature = np.reshape(tensor_feature, (tshape[0]*tshape[1]*tshape[2], tshape[3]))
         # target vector
-        g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names)
+        g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names,
+                                             with_ca=False)
         zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target,(tshape[0]*tshape[1]*tshape[2],))
@@ -571,6 +587,112 @@ class CompartmentTree(STree):
                 node.g_c = gc_vec[3*ii-2]
                 node.currents['L'][0] = gc_vec[3*ii-1]
                 node.ca  = gc_vec[3*ii]
+
+    def computeFakeGeometry(self, fake_c_m=1., fake_r_a=100.*1e-6,
+                                  factor_r_a=1e-6, delta=1e-14):
+        '''
+        Computes a fake geometry so that the neuron model is a reduced
+        compurtmental model
+
+        Parameters
+        ----------
+        fake_c_m: float [uF / cm^2]
+            fake membrane capacitance value used to compute the surfaces of
+            the compartments
+        fake_r_a: float [MOhm * cm]
+            fake axial resistivity value, used to evaluate the lengths of each
+            section to yield the correct coupling constants
+
+        Returns
+        -------
+        radii, lengths, surfaces: np.array of floats
+            The radii, lengths, resp. surfaces for the section in NEURON. Array
+            index corresponds to NEURON index
+
+        Raises
+        ------
+        AssertionError
+            If the node indices are not ordered consecutively when iterating
+        '''
+
+        # c_m = 1.
+        # # r_a = 100.
+        # gL = 150.
+
+        # L1 = 10.
+        # L2 = 10.
+        # delta = 1e-10
+        # R1 = 1.
+        # R2 = 100.
+
+        # factor_r = R2 / R1
+
+        # surfaces = np.ones(len(self)) * 2. * np.pi * R1 * L1 + 2. * np.pi * R2 * L2 + np.pi * (R2**2 - R1**2)
+        # vec_coupling = np.ones(len(self)) * 3.18309886184
+        # print 'L1 computed =', np.pi * (R1*1e-4)**2 * vec_coupling[0] / (fake_r_a) *1e4
+        # print 'surfaces =', surfaces
+
+        assert self.checkOrdered()
+        factor_r = 1. / np.sqrt(factor_r_a)
+        # compute necessary vectors for calculating
+        surfaces = np.array([node.ca / fake_c_m for node in self])
+        vec_coupling = np.array([1.] + [1./node.g_c for node in self if \
+                                            node.parent_node is not None])
+
+        p0s = -surfaces
+        p1s = np.zeros_like(p0s)
+        p2s = np.pi * (factor_r**2 - 1.) * np.ones_like(p0s)
+        p3s = 2. * np.pi**2 * vec_coupling / fake_r_a * (1. + factor_r)
+
+        # print 1e8*(p3s * (R1*1e-4)**3 + p2s * (R1*1e-4)**2 + p1s * (R1*1e-4))
+
+        # find the polynomial roots
+        points = []
+        for ii, (p0, p1, p2, p3) in enumerate(zip(p0s, p1s, p2s, p3s)):
+            res = np.roots([p3,p2,p1,p0])
+            # compute radius and length of first half of section
+            radius = res[np.where(res.real > 0.)[0][0]].real
+            radius *= 1e4 # convert [cm] to [um]
+            length = np.pi * radius**2 * vec_coupling[ii] / (fake_r_a * 1e4) # convert [MOhm*cm] to [MOhm*um]
+            # compute the pt3d points
+            point0 = [0., 0., 0., 2.*radius]
+            point1 = [length, 0., 0., 2.*radius]
+            point2 = [length*(1.+delta), 0., 0., 2.*radius*factor_r]
+            point3 = [length*(2.+delta), 0., 0., 2.*radius*factor_r]
+            points.append([point0, point1, point2, point3])
+
+        return points, surfaces
+
+    #     c_aux = fake_r_a / (2.*np.pi)**2
+    #     vec_aux = np.array([c_aux * surfaces[node.index] for node in self])
+    #     vec_coupling = np.array([0.] + [1./node.g_c for node in self if \
+    #                                         node.parent_node is not None])
+    #     vec_fac = np.ones_like(vec_coupling)
+    #     vec_sol = copy.deepcopy(vec_coupling)
+    #     # find a solution for the radii of the compartments
+    #     self._solveRadii(self.root, vec_coupling, vec_sol, vec_fac)
+    #     x_min = np.max(-vec_sol[np.where(vec_fac > 0.)[0]])
+    #     x_max = np.min(vec_sol[np.where(vec_fac < 0.)[0]])
+    #     x_sol = (x_min+x_max) / 2.
+    #     # compute solution with all positive values
+    #     res = (vec_sol + vec_fac * x_sol) / vec_aux
+    #     # compute radii and corresponding lengths
+    #     radii = (1./res)**(1./3.)
+    #     lengths = surfaces / (2. * np.pi * radii)
+    #     return radii, lengths, surfaces
+
+    # def _solveRadii(self, node, vec_coupling, vec_sol, vec_fac):
+    #     if node.parent_node is not None:
+    #         vec_sol[node.index] -= vec_sol[node.parent_node.index]
+    #         vec_fac[node.index] = -1. * vec_fac[node.parent_node.index]
+    #     for cnode in node.child_nodes:
+    #         self._solveRadii(cnode, vec_coupling, vec_sol, vec_fac)
+
+
+
+
+
+
 
 
 

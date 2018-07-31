@@ -11,10 +11,16 @@ def sp_exp(x):
 E_REV_DICT = {
                 'TestChannel': -23.,
                 'h': -43.,
+                'h_HAY': -45.,
                 'Na_Ta': 50.,
-                'Kv3_1': -80.,
+                'Na_p': 50.,
+                'Kv3_1': -85.,
+                'Kpst': -85.,
+                'Ktst': -85.,
+                'm': -85.,
                 'Ca_LVA': 50.,
-                'Ca_HVA': 50.
+                'Ca_HVA': 50.,
+                'L': -75.,
              }
 
 
@@ -81,7 +87,7 @@ class h_HAY(IonChannel):
         # state variables
         self.varnames = np.array([['m']])
         self.powers = np.array([[1]], dtype=int)
-        self.factors = np.array([[1.]])
+        self.factors = np.array([1.])
         # activation functions
         spalpham = 0.001 * 6.43 * (self.sp_v + 154.9) / (sp_exp((self.sp_v + 154.9) / 11.9) - 1.)
         spbetam  = 0.001 * 193. * sp_exp(self.sp_v / 33.1)
@@ -135,7 +141,7 @@ class Na_p(IonChannel):
         # state variables
         self.varnames = np.array([['m', 'h']])
         self.powers = np.array([[3,1]], dtype=int)
-        self.factors = np.array([[1.]])
+        self.factors = np.array([1.])
         # activation functions
         spalpham =   0.182   * (self.sp_v + 38. ) / (1. - sp_exp(-(self.sp_v + 38. ) / 6.  ))  #1/ms
         spbetam  = - 0.124   * (self.sp_v + 38. ) / (1. - sp_exp( (self.sp_v + 38. ) / 6.  ))  #1/ms
@@ -184,7 +190,7 @@ class Kpst(IonChannel):
         # state variables
         self.varnames = np.array([['m', 'h']])
         self.powers = np.array([[2, 1]], dtype=int)
-        self.factors = np.array([[1.]])
+        self.factors = np.array([1.])
         # activation functions
         self.varinf = np.array([[1. / (1. + sp_exp(-(self.sp_v + 11.) / 12.)) ,
                                  1. / (1. + sp_exp( (self.sp_v + 64.) / 11.)) ]])
@@ -194,8 +200,8 @@ class Kpst(IonChannel):
         super(Kpst, self).__init__()
 
 
-class Ktst(ionChannel):
-    def __init__():
+class Ktst(IonChannel):
+    def __init__(self):
         '''
         Transient Potassium channel (Korngreen and Sakmann, 2000)
 
@@ -208,7 +214,7 @@ class Ktst(ionChannel):
         # state variables
         self.varnames = np.array([['m', 'h']])
         self.powers = np.array([[2, 1]], dtype=int)
-        self.factors = np.array([[1.]])
+        self.factors = np.array([1.])
         # activation functions
         self.varinf = np.array([[1. / (1. + sp_exp(-(self.sp_v + 10.) / 19.)) ,
                                  1. / (1. + sp_exp( (self.sp_v + 76.) / 10.)) ]])
@@ -216,6 +222,32 @@ class Ktst(ionChannel):
                                  (8.   + 49.  * sp_exp(-((self.sp_v + 83.) / 23.)**2)) / 2.95]]) # ms
         # base class constructor
         super(Ktst, self).__init__()
+
+
+class m(IonChannel):
+    def __init__(self):
+        '''
+        M-type potassium current (Adams, 1982)
+
+        Used in (Hay, 2011)
+
+        !!! does not work when e > V0 !!!
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 3.3e-3 * sp_exp( 2.5 * 0.04 * (self.sp_v + 35.))
+        spbetam = 3.3e-3 * sp_exp(-2.5 * 0.04 * (self.sp_v + 35.))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam)]])
+        self.tauinf = np.array([[(1. / (spalpham + spbetam)) / 2.95]])
+        # base class constructor
+        super(m, self).__init__()
 
 
 class Ca_LVA(IonChannel):
@@ -236,8 +268,8 @@ class Ca_LVA(IonChannel):
         # activation functions
         self.varinf = np.array([[1. / (1. + sp_exp(-(self.sp_v + 40.)/6.)), \
                                  1. / (1. + sp_exp((self.sp_v + 90.)/6.4))]])
-        self.tauinf = np.array([[(5. + 20./(1. + sp_exp((self.sp_v  + 35.)/5.)))/2.95,
-                                 (20. + 50./(1. + sp_exp((self.sp_v + 50.)/7.)))/2.95]]) # 1/ms
+        self.tauinf = np.array([[5. + 20./(1. + sp_exp((self.sp_v  + 35.)/5.))/2.95,
+                                 20. + 50./(1. + sp_exp((self.sp_v + 50.)/7.))/2.95]]) # 1/ms
         # base class constructor
         super(Ca_LVA, self).__init__()
 

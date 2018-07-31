@@ -56,6 +56,7 @@ class GreensNode(PhysNode):
             g_m_aux -= g * (e - self.e_eq) * \
                        channel.computeLinear(self.e_eq, freqs)
             g_m_aux += g * channel.computePOpen(self.e_eq)
+
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
     def setImpedance(self, freqs):
@@ -196,7 +197,7 @@ class GreensTree(PhysTree):
         super(GreensTree, self).__init__(file_n=file_n, types=types)
         self.freqs = None
 
-    def createCorrespondingNode(self, node_index, p3d):
+    def createCorrespondingNode(self, node_index, p3d=None):
         '''
         Creates a node with the given index corresponding to the tree class.
 
