@@ -31,7 +31,7 @@ class SNode(object):
 
     parent_node = property(getParentNode, setParentNode)
 
-    def getChildNodes(self):
+    def getChildNodes(self, **kwargs):
         return self._child_nodes
 
     def setChildNodes(self, cnodes):
@@ -128,7 +128,7 @@ class STree(object):
         else:
             self._root = None
 
-    def __getitem__(self, index):
+    def __getitem__(self, index, **kwargs):
         '''
         Returns the node with given index, if no such node is in the tree, None
         is returned.
@@ -747,8 +747,9 @@ class STree(object):
         return new_tree
 
     def _recurseCopy(self, pnode, new_tree):
-        for node in pnode.child_nodes:
+        for node in pnode.getChildNodes(skip_inds=[]):
             new_node = new_tree.createCorrespondingNode(node.index)
             new_node = node.__copy__(new_node=new_node)
-            new_tree.addNodeWithParent(new_node, new_tree[pnode.index])
+            new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
+                                                                      skip_inds=[]))
             self._recurseCopy(node, new_tree)

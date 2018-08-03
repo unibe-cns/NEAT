@@ -61,7 +61,7 @@ class CompartmentNode(SNode):
                 channel_storage[current_type] = \
                     eval('channelcollection.' + current_type + '()')
 
-    def calcMembraneConductanceTerms(self, freqs=None,
+    def calcMembraneConductanceTerms(self, freqs=0.,
                                      channel_names=None, channel_storage=None):
         '''
         Compute the membrane impedance terms and return them as a `dict`
@@ -122,6 +122,22 @@ class CompartmentNode(SNode):
 
     g_tot = property(getGTot, setGTot)
 
+    def fitEL(self, channel_storage=None):
+        i_eq = 0.
+        for channel_name in set(self.currents.keys()) - set('L'):
+            g, e = self.currents[channel_name]
+            # create the ionchannel object
+            if channel_storage is not None:
+                channel = channel_storage[channel_name]
+            else:
+                channel = eval('channelcollection.' + channel_name + '()')
+            # compute channel conductance and current
+            p_open = channel.computePOpen(self.e_eq)
+            i_chan = g * p_open * (e - self.e_eq)
+            i_eq += i_chan
+        e_l = self.e_eq - i_eq / self.currents['L'][0]
+        self.currents['L'][1] = e_l
+
 
 class CompartmentTree(STree):
     def __init__(self, root=None):
@@ -140,12 +156,15 @@ class CompartmentTree(STree):
         return CompartmentNode(index, ca=ca, g_c=g_c, g_l=g_l)
 
     def setEEq(self, e_eq):
-        if isinstance(e_eq, float):
-            e_eq = e_eq * np.ones(len(self))
+        if isinstance(e_eq, float) or isinstance(e_eq, int):
+            e_eq = e_eq * np.ones(len(self), dtype=float)
         for ii, node in enumerate(self): node.e_eq = e_eq[ii]
 
     def getEEq(self):
         return np.array([node.e_eq for node in self])
+
+    def fitEL(self):
+        for node in self: node.fitEL(channel_storage=self.channel_storage)
 
     def addCurrent(self, current_type, e_rev=None):
         '''
@@ -156,7 +175,7 @@ class CompartmentTree(STree):
         current_type: string
             The name of the channel type
         '''
-        for node in self:
+        for ii, node in enumerate(self):
             node.addCurrent(current_type, e_rev=e_rev,
                             channel_storage=self.channel_storage)
 
@@ -412,6 +431,14 @@ class CompartmentTree(STree):
         # set the conductances
         self._toTreeGM(g_vec, channel_names=channel_names)
 
+        # ## test
+        # Tc = self[0].calcMembraneConductanceTerms(channel_storage=self.channel_storage,
+        #                                             channel_names=channel_names)
+        # gL = self[0].currents['L'][0]
+        # Z = z_mat_arg[0][0,0]
+
+        # print '\n>>> g_'+channel_names[0]+' direct = ', (1. - Z*gL) / (Z*Tc[channel_names[0]])
+
     def _toStructureTensorGM(self, freqs, channel_names):
         g_vec = self._toVecGM(channel_names)
         g_struct = np.zeros((len(freqs), len(self), len(self), len(g_vec)), dtype=freqs.dtype)
@@ -589,7 +616,8 @@ class CompartmentTree(STree):
                 node.ca  = gc_vec[3*ii]
 
     def computeFakeGeometry(self, fake_c_m=1., fake_r_a=100.*1e-6,
-                                  factor_r_a=1e-6, delta=1e-14):
+                                  factor_r_a=1e-6, delta=1e-14,
+                                  method=2):
         '''
         Computes a fake geometry so that the neuron model is a reduced
         compurtmental model
@@ -615,79 +643,40 @@ class CompartmentTree(STree):
             If the node indices are not ordered consecutively when iterating
         '''
 
-        # c_m = 1.
-        # # r_a = 100.
-        # gL = 150.
-
-        # L1 = 10.
-        # L2 = 10.
-        # delta = 1e-10
-        # R1 = 1.
-        # R2 = 100.
-
-        # factor_r = R2 / R1
-
-        # surfaces = np.ones(len(self)) * 2. * np.pi * R1 * L1 + 2. * np.pi * R2 * L2 + np.pi * (R2**2 - R1**2)
-        # vec_coupling = np.ones(len(self)) * 3.18309886184
-        # print 'L1 computed =', np.pi * (R1*1e-4)**2 * vec_coupling[0] / (fake_r_a) *1e4
-        # print 'surfaces =', surfaces
-
         assert self.checkOrdered()
         factor_r = 1. / np.sqrt(factor_r_a)
         # compute necessary vectors for calculating
         surfaces = np.array([node.ca / fake_c_m for node in self])
         vec_coupling = np.array([1.] + [1./node.g_c for node in self if \
                                             node.parent_node is not None])
+        if method == 1:
+            # find the 3d points to construct the segments' geometry
+            p0s = -surfaces
+            p1s = np.zeros_like(p0s)
+            p2s = np.pi * (factor_r**2 - 1.) * np.ones_like(p0s)
+            p3s = 2. * np.pi**2 * vec_coupling / fake_r_a * (1. + factor_r)
+            # find the polynomial roots
+            points = []
+            for ii, (p0, p1, p2, p3) in enumerate(zip(p0s, p1s, p2s, p3s)):
+                res = np.roots([p3,p2,p1,p0])
+                # compute radius and length of first half of section
+                radius = res[np.where(res.real > 0.)[0][0]].real
+                radius *= 1e4 # convert [cm] to [um]
+                length = np.pi * radius**2 * vec_coupling[ii] / (fake_r_a * 1e4) # convert [MOhm*cm] to [MOhm*um]
+                # compute the pt3d points
+                point0 = [0., 0., 0., 2.*radius]
+                point1 = [length, 0., 0., 2.*radius]
+                point2 = [length*(1.+delta), 0., 0., 2.*radius*factor_r]
+                point3 = [length*(2.+delta), 0., 0., 2.*radius*factor_r]
+                points.append([point0, point1, point2, point3])
 
-        p0s = -surfaces
-        p1s = np.zeros_like(p0s)
-        p2s = np.pi * (factor_r**2 - 1.) * np.ones_like(p0s)
-        p3s = 2. * np.pi**2 * vec_coupling / fake_r_a * (1. + factor_r)
-
-        # print 1e8*(p3s * (R1*1e-4)**3 + p2s * (R1*1e-4)**2 + p1s * (R1*1e-4))
-
-        # find the polynomial roots
-        points = []
-        for ii, (p0, p1, p2, p3) in enumerate(zip(p0s, p1s, p2s, p3s)):
-            res = np.roots([p3,p2,p1,p0])
-            # compute radius and length of first half of section
-            radius = res[np.where(res.real > 0.)[0][0]].real
-            radius *= 1e4 # convert [cm] to [um]
-            length = np.pi * radius**2 * vec_coupling[ii] / (fake_r_a * 1e4) # convert [MOhm*cm] to [MOhm*um]
-            # compute the pt3d points
-            point0 = [0., 0., 0., 2.*radius]
-            point1 = [length, 0., 0., 2.*radius]
-            point2 = [length*(1.+delta), 0., 0., 2.*radius*factor_r]
-            point3 = [length*(2.+delta), 0., 0., 2.*radius*factor_r]
-            points.append([point0, point1, point2, point3])
-
-        return points, surfaces
-
-    #     c_aux = fake_r_a / (2.*np.pi)**2
-    #     vec_aux = np.array([c_aux * surfaces[node.index] for node in self])
-    #     vec_coupling = np.array([0.] + [1./node.g_c for node in self if \
-    #                                         node.parent_node is not None])
-    #     vec_fac = np.ones_like(vec_coupling)
-    #     vec_sol = copy.deepcopy(vec_coupling)
-    #     # find a solution for the radii of the compartments
-    #     self._solveRadii(self.root, vec_coupling, vec_sol, vec_fac)
-    #     x_min = np.max(-vec_sol[np.where(vec_fac > 0.)[0]])
-    #     x_max = np.min(vec_sol[np.where(vec_fac < 0.)[0]])
-    #     x_sol = (x_min+x_max) / 2.
-    #     # compute solution with all positive values
-    #     res = (vec_sol + vec_fac * x_sol) / vec_aux
-    #     # compute radii and corresponding lengths
-    #     radii = (1./res)**(1./3.)
-    #     lengths = surfaces / (2. * np.pi * radii)
-    #     return radii, lengths, surfaces
-
-    # def _solveRadii(self, node, vec_coupling, vec_sol, vec_fac):
-    #     if node.parent_node is not None:
-    #         vec_sol[node.index] -= vec_sol[node.parent_node.index]
-    #         vec_fac[node.index] = -1. * vec_fac[node.parent_node.index]
-    #     for cnode in node.child_nodes:
-    #         self._solveRadii(cnode, vec_coupling, vec_sol, vec_fac)
-
+            return points, surfaces
+        elif method == 2:
+            radii = np.cbrt(fake_r_a * surfaces / (vec_coupling * (2.*np.pi)**2))
+            lengths = surfaces / (2. * np.pi * radii)
+            return lengths, radii
+        else:
+            raise ValueError('Invalid `method` argument, should be 1 or 2')
 
 
 
