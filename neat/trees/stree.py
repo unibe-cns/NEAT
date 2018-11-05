@@ -110,7 +110,6 @@ class SNode(object):
             return new_node
 
 
-
 class STree(object):
     '''
     A simple tree for use with a simple Node (:class:`SNode`).

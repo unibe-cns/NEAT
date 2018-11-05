@@ -2,7 +2,7 @@
 # -*- mode: python -*-
 # Adapted from mpl_toolkits.axes_grid2
 # LICENSE: Python Software Foundation (http://docs.python.org/license.html)
- 
+
 from matplotlib.offsetbox import AnchoredOffsetbox
 class AnchoredScaleBar(AnchoredOffsetbox):
     def __init__(self, transform, sizex=0, sizey=0, labelx=None, labely=None, loc=4,
@@ -26,17 +26,17 @@ class AnchoredScaleBar(AnchoredOffsetbox):
             bars.add_artist(Rectangle((0,0), sizex, 0, fc="none", lw=lw))
         if sizey:
             bars.add_artist(Rectangle((0,0), 0, sizey, fc="none", lw=lw))
- 
+
         if sizex and labelx:
             bars = VPacker(children=[bars, TextArea(labelx, minimumdescent=False)],
                            align="center", pad=0, sep=sep)
         if sizey and labely:
             bars = HPacker(children=[TextArea(labely), bars],
                             align="center", pad=0, sep=sep)
- 
+
         AnchoredOffsetbox.__init__(self, loc, pad=pad, borderpad=borderpad,
                                    child=bars, prop=prop, frameon=False, **kwargs)
- 
+
 def addScalebar(ax, matchx=True, matchy=True, hidex=True, hidey=True, **kwargs):
     """ Add scalebars to axes
 
@@ -54,18 +54,18 @@ def addScalebar(ax, matchx=True, matchy=True, hidex=True, hidey=True, **kwargs):
     def f(axis):
         l = axis.get_majorticklocs()
         return len(l)>1 and (l[1] - l[0])
-    
+
     if matchx:
         kwargs['sizex'] = f(ax.xaxis)
         kwargs['labelx'] = r'' + str(kwargs['sizex']) + ' ' + kwargs['labelx']
     if matchy:
         kwargs['sizey'] = f(ax.yaxis)
         kwargs['labely'] = r'' + str(kwargs['sizey']) + ' ' + kwargs['labelx']
-        
+
     sb = AnchoredScaleBar(ax.transData, **kwargs)
     ax.add_artist(sb)
- 
+
     if hidex : ax.xaxis.set_visible(False)
     if hidey : ax.yaxis.set_visible(False)
- 
+
     return sb

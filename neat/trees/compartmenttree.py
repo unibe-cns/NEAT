@@ -10,6 +10,7 @@ Author: W. Wybo
 
 import numpy as np
 import scipy.linalg as la
+import scipy.optimize as so
 
 from stree import SNode, STree
 from neat.channels import channelcollection
@@ -122,6 +123,23 @@ class CompartmentNode(SNode):
 
     g_tot = property(getGTot, setGTot)
 
+    def getITot(self, v=None, channel_names=None, channel_storage=None):
+        if channel_names is None: channel_names = self.currents.keys()
+        v = self.e_eq if v is None else v
+        i_tot = self.currents['L'][0] * (v - self.currents['L'][1]) \
+                if 'L' in channel_names else 0.
+        for channel_name in channel_names:
+            if channel_name != 'L':
+                g, e = self.currents[channel_name]
+                # create the ionchannel object
+                if channel_storage is not None:
+                    channel = channel_storage[channel_name]
+                else:
+                    channel = eval('channelcollection.' + channel_name + '()')
+                i_tot += g * channel.computePOpen(v) * (v - e)
+
+        return i_tot
+
     def fitEL(self, channel_storage=None):
         i_eq = 0.
         for channel_name in set(self.currents.keys()) - set('L'):
@@ -163,8 +181,54 @@ class CompartmentTree(STree):
     def getEEq(self):
         return np.array([node.e_eq for node in self])
 
+    # e_eq = property(getEEq, setEEq)
+
     def fitEL(self):
-        for node in self: node.fitEL(channel_storage=self.channel_storage)
+        e_l_0 = self.getEEq()
+        # compute the solutions
+        fun = self._fun(e_l_0)
+        jac = self._jac(e_l_0)
+        e_l = np.linalg.solve(jac, -fun + np.dot(jac, e_l_0))
+        # set the leak reversals
+        for ii, node in enumerate(self):
+            node.currents['L'][1] = e_l[ii]
+
+    def _fun(self, e_l):
+        # set the leak reversal potentials
+        for ii, node in enumerate(self):
+            node.currents['L'][1] = e_l[ii]
+        # compute the function values (currents)
+        fun_vals = np.zeros(len(self))
+        for ii, node in enumerate(self):
+            fun_vals[ii] += node.getITot()
+            # add the parent node coupling term
+            if node.parent_node is not None:
+                fun_vals[ii] += node.g_c * (node.e_eq - node.parent_node.e_eq)
+            # add the child node coupling terms
+            for cnode in node.child_nodes:
+                fun_vals[ii] += cnode.g_c * (node.e_eq - cnode.e_eq)
+        return fun_vals
+
+    def _jac(self, e_l):
+        for ii, node in enumerate(self):
+            node.currents['L'][1] = e_l[ii]
+        jac_vals = np.array([-node.currents['L'][0] for node in self])
+        return np.diag(jac_vals)
+
+    # def _solveNewton(self, e_l_0, n_iter=0, v_tol=.05, max_iter=100):
+    #     # evaluate function and jacobian
+    #     fun = self._fun(e_l_0)
+    #     jac = self._jac(e_l_0)
+    #     # compute potentials for next step
+    #     e_l_1 = np.linalg.solve(jac, -fun + np.dot(jac, e_l_0))
+    #     if np.max(np.abs(e_l_0 - e_l_1) < v_tol):
+    #         return e_l_1
+    #     elif n_iter < max_iter:
+    #         return self._solveNewton(e_l_1, n_iter=n_iter+1, v_tol=v_tol,
+    #                                         max_iter=max_iter)
+    #     else:
+    #         raise ValueError('Newton solver failed to converge within ' + \
+    #                          str(maxiter) + 'iterations')
 
     def addCurrent(self, current_type, e_rev=None):
         '''
@@ -470,7 +534,7 @@ class CompartmentTree(STree):
                 node.currents[channel_name][0] = g_vec[kk]
                 kk += 1
 
-    def computeC(self, freqs, zf_mat, channel_names=None):
+    def computeC(self, freqs, z_mat_arg, e_eqs=None, channel_names=None):
         '''
         Fit the models' capacitances to a given impedance matrix.
 
@@ -485,17 +549,48 @@ class CompartmentTree(STree):
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
         '''
-        c_struct = self._toStructureTensorC(freqs)
-        # feature matrix
-        tensor_feature = np.einsum('oij,ojkl->oikl', zf_mat, c_struct)
-        tshape = tensor_feature.shape
-        mat_feature = np.reshape(tensor_feature, (tshape[0]*tshape[1]*tshape[2], tshape[3]))
-        # target vector
-        g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names,
-                                             with_ca=False)
-        zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
-        mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
-        vec_target = np.reshape(mat_target,(tshape[0]*tshape[1]*tshape[2],))
+        if isinstance(freqs, float) or isinstance(freqs, complex):
+            freqs = np.array([freqs])
+        if isinstance(z_mat_arg, np.ndarray):
+            z_mat_arg = [z_mat_arg]
+        if e_eqs is None:
+            e_eqs = [self.getEEq() for _ in z_mat_arg]
+        elif isinstance(e_eqs, float):
+            self.setEEq(e_eq)
+            e_eqs = [self.getEEq() for _ in z_mat_arg]
+        if channel_names is None:
+            channel_names = ['L'] + self.channel_storage.keys()
+        # convert to 3d matrices if they are two dimensional
+        z_mat_arg_ = []
+        for z_mat in z_mat_arg:
+            if z_mat.ndim == 2:
+                z_mat_arg_.append(z_mat[np.newaxis,:,:])
+            else:
+                z_mat_arg_.append(z_mat)
+            assert z_mat_arg_[-1].shape[0] == freqs.shape[0]
+        # do the fit
+        mats_feature = []
+        vecs_target = []
+        for zf_mat, e_eq in zip(z_mat_arg, e_eqs):
+            # set equilibrium conductances
+            self.setEEq(e_eq)
+            # compute c structure tensor
+            c_struct = self._toStructureTensorC(freqs)
+            # feature matrix
+            tensor_feature = np.einsum('oij,ojkl->oikl', zf_mat, c_struct)
+            tshape = tensor_feature.shape
+            mat_feature_aux = np.reshape(tensor_feature, (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+            # target vector
+            g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names,
+                                                 with_ca=False)
+            zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
+            mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+            vec_target_aux = np.reshape(mat_target,(tshape[0]*tshape[1]*tshape[2],))
+            # store feature matrix and target vector for this voltage
+            mats_feature.append(mat_feature_aux)
+            vecs_target.append(vec_target_aux)
+        mat_feature = np.concatenate(mats_feature, 0)
+        vec_target = np.concatenate(vecs_target)
         # linear regression fit
         res = la.lstsq(mat_feature, vec_target)
         c_vec = res[0].real
