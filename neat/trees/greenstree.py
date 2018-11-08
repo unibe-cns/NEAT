@@ -98,9 +98,6 @@ class GreensNode(PhysNode):
                            self.z_c * np.cosh(self.gamma * self.L_))
 
     def collapseBranchToRoot(self):
-        # if self.z_distal[0] == np.infty:
-        #     zr = self.z_c / tanh(self.gamma*self.L_)
-        # else:
         zr = self.z_c * (np.cosh(self.gamma * self.L_) +
                          self.z_c / self.z_distal * np.sinh(self.gamma * self.L_)) / \
                         (np.sinh(self.gamma * self.L_) +
@@ -135,27 +132,6 @@ class GreensNode(PhysNode):
             return (self.z_cp * np.sinh(self.gammaL*x2) + np.cosh(self.gammaL*x2)) * \
                    (self.z_cd * np.sinh(self.gammaL*(1.-x1)) + np.cosh(self.gammaL*(1.-x1))) / \
                    self.wrongskian
-
-
-# G = np.cosh(gamma*x) * one_minus_tanhtanh(gamma*L, gamma*D) * \
-#                                 (tanh(gamma*x) + z_0/z_c) * (z_c*tanh(gamma*(L-D)) + z_1) / \
-#                                 ((z_0+z_1)/z_c + (1. + (z_0/z_c)*(z_1/z_c))*tanh(gamma*L)) * np.cosh(gamma*D)
-
-# G = np.cosh(gamma*D) * one_minus_tanhtanh(gamma*L, gamma*x) * \
-#                                 (tanh(gamma*D) + z_0/z_c) * (z_c*tanh(gamma*(L-x)) + z_1) / \
-#                                 ((z_0+z_1)/z_c + (1. + (z_0/z_c)*(z_1/z_c))*tanh(gamma*L)) * np.cosh(gamma*x)
-
-
-    # def set_greensfunctions(self):
-    #     # transfer impedance between ends of segment
-    #     if self.z_1[0] == np.infty:
-    #         self.z_trans = 1. / ((1./self.z_0) * np.cosh(self.gamma*self.length) + \
-    #                     1./self.z_c * np.sinh(self.gamma*self.length))
-    #         self.z_in = self.collapse_branch0()
-    #     else:
-    #         self.z_trans = 1. / ((1./self.z_0 + 1./self.z_1) * np.cosh(self.gamma*self.length) + \
-    #                     (self.z_c/(self.z_0*self.z_1) + 1./self.z_c) * np.sinh(self.gamma*self.length))
-    #         self.z_in = 1./(1./self.z_1 + 1./self.collapse_branch0())
 
 
 class SomaGreensNode(GreensNode):
