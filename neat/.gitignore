@@ -1,0 +1,4 @@
+*.pyc
+*.py~
+*#
+neat.egg-info

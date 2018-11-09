@@ -195,7 +195,7 @@ class GreensTree(PhysTree):
         Parameters
         ----------
         freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
-            frequencies at which the impedances will be evaluated
+            frequencies at which the impedances will be evaluated [Hz]
         pprint: bool (default ``False``)
             whether or not to print info on the progression of the algorithm
 

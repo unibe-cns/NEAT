@@ -1,5 +1,6 @@
 import sympy as sp
 import numpy as np
+import scipy.optimize as so
 
 import os
 
@@ -73,7 +74,7 @@ class IonChannel(object):
     varinf : 2d numpy.ndarray of sympy.expression instances
         The activation functions of the channel state variables
     tauinf : 2d numpy.ndarray of sympy.expression instances\
-        The relaxation timescales of the channel state variables
+        The relaxation timescales of the channel state variables [ms]
 
     *The base class then defines the following attributes*
     statevars: 2d numpy.ndarray of sympy.symbols
@@ -193,6 +194,41 @@ class IonChannel(object):
             # add to the impedance contribution
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
+
+    def computeLinSum(self, v, freqs, e_rev):
+        return (e_rev - v) * self.computeLinear(v, freqs) - self.computePOpen(v)
+
+    def computeFreqIMax(self, v, e_rev, f_bounds=(0.,10000.)):
+        '''
+        Computes the frequency of voltage fluctuation at which the channel current,
+        linearized around the holding potential `v`, is maximal
+
+        Parameters
+        ----------
+        v: `float` or `np.ndarray`
+            the holding potential around which the voltage is linearized [mV]
+        e_rev: `float`
+            the reversal potential of the channel [mV]
+        f_bounds: `tuple` `(f_min, f_max)`
+            the minimal resp. maximal frequencies [Hz] of the search interval
+
+        Returns
+        -------
+        `np.ndarray`
+            the frequency values (same shape as `v`)
+        '''
+        # optimization function
+        def f_min(freq, u, e_r):
+            return -np.abs(self.computeLinSum(u, 1j*freq, e_r))
+        # find minima
+        if hasattr(v, '__iter__') or hasattr(v, '__getitem__'):
+            freq_vals = np.zeros_like(np.array(v))
+            for ind, vv in np.ndenumerate(v):
+                res = so.minimize_scalar(f_min, bounds=f_bounds, args=(vv, e_rev))
+                freq_vals[ind] = res['x']
+            return freq_vals
+        else:
+            return so.minimize_scalar(f_min, bounds=f_bounds, args=(v, e_rev))['x']
 
     def writeModFile(self, path, g=0., e=0.):
         '''
