@@ -189,7 +189,7 @@ class STree(object):
             self._node_count += 1
         return self._node_count
 
-    def __iter__(self, node=None):
+    def __iter__(self, node=None, **kwargs):
         '''
         Iterate over the nodes in the subtree of the given node. Beware, if
         the given node is not in the tree, it will simply iterate over the
@@ -739,9 +739,16 @@ class STree(object):
             new_tree = self.__class__()
 
         new_node = new_tree.createCorrespondingNode(self.root.index)
+
         self.root.__copy__(new_node=new_node)
         new_tree.setRoot(new_node)
         self._recurseCopy(self.root, new_tree)
+        # copy all attributes not related to tree structure
+        orig_keys = set(self.__dict__.keys())
+        copy_keys = orig_keys.intersection(set(new_tree.__dict__.keys()))
+        for key in copy_keys:
+            if key not in ['root', '_computational_root', '_original_root']:
+                new_tree.__dict__[key] = copy.deepcopy(self.__dict__[key])
 
         return new_tree
 

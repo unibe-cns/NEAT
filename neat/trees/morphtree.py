@@ -129,14 +129,17 @@ class MorphLoc(object):
             raise TypeError('Not a valid location type, should be tuple or dict')
 
     def __getitem__(self, key):
-        if self.reftree.treetype == 'computational':
-            try:
-                return self.comp_loc[key]
-            except AttributeError:
-                self._setComputationalLoc()
-                return self.comp_loc[key]
-        else:
-            return self.loc[key]
+        if isinstance(key, int) and key in (0,1):
+            key = 'node' if key == 0 else 'x'
+        if isinstance(key, str):
+            if self.reftree.treetype == 'computational':
+                try:
+                    return self.comp_loc[key]
+                except AttributeError:
+                    self._setComputationalLoc()
+                    return self.comp_loc[key]
+            else:
+                return self.loc[key]
 
     def __eq__(self, other_loc):
         if type(other_loc) == dict:
@@ -176,7 +179,7 @@ class MorphLoc(object):
         return new_loc
 
     def __str__(self):
-        return str(self.loc)
+        return '{\'node\': %d, \'x\': %.2f }'%(self.loc['node'], self.loc['x'])
 
     def _setComputationalLoc(self):
         if self.loc['node'] != 1:
@@ -1007,7 +1010,7 @@ class MorphTree(STree):
             # raise ValueError('There can only be one location on the soma, \
             #                  multiple soma location occur in input')
             warnings.warn('There are multiple locations on the soma in this set ' + \
-                          'locations, this can cause issues in certain functions')
+                          'locations, this can cause issues in certain functions', UserWarning)
         self.locs[name] = locs_
         self._nids_orig[name] = np.array([loc['node'] for loc in locs_])
         self._xs_orig[name] = np.array([loc['x'] for loc in locs_])
@@ -1362,14 +1365,15 @@ class MorphTree(STree):
     def _findLocsUp(self, loc, name):
         look_further = False
         # look if there are locs on the same node
-        n_inds = np.where(loc['node'] == self.nids[name] )[0]
+        n_inds = np.where(loc['node'] == self.nids[name])[0]
         if len(n_inds) > 0:
             if loc['node'] == 1:
                 loc_ind = n_inds[0]
             else:
                 x_inds = np.where(loc['x'] <= self.xs[name][n_inds])[0]
                 if len(x_inds) != 0:
-                    loc_ind = n_inds[x_inds[0]]
+                    ind = np.argmin(self.xs[name][n_inds][x_inds])
+                    loc_ind = n_inds[x_inds[ind]]
                 else:
                     look_further = True
         else:
@@ -1410,7 +1414,8 @@ class MorphTree(STree):
             else:
                 x_inds = np.where(loc['x'] >= self.xs[name][n_inds])[0]
                 if len(x_inds) != 0:
-                    loc_ind = n_inds[x_inds[-1]]
+                    ind = np.argmax(self.xs[name][n_inds][x_inds])
+                    loc_ind = n_inds[x_inds[ind]]
                 else:
                     look_further = True
         else:
@@ -2371,37 +2376,69 @@ class MorphTree(STree):
             self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
 
     @originalTreetypeDecorator
-    def createCompartmentTree(self, name):
+    def createCompartmentTree(self, locarg):
         '''
-        Creates a new tree where the locs of a given 'name' are now the nodes.
+        Creates a new compartment tree where the provided set of locations
+        correspond to the nodes.
 
         Parameters
         ----------
-            name: string
-                the name under which the locations are stored that should be
-                used to create the new tree
-            fake_soma: bool (default `False`)
-                if `True`, finds the common root of the set of locations and
-                uses that as the soma of the new tree. If `False`, the real soma
-                is used.
+        locarg: list` of locations or string
+            if `list` of locations, specifies the locations, if ``string``,
+            specifies the name under which the set of location is stored
+            that should be used to create the new tree
 
         Returns
         -------
             :class:`MorphTree`
                 The new tree.
         '''
-        self._tryName(name)
+        # process input argument
+        if isinstance(locarg, list):
+            locs = [MorphLoc(loc, self) for loc in locarg]
+            name = 'comp_locs'
+            self.storeLocs(locs, name=name)
+        elif isinstance(locarg, str):
+            name = locarg
+            self._tryName(name)
+        else:
+            raise IOError('`locarg` should be list of locs or string')
+        nids = self.nids[name]
+        xs = self.xs[name]
         # create new tree
         new_tree = CompartmentTree()
         # find the common root of the set of locations
         snode = self.findCommonRoot(name)
-        # create the new root node
-        # new_snode = self.createCorrespondingNode(1, p3d)
-        # new_nodes = [new_snode]
+        # check if that root is in set of locations
+        possible_loc_inds = self.getLocindsOnNode(name, snode)
+        if len(possible_loc_inds) > 0:
+            # create the new root node
+            new_pnode = CompartmentNode(0, loc_ind=possible_loc_inds[0])
+            new_tree.setRoot(new_pnode)
+            new_nodes = [new_pnode]
+            # create other nodes
+            for loc_ind in possible_loc_inds[1:]:
+                index = len(new_nodes)
+                # make new node
+                new_node = CompartmentNode(index, loc_ind=loc_ind)
+                # add new node
+                new_tree.addNodeWithParent(new_node, new_pnode)
+                new_nodes.append(new_node)
+                # set new node as next parent node
+                new_pnode = new_node
+        else:
+            warnings.warn('Locations of name `' + name + '` do not define a root - ' + \
+                          'adding root to set of locations')
+            locs = self.getLocs(name)
+            locs = [(snode.index, 1.)] + locs
+            self.storeLocs(locs, name=name)
+            # create the new root node
+            new_pnode = CompartmentNode(0, loc_ind=0)
+            new_tree.setRoot(new_pnode)
+            new_nodes = [new_pnode]
         # make rest of tree
         for cnode in snode.child_nodes:
-            self._addCompNodesToTree(cnode, new_snode, new_tree, new_nodes, name)
-
+            self._addCompNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
         return new_tree
 
     def _addCompNodesToTree(self, node, new_pnode, new_tree, new_nodes, name):
@@ -2409,11 +2446,10 @@ class MorphTree(STree):
         xs = self.xs[name]
         # check which locinds are on the branch
         ninds = self.getLocindsOnNode(name, node)
-        order_inds = np.argsort(xs[ninds])
-        for ind in np.array(ninds)[order_inds]:
-            index = len(new_nodes) + 1
+        for loc_ind in ninds:
+            index = len(new_nodes)
             # make new node
-            new_node = CompartmentNode(index, loc_ind)
+            new_node = CompartmentNode(index, loc_ind=loc_ind)
             # add new node
             new_tree.addNodeWithParent(new_node, new_pnode)
             new_nodes.append(new_node)
@@ -2421,29 +2457,7 @@ class MorphTree(STree):
             new_pnode = new_node
         # continue with the children
         for cnode in node.child_nodes:
-            self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
-
-    # def createCompartmentTree(self, name):
-    #     counter = [0]
-    #     compartment_root = CompartmentNode(counter[0])
-    #     compartment_tree = CompartmentTree(root=compartment_root)
-    #     counter[0] += 1
-    #     for cnode in self.root.child_nodes:
-    #         self._addCompartmentNodesToTree(cnode,
-    #                                         compartment_root, compartment_tree,
-    #                                         counter)
-    #     return compartment_tree
-
-    # def _addCompartmentNodesToTree(self, node,
-    #                                compartment_pnode, compartment_tree,
-    #                                counter):
-    #     compartment_node = CompartmentNode(counter[0])
-    #     compartment_tree.addNodeWithParent(compartment_node, compartment_pnode)
-    #     counter[0] += 1
-    #     for cnode in node.child_nodes:
-    #         self._addCompartmentNodesToTree(cnode,
-    #                                         compartment_node, compartment_tree,
-    #                                         counter)
+            self._addCompNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
 
     def __copy__(self, new_tree=None):
         '''

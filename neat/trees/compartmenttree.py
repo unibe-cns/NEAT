@@ -47,10 +47,10 @@ class CompartmentNode(SNode):
         node_string = super(CompartmentNode, self).__str__()
         if self.parent_node is not None:
             node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
-        node_string += ' --- (g_c = ' + str(self.g_c) + ' uS, ' + \
-                       ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS' \
+        node_string += ' --- (g_c = %.12f uS, '%self.g_c + \
+                       ', '.join(['g_' + cname + ' = %.12f uS'%cpar[0] \
                             for cname, cpar in self.currents.iteritems()]) + \
-                       ', c = ' + str(self.ca) + ' uF)'
+                       ', c = %.12f uF)'%self.ca
         return node_string
 
     def addCurrent(self, current_type, e_rev=None, channel_storage=None):
@@ -176,6 +176,8 @@ class CompartmentTree(STree):
     def setEEq(self, e_eq):
         if isinstance(e_eq, float) or isinstance(e_eq, int):
             e_eq = e_eq * np.ones(len(self), dtype=float)
+        else:
+            e_eq = self._permuteToTree(np.array(e_eq))
         for ii, node in enumerate(self): node.e_eq = e_eq[ii]
 
     def getEEq(self):
@@ -230,11 +232,41 @@ class CompartmentTree(STree):
             node.addCurrent(current_type, e_rev=e_rev,
                             channel_storage=self.channel_storage)
 
-    def calcImpedanceMatrix(self, freqs=0., channel_names=None):
-        return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
-                                                channel_names=channel_names))
+    def _permuteToTree(self, mat):
+        '''
+        give index list that can be used to permutate the axes of the impedance
+        and system matrix to correspond to the associated set of locations
+        '''
+        index_arr = np.array([node.loc_ind for node in self])
+        if mat.ndim == 1:
+            return mat[index_arr]
+        elif mat.ndim == 2:
+            return mat[index_arr,:][:,index_arr]
+        elif mat.ndim == 3:
+            return mat[:,index_arr,:][:,:,index_arr]
 
-    def calcConductanceMatrix(self):
+    def _permuteToLocs(self, mat):
+        loc_inds = np.array([node.loc_ind for node in self])
+        index_arr = np.argsort(loc_inds)
+        if mat.ndim == 1:
+            return mat[index_arr]
+        elif mat.ndim == 2:
+            return mat[index_arr,:][:,index_arr]
+        elif mat.ndim == 3:
+            return mat[:,index_arr,:][:,:,index_arr]
+
+    def getEquivalentLocs(self):
+        loc_inds = [node.loc_ind for node in self]
+        index_arr = np.argsort(loc_inds)
+        locs_unordered = [(node.index, .5) for node in self]
+        return [locs_unordered[ind] for ind in index_arr]
+
+
+    def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs'):
+        return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
+                             channel_names=channel_names, indexing=indexing))
+
+    def calcConductanceMatrix(self, indexing='locs'):
         '''
         Constructs the conductance matrix of the model
 
@@ -252,12 +284,21 @@ class CompartmentTree(STree):
                 g_mat[jj,jj] += node.g_c
                 g_mat[ii,jj] -= node.g_c
                 g_mat[jj,ii] -= node.g_c
-        return g_mat
+        if indexing == 'locs':
+            return self._permuteToLocs(g_mat)
+        elif indexing == 'tree':
+            return g_mat
+        else:
+            raise ValueError('invalid argument for `indexing`, ' + \
+                             'has to be \'tree\' or \'locs\'')
 
-    def calcSystemMatrix(self, freqs=0., channel_names=None, with_ca=True):
+
+    def calcSystemMatrix(self, freqs=0., channel_names=None, with_ca=True,
+                               indexing='locs'):
         '''
         Constructs the matrix of conductance and capacitance terms of the model
-        for each frequency provided in ``freqs``
+        for each frequency provided in ``freqs``. this matrix is evaluated at
+        the equilibrium potentials stored in each node
 
         Parameters
         ----------
@@ -267,6 +308,10 @@ class CompartmentTree(STree):
                 The channels to be included in the matrix
             with_ca: `bool`
                 Whether or not to include the capacitive currents
+            indexing: 'tree' or 'locs'
+                Whether the indexing order of the matrix corresponds to the tree
+                nodes (order in which they occur in the iteration) or to the
+                locations on which the reduced model is based
 
         Returns
         -------
@@ -298,9 +343,24 @@ class CompartmentTree(STree):
                                                     channel_names=channel_names)
             s_mat[:,ii,ii] += sum([node.currents[c_name][0] * g_term \
                                    for c_name, g_term in g_terms.iteritems()])
-        if no_freq_dim:
-            s_mat = s_mat[0,:,:]
-        return s_mat
+        if indexing == 'locs':
+            return self._permuteToLocs(s_mat[0,:,:]) if no_freq_dim else \
+                   self._permuteToLocs(s_mat)
+        elif indexing == 'tree':
+            return s_mat[0,:,:] if no_freq_dim else s_mat
+        else:
+            raise ValueError('invalid argument for `indexing`, ' + \
+                             'has to be \'tree\' or \'locs\'')
+
+
+    def _preprocessZMatArg(self, z_mat_arg):
+        if isinstance(z_mat_arg, np.ndarray):
+            return [self._permuteToTree(z_mat_arg)]
+        elif isinstance(z_mat_arg, list):
+            return [self._permuteToTree(z_mat) for z_mat in z_mat_arg]
+        else:
+            raise ValueError('`z_mat_arg` has to be ``np.ndarray`` or list of ' + \
+                             '`np.ndarray`')
 
     def computeGMC(self, z_mat_arg, e_eqs=None, channel_names=None):
         '''
@@ -318,8 +378,7 @@ class CompartmentTree(STree):
             The equilibirum potentials in each compartment for each
             evaluation of ``z_mat``
         '''
-        if isinstance(z_mat_arg, np.ndarray):
-            z_mat_arg = [z_mat_arg]
+        z_mat_arg = self._preprocessZMatArg(z_mat_arg)
         if e_eqs is None:
             e_eqs = [self.getEEq() for _ in z_mat_arg]
         elif isinstance(e_eqs, float):
@@ -430,10 +489,9 @@ class CompartmentTree(STree):
         other_channel_names: ``None`` or `list` of `string`
             The channels that are not to be included in the fit
         '''
+        z_mat_arg = self._preprocessZMatArg(z_mat_arg)
         if isinstance(freqs, float) or isinstance(freqs, complex):
             freqs = np.array([freqs])
-        if isinstance(z_mat_arg, np.ndarray):
-            z_mat_arg = [z_mat_arg]
         if w_e_eqs is None:
             w_e_eqs = np.ones_like(e_eqs)
         else:
@@ -474,7 +532,8 @@ class CompartmentTree(STree):
             mat_feature_aux = np.reshape(tensor_feature,
                                          (tshape[0]*tshape[1]*tshape[2], tshape[3]))
             # target vector
-            g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names)
+            g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
+                                                 indexing='tree')
             zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
             mat_target_aux = np.eye(len(self))[np.newaxis,:,:] - zg_prod
             mat_target_aux *= w_freqs[:,np.newaxis,np.newaxis]
@@ -536,10 +595,9 @@ class CompartmentTree(STree):
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
         '''
+        z_mat_arg = self._preprocessZMatArg(z_mat_arg)
         if isinstance(freqs, float) or isinstance(freqs, complex):
             freqs = np.array([freqs])
-        if isinstance(z_mat_arg, np.ndarray):
-            z_mat_arg = [z_mat_arg]
         if e_eqs is None:
             e_eqs = [self.getEEq() for _ in z_mat_arg]
         elif isinstance(e_eqs, float):
@@ -569,7 +627,7 @@ class CompartmentTree(STree):
             mat_feature_aux = np.reshape(tensor_feature, (tshape[0]*tshape[1]*tshape[2], tshape[3]))
             # target vector
             g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names,
-                                                 with_ca=False)
+                                                 with_ca=False, indexing='tree')
             zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
             mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
             vec_target_aux = np.reshape(mat_target,(tshape[0]*tshape[1]*tshape[2],))
@@ -635,67 +693,67 @@ class CompartmentTree(STree):
         # compute capacitances
         self.computeC(freqs, zf_mat)
 
-    def computeGC_(self, freqs, zf_mat):
-        '''
-        Trial to fit the models' conductances and capacitances at once.
-        So far unsuccesful.
-        '''
-        gc_struct = self._toStructureTensorGC(freqs)
-        # fitting matrix for linear model
-        tensor_feature = np.einsum('oij,ojkl->oikl', zf_mat, gc_struct)
-        tshape = tensor_feature.shape
-        mat_feature = np.reshape(tensor_feature,
-                                 (tshape[0]*tshape[1]*tshape[2], tshape[3]))
-        vec_target = np.reshape(np.array([np.eye(len(self), dtype=complex) for _ in freqs]),
-                                (len(self)*len(self)*len(freqs),))
-        # linear regression fit
-        res = la.lstsq(mat_feature, vec_target)
-        gc_vec = res[0].real
-        # set conductances and capacitances
-        self._toTreeGC(gc_vec)
+    # def computeGC_(self, freqs, zf_mat):
+    #     '''
+    #     Trial to fit the models' conductances and capacitances at once.
+    #     So far unsuccesful.
+    #     '''
+    #     gc_struct = self._toStructureTensorGC(freqs)
+    #     # fitting matrix for linear model
+    #     tensor_feature = np.einsum('oij,ojkl->oikl', zf_mat, gc_struct)
+    #     tshape = tensor_feature.shape
+    #     mat_feature = np.reshape(tensor_feature,
+    #                              (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+    #     vec_target = np.reshape(np.array([np.eye(len(self), dtype=complex) for _ in freqs]),
+    #                             (len(self)*len(self)*len(freqs),))
+    #     # linear regression fit
+    #     res = la.lstsq(mat_feature, vec_target)
+    #     gc_vec = res[0].real
+    #     # set conductances and capacitances
+    #     self._toTreeGC(gc_vec)
 
-    def _toStructureTensorGC(self, freqs):
-        gc_vec = self._toVecGC()
-        gc_struct = np.zeros((len(freqs), len(self), len(self), len(gc_vec)), dtype=complex)
-        for node in self:
-            ii = node.index
-            if node.parent_node == None:
-                # leak conductance elements
-                gc_struct[:, 0, 0, 0] += 1
-                # capacitance elements
-                gc_struct[:, 0, 0, 0] += freqs
-            else:
-                kk = 3 * node.index - 1
-                jj = node.parent_node.index
-                # coupling conductance elements
-                gc_struct[:, ii, jj, kk] -= 1.
-                gc_struct[:, jj, ii, kk] -= 1.
-                gc_struct[:, jj, jj, kk] += 1.
-                gc_struct[:, ii, ii, kk] += 1.
-                # leak conductance elements
-                gc_struct[:, ii, ii, kk+1] += 1.
-                # capacitance elements
-                gc_struct[:, ii, ii, kk+2] += freqs
-        return gc_struct
+    # def _toStructureTensorGC(self, freqs):
+    #     gc_vec = self._toVecGC()
+    #     gc_struct = np.zeros((len(freqs), len(self), len(self), len(gc_vec)), dtype=complex)
+    #     for node in self:
+    #         ii = node.index
+    #         if node.parent_node == None:
+    #             # leak conductance elements
+    #             gc_struct[:, 0, 0, 0] += 1
+    #             # capacitance elements
+    #             gc_struct[:, 0, 0, 0] += freqs
+    #         else:
+    #             kk = 3 * node.index - 1
+    #             jj = node.parent_node.index
+    #             # coupling conductance elements
+    #             gc_struct[:, ii, jj, kk] -= 1.
+    #             gc_struct[:, jj, ii, kk] -= 1.
+    #             gc_struct[:, jj, jj, kk] += 1.
+    #             gc_struct[:, ii, ii, kk] += 1.
+    #             # leak conductance elements
+    #             gc_struct[:, ii, ii, kk+1] += 1.
+    #             # capacitance elements
+    #             gc_struct[:, ii, ii, kk+2] += freqs
+    #     return gc_struct
 
-    def _toVecGC(self):
-        gc_list = []
-        for node in self:
-            if node.parent_node is None:
-                gc_list.extend([node.currents['L'][0], node.ca])
-            else:
-                gc_list.extend([node.g_c, node.currents['L'][0], node.ca])
-        return np.array(gc_list)
+    # def _toVecGC(self):
+    #     gc_list = []
+    #     for node in self:
+    #         if node.parent_node is None:
+    #             gc_list.extend([node.currents['L'][0], node.ca])
+    #         else:
+    #             gc_list.extend([node.g_c, node.currents['L'][0], node.ca])
+    #     return np.array(gc_list)
 
-    def _toTreeGC(self, gc_vec):
-        for ii, node in enumerate(self):
-            if node.parent_node is None:
-                node.currents['L'][0] = gc_vec[ii]
-                node.ca  = gc_vec[ii+1]
-            else:
-                node.g_c = gc_vec[3*ii-2]
-                node.currents['L'][0] = gc_vec[3*ii-1]
-                node.ca  = gc_vec[3*ii]
+    # def _toTreeGC(self, gc_vec):
+    #     for ii, node in enumerate(self):
+    #         if node.parent_node is None:
+    #             node.currents['L'][0] = gc_vec[ii]
+    #             node.ca  = gc_vec[ii+1]
+    #         else:
+    #             node.g_c = gc_vec[3*ii-2]
+    #             node.currents['L'][0] = gc_vec[3*ii-1]
+    #             node.ca  = gc_vec[3*ii]
 
     def computeFakeGeometry(self, fake_c_m=1., fake_r_a=100.*1e-6,
                                   factor_r_a=1e-6, delta=1e-14,
@@ -715,7 +773,7 @@ class CompartmentTree(STree):
 
         Returns
         -------
-        radii, lengths, surfaces: np.array of floats
+        radii, lengths: np.array of floats [cm]
             The radii, lengths, resp. surfaces for the section in NEURON. Array
             index corresponds to NEURON index
 

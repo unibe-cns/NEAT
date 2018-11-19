@@ -215,7 +215,7 @@ class IonChannel(object):
         Returns
         -------
         `np.ndarray`
-            the frequency values (same shape as `v`)
+            the frequency value as a real number (same shape as `v`)
         '''
         # optimization function
         def f_min(freq, u, e_r):

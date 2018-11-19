@@ -101,7 +101,6 @@ class PhysNode(MorphNode):
         else:
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
-        print '\n>>> g_L =', g_l
         e_l = e_eq_target - i_eq / g_l
         self.currents['L'] = (g_l, e_l)
         self.e_eq = e_eq_target
