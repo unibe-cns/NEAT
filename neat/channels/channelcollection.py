@@ -149,7 +149,7 @@ class Na_p(IonChannel):
         spbetah  =   6.94e-6 * (self.sp_v + 64.4) / (1. - sp_exp(-(self.sp_v + 64.4) / 2.63))   #1/ms
         self.varinf = np.array([[   1. / (1. + sp_exp(-(self.sp_v + 52.6) / 4.6)) ,
                                     1. / (1. + sp_exp( (self.sp_v + 48.8) / 10.)) ]])
-        self.tauinf = np.array([[(6./2.95) / (spalpham + spbetam), (1./2.95) / (spalphah + spbetah)]]) # 1/ms
+        self.tauinf = np.array([[(6./2.95) / (spalpham + spbetam), (1./2.95) / (spalphah + spbetah)]]) # ms
         # base class constructor
         super(Na_p, self).__init__()
 
@@ -171,7 +171,7 @@ class Kv3_1(IonChannel):
         self.factors = np.array([1.])
         # activation functions
         self.varinf = np.array([[1. / (1. + sp_exp(-(self.sp_v - 18.7) / 9.7))]])
-        self.tauinf = np.array([[4. / (1. + sp_exp(-(self.sp_v + 46.56) / 44.14))]])
+        self.tauinf = np.array([[4. / (1. + sp_exp(-(self.sp_v + 46.56) / 44.14))]]) # ms
         # base class constructor
         super(Kv3_1, self).__init__()
 
@@ -269,7 +269,7 @@ class Ca_LVA(IonChannel):
         self.varinf = np.array([[1. / (1. + sp_exp(-(self.sp_v + 40.)/6.)), \
                                  1. / (1. + sp_exp((self.sp_v + 90.)/6.4))]])
         self.tauinf = np.array([[5. + 20./(1. + sp_exp((self.sp_v  + 35.)/5.))/2.95,
-                                 20. + 50./(1. + sp_exp((self.sp_v + 50.)/7.))/2.95]]) # 1/ms
+                                 20. + 50./(1. + sp_exp((self.sp_v + 50.)/7.))/2.95]]) # ms
         # base class constructor
         super(Ca_LVA, self).__init__()
 
@@ -295,7 +295,7 @@ class Ca_HVA(IonChannel):
         spalphah = 0.000457 * sp_exp(-(13. + self.sp_v)/50.)   #1/ms
         spbetah = 0.0065 / (sp_exp(-(self.sp_v + 15.)/28.) + 1.)   #1/ms
         self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
-        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # 1/ms
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
         # base class constructor
         super(Ca_HVA, self).__init__()
 

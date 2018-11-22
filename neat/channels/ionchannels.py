@@ -123,6 +123,8 @@ class IonChannel(object):
         # self.compute_lincoeff()
         # construct lambda functions for steady state activation
         self.f_varinf = self.lambdifyVarInf()
+        # construct lambda functions for state variable time scales
+        self.f_tauinf = self.lambdifyTauInf()
         # construct lambda function for passive opening
         self.f_p_open = self.lambdifyPOpen()
         # construct lambda function for linear current coefficient evaluations
@@ -134,6 +136,12 @@ class IonChannel(object):
         for ind, varinf in np.ndenumerate(self.varinf):
             f_varinf[ind] = sp.lambdify(self.sp_v, varinf)
         return f_varinf
+
+    def lambdifyTauInf(self):
+        f_tauinf = np.zeros(self.varnames.shape, dtype=object)
+        for ind, tauinf in np.ndenumerate(self.tauinf):
+            f_tauinf[ind] = sp.lambdify(self.sp_v, tauinf)
+        return f_tauinf
 
     def lambdifyPOpen(self):
         # arguments for lambda function
@@ -184,6 +192,32 @@ class IonChannel(object):
     def computeDerivatives(self, v):
         args = [v] + [f_varinf(v) for ind, f_varinf in np.ndenumerate(self.f_varinf)]
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
+
+    def computeVarInf(self, v):
+        if isinstance(v, np.ndarray):
+            dims = tuple(list(tuple(self.f_varinf.shape)) + list(v.shape))
+            slice_ind = [slice(dd) for dd in v.shape]
+        else:
+            dims = self.f_varinf.shape
+            slice_ind = []
+        res = np.zeros(dims)
+        for ind, f_varinf in np.ndenumerate(self.f_varinf):
+            ind_slice = tuple(list(ind) + slice_ind)
+            res[ind_slice] = f_varinf(v)
+        return res
+
+    def computeTauInf(self, v):
+        if isinstance(v, np.ndarray):
+            dims = tuple(list(tuple(self.f_tauinf.shape)) + list(v.shape))
+            slice_ind = [slice(dd) for dd in v.shape]
+        else:
+            dims = self.f_tauinf.shape
+            slice_ind = []
+        res = np.zeros(dims)
+        for ind, f_varinf in np.ndenumerate(self.f_tauinf):
+            ind_slice = tuple(list(ind) + slice_ind)
+            res[ind_slice] = f_varinf(v)
+        return res
 
     def computeLinear(self, v, freqs):
         dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v)
