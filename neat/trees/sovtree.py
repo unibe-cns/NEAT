@@ -556,6 +556,7 @@ class SOVTree(PhysTree):
 
     def constructNET(self, dz=50., dx=10., eps=1e-4,
                         use_hist=False, add_lin_terms=True,
+                        improve_input_impedance=False,
                         pprint=False):
         '''
         Construct a Neural Evaluation Tree (NET) for this cell
@@ -592,6 +593,9 @@ class SOVTree(PhysTree):
                         dz=dz,
                         use_hist=use_hist, add_lin_terms=add_lin_terms,
                         pprint=pprint)
+        net.setNewLocInds()
+        if improve_input_impedance:
+            self._improveInputImpedance(net, alphas, gammas)
         if add_lin_terms:
             lin_terms = self.computeLinTerms(net, sov_data=(alphas, gammas))
             return net, lin_terms
@@ -662,7 +666,7 @@ class SOVTree(PhysTree):
                     # get the average kernel
                     if len(k_inds) < 100000:
                         gammas_avg = np.mean(gammas[:,0:1] * \
-                                             gammas[:,kinds], 1)
+                                             gammas[:,k_inds], 1)
                     else:
                         inds_ = np.random.choice(k_inds, size=100000)
                         gammas_avg = np.mean(gammas[:,0:1] * \
@@ -849,6 +853,64 @@ class SOVTree(PhysTree):
         if pnode != None:
             gammas -= pnode.z_kernel['c']
             self._subtractParentKernels(gammas, pnode.parent_node)
+
+    def _improveInputImpedance(self, net, alphas, gammas):
+        nmaxind = np.max([n.index for n in net])
+        for node in net:
+            if len(node.loc_inds) == 1:
+                # recompute the kernel of this single loc layer
+                if node.parent_node is not None:
+                    p_kernel = net.calcTotalKernel(node.parent_node)
+                    p_k_c = p_kernel.c
+                else:
+                    p_k_c = np.zeros_like(gammas)
+                gammas_real = gammas[:,node.loc_inds[0]]**2
+                node.z_kernel.c = gammas_real - p_k_c
+            elif len(node.newloc_inds) > 0:
+                z_k_approx = net.calcTotalKernel(node)
+                # add new input nodes for the nodes that don't have one
+                for ind in node.newloc_inds:
+                    nmaxind += 1
+                    gammas_real = gammas[:,ind]**2
+                    z_k_real = Kernel(dict(a=alphas, c=gammas_real))
+                    # add node
+                    newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real-z_k_approx)
+                    newnode.newloc_inds = [ind]
+                    net.addNodeWithParent(newnode, node)
+                # empty the new indices
+                node.newloc_inds = []
+        net.setNewLocInds()
+
+
+    # def _improve_input_impedance(self, locinds):
+    #     print 'improving impedance'
+    #     nodes = self.output_tree.get_nodes()
+    #     nmaxind = np.max([n._index for n in nodes])
+    #     for node in nodes:
+    #         # print '>>>', node
+    #         ldat = node.get_content()['layerdata']
+    #         # print 'inds:', ldat.inds
+    #         if len(ldat.inds) == 1:
+    #             # recompute the kernel of this single loc layer
+    #             pnode = node.get_parent_node()
+    #             if pnode is not None:
+    #                 gammas = self._calc_kernel_from_node(pnode)
+    #                 gammas_real = self.phimat[:,locinds[ldat.inds[0]]]**2
+    #                 ldat.gammas = gammas_real - gammas
+    #         elif len(ldat.ninds) > 0:
+    #             gammas = self._calc_kernel_from_node(node)
+    #             # add new input layers for the nodes that don't have one
+    #             for ind in ldat.ninds:
+    #                 nmaxind += 1
+    #                 gammas_real = self.phimat[:,locinds[ind]]**2
+    #                 # add node
+    #                 newnode = btstructs.SNode(nmaxind)
+    #                 layer_data = layerData([ind], self.alphas, gammas_real-gammas)
+    #                 layer_data.ninds = [ind]
+    #                 newnode.set_content({'layerdata': layer_data})
+    #                 self.output_tree.add_node_with_parent(newnode, node)
+    #             # empty the new indices
+    #             ldat.ninds = []
 
     def computeLinTerms(self, net, sov_data=None, eps=1e-4):
         if sov_data != None:

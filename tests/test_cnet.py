@@ -473,6 +473,10 @@ class TestCNET():
         v_loc_newton = self.cnet.solveNewton([res['g_syn'][0][0][-1]])
         # compare
         assert np.allclose(v_loc_sim, v_loc_newton, atol=0.5)
+        # print v_loc_sim, v_loc_newton
+        # import matplotlib.pyplot as pl
+        # pl.plot(res['t'], res['v_loc'][0,:])
+        # pl.show()
 
         # do again with other synapses
         self.cnet.removeSynapse(0)
@@ -642,8 +646,8 @@ class TestCNET():
 
 if __name__ == '__main__':
     tst = TestCNET()
-    tst.testIOFunctions()
-    tst.testSolver()
+    # tst.testIOFunctions()
+    # tst.testSolver()
     tst.testIntegration()
-    tst.testInversion()
+    # tst.testInversion()
 
