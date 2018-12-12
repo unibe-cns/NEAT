@@ -42,6 +42,7 @@ class CompartmentNode(SNode):
         # self.g_l = g_l # leak conductance (uS)
         self.e_eq = e_eq # equilibrium potential (mV)
         self.currents = {'L': [g_l, e_eq]} # ion channel currents and reversals
+        self.expansion_points = {}
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(CompartmentNode, self).__str__()
@@ -53,14 +54,70 @@ class CompartmentNode(SNode):
                        ', c = %.12f uF)'%self.ca
         return node_string
 
-    def addCurrent(self, current_type, e_rev=None, channel_storage=None):
-        if current_type is not 'L':
+    def addCurrent(self, channel_name, e_rev=None, channel_storage=None):
+        if channel_name is not 'L':
             if e_rev is None:
-                e_rev = channelcollection.E_REV_DICT[current_type]
-            self.currents[current_type] = [0., e_rev]
-            if channel_storage is not None and current_type not in channel_storage:
-                channel_storage[current_type] = \
-                    eval('channelcollection.' + current_type + '()')
+                e_rev = channelcollection.E_REV_DICT[channel_name]
+            self.currents[channel_name] = [0., e_rev]
+            if channel_storage is not None and channel_name not in channel_storage:
+                channel_storage[channel_name] = \
+                                eval('channelcollection.' + channel_name + '()')
+            self.expansion_points[channel_name] = None
+
+    def getCurrent(self, channel_name, channel_storage=None):
+        '''
+        Returns an ``::class::neat.channels.ionchannels.IonChannel`` object. If
+        `channel_storage` is given,
+
+        Parameters
+        ----------
+        channel_name: string
+            the name of the ion channel
+        channel_storage: dict of ionchannels (optional)
+            keys are the names of the ion channels, and values the channel
+            instances
+        '''
+        try:
+            return channel_storage[channel_name]
+        except (KeyError, TypeError):
+            return eval('channelcollection.' + channel_name + '()')
+
+    def setExpansionPoint(self, channel_name, statevar='asymptotic', channel_storage=None):
+        '''
+        Set the choice for the state variables of the ion channel around which
+        to linearize.
+
+        Note that when adding an ion channel to the node, the
+        default expansion point setting is to linearize around the asymptotic values
+        for the state variables at the equilibrium potential store in `self.e_eq`.
+        Hence, this function only needs to be called to change that setting.
+
+        Parameters
+        ----------
+        channel_name: string
+            the name of the ion channel
+        statevar: `np.ndarray`, `'max'` or `'asymptotic'` (default)
+            If `np.ndarray`, should be of the same shape as the ion channels'
+            state variables array, if `'max'`, the point at which the
+            linearized channel current is maximal for the given equilibirum potential
+            `self.e_eq` is used. If `'asymptotic'`, linearized around the asymptotic values
+            for the state variables at the equilibrium potential
+        channel_storage: dict of ion channels (optional)
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+
+        Raises
+        ------
+        KeyError: if `channel_name` is not in `self.currents`
+        '''
+        if isinstance(statevar, str):
+            if statevar == 'asymptotic':
+                statevar = None
+            elif statevar == 'max':
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                statevar = channel.findMaxCurrentVGiven(self.e_eq, self.freqs,
+                                                        self.currents[channel_name][1])
+        self.expansion_points[channel_name] = statevar
 
     def calcMembraneConductanceTerms(self, freqs=0.,
                                      channel_names=None, channel_storage=None):
@@ -79,26 +136,26 @@ class CompartmentNode(SNode):
         -------
         dict of np.ndarray or float or complex
             Each entry in the dict is of the same type as ``freqs`` and is the
-            impedance term of a channel
+            conductance term of a channel
         '''
         if channel_names is None: channel_names = self.currents.keys()
-        imp_terms = {'L': 1.} # leak conductance has 1 as prefactor
+        cond_terms = {'L': 1.} # leak conductance has 1 as prefactor
         for channel_name in set(channel_names) - set('L'):
             if channel_name not in self.currents:
                 self.addCurrent(channel_name, channel_storage=channel_storage)
             e = self.currents[channel_name][1]
             # create the ionchannel object
-            if channel_storage is not None:
-                channel = channel_storage[channel_name]
-            else:
-                channel = eval('channelcollection.' + channel_name + '()')
+            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+            # check if needs to be computed around expansion point
+            sv = self.expansion_points[channel_name]
             # add channel contribution to membrane impedance
-            imp_aux = - (e - self.e_eq) * \
-                        channel.computeLinear(self.e_eq, freqs)
-            imp_aux += channel.computePOpen(self.e_eq)
-            imp_terms[channel_name] = imp_aux
+            # imp_aux = - (e - self.e_eq) * \
+            #             channel.computeLinear(self.e_eq, freqs)
+            # imp_aux += channel.computePOpen(self.e_eq)
+            cond_terms[channel_name] = - channel.computeLinSum(self.e_eq, freqs, e,
+                                                               statevars=sv)
 
-        return imp_terms
+        return cond_terms
 
     def getGTot(self, v=None, channel_names=None, channel_storage=None):
         if channel_names is None: channel_names = self.currents.keys()
@@ -108,11 +165,10 @@ class CompartmentNode(SNode):
             if channel_name != 'L':
                 g, e = self.currents[channel_name]
                 # create the ionchannel object
-                if channel_storage is not None:
-                    channel = channel_storage[channel_name]
-                else:
-                    channel = eval('channelcollection.' + channel_name + '()')
-                g_tot += g * channel.computePOpen(v)
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                # check if needs to be computed around expansion point
+                sv = self.expansion_points[channel_name]
+                g_tot += g * channel.computePOpen(v, statevars=sv)
 
         return g_tot
 
@@ -183,6 +239,27 @@ class CompartmentTree(STree):
     def getEEq(self):
         return np.array([node.e_eq for node in self])
 
+    def setExpansionPoints(self, expansion_points):
+        to_tree_inds = self._permuteToTreeInds()
+        for channel_name, expansion_point in expansion_points.iteritems():
+            # if one set of state variables, set throughout neuron
+            if isinstance(expansion_point, str) or \
+               expansion_point is None:
+                svs = np.array([expansion_point for _ in self])
+            elif isinstance(expansion_point, np.ndarray):
+                if expansion_point.ndim == 3:
+                    svs = np.array(expansion_point)
+                elif expansion_point.ndim == 2:
+                    svs = np.array([expansion_point for _ in self])
+            for node, sv in zip(self, svs[to_tree_inds]):
+                node.setExpansionPoint(channel_name, statevar=sv,
+                                       channel_storage=self.channel_storage)
+
+    def removeExpansionPoints(self):
+        for node in self:
+            for channel_name in node.currents:
+                node.setExpansionPoint(channel_name, statevar='asymptotic')
+
     def fitEL(self):
         '''
         Set the leak reversal potential to obtain the desired equilibrium
@@ -219,25 +296,28 @@ class CompartmentTree(STree):
         jac_vals = np.array([-node.currents['L'][0] for node in self])
         return np.diag(jac_vals)
 
-    def addCurrent(self, current_type, e_rev=None):
+    def addCurrent(self, channel_name, e_rev=None):
         '''
         Add an ion channel current to the tree
 
         Parameters
         ----------
-        current_type: string
+        channel_name: string
             The name of the channel type
         '''
         for ii, node in enumerate(self):
-            node.addCurrent(current_type, e_rev=e_rev,
+            node.addCurrent(channel_name, e_rev=e_rev,
                             channel_storage=self.channel_storage)
+
+    def _permuteToTreeInds(self):
+        return np.array([node.loc_ind for node in self])
 
     def _permuteToTree(self, mat):
         '''
         give index list that can be used to permutate the axes of the impedance
         and system matrix to correspond to the associated set of locations
         '''
-        index_arr = np.array([node.loc_ind for node in self])
+        index_arr = self._permuteToTreeInds()
         if mat.ndim == 1:
             return mat[index_arr]
         elif mat.ndim == 2:
@@ -245,9 +325,13 @@ class CompartmentTree(STree):
         elif mat.ndim == 3:
             return mat[:,index_arr,:][:,:,index_arr]
 
-    def _permuteToLocs(self, mat):
+    def _permuteToLocsInds(self):
         loc_inds = np.array([node.loc_ind for node in self])
-        index_arr = np.argsort(loc_inds)
+        return np.argsort(loc_inds)
+
+
+    def _permuteToLocs(self, mat):
+        index_arr = self._permuteToLocsInds()
         if mat.ndim == 1:
             return mat[index_arr]
         elif mat.ndim == 2:
@@ -291,7 +375,6 @@ class CompartmentTree(STree):
         else:
             raise ValueError('invalid argument for `indexing`, ' + \
                              'has to be \'tree\' or \'locs\'')
-
 
     def calcSystemMatrix(self, freqs=0., channel_names=None, with_ca=True,
                                indexing='locs'):
@@ -362,6 +445,50 @@ class CompartmentTree(STree):
             raise ValueError('`z_mat_arg` has to be ``np.ndarray`` or list of ' + \
                              '`np.ndarray`')
 
+    def _preprocessEEqs(self, e_eqs, w_e_eqs=None):
+        # preprocess e_eqs argument
+        if e_eqs is None:
+            e_eqs = np.array([self.getEEq()])
+        if isinstance(e_eqs, float):
+            e_eqs = np.array([e_eqs])
+        elif isinstance(e_eqs, list) or isinstance(e_eqs, tuple):
+            e_eqs = np.array(e_eqs)
+        elif isinstance(e_eqs, np.ndarray):
+            pass
+        else:
+            raise TypeError('`e_eqs` has to be ``float`` or list or ' + \
+                             '``np.ndarray`` of ``floats`` or ``np.ndarray``')
+        # preprocess the w_e_eqs argument
+        if w_e_eqs is None:
+            w_e_eqs = np.ones_like(e_eqs)
+        elif isinstance(w_e_eqs, float):
+            w_e_eqs = np.array([e_eqs])
+        elif isinstance(w_e_eqs, list) or isinstance(w_e_eqs, tuple):
+            w_e_eqs = np.array(w_e_eqs)
+        # check if arrays have the same shape
+        assert w_e_eqs.shape[0] == e_eqs.shape[0]
+
+        return e_eqs, w_e_eqs
+
+    def _preprocessFreqs(self, freqs, w_freqs=None, z_mat_arg=None):
+        if isinstance(freqs, float) or isinstance(freqs, complex):
+            freqs = np.array([freqs])
+        if w_freqs is None:
+            w_freqs = np.ones_like(freqs)
+        else:
+            assert w_freqs.shape[0] == freqs.shape[0]
+        # convert to 3d matrices if they are two dimensional
+        z_mat_arg_ = []
+        for z_mat in z_mat_arg:
+            if z_mat.ndim == 2:
+                z_mat_arg_.append(z_mat[np.newaxis,:,:])
+            else:
+                z_mat_arg_.append(z_mat)
+            assert z_mat_arg_[-1].shape[0] == freqs.shape[0]
+        z_mat_arg = z_mat_arg_
+        return freqs, w_freqs, z_mat_arg
+
+
     def computeGMC(self, z_mat_arg, e_eqs=None, channel_names=None):
         '''
         Fit the models' membrane and coupling conductances to a given steady
@@ -379,11 +506,8 @@ class CompartmentTree(STree):
             evaluation of ``z_mat``
         '''
         z_mat_arg = self._preprocessZMatArg(z_mat_arg)
-        if e_eqs is None:
-            e_eqs = [self.getEEq() for _ in z_mat_arg]
-        elif isinstance(e_eqs, float):
-            self.setEEq(e_eq)
-            e_eqs = [self.getEEq() for _ in z_mat_arg]
+        e_eqs, _ = self._preprocessEEqs(e_eqs)
+        assert len(z_mat_arg) == len(e_eqs)
         if channel_names is None:
             channel_names = ['L'] + self.channel_storage.keys()
         # do the fit
@@ -464,6 +588,82 @@ class CompartmentTree(STree):
                     node.currents[channel_name][0] = g_vec[kk]
                     kk += 1
 
+    def _preprocessExpansionPoints(self, svs, e_eqs):
+        if svs is None:
+            svs = [None for _ in e_eqs]
+        elif isinstance(svs, list):
+            svs = np.array(svs)
+            assert svs.shape[0] == e_eqs.shape[0]
+        elif isinstance(svs, np.ndarray):
+            assert svs.shape[0] == e_eqs.shape[0]
+        else:
+            raise ValueError('wrong state variable array')
+        return svs
+
+    def computeGMv2(self, z_mat_arg, e_eqs=None, freqs=0., svs=None,
+                    w_e_eqs=None, w_freqs=None,
+                    channel_name=None):
+        '''
+        Fit the models' conductances to a given impedance matrix.
+
+        Parameters
+        ----------
+        z_mat_arg: np.ndarray (ndim = 2 or 3, dtype = float or complex) or
+                   list of np.ndarray (ndim = 2 or 3, dtype = float or complex)
+            If a single array, represents the steady state impedance matrix,
+            If a list of arrays, represents the steady state impedance
+            matrices for each equilibrium potential in ``e_eqs``
+        e_eqs: np.ndarray (ndim = 1, dtype = float) or float
+            The equilibirum potentials in each compartment for each
+            evaluation of ``z_mat``
+        freqs: ``None`` or `np.array` of `complex
+            Frequencies at which the impedance matrices are evaluated. If None,
+            assumes that the steady state impedance matrices are provides
+        channel_names: ``None`` or `list` of `string`
+            The channel types to be included in the fit. If ``None``, all channel
+            types that have been added to the tree are included.
+        other_channel_names: ``None`` or `list` of `string`
+            The channels that are not to be included in the fit
+        '''
+        z_mat_arg = self._preprocessZMatArg(z_mat_arg)
+        e_eqs, w_e_eqs = self._preprocessEEqs(e_eqs, w_e_eqs)
+        assert len(z_mat_arg) == len(e_eqs)
+        freqs, w_freqs, z_mat_arg = self._preprocessFreqs(freqs, w_freqs=w_freqs, z_mat_arg=z_mat_arg)
+        svs = self._preprocessExpansionPoints(svs, e_eqs)
+        channel_names, other_channel_names = [channel_name], ['L']
+        # do the fit
+        mats_feature = []
+        vecs_target = []
+        for z_mat, e_eq, sv, w_e_eq in zip(z_mat_arg, e_eqs, svs, w_e_eqs):
+            # set equilibrium conductances
+            self.setEEq(e_eq)
+            # set channel expansion point
+            self.setExpansionPoints({channel_name: sv})
+            # feature matrix
+            g_struct = self._toStructureTensorGM(freqs=freqs, channel_names=channel_names)
+            tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+            tensor_feature *= w_freqs[:,np.newaxis,np.newaxis,np.newaxis]
+            tshape = tensor_feature.shape
+            mat_feature_aux = np.reshape(tensor_feature,
+                                         (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+            # target vector
+            g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
+                                                 indexing='tree')
+            zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
+            mat_target_aux = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+            mat_target_aux *= w_freqs[:,np.newaxis,np.newaxis]
+            vec_target_aux = np.reshape(mat_target_aux, (tshape[0]*tshape[1]*tshape[2],))
+            # store feature matrix and target vector for this voltage
+            mats_feature.append(mat_feature_aux * np.sqrt(w_e_eq))
+            vecs_target.append(vec_target_aux * np.sqrt(w_e_eq))
+        mat_feature = np.concatenate(mats_feature)
+        vec_target = np.concatenate(vecs_target)
+        # linear regression fit
+        res = la.lstsq(mat_feature, vec_target)
+        g_vec = res[0].real
+        # set the conductances
+        self._toTreeGM(g_vec, channel_names=channel_names)
+
     def computeGM(self, z_mat_arg, e_eqs=None, freqs=0.,
                     w_e_eqs=None, w_freqs=None,
                     channel_names=None, other_channel_names=None):
@@ -489,31 +689,11 @@ class CompartmentTree(STree):
         other_channel_names: ``None`` or `list` of `string`
             The channels that are not to be included in the fit
         '''
+
         z_mat_arg = self._preprocessZMatArg(z_mat_arg)
-        if isinstance(freqs, float) or isinstance(freqs, complex):
-            freqs = np.array([freqs])
-        if w_e_eqs is None:
-            w_e_eqs = np.ones_like(e_eqs)
-        else:
-            assert w_e_eqs.shape[0] == e_eqs.shape[0]
-        if w_freqs is None:
-            w_freqs = np.ones_like(freqs)
-        else:
-            assert w_freqs.shape[0] == freqs.shape[0]
-        # convert to 3d matrices if they are two dimensional
-        z_mat_arg_ = []
-        for z_mat in z_mat_arg:
-            if z_mat.ndim == 2:
-                z_mat_arg_.append(z_mat[np.newaxis,:,:])
-            else:
-                z_mat_arg_.append(z_mat)
-            assert z_mat_arg_[-1].shape[0] == freqs.shape[0]
-        z_mat_arg = z_mat_arg_
-        if e_eqs is None:
-            e_eqs = [self.getEEq() for _ in z_mat_arg]
-        elif isinstance(e_eqs, float):
-            self.setEEq(e_eq)
-            e_eqs = [self.getEEq() for _ in z_mat_arg]
+        e_eqs, w_e_eqs = self._preprocessEEqs(e_eqs, w_e_eqs)
+        assert len(z_mat_arg) == len(e_eqs)
+        freqs, w_freqs, z_mat_arg = self._preprocessFreqs(freqs, w_freqs=w_freqs, z_mat_arg=z_mat_arg)
         if channel_names is None:
             channel_names = ['L'] + self.channel_storage.keys()
         if other_channel_names == None:

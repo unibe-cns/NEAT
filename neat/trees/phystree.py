@@ -33,48 +33,66 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
-            c_m: float
-                the membrance capacitance (uF/cm^2)
-            r_a: float
-                the axial current (MOhm*cm)
-            g_shunt: float
-                A point-like shunt, located at x=1 on the node. Defaults to 0.
+        c_m: float
+            the membrance capacitance (uF/cm^2)
+        r_a: float
+            the axial current (MOhm*cm)
+        g_shunt: float
+            A point-like shunt, located at x=1 on the node. Defaults to 0.
         '''
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt
 
-    def addCurrent(self, current_type, g_max, e_rev=None, channel_storage=None):
+    def addCurrent(self, channel_name, g_max, e_rev=None, channel_storage=None):
         '''
-        Add an ion channel current at this node. ('L' as `current_type`
+        Add an ion channel current at this node. ('L' as `channel_name`
         signifies the leak current)
 
         Parameters
         ----------
-            current_type: string
-                the name of the current
-            g_max: float
-                the conductance of the current (uS/cm^2)
-            e_rev: float
-                the reversal potential of the current (mV)
+        channel_name: string
+            the name of the current
+        g_max: float
+            the conductance of the current (uS/cm^2)
+        e_rev: float
+            the reversal potential of the current (mV)
         '''
         if e_rev is None:
-            e_rev = channelcollection.E_REV_DICT[current_type]
-        self.currents[current_type] = (g_max, e_rev)
-        if current_type is not 'L' and \
+            e_rev = channelcollection.E_REV_DICT[channel_name]
+        self.currents[channel_name] = (g_max, e_rev)
+        if channel_name is not 'L' and \
            channel_storage is not None and \
-           current_type not in channel_storage:
-            channel_storage[current_type] = \
-                eval('channelcollection.' + current_type + '()')
+           channel_name not in channel_storage:
+            channel_storage[channel_name] = \
+                eval('channelcollection.' + channel_name + '()')
 
-    def _setEEq(self, e_eq):
+    def getCurrent(self, channel_name, channel_storage=None):
+        '''
+        Returns an ``::class::neat.channels.ionchannels.IonChannel`` object. If
+        `channel_storage` is given,
+
+        Parameters
+        ----------
+        channel_name: string
+            the name of the ion channel
+        channel_storage: dict of ionchannels (optional)
+            keys are the names of the ion channels, and values the channel
+            instances
+        '''
+        try:
+            return channel_storage[channel_name]
+        except (KeyError, TypeError):
+            return eval('channelcollection.' + channel_name + '()')
+
+    def setEEq(self, e_eq):
         '''
         Set the equilibrium potential at the node.
 
         Parameters
         ----------
-            e_eq: float
-                the equilibrium potential (mV)
+        e_eq: float
+            the equilibrium potential (mV)
         '''
         self.e_eq = e_eq
 
@@ -84,10 +102,7 @@ class PhysNode(MorphNode):
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
             # create the ionchannel object
-            if channel_storage is not None:
-                channel = channel_storage[channel_name]
-            else:
-                channel = eval('channelcollection.' + channel_name + '()')
+            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
             # compute channel conductance and current
             p_open = channel.computePOpen(e_eq_target)
             g_chan = g * p_open
@@ -126,10 +141,7 @@ class PhysNode(MorphNode):
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
             # create the ionchannel object
-            if channel_storage is not None:
-                channel = channel_storage[channel_name]
-            else:
-                channel = eval('channelcollection.' + channel_name + '()')
+            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
             g_tot += g * channel.computePOpen(v)
 
         return g_tot
@@ -137,7 +149,7 @@ class PhysNode(MorphNode):
     def setGTot(self, illegal):
         raise AttributeError("`g_tot` is a read-only attribute, set the leak " + \
                              "conductance by calling ``func:addCurrent`` with " + \
-                             " \'L\' as `current_type`")
+                             " \'L\' as `channel_name`")
 
     g_tot = property(getGTot, setGTot)
 
@@ -174,13 +186,13 @@ class PhysTree(MorphTree):
         '''
         return PhysNode(node_index, p3d=p3d)
 
-    def addCurrent(self, current_type, g_max_distr, e_rev=None, node_arg=None):
+    def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
         '''
         Adds a channel to the morphology.
 
         Parameters
         ----------
-            current_type: string
+            channel_name: string
                 The name of the channel type
             g_max_distr: float, dict or :func:`float -> float`
                 If float, the maximal conductance is set to this value for all
@@ -206,7 +218,7 @@ class PhysTree(MorphTree):
             else:
                 raise TypeError('`g_max_distr` argument should be a float, dict \
                                 or a callable')
-            node.addCurrent(current_type, g_max, e_rev,
+            node.addCurrent(channel_name, g_max, e_rev,
                             channel_storage=self.channel_storage)
 
     def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):

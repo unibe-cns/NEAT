@@ -22,10 +22,70 @@ from neat.channels import channelcollection
 class GreensNode(PhysNode):
     def __init__(self, index, p3d):
         super(GreensNode, self).__init__(index, p3d)
+        self.expansion_points = {}
 
     def rescaleLengthRadius(self):
         self.R_ = self.R * 1e-4 # convert to cm
         self.L_ = self.L * 1e-4 # convert to cm
+
+    def addCurrent(self, channel_name, g_max, e_rev=None, channel_storage=None):
+        '''
+        Add an ion channel current at this node. ('L' as `channel_name`
+        signifies the leak current)
+
+        Parameters
+        ----------
+        channel_name: string
+            the name of the current
+        g_max: float
+            the conductance of the current (uS/cm^2)
+        e_rev: float (optional)
+            the reversal potential of the current (mV), if not given, a
+            standard reversal potential for the ion type is used
+        channel_storage: dict of ``::class::neat.channels.ionchannels.IonChannel`` (optional)
+            if given, the ``::class::IonChannel`` instance is added to this
+            dictionary
+        '''
+        super(GreensNode, self).addCurrent(channel_name, g_max, e_rev=e_rev,
+                                           channel_storage=channel_storage)
+        self.expansion_points[channel_name] = None
+
+    def setExpansionPoint(self, channel_name, statevar='asymptotic', channel_storage=None):
+        '''
+        Set the choice for the state variables of the ion channel around which
+        to linearize.
+
+        Note that when adding an ion channel to the node, the
+        default expansion point setting is to linearize around the asymptotic values
+        for the state variables at the equilibrium potential store in `self.e_eq`.
+        Hence, this function only needs to be called to change that setting.
+
+        Parameters
+        ----------
+        channel_name: string
+            the name of the ion channel
+        statevar: `np.ndarray`, `'max'` or `'asymptotic'` (default)
+            If `np.ndarray`, should be of the same shape as the ion channels'
+            state variables array, if `'max'`, the point at which the
+            linearized channel current is maximal for the given equilibirum potential
+            `self.e_eq` is used. If `'asymptotic'`, linearized around the asymptotic values
+            for the state variables at the equilibrium potential
+        channel_storage: dict of ion channels (optional)
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+
+        Raises
+        ------
+        KeyError: if `channel_name` is not in `self.currents`
+        '''
+        if isinstance(statevar, str):
+            if statevar == 'asymptotic':
+                statevar = None
+            elif statevar == 'max':
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                statevar = channel.findMaxCurrentVGiven(self.e_eq, self.freqs,
+                                                        self.currents[channel_name][1])
+        self.expansion_points[channel_name] = statevar
 
     def calcMembraneImpedance(self, freqs, channel_storage=None):
         '''
@@ -48,20 +108,21 @@ class GreensNode(PhysNode):
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
             # create the ionchannel object
-            if channel_storage is not None:
-                channel = channel_storage[channel_name]
-            else:
-                channel = eval('channelcollection.' + channel_name + '()')
+            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+            # check if needs to be computed around expansion point
+            sv = self.expansion_points[channel_name]
             # add channel contribution to membrane impedance
-            g_m_aux -= g * (e - self.e_eq) * \
-                       channel.computeLinear(self.e_eq, freqs)
-            g_m_aux += g * channel.computePOpen(self.e_eq)
+            # g_m_aux -= g * (e - self.e_eq) * \
+            #            channel.computeLinear(self.e_eq, freqs)
+            # g_m_aux += g * channel.computePOpen(self.e_eq)
+            sv = self.expansion_points[channel_name]
+            g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
-    def setImpedance(self, freqs):
+    def setImpedance(self, freqs, channel_storage=None):
         self.counter = 0
-        self.z_m = self.calcMembraneImpedance(freqs)
+        self.z_m = self.calcMembraneImpedance(freqs, channel_storage=channel_storage)
         self.z_a = self.r_a / (np.pi * self.R_**2)
         self.gamma = np.sqrt(self.z_a / self.z_m)
         self.z_c = self.z_a / self.gamma
@@ -135,14 +196,14 @@ class GreensNode(PhysNode):
 
 
 class SomaGreensNode(GreensNode):
-    def calcMembraneImpedance(self, freqs):
-        z_m = super(SomaGreensNode, self).calcMembraneImpedance(freqs)
+    def calcMembraneImpedance(self, freqs, channel_storage=None):
+        z_m = super(SomaGreensNode, self).calcMembraneImpedance(freqs, channel_storage=channel_storage)
         # rescale for soma surface instead of cylinder radius
         return z_m / (2. * self.R_)
 
-    def setImpedance(self, freqs):
+    def setImpedance(self, freqs, channel_storage=None):
         self.counter = 0
-        self.z_soma = self.calcMembraneImpedance(freqs)
+        self.z_soma = self.calcMembraneImpedance(freqs, channel_storage=channel_storage)
 
     def collapseBranchToLeaf(self):
         return self.z_soma
@@ -204,7 +265,7 @@ class GreensTree(PhysTree):
         # set the node specific impedances
         for node in self:
             node.rescaleLengthRadius()
-            node.setImpedance(freqs)
+            node.setImpedance(freqs, channel_storage=self.channel_storage)
         # recursion
         self._impedanceFromLeaf(self.leafs[0], self.leafs[1:], pprint=pprint)
         self._impedanceFromRoot(self.root)
@@ -320,8 +381,7 @@ class GreensTree(PhysTree):
                 z_mat[:,ii,jj] = z_f
                 z_mat[:,jj,ii] = z_f
                 jj += 1
-            loc1 = locs[ii]
-            z_f = self.calcZF(loc0, loc1)
+            z_f = self.calcZF(loc0, loc0)
             z_mat[:,ii,ii] = z_f
 
         return z_mat

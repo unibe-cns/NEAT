@@ -131,6 +131,16 @@ class IonChannel(object):
         self.dp_dx, self.df_dv, self.df_dx = \
                         self.lambdifyDerivatives()
 
+        # express statevar[0,0] as a function of the other state variables
+        self.po = sp.symbols('po')
+        sol = sp.solve(self.p_open - self.po, self.statevars[0,0])
+        ind = np.where([sp.I not in s.atoms() for s in sol])[0][-1]
+        sol = sol[ind]
+        # print self.__class__.__name__
+        # print self.p_open
+        # print sol
+        self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
+
     def lambdifyVarInf(self):
         f_varinf = np.zeros(self.varnames.shape, dtype=object)
         for ind, varinf in np.ndenumerate(self.varinf):
@@ -185,12 +195,18 @@ class IonChannel(object):
 
         return dp_dx, df_dv, df_dx
 
-    def computePOpen(self, v):
-        args = [v] + [f_varinf(v) for ind, f_varinf in np.ndenumerate(self.f_varinf)]
+    def computePOpen(self, v, statevars=None):
+        if statevars is None:
+            args = [v] + [f_varinf(v) for _, f_varinf in np.ndenumerate(self.f_varinf)]
+        else:
+            args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
         return self.f_p_open(*args)
 
-    def computeDerivatives(self, v):
-        args = [v] + [f_varinf(v) for ind, f_varinf in np.ndenumerate(self.f_varinf)]
+    def computeDerivatives(self, v, statevars=None):
+        if statevars is None:
+            args = [v] + [f_varinf(v) for _, f_varinf in np.ndenumerate(self.f_varinf)]
+        else:
+            args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
     def computeVarInf(self, v):
@@ -214,13 +230,13 @@ class IonChannel(object):
             dims = self.f_tauinf.shape
             slice_ind = []
         res = np.zeros(dims)
-        for ind, f_varinf in np.ndenumerate(self.f_tauinf):
+        for ind, f_tauinf in np.ndenumerate(self.f_tauinf):
             ind_slice = tuple(list(ind) + slice_ind)
-            res[ind_slice] = f_varinf(v)
+            res[ind_slice] = f_tauinf(v)
         return res
 
-    def computeLinear(self, v, freqs):
-        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v)
+    def computeLinear(self, v, freqs, statevars=None):
+        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, statevars=statevars)
         lin_f = np.zeros_like(freqs)
         for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
             df_dv_ = df_dv_arr[ind] * 1e3 # convert to 1 / s
@@ -229,8 +245,122 @@ class IonChannel(object):
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
 
-    def computeLinSum(self, v, freqs, e_rev):
-        return (e_rev - v) * self.computeLinear(v, freqs) - self.computePOpen(v)
+    def computeLinSum(self, v, freqs, e_rev, statevars=None):
+        return (e_rev - v) * self.computeLinear(v, freqs, statevars=statevars) - \
+               self.computePOpen(v, statevars=statevars)
+
+    def findMaxCurrent(self, freqs, e_rev):
+        def f_min(xx):
+            xv = xx[1:].reshape(self.statevars.shape)
+            val = 1. / np.abs(np.sum(self.computeLinSum(xx[0], freqs, e_rev, statevars=xv)))
+            return val
+        # optimization
+        x0 = [-45.] + [0.5 for _ in xrange(self.statevars.size)]
+        bounds = [(-90., 0.)] + [(0., 1.) for _ in xrange(self.statevars.size)]
+        res = so.minimize(f_min, x0, bounds=bounds)
+        return res['x'][0], res['x'][1:].reshape(self.statevars.shape)
+
+    def findMaxCurrentVGiven(self, v, freqs, e_rev):
+        def f_min(xx):
+            xv = xx.reshape(self.statevars.shape)
+            val = 1. / np.abs(np.sum(self.computeLinSum(v, freqs, e_rev, statevars=xv)))
+            return val
+        # optimization
+        x0 = [0.5 for _ in xrange(self.statevars.size)]
+        bounds = [(0., 1.) for _ in xrange(self.statevars.size)]
+        res = so.minimize(f_min, x0, bounds=bounds)
+        return res['x'].reshape(self.statevars.shape)
+
+    def findStatevarsVPGiven(self, v, p_open):
+        def f_object(xx):
+            xv = xx.reshape(self.statevars.shape)
+            return np.abs(p_open - self.computePOpen(v, statevars=xv))
+        # the bounds for the optimization
+        constraints = ({'type': 'ineq', 'fun': lambda xx: xx - 0.1},
+                       {'type': 'ineq', 'fun': lambda xx: 0.9 - xx})
+        # initialization
+        x0 = np.array([0.5 for _ in xrange(self.statevars.size)])
+        # optimization
+        res = so.minimize(f_object, x0, method='SLSQP', constraints=constraints)
+        return res['x'].reshape(self.statevars.shape)
+
+    # def findMaxLinear(self, v, freqs, e_rev, p_open=None):
+    #     # contraint function for the optimization
+    #     if p_open is not None:
+    #     # if False:
+    #         def f_constraint(xx):
+    #             xv = xx.reshape(self.statevars.shape)
+    #             return p_open - self.computePOpen(v, statevars=xv)
+    #         constraints = ({'type': 'ineq', 'fun': lambda xx: 0.001 - f_constraint(xx)/p_open},
+    #                        {'type': 'ineq', 'fun': lambda xx: 0.001 + f_constraint(xx)/p_open},
+    #                        {'type': 'ineq', 'fun': lambda xx: xx},
+    #                        {'type': 'ineq', 'fun': lambda xx: 1. - xx})
+    #     else:
+    #         constraints = ({'type': 'ineq', 'fun': lambda xx: xx},
+    #                        {'type': 'ineq', 'fun': lambda xx: 1. - xx})
+    #     # the objective function for the optimization
+    #     def f_object(xx):
+    #         xv = xx.reshape(self.statevars.shape)
+    #         val = 1. / np.abs(np.sum(self.computeLinear(v, freqs, statevars=xv)))
+    #         return val
+    #     # the bounds for the optimization
+    #     # bounds = [(0., 1.) for _ in xrange(self.statevars.size)]
+    #     # initialization
+    #     # if p_open is not None:
+    #     if False:
+    #         x0 = self.findStatevarsVPGiven(v, p_open).reshape(self.statevars.size)
+    #     else:
+    #         x0 = np.array([0.5 for _ in xrange(self.statevars.size)])
+
+    #     # print '\n>>>>>'
+    #     # print self.__class__.__name__
+    #     # print 'p_open =', p_open
+    #     # print 'sv_0 =', x0.reshape(self.statevars.shape)
+    #     # print 'f_constraint =', f_constraint(x0)
+    #     # print 'f_object =', f_object(x0)
+    #     # print '<<<<<\n'
+    #     # optimization
+    #     res_0 = so.minimize(f_object, x0, method='SLSQP', constraints=constraints)
+    #     x0 = np.array([0.1 for _ in xrange(self.statevars.size)])
+    #     res_1 = so.minimize(f_object, x0, method='COBYLA', constraints=constraints)
+    #     # res = so.minimize(f_object, x0, method='SLSQP', bounds=bounds)
+    #     if np.abs(f_object(res_0['x'])) < np.abs(f_object(res_1['x'])):
+    #         return res_0['x'].reshape(self.statevars.shape)
+    #     else:
+    #         return res_1['x'].reshape(self.statevars.shape)
+    #     # return res_1['x'].reshape(self.statevars.shape)
+
+    # def findMaxLinear(self, v, freqs, e_rev, p_open=None):
+    #     if self.statevars.size > 1:
+    #         def to_statevar(xx):
+    #             if self.statevars.shape[0] > 1:
+    #                 xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
+    #             elif self.statevars.shape[1] > 1:
+    #                 xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
+    #             return xv
+    #         # the objective function for the optimization
+    #         def f_object(xx):
+    #             xv = to_statevar(xx)
+    #             val = 1. / np.abs(np.sum(self.computeLinear(v, freqs, statevars=xv)))
+    #             return val
+    #         # the bounds for the optimization
+    #         bounds = [0.001, 0.999]
+    #         # optimization
+    #         res_0 = so.minimize_scalar(f_object, method='bounded', bounds=bounds)
+    #         return to_statevar(res_0['x'])
+    #     else:
+    #         return np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
+
+    def getStatevarsPOpen(self, p_open):
+        xx = 1.
+        if self.statevars.shape[0] > 1:
+            xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
+        elif self.statevars.shape[1] > 1:
+            xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
+        else:
+            xv = np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
+        return xv
+
 
     def computeFreqIMax(self, v, e_rev, f_bounds=(0.,10000.)):
         '''
