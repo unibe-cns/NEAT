@@ -21,6 +21,8 @@ from libcpp.pair cimport pair
 import copy
 import time
 
+from neat.channels import channelcollection
+
 
 def c2r(arr_c):
     return np.concatenate((arr_c.real[:, np.newaxis], arr_c.imag[:, np.newaxis]), 1)
@@ -38,6 +40,8 @@ cdef extern from "NETC.h":
                                double *alphas, double *gammas, int n_exp)
         void addLinTermFromPython(int loc_index,
                                 double *alphas, double *gammas, int n_exp)
+        void addIonChannelFromPython(string channel_name, int loc_ind,
+                                     double g_bar, double e_rev);
         void addSynapseFromType(int loc_ind, int syn_type)
         void addSynapseFromParams(int loc_ind, double e_r,
                                 double *params, int p_size)
@@ -108,8 +112,13 @@ cdef class NETSim:
                             c2r(alphas), c2r(gammas))
         # add the linear terms
         if lin_terms is not None:
-            for ind, lin_term in lin_terms.iteritems():
-                self._addLinTerm(ind, c2r(lin_term.a), c2r(lin_term.c))
+            if isinstance(lin_terms, dict):
+                for ind, lin_term in lin_terms.iteritems():
+                    alphas, gammas = -lin_term.a, lin_term.c
+                    alphas, gammas = alphas.astype(complex), gammas.astype(complex)
+                    self._addLinTerm(ind, c2r(alphas), c2r(gammas))
+            else:
+                raise IOError('`lin_terms` should be dict')
         self.initialize(mode=0, print_tree=print_tree)
 
     def initialize(self, dt=.1, mode=1, print_tree=False):
@@ -214,6 +223,12 @@ cdef class NETSim:
             raise ValueError('Input array has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
         self.net_ptr.addVNodeToArr(&vc_arr[0], vc_arr.shape[0])
+
+    def addChannel(self, channel_name, loc_index, g_max, e_rev=None):
+        if e_rev is None: e_rev = channelcollection.E_REV_DICT[channel_name]
+        cdef string cname = channel_name.encode('UTF-8')
+        self.net_ptr.addIonChannelFromPython(cname, loc_index, g_max, e_rev)
+
 
     def addSynapse(self, loc_index, synarg, g_max=0.001, nmda_ratio=1.6):
         '''
@@ -527,7 +542,7 @@ cdef class NETSim:
         self.spike_times_py[index] = spike_times
 
     def runSim(self, double tmax, double dt, int step_skip=1,
-                    bool rec_v_node=False, list rec_g_syn_inds=[]):
+                    bool rec_v_node=False, list rec_g_syn_inds=[], bool pprint=False):
         '''
         Run the simulation using the CNET.
 
@@ -544,6 +559,8 @@ cdef class NETSim:
         rec_g_syn_inds : list of inds
             record the conductance of the synapses indexed by the entries in
             this list
+        pprint : bool
+            whether or not to print information
 
         Returns
         -------
@@ -602,8 +619,9 @@ cdef class NETSim:
         cdef dict g_syn = {ii: [np.zeros(k_store) for _ in xrange(n_syn_at_loc[ii])] \
                                                   for ii in rec_g_syn_inds}
 
-        print '\n>>> Integrating ML model for ' + str(tmax) + ' ms. <<<'
-        start = time.clock()
+        if pprint:
+            print '\n>>> Integrating ML model for ' + str(tmax) + ' ms. <<<'
+            start = time.clock()
 
         # cython loop
         cdef int ss = 0 # spike counter
@@ -638,8 +656,9 @@ cdef class NETSim:
                                                            syn_index_at_loc[ii]+ll)
                 mm += 1
 
-        stop = time.clock()
-        print '>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<\n'
+        if pprint:
+            stop = time.clock()
+            print '>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<\n'
 
         #return the result
         resdict = {'t': t_sim, 'v_loc': v_loc}

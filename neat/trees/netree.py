@@ -317,6 +317,17 @@ class NET(STree):
         else:
             return Iz_dict
 
+    def calcImpedanceMatrix(self):
+        '''
+        Compute the impedance matrix approximation associated with the NET
+
+        Returns
+        -------
+        np.ndarray (ndim = 2)
+            the impedance matrix approximation
+        '''
+        return self.calcImpMat()
+
     def calcImpMat(self):
         '''
         Compute the impedance matrix approximation associated with the NET

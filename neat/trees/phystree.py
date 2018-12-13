@@ -143,6 +143,7 @@ class PhysNode(MorphNode):
             # create the ionchannel object
             channel = self.getCurrent(channel_name, channel_storage=channel_storage)
             g_tot += g * channel.computePOpen(v)
+            del channel
 
         return g_tot
 

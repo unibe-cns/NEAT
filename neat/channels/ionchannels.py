@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize as so
 
 import os
-
+import copy
 
 def _insert_function_prefixes(string, prefix='np',
                               functions=['exp', 'sin', 'cos', 'tan', 'pi']):
@@ -496,6 +496,103 @@ class IonChannel(object):
         file.write('}\n\n')
 
         file.close()
+
+    def writeCPPCode(self, path, e_rev):
+        fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
+        fh = open(os.path.join(path, 'Ionchannels.h'), 'a')
+        # fstruct = open('cython_code/channelstruct.h', 'a')
+
+
+        fh.write('class ' + self.__class__.__name__ + ': public IonChannel{' + '\n')
+        fh.write('private:' + '\n')
+        # fh.write('    double m_g_bar = 0.0, m_e_rev = %.8f;\n'%e_rev)
+        for ind, varname in np.ndenumerate(self.varnames):
+                fh.write('    double m_' + sp.printing.ccode(varname) +';\n')
+        for ind, varname in np.ndenumerate(self.varnames):
+                fh.write('    double m_' + sp.printing.ccode(varname) + '_inf, m_tau_' + sp.printing.ccode(varname) + ';\n')
+        fh.write('    double m_p_open_eq = 0.0, m_p_open = 0.0;\n')
+        fh.write('public:' + '\n')
+        fh.write('    void calcFunStatevar(double v) override;' + '\n')
+        fh.write('    double calcPOpen() override;' + '\n')
+        fh.write('    void setPOpen() override;' + '\n')
+        fh.write('    void setPOpenEQ(double v) override;' + '\n')
+        fh.write('    void advance(double dt) override;' + '\n')
+        fh.write('    double getCond() override;' + '\n')
+        fh.write('    double f(double v) override;' + '\n')
+        fh.write('    double DfDv(double v) override;' + '\n')
+        fh.write('};' + '\n')
+
+        fcc.write('void ' + self.__class__.__name__ + '::calcFunStatevar(double v){' + '\n')
+        for ind, varinf in np.ndenumerate(self.varinf):
+            tauinf = self.tauinf[ind]
+            varname = self.varnames[ind]
+            fcc.write('    m_' + sp.printing.ccode(varname) + '_inf = ' + sp.printing.ccode(varinf) + ';' + '\n')
+            fcc.write('    m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf) + ';' + '\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('double ' + self.__class__.__name__ + '::calcPOpen(){' + '\n')
+        expr = copy.deepcopy(self.p_open)
+        for ind, varname in np.ndenumerate(self.varnames):
+            symb = sp.symbols('m_' + sp.printing.ccode(varname))
+            expr = expr.subs(varname, symb)
+        fcc.write('    return ' + sp.printing.ccode(expr) + ';' + '\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('void ' + self.__class__.__name__ + '::setPOpen(){' + '\n')
+        fcc.write('    m_p_open = calcPOpen();' + '\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('void ' + self.__class__.__name__ + '::setPOpenEQ(double v){' + '\n')
+        fcc.write('    calcFunStatevar(v);' + '\n')
+        fcc.write('')
+        expr = copy.deepcopy(self.p_open)
+        for ind, varname in np.ndenumerate(self.varnames):
+            symb = sp.symbols('m_' + sp.printing.ccode(varname) + '_inf')
+            expr = expr.subs(varname, symb)
+            fcc.write('    m_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(symb) + ';\n')
+        fcc.write('    m_p_open_eq =' + sp.printing.ccode(expr) + ';' + '\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('void ' + self.__class__.__name__ + '::advance(double dt){' + '\n')
+        for ind, varinf in np.ndenumerate(self.varinf):
+            tauinf = self.tauinf[ind]
+            varname = 'm_' + sp.printing.ccode(self.varnames[ind])
+            varname_inf = 'm_' + sp.printing.ccode(self.varnames[ind]) + '_inf'
+            varname_tau = 'm_tau_' + sp.printing.ccode(self.varnames[ind])
+            propname = 'p0_' + sp.printing.ccode(self.varnames[ind])
+            # fcc.write('    ' + varname + ' += dt * (' + varname_inf + ' - ' + varname + ') / ' + varname_tau + ';' + '\n')
+            fcc.write('    double ' + propname + ' = exp(-dt / ' + varname_tau + ');\n')
+            fcc.write('    ' + varname + ' *= ' + propname + ' ;\n')
+            fcc.write('    ' + varname + ' += (1. - ' + propname + ' ) *  ' + varname_inf + ';\n')
+        fcc.write('}' + '\n')
+
+
+        # self.exp_aux = np.exp(-dt/self.tauinf_aux)
+        # # advance the variables
+        # self.sv *= self.exp_aux
+        # self.sv += (1.-self.exp_aux) * self.svinf_aux
+
+        fcc.write('double ' + self.__class__.__name__ + '::getCond(){' + '\n')
+        fcc.write('    return m_g_bar * (m_p_open - m_p_open_eq);' + '\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('double ' + self.__class__.__name__ + '::f(double v){' + '\n')
+        fcc.write('    return (m_e_rev - v);' + '\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('double ' + self.__class__.__name__ + '::DfDv(double v){' + '\n')
+        fcc.write('    return -1.;' + '\n')
+        fcc.write('}' + '\n')
+
+
+
+        fh.write('\n')
+        fcc.write('\n')
+        # fstruct.write('    ' + self.__class__.__name__ + ' ' + self.__class__.__name__ + '_;' + '\n')
+
+        fh.close()
+        fcc.close()
+        # fstruct.close()
 
 
     # def computeLin(self, v):

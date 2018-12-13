@@ -17,7 +17,7 @@ void ExpCond::feedSpike(double g_max, int n_spike){
 };
 
 double ExpCond::advance(double dt){
-	if(abs(dt - m_dt) < 1.0e-9){
+	if(abs(dt - m_dt) > 1.0e-9){
 		m_p = exp(-dt / m_tau);
 	}
 	m_g *= m_p;
@@ -52,7 +52,7 @@ void Exp2Cond::feedSpike(double g_max, int n_spike){
 };
 
 double Exp2Cond::advance(double dt){
-	if(abs(dt - m_dt) < 1.0e-9){
+	if(abs(dt - m_dt) > 1.0e-9){
 		m_p_r = exp(-dt / m_tau_r); m_p_d = exp(-dt / m_tau_d);
 	}
 	m_g_r *= m_p_r; m_g_d *= m_p_d;
@@ -83,7 +83,7 @@ double NMDA::f(double v){
 };
 
 double NMDA::DfDv(double v){
-	return 0.03 * (m_e_r - v) * exp(-0.1 * v) / pow(0.3 * exp(-0.1*v) + 1.0, 2) 
+	return 0.03 * (m_e_r - v) * exp(-0.1 * v) / pow(0.3 * exp(-0.1*v) + 1.0, 2)
 			- 1. / (0.3 * exp(-0.1*v) + 1.0);
 };
 ////////////////////////////////////////////////////////////////////////////////
