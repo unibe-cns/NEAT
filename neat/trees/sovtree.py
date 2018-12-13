@@ -918,13 +918,14 @@ class SOVTree(PhysTree):
             gammas = sov_data[1]
         else:
             alphas, gammas = self.getImportantModes(name='NET_eval', eps=eps)
-        lin_terms = []
+        lin_terms = {}
         for ii, loc in enumerate(self.getLocs('NET_eval')):
-            # create the true kernel
-            z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
-            # compute the NET approximation kernel
-            z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
-            # compute the lin term
-            lin_terms.append(z_k_true - z_k_net)
+            if not self.isRoot(self[loc['node']]):
+                # create the true kernel
+                z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
+                # compute the NET approximation kernel
+                z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
+                # compute the lin term
+                lin_terms[ii] = z_k_true - z_k_net
         return lin_terms
 
