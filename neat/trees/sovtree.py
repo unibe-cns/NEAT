@@ -614,15 +614,23 @@ class SOVTree(PhysTree):
         # find the histogram partition
         h_ftc = hs.histogramSegmentator(z_hist)
         s_inds, p_inds = h_ftc.partition_fine_to_coarse(eps=1.4)
+        while len(s_inds) > 3:
+            s_inds = np.delete(s_inds, 1)
 
         # import matplotlib.pyplot as pl
-        # xarr = (ghist[1][1:]+ghist[1][:-1])/2.
-        # pl.plot(xarr, ghist[0], 'o--')
-        # for si in sinds:
+        # pl.figure()
+        # xarr = (z_hist[1][1:]+z_hist[1][:-1])/2.
+        # pl.plot(xarr, z_hist[0], 'o--')
+        # for si in s_inds:
         #     pl.axvline(xarr[si], c='r')
-        # for pi in pinds:
-        #     pl.axvline(xarr[pi], c='g')
+        # for pi in p_inds:
+        #     pl.axvline(xarr[pi], c='g', ls='--')
+        # pl.figure()
+        # ax = pl.gca()
+        # self.makeXAxis(loc_arg='NET_eval')
+        # self.plot1D(ax, z_mat[0,:])
         # pl.show()
+
         #         # find the histogram partition
         # if np.max(z_mat[0,:]) - np.min(z_mat[0,:]) > 15.:
         #     h_ftc = funF.histogramSegmentator(ghist)
@@ -674,20 +682,19 @@ class SOVTree(PhysTree):
                 z_avg_approx = np.sum(gammas_avg / alphas).real
                 self._subtractParentKernels(gammas_avg, pnode)
                 # add a node to the tree
-                node = NETNode(len(net), true_loc_inds,
+                node = NETNode(len(net), true_loc_inds[n_inds],
                                 z_kernel=(alphas, gammas_avg))
                 if pnode != None:
                     net.addNodeWithParent(node, pnode)
                 else:
                     net.root = node
+                # set new pnode
+                pnode = node
 
                 # print stuff
                 if pprint:
-                    print '>>> node index = ', node.index
-                    if pnode != None:
-                        print 'parent index = ', pnode.index
-                    else:
-                        print 'root node'
+                    print node
+                    print 'n_loc =', len(node.loc_inds)
                     print '(locind0, size) = ', (k_inds[0], z_mat.shape[0])
                     print ''
 
@@ -735,7 +742,7 @@ class SOVTree(PhysTree):
                         # move further in the tree
                         self._addLayerB(net, node,
                                 z_mat_new, alphas, gammas,
-                                z_max, k_seq, dz=dz,
+                                z_max, k_seq, dz=dz, pprint=pprint,
                                 use_hist=use_hist, add_lin_terms=add_lin_terms)
 
     def _addLayerB(self, net, pnode,
@@ -768,7 +775,7 @@ class SOVTree(PhysTree):
                 elif use_hist:
                     z_hist = np.histogram(z_mat.flatten(), n_bins, density=False)
                     # find the histogram partition
-                    h_ftc = funF.histogramSegmentator(z_hist)
+                    h_ftc = hs.histogramSegmentator(z_hist)
                     s_ind, p_ind = h_ftc.partition_fine_to_coarse()
 
                     # get the new min max values
@@ -776,10 +783,10 @@ class SOVTree(PhysTree):
                     z_min = z_max_prev
                     z_max = z_histx[s_ind[1]]
                     ii = 1
-                    while np.min(z_diag) > z_histx[s_ind[i]]:
+                    while np.min(z_diag) > z_histx[s_ind[ii]]:
                         ii += 1
-                        z_max = z_histx[s_ind[i]]
-                    ii = np.argmax(z_hist[0][s_ind[0]:s_ind[i]])
+                        z_max = z_histx[s_ind[ii]]
+                    ii = np.argmax(z_hist[0][s_ind[0]:s_ind[ii]])
                     z_avg = z_hist[0][ii]
                     if z_max - z_min > dz:
                         z_max = z_min + dz

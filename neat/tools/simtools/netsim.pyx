@@ -620,7 +620,7 @@ cdef class NETSim:
                                                   for ii in rec_g_syn_inds}
 
         if pprint:
-            print '\n>>> Integrating ML model for ' + str(tmax) + ' ms. <<<'
+            print '\n>>> Integrating NET model for ' + str(tmax) + ' ms. <<<'
             start = time.clock()
 
         # cython loop

@@ -317,6 +317,19 @@ class NET(STree):
         else:
             return Iz_dict
 
+    def calcIZMatrix(self):
+        '''
+        compute the Iz matrix for all locations present in the tree
+
+        Returns
+        -------
+        np.ndarray of float
+            The Iz matrix
+        '''
+        z_mat = self.calcImpedanceMatrix()
+        z_in = np.diag(z_mat)
+        return (z_in[:,np.newaxis] + z_in[np.newaxis,:]) / (2. * z_mat) - 1.
+
     def calcImpedanceMatrix(self):
         '''
         Compute the impedance matrix approximation associated with the NET
@@ -349,7 +362,7 @@ class NET(STree):
         for cnode in node.child_nodes:
             self._addNodeToImpMat(cnode, z_mat, loc_map)
 
-    def getCompartmentalization(self, Iz=5., returntype='node index'):
+    def getCompartmentalization(self, Iz, returntype='node index'):
         '''
         Returns a compartmentalization for the NET tree where each pair of
         compartments is separated by an Iz of at least ``Iz``. The
@@ -500,7 +513,7 @@ class NET(STree):
                         plotargs={}, labelargs={}, textargs={},
                         incolors={},
                         inlabels={}, nodelabels={},
-                        cs_comp={},
+                        cs_comp={}, cmap=None,
                         z_max=None, add_scalebar=True):
         '''
         Generate a dendrogram of the NET
@@ -545,11 +558,11 @@ class NET(STree):
             norm_cs = (max_cs - min_cs) * (1. + 1./100.)
             for key, val in cs_comp.iteritems():
                 cs_comp[key] = (cs_comp[key] - min_cs) / norm_cs
-            cm = pl.get_cmap('jet')
-            cs_comp['cm'] = cm
+            if cmap is None: cmap = pl.get_cmap('jet')
+            cs_comp['cm'] = cmap
             Z = [[0,0],[0,0]]
             levels = np.linspace(min_cs, max_cs, 100)
-            CS3 = pl.contourf(Z, levels, cmap=cm)
+            CS3 = pl.contourf(Z, levels, cmap=cmap)
         # get the number of leafs to determine the dendrogram spacing
         rnode    = self.root
         n_branch  = self.degreeOfNode(rnode)

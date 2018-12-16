@@ -1001,10 +1001,7 @@ class MorphTree(STree):
         locs_ = []
         n1 = 0
         for loc in locs:
-            if type(loc) == dict or type(loc) == tuple:
-                locs_.append(MorphLoc(loc, self))
-            else:
-                locs_.append(copy.copy(loc))
+            locs_.append(MorphLoc(loc, self))
             if locs_[-1]['node'] == 1: n1 += 1
         if n1 > 1:
             # raise ValueError('There can only be one location on the soma, \
@@ -1722,49 +1719,61 @@ class MorphTree(STree):
             if 'tag' in node.content:
                 del node.content['tag']
 
-    def makeXAxis(self, dx, node_arg=None):
+    def makeXAxis(self, dx=10., node_arg=None, loc_arg=None):
         '''
         Create a set of locs suitable for serving as the x-axis for 1D plotting.
         The neurons is put on a 1D axis with a depth-first ordering.
 
         Parameters
         ----------
-            dx: float
-                target separation between the plot points (micron)
-            node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
-                The nodes on which the locations for the x-axis are distributed.
-                When this is given as a list of nodes, assumes a depth first
-                ordering.
+        dx: float
+            target separation between the plot points (micron)
+        node_arg:
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`
+            The nodes on which the locations for the x-axis are distributed.
+            When this is given as a list of nodes, assumes a depth first
+            ordering.
+        loc_arg: list of locs or string
+            if list of locs, these locs will be used as x-axis, if string, name
+            of set of locs on the morphology that will be used as x-axis
+
         '''
-        # if comptree has not been set, create a basic one for plotting
-        if self._computational_root == None:
-            self.setCompTree()
-        # distribute the x-axis locations
-        self.distributeLocsUniform(dx, node_arg=node_arg, name='xaxis')
-        # get the root node
-        nodes = self._convertNodeArgToNodes(node_arg)
-        # check that first node is root
-        for node in nodes:
-            if nodes[0] in node.child_nodes:
-                raise ValueError('Input `node_arg` is not a depth-first ordered'
-                                 ' list of nodes.')
-        # set the node colors for both trees
-        if self.treetype == 'original':
-            rootnode_orig = nodes[0]
-            tempnode = self._findCompnodeDown(nodes[0])
-            self.setNodeColors(rootnode_orig)
-            self.treetype = 'computational'
-            rootnode_comp = self[tempnode.index]
-            self.setNodeColors(rootnode_comp)
-            self.treetype = 'original'
+        if loc_arg is None:
+            # if comptree has not been set, create a basic one for plotting
+            if self._computational_root == None:
+                self.setCompTree()
+            # distribute the x-axis locations
+            self.distributeLocsUniform(dx, node_arg=node_arg, name='xaxis')
+            # get the root node
+            nodes = self._convertNodeArgToNodes(node_arg)
+            # check that first node is root
+            for node in nodes:
+                if nodes[0] in node.child_nodes:
+                    raise ValueError('Input `node_arg` is not a depth-first ordered'
+                                     ' list of nodes.')
+            # set the node colors for both trees
+            if self.treetype == 'original':
+                rootnode_orig = nodes[0]
+                tempnode = self._findCompnodeDown(nodes[0])
+                self.setNodeColors(rootnode_orig)
+                self.treetype = 'computational'
+                rootnode_comp = self[tempnode.index]
+                self.setNodeColors(rootnode_comp)
+                self.treetype = 'original'
+            else:
+                rootnode_comp = nodes[0]
+                self.setNodeColors(rootnode_comp)
+                self.treetype = 'original'
+                rootnode_orig = self[rootnode.comp.index]
+                self.setNodeColors(rootnode_orig)
+                self.treetype = 'computational'
         else:
-            rootnode_comp = nodes[0]
-            self.setNodeColors(rootnode_comp)
-            self.treetype = 'original'
-            rootnode_orig = self[rootnode.comp.index]
-            self.setNodeColors(rootnode_orig)
-            self.treetype = 'computational'
+            if isinstance(loc_arg, list):
+                self.storeLocs(locs, name='xaxis')
+            elif isinstance(loc_arg, str):
+                self.storeLocs(self.getLocs(loc_arg), name='xaxis')
+            else:
+                raise IOError('`loc_org` should be string or list of locs')
         # compute the x-axis 1D array
         pinds = self.getLeafLocinds('xaxis')
         d2s = self.distancesToSoma('xaxis')
@@ -2086,8 +2095,11 @@ class MorphTree(STree):
             cs = {node.index: node.content['color'] for node in self}
         if cs is not None:
             if cminmax is None:
-                max_cs = cs[max(cs, key=cs.__getitem__)] # works for dict and list
-                min_cs = cs[min(cs, key=cs.__getitem__)] # works for dict and list
+                if len(cs) > 0:
+                    max_cs = cs[max(cs, key=cs.__getitem__)] # works for dict and list
+                    min_cs = cs[min(cs, key=cs.__getitem__)] # works for dict and list
+                else:
+                    min_cs, max_cs = 0., 1.
             else:
                 min_cs = cminmax[0]
                 max_cs = cminmax[1]
