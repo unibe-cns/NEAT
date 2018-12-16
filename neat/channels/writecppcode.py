@@ -1,3 +1,7 @@
+'''
+Writes C++ simulation code for the ionchannels
+'''
+
 import os
 
 from neat.channels import channelcollection
@@ -51,17 +55,6 @@ for name, channel_class in channelcollection.__dict__.items():
 
 fh = open(os.path.join(path, 'Ionchannels.h'), 'a')
 fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
-# fh.write('template<typename T> IonChannel * createInstance() { return new T; }\n')
-# fh.write('typedef map< string, IonChannel*(*)()> map_type;\n')
-# fh.write('struct cmap{\n')
-# fh.write('    map_type channel_map;\n')
-# fh.write('};\n')
-
-# for name, channel_class in channelcollection.__dict__.items():
-#     if isinstance(channel_class, type) and name != 'IonChannel':
-#         fcc.write('channel_map[\"'+ name +'\"] = &createInstance< '+ name +' >;\n')
-
-
 fh.write('class ChannelCreator{\n')
 fh.write('public:\n')
 fh.write('    IonChannel* createInstance(string channel_name){\n')
