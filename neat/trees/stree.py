@@ -31,7 +31,7 @@ class SNode(object):
 
     parent_node = property(getParentNode, setParentNode)
 
-    def getChildNodes(self):
+    def getChildNodes(self, **kwargs):
         return self._child_nodes
 
     def setChildNodes(self, cnodes):
@@ -39,7 +39,7 @@ class SNode(object):
 
     child_nodes = property(getChildNodes, setChildNodes)
 
-    def addChild(self,child_node):
+    def addChild(self, child_node):
         self._child_nodes.append(child_node)
 
     def getContent(self):
@@ -62,7 +62,10 @@ class SNode(object):
         self._child_nodes.remove(child_node)
 
     def __getitem__(self, key):
-        return self.content[key]
+        return self._content[key]
+
+    def __setitem__(self, key, value):
+        self._content[key] = value
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = 'SNode ' + str(self.index)
@@ -73,17 +76,38 @@ class SNode(object):
                             str([str(cnode) for cnode in self.child_nodes])
         return node_string
 
-    def __copy__(self) : # customization of copy.copy
-        ret = SNode(self.index)
-        for child in self._child_nodes :
-            ret.addChild(child)
-        try:
-            ret.content = self.content
-        except AttributeError:
-            # no content variable set
-            pass
-        ret.setParentNode(self._parent_node)
-        return ret
+    # def __copy__(self) : # customization of copy.copy
+    #     ret = SNode(self.index)
+    #     for child in self._child_nodes :
+    #         ret.addChild(child)
+    #     try:
+    #         ret.content = self.content
+    #     except AttributeError:
+    #         # no content variable set
+    #         pass
+    #     ret.setParentNode(self._parent_node)
+    #     return ret
+
+    def __copy__(self, new_node=None):
+        '''
+        experimental, untested
+        '''
+        if new_node is None:
+            # new_node = self.__class__(self.index)
+            for child in self._child_nodes :
+                ret.addChild(child)
+            try:
+                ret.content = self.content
+            except AttributeError:
+                # no content variable set
+                pass
+            ret.setParentNode(self._parent_node)
+        else:
+            orig_keys = set(self.__dict__.keys()) - {'_parent_node', '_child_nodes'}
+            copy_keys = orig_keys.intersection(set(new_node.__dict__.keys()))
+            for key in copy_keys:
+                new_node.__dict__[key] = copy.deepcopy(self.__dict__[key])
+            return new_node
 
 
 class STree(object):
@@ -103,7 +127,7 @@ class STree(object):
         else:
             self._root = None
 
-    def __getitem__(self, index):
+    def __getitem__(self, index, **kwargs):
         '''
         Returns the node with given index, if no such node is in the tree, None
         is returned.
@@ -165,7 +189,7 @@ class STree(object):
             self._node_count += 1
         return self._node_count
 
-    def __iter__(self, node=None):
+    def __iter__(self, node=None, **kwargs):
         '''
         Iterate over the nodes in the subtree of the given node. Beware, if
         the given node is not in the tree, it will simply iterate over the
@@ -202,6 +226,13 @@ class STree(object):
         for iternode in self.__iter__(node):
             tree_string += '\n    ' + iternode.__str__(with_parent=True)
         return tree_string
+
+    def checkOrdered(self):
+        '''
+        Check if the indices of the tree are number in the same order as they
+        appear in the iterator
+        '''
+        return range(len(self)) == [node.index for node in self]
 
     def getNodes(self, recompute_flag=1):
         '''
@@ -685,3 +716,46 @@ class STree(object):
             if pnode != None:
                 node, cnode = self.upBifurcationNode(pnode, cnode=node)
         return node, cnode
+
+    def __copy__(self, new_tree=None):
+        '''
+        experimental, untested
+
+        Fill the ``new_tree`` with it's corresponding nodes in the same
+        structure as ``self``, and copies all node variables that both tree
+        classes have in common
+
+        Parameters
+        ----------
+        new_tree: :class:`STree` or derived class (default is ``None``)
+            the tree class in which the ``self`` is copied. If ``None``,
+            returns a copy of ``self``.
+
+        Returns
+        -------
+        The new tree instance
+        '''
+        if new_tree is None:
+            new_tree = self.__class__()
+
+        new_node = new_tree.createCorrespondingNode(self.root.index)
+
+        self.root.__copy__(new_node=new_node)
+        new_tree.setRoot(new_node)
+        self._recurseCopy(self.root, new_tree)
+        # copy all attributes not related to tree structure
+        orig_keys = set(self.__dict__.keys())
+        copy_keys = orig_keys.intersection(set(new_tree.__dict__.keys()))
+        for key in copy_keys:
+            if key not in ['root', '_computational_root', '_original_root']:
+                new_tree.__dict__[key] = copy.deepcopy(self.__dict__[key])
+
+        return new_tree
+
+    def _recurseCopy(self, pnode, new_tree):
+        for node in pnode.getChildNodes(skip_inds=[]):
+            new_node = new_tree.createCorrespondingNode(node.index)
+            new_node = node.__copy__(new_node=new_node)
+            new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
+                                                                      skip_inds=[]))
+            self._recurseCopy(node, new_tree)

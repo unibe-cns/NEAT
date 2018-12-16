@@ -282,8 +282,10 @@ class TestMorphTree():
         self.loadTree()
         locs = [(1,.5), (1, 1.), (4, 1.), (4, .5), (5, .5),
                (5, 1.), (6, .5), (6, 1.), (8, .5), (8, 1.)]
-        with pytest.raises(ValueError):
+        with pytest.warns(UserWarning):
             self.tree.storeLocs(locs, 'testlocs')
+        # with pytest.raises(ValueError):
+        #     self.tree.storeLocs(locs, 'testlocs')
         locs = [(1,.5), (4, 1.), (4, .5), (5, .5),
                (5, 1.), (6, .5), (6, 1.), (8, .5), (8, 1.)]
         self.tree.storeLocs(locs, 'testlocs')
@@ -340,11 +342,11 @@ class TestMorphTree():
         assert locinds == [2,1,3,4]
         # test locinds on basal/apical/axonal subtrees
         locinds = self.tree.getLocindsOnNodes('testlocs', 'basal')
-        assert locinds == [0]
+        assert locinds == []
         locinds = self.tree.getLocindsOnNodes('testlocs', 'axonal')
-        assert locinds == [0]
+        assert locinds == []
         locinds = self.tree.getLocindsOnNodes('testlocs', 'apical')
-        assert locinds == [0,2,1,3,4,5,6,7,8]
+        assert locinds == [2,1,3,4,5,6,7,8]
         # test locinds on subtree
         nodes = self.tree.getNodesInSubtree(self.tree[5], self.tree[4])
         locinds = self.tree.getLocindsOnNodes('testlocs', nodes)
@@ -354,6 +356,8 @@ class TestMorphTree():
                 (6, .5), (6, 1.), (8, .5), (8, 1.)]
         self.tree.storeLocs(locs, 'testlocs2')
         locinds = self.tree.getNearestLocinds([(7, .5), (1,.6), (6, .1), (6, .7)],
+                            'testlocs2', direction=0)
+        res = self.tree.getNearestLocinds([(6, .1)],
                             'testlocs2', direction=0)
         assert locinds == [2, 0, 3, 4]
         locinds = self.tree.getNearestLocinds([(7, .5), (1,.6), (6, .1), (6, .7)],
@@ -365,6 +369,18 @@ class TestMorphTree():
         # find the leaf locs
         locinds = self.tree.getLeafLocinds('testlocs2')
         assert locinds == [5,7]
+        # find the neartest locs
+        locs = [(4, .1), (4, .4), (4, .7)]
+        self.tree.storeLocs(locs, 'testlocs3')
+        locinds0 = self.tree.getNearestLocinds([(4, .4)],
+                            'testlocs3', direction=0)
+        locinds1 = self.tree.getNearestLocinds([(4, .4)],
+                            'testlocs3', direction=1)
+        locinds2 = self.tree.getNearestLocinds([(4, .4)],
+                            'testlocs3', direction=2)
+        assert locinds0[0] == 1
+        assert locinds1[0] == 1
+        assert locinds2[0] == 1
 
     def testDistances(self):
         self.loadTree()
@@ -537,5 +553,6 @@ class TestMorphTree():
 if __name__ == '__main__':
     tmt = TestMorphTree()
     # tmt.testPlotting(pshow=True)
-    tmt.testComptree()
+    # tmt.testComptree()
+    tmt.testLocStorageRetrievalLookup()
 

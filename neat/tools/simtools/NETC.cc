@@ -9,7 +9,7 @@ NETNode::~NETNode(){};
 
 void NETNode::setSomaFlag(bool lin_terms){
     // set the soma flag
-    if(lin_terms){ 
+    if(lin_terms){
         if(find(m_loc_indices.begin(), m_loc_indices.end(), 0) != m_loc_indices.end())
             m_soma_flag = 1;
         else
@@ -124,7 +124,7 @@ inline double NETNode::calcV(double v_in, int sign){
     m_xx = 0.0; m_yy = 0.0;
     // compute voltage
     double dv = m_ff - m_gg * v_in;
-    m_v_node += sign * dv; 
+    m_v_node += sign * dv;
     return v_in + dv;
 };
 // up sweep for simulation without linear terms
@@ -213,16 +213,16 @@ void LinTerm::advance(double dt, double conv_input){
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// constructor 
-NETSimulator::NETSimulator(int n_loc, double v_eq): 
-            m_v_dep(n_loc), m_cond_w(n_loc),
-            m_f_in(n_loc), m_df_dv_in(n_loc), 
+// constructor
+NETSimulator::NETSimulator(int n_loc, double v_eq):
+            m_v_dep(n_loc), m_cond_w(n_loc), m_chan(n_loc),
+            m_f_in(n_loc), m_df_dv_in(n_loc),
             m_v_eq(n_loc), m_v_loc(n_loc){
     m_n_loc = n_loc;
     fill(m_v_eq.begin(), m_v_eq.end(), v_eq);
 };
 
-// destructor 
+// destructor
 NETSimulator::~NETSimulator(){};
 
 void NETSimulator::initFromPython(double dt, double integ_mode, bool print_tree){
@@ -245,9 +245,17 @@ void NETSimulator::initFromPython(double dt, double integ_mode, bool print_tree)
     setLeafs();
     setDownSweep();
     setUpSweep();
+    // initialize ion channels
+    for(int loc_ind = 0; loc_ind < m_n_loc; loc_ind++){
+        // advance ion channel currents at locations
+        for(vector< IonChannel* >::iterator ioncptr_it = m_chan[loc_ind].begin();
+            ioncptr_it != m_chan[loc_ind].end(); ioncptr_it++){
+            (*ioncptr_it)->setPOpenEQ(m_v_eq[loc_ind]);
+        }
+    }
 };
 
-void NETSimulator::addNodeFromPython(int node_index, int parent_index, 
+void NETSimulator::addNodeFromPython(int node_index, int parent_index,
                                      int64_t* child_indices, int n_children,
                                      int64_t* loc_indices, int n_locinds,
                                      int64_t* newloc_indices, int n_newlocinds,
@@ -271,14 +279,25 @@ void NETSimulator::addNodeFromPython(int node_index, int parent_index,
 
 void NETSimulator::addLinTermFromPython(int loc_index,
                                         double* alphas, double* gammas, int n_exp){
+    if(loc_index < 0 or loc_index > m_n_loc) cerr << "'loc_index' out of range" << endl;
     LinTerm lin_term;
     arr2vec(lin_term.m_alphas, alphas, n_exp);
     arr2vec(lin_term.m_gammas, gammas, n_exp);
     m_lin_terms.insert(pair< int, LinTerm >(loc_index, lin_term));
 }
 
+void NETSimulator::addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev){
+    if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
+    if(g_bar < 0.) cerr << "'g_bar' must be positive" << endl;
+    // create the ion channel
+    IonChannel* chan = m_ccreate->createInstance(channel_name);
+    chan->init(g_bar, e_rev);
+    chan->setPOpenEQ(m_v_eq[loc_ind]);
+    m_chan[loc_ind].push_back(chan);
+};
+
 void NETSimulator::addSynapseFromType(int loc_ind, int syn_type){
-    if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind out of range" << endl;
+    if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
     if(syn_type == 0){
         DrivingForce* syn = new DrivingForce(0.0);
         m_v_dep[loc_ind].push_back(syn);
@@ -325,7 +344,7 @@ void NETSimulator::addSynapseFromParams(int loc_ind, double e_r,
 void NETSimulator::removeSynapseFromIndex(int loc_ind, int syn_ind){
     if(loc_ind < 0 or loc_ind > m_n_loc)
         cerr << "'loc_ind' out of range" << endl;
-    if(syn_ind < 0 or syn_ind > (int)m_v_dep[loc_ind].size()) 
+    if(syn_ind < 0 or syn_ind > (int)m_v_dep[loc_ind].size())
         cerr << "'syn_ind' out of range" << endl;
     VoltageDependence* v_dep_ptr = m_v_dep[loc_ind][syn_ind];
     m_v_dep[loc_ind].erase(m_v_dep[loc_ind].begin() + syn_ind);
@@ -357,7 +376,7 @@ void NETSimulator::addVLocToArr(double *v_arr, int v_size){
     for(int ii = 0; ii < m_n_loc; ii++)
         v_arr[ii] = m_v_eq[ii];
     // set the voltage values
-    for(vector< NETNode >::iterator node_it = m_nodes.begin(); 
+    for(vector< NETNode >::iterator node_it = m_nodes.begin();
         node_it != m_nodes.end(); node_it++){
         for(vector< int >::iterator jj = node_it->m_loc_indices.begin();
             jj != node_it->m_loc_indices.end(); jj++){
@@ -433,11 +452,11 @@ void NETSimulator::setVNodeFromVNode(double *v_arr, int v_size){
 
 void NETSimulator::setLeafs(){
     m_leafs.clear();
-    for(vector< NETNode >::iterator node_it = m_nodes.begin(); 
+    for(vector< NETNode >::iterator node_it = m_nodes.begin();
         node_it != m_nodes.end(); node_it++){
         if((*node_it).m_child_indices[0] == -1){
             m_leafs.push_back(&(*node_it));
-        }    
+        }
     }
 }
 
@@ -446,7 +465,7 @@ void NETSimulator::setDownSweep(){
     vector< NETNode* >::iterator leaf_it = m_leafs.begin();
     setDownSweep(m_leafs[0], leaf_it);
 }
-void NETSimulator::setDownSweep(NETNode* node, 
+void NETSimulator::setDownSweep(NETNode* node,
                              vector< NETNode* >:: iterator leaf_it){
     // compute the input output transformation at node
     m_down_sweep.push_back(node);
@@ -462,7 +481,7 @@ void NETSimulator::setDownSweep(NETNode* node,
         } else {
             // start at next leaf
             leaf_it++;
-            if(leaf_it != m_leafs.end()) 
+            if(leaf_it != m_leafs.end())
                 setDownSweep(*leaf_it, leaf_it);
         }
     }
@@ -498,11 +517,11 @@ void NETSimulator::_getPathToRoot(NETNode* node, vector< NETNode* > &path){
         _getPathToRoot(&m_nodes[node->m_parent_index], path);
 }
 
-void NETSimulator::constructInputs(vector< double > v_m, 
+void NETSimulator::constructInputs(vector< double > v_m,
                                    vector< vector< double > > g_syn){
     // check sizes
     size_t n_loc = m_n_loc;
-    if(v_m.size() != n_loc) std::cerr << "v_m has wrong size" << endl; 
+    if(v_m.size() != n_loc) std::cerr << "v_m has wrong size" << endl;
     if(g_syn.size() != n_loc) std::cerr << "g_syn has wrong size" << endl;
     for(int ii = 0; ii < g_syn.size(); ii++){
         if(g_syn[ii].size() != m_v_dep[ii].size()){
@@ -513,14 +532,14 @@ void NETSimulator::constructInputs(vector< double > v_m,
     setInputsToZero();
     for(int ii = 0; ii < m_n_loc; ii++){
         int n_syn = int(g_syn.size());
-        if(n_syn > 0) 
+        if(n_syn > 0)
             constructInput1Loc(ii, v_m[ii], &g_syn[ii][0], n_syn);
     }
 }
 
 void NETSimulator::setInputsToZero(){
-    fill(m_f_in.begin(), m_f_in.end(), 0.0); 
-    fill(m_df_dv_in.begin(), m_df_dv_in.end(), 0.0); 
+    fill(m_f_in.begin(), m_f_in.end(), 0.0);
+    fill(m_df_dv_in.begin(), m_df_dv_in.end(), 0.0);
 }
 
 void NETSimulator::constructInput1Loc(int loc_ind, double v_m,
@@ -553,7 +572,7 @@ void NETSimulator::constructMatrix(double dt,
         vector< NETNode* > path = getPathToRoot(leaf_ptr);
         double gg = 0.0, ff = 0.0;
         double gl = 0.0, fl = 0.0;
-        for(auto ii = leaf_ptr->m_newloc_indices.begin(); 
+        for(auto ii = leaf_ptr->m_newloc_indices.begin();
             ii != leaf_ptr->m_newloc_indices.end(); ii++){
             if(m_integ_mode == 0){
                 gg += m_df_dv_in[*ii];
@@ -563,7 +582,7 @@ void NETSimulator::constructMatrix(double dt,
                 ff += m_df_dv_in[*ii] * (m_v_loc[*ii] - m_v_eq[*ii]) - m_f_in[*ii];
                 // add the linear terms
                 if(m_lin_terms.find(*ii) != m_lin_terms.end()){
-                    double g_lin = m_df_dv_in[0] * 
+                    double g_lin = m_df_dv_in[0] *
                                    m_lin_terms.at(*ii).m_kbar * m_df_dv_in[*ii];
                     gl += g_lin;
                     fl += g_lin * (m_v_loc[*ii] - m_v_eq[*ii]);
@@ -605,12 +624,12 @@ void NETSimulator::feedInputs(NETNode* node_ptr){
         for(vector< int >:: iterator ii = node_ptr->m_newloc_indices.begin();
             ii != node_ptr->m_newloc_indices.end(); ii++){
             // gather input normal nodes
-            node_ptr->gatherInput(m_df_dv_in[*ii], 
-                        m_df_dv_in[*ii] * 
+            node_ptr->gatherInput(m_df_dv_in[*ii],
+                        m_df_dv_in[*ii] *
                         (m_v_loc[*ii] - m_v_eq[*ii]) - m_f_in[*ii]);
             // gather inputs for linear transfer
             if(m_lin_terms.find(*ii) != m_lin_terms.end()){
-                double g_lin = m_df_dv_in[0] * 
+                double g_lin = m_df_dv_in[0] *
                                m_lin_terms.at(*ii).m_kbar * m_df_dv_in[*ii];
                 double f_lin = g_lin * (m_v_loc[*ii] - m_v_eq[*ii]);
                 node_ptr->gatherInputLin(g_lin, f_lin);
@@ -622,16 +641,16 @@ void NETSimulator::feedInputs(NETNode* node_ptr){
 // solve matrix with O(n) algorithm
 void NETSimulator::solveMatrix(){
     vector< NETNode* >::iterator leaf_it = m_leafs.begin();
-    double det = 1.0; 
+    double det = 1.0;
     double& determinant = det;
     // start the down sweep (puts to zero the sub diagonal matrix elements)
     solveMatrixDownSweep(m_leafs[0], leaf_it, determinant);
     // determinant sign
     double det_sign = (determinant < 0.0) - (determinant > 0.0);
-    // do up sweep to set voltages 
+    // do up sweep to set voltages
     solveMatrixUpSweep(m_nodes[0], 0.0, det_sign);
 }
-void NETSimulator::solveMatrixDownSweep(NETNode* node_ptr, 
+void NETSimulator::solveMatrixDownSweep(NETNode* node_ptr,
                              vector< NETNode* >::iterator leaf_it,
                              double& determinant){
     // add the new inputs
@@ -657,7 +676,7 @@ void NETSimulator::solveMatrixDownSweep(NETNode* node_ptr,
         } else {
             // start at next leaf
             leaf_it++;
-            if(leaf_it != m_leafs.end()) 
+            if(leaf_it != m_leafs.end())
                 solveMatrixDownSweep(*leaf_it, leaf_it, determinant);
         }
     }
@@ -710,12 +729,27 @@ void NETSimulator::advance(double dt){
             cwptr_it != m_cond_w[loc_ind].end(); cwptr_it++){
             (*cwptr_it)->advance(dt);
         }
-        // construct algorithm input values at current location
+        // advance ion channel currents at locations
+        for(vector< IonChannel* >::iterator ioncptr_it = m_chan[loc_ind].begin();
+            ioncptr_it != m_chan[loc_ind].end(); ioncptr_it++){
+            (*ioncptr_it)->calcFunStatevar(m_v_loc[loc_ind]);
+            (*ioncptr_it)->advance(dt);
+            (*ioncptr_it)->setPOpen();
+
+        }
+        // construct algorithm input values at current location for synapses
         for(int jj = 0; jj < m_cond_w[loc_ind].size(); jj++){
-            m_f_in[loc_ind] -= m_cond_w[loc_ind][jj]->getCond() * 
+            m_f_in[loc_ind] -= m_cond_w[loc_ind][jj]->getCond() *
                                m_v_dep[loc_ind][jj]->f(m_v_loc[loc_ind]);
-            m_df_dv_in[loc_ind] -= m_cond_w[loc_ind][jj]->getCond() * 
+            m_df_dv_in[loc_ind] -= m_cond_w[loc_ind][jj]->getCond() *
                                    m_v_dep[loc_ind][jj]->DfDv(m_v_loc[loc_ind]);
+        }
+        // construct aglrotihm input values at current location for channel
+        for(int jj = 0; jj < m_chan[loc_ind].size(); jj++){
+            m_f_in[loc_ind] -= m_chan[loc_ind][jj]->getCond() *
+                               m_chan[loc_ind][jj]->f(m_v_loc[loc_ind]);
+            m_df_dv_in[loc_ind] -= m_chan[loc_ind][jj]->getCond() *
+                                   m_chan[loc_ind][jj]->DfDv(m_v_loc[loc_ind]);
         }
     }
     //compute the convolutions at nodes and linear layers

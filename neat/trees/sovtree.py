@@ -2,6 +2,7 @@
 File contains:
 
     - :class:`SOVNode`
+    - :class:`SomaSOVNode`
     - :class:`SOVTree`
 
 Author: W. Wybo
@@ -26,7 +27,7 @@ def consecutive(data, stepsize=1):
 
 
 class SOVNode(PhysNode):
-    def __init__(self, index, p3d):
+    def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
     def setSOV(self, tau_0=0.02):
@@ -158,7 +159,7 @@ class SomaSOVNode(SOVNode):
         :function:`setQVals`
         :function:`_findLocalPoles`
     '''
-    def __init__(self, index, p3d):
+    def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
     def setSOV(self, tau_0=0.02):
@@ -255,7 +256,7 @@ class SOVTree(PhysTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super(SOVTree, self).__init__(file_n=file_n, types=types)
 
-    def createCorrespondingNode(self, node_index, p3d):
+    def createCorrespondingNode(self, node_index, p3d=None):
         '''
         Creates a node with the given index corresponding to the tree class.
 
@@ -265,9 +266,9 @@ class SOVTree(PhysTree):
                 index of the new node
         '''
         if node_index == 1:
-            return SomaSOVNode(node_index, p3d)
+            return SomaSOVNode(node_index, p3d=p3d)
         else:
-            return SOVNode(node_index, p3d)
+            return SOVNode(node_index, p3d=p3d)
 
     @morphtree.computationalTreetypeDecorator
     def getSOVMatrices(self, locs=None, name=None):
@@ -555,6 +556,7 @@ class SOVTree(PhysTree):
 
     def constructNET(self, dz=50., dx=10., eps=1e-4,
                         use_hist=False, add_lin_terms=True,
+                        improve_input_impedance=False,
                         pprint=False):
         '''
         Construct a Neural Evaluation Tree (NET) for this cell
@@ -591,6 +593,9 @@ class SOVTree(PhysTree):
                         dz=dz,
                         use_hist=use_hist, add_lin_terms=add_lin_terms,
                         pprint=pprint)
+        net.setNewLocInds()
+        if improve_input_impedance:
+            self._improveInputImpedance(net, alphas, gammas)
         if add_lin_terms:
             lin_terms = self.computeLinTerms(net, sov_data=(alphas, gammas))
             return net, lin_terms
@@ -609,15 +614,23 @@ class SOVTree(PhysTree):
         # find the histogram partition
         h_ftc = hs.histogramSegmentator(z_hist)
         s_inds, p_inds = h_ftc.partition_fine_to_coarse(eps=1.4)
+        while len(s_inds) > 3:
+            s_inds = np.delete(s_inds, 1)
 
         # import matplotlib.pyplot as pl
-        # xarr = (ghist[1][1:]+ghist[1][:-1])/2.
-        # pl.plot(xarr, ghist[0], 'o--')
-        # for si in sinds:
+        # pl.figure()
+        # xarr = (z_hist[1][1:]+z_hist[1][:-1])/2.
+        # pl.plot(xarr, z_hist[0], 'o--')
+        # for si in s_inds:
         #     pl.axvline(xarr[si], c='r')
-        # for pi in pinds:
-        #     pl.axvline(xarr[pi], c='g')
+        # for pi in p_inds:
+        #     pl.axvline(xarr[pi], c='g', ls='--')
+        # pl.figure()
+        # ax = pl.gca()
+        # self.makeXAxis(loc_arg='NET_eval')
+        # self.plot1D(ax, z_mat[0,:])
         # pl.show()
+
         #         # find the histogram partition
         # if np.max(z_mat[0,:]) - np.min(z_mat[0,:]) > 15.:
         #     h_ftc = funF.histogramSegmentator(ghist)
@@ -661,7 +674,7 @@ class SOVTree(PhysTree):
                     # get the average kernel
                     if len(k_inds) < 100000:
                         gammas_avg = np.mean(gammas[:,0:1] * \
-                                             gammas[:,kinds], 1)
+                                             gammas[:,k_inds], 1)
                     else:
                         inds_ = np.random.choice(k_inds, size=100000)
                         gammas_avg = np.mean(gammas[:,0:1] * \
@@ -669,20 +682,19 @@ class SOVTree(PhysTree):
                 z_avg_approx = np.sum(gammas_avg / alphas).real
                 self._subtractParentKernels(gammas_avg, pnode)
                 # add a node to the tree
-                node = NETNode(len(net), true_loc_inds,
+                node = NETNode(len(net), true_loc_inds[n_inds],
                                 z_kernel=(alphas, gammas_avg))
                 if pnode != None:
                     net.addNodeWithParent(node, pnode)
                 else:
                     net.root = node
+                # set new pnode
+                pnode = node
 
                 # print stuff
                 if pprint:
-                    print '>>> node index = ', node.index
-                    if pnode != None:
-                        print 'parent index = ', pnode.index
-                    else:
-                        print 'root node'
+                    print node
+                    print 'n_loc =', len(node.loc_inds)
                     print '(locind0, size) = ', (k_inds[0], z_mat.shape[0])
                     print ''
 
@@ -730,7 +742,7 @@ class SOVTree(PhysTree):
                         # move further in the tree
                         self._addLayerB(net, node,
                                 z_mat_new, alphas, gammas,
-                                z_max, k_seq, dz=dz,
+                                z_max, k_seq, dz=dz, pprint=pprint,
                                 use_hist=use_hist, add_lin_terms=add_lin_terms)
 
     def _addLayerB(self, net, pnode,
@@ -763,7 +775,7 @@ class SOVTree(PhysTree):
                 elif use_hist:
                     z_hist = np.histogram(z_mat.flatten(), n_bins, density=False)
                     # find the histogram partition
-                    h_ftc = funF.histogramSegmentator(z_hist)
+                    h_ftc = hs.histogramSegmentator(z_hist)
                     s_ind, p_ind = h_ftc.partition_fine_to_coarse()
 
                     # get the new min max values
@@ -771,10 +783,10 @@ class SOVTree(PhysTree):
                     z_min = z_max_prev
                     z_max = z_histx[s_ind[1]]
                     ii = 1
-                    while np.min(z_diag) > z_histx[s_ind[i]]:
+                    while np.min(z_diag) > z_histx[s_ind[ii]]:
                         ii += 1
-                        z_max = z_histx[s_ind[i]]
-                    ii = np.argmax(z_hist[0][s_ind[0]:s_ind[i]])
+                        z_max = z_histx[s_ind[ii]]
+                    ii = np.argmax(z_hist[0][s_ind[0]:s_ind[ii]])
                     z_avg = z_hist[0][ii]
                     if z_max - z_min > dz:
                         z_max = z_min + dz
@@ -849,19 +861,78 @@ class SOVTree(PhysTree):
             gammas -= pnode.z_kernel['c']
             self._subtractParentKernels(gammas, pnode.parent_node)
 
+    def _improveInputImpedance(self, net, alphas, gammas):
+        nmaxind = np.max([n.index for n in net])
+        for node in net:
+            if len(node.loc_inds) == 1:
+                # recompute the kernel of this single loc layer
+                if node.parent_node is not None:
+                    p_kernel = net.calcTotalKernel(node.parent_node)
+                    p_k_c = p_kernel.c
+                else:
+                    p_k_c = np.zeros_like(gammas)
+                gammas_real = gammas[:,node.loc_inds[0]]**2
+                node.z_kernel.c = gammas_real - p_k_c
+            elif len(node.newloc_inds) > 0:
+                z_k_approx = net.calcTotalKernel(node)
+                # add new input nodes for the nodes that don't have one
+                for ind in node.newloc_inds:
+                    nmaxind += 1
+                    gammas_real = gammas[:,ind]**2
+                    z_k_real = Kernel(dict(a=alphas, c=gammas_real))
+                    # add node
+                    newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real-z_k_approx)
+                    newnode.newloc_inds = [ind]
+                    net.addNodeWithParent(newnode, node)
+                # empty the new indices
+                node.newloc_inds = []
+        net.setNewLocInds()
+
+
+    # def _improve_input_impedance(self, locinds):
+    #     print 'improving impedance'
+    #     nodes = self.output_tree.get_nodes()
+    #     nmaxind = np.max([n._index for n in nodes])
+    #     for node in nodes:
+    #         # print '>>>', node
+    #         ldat = node.get_content()['layerdata']
+    #         # print 'inds:', ldat.inds
+    #         if len(ldat.inds) == 1:
+    #             # recompute the kernel of this single loc layer
+    #             pnode = node.get_parent_node()
+    #             if pnode is not None:
+    #                 gammas = self._calc_kernel_from_node(pnode)
+    #                 gammas_real = self.phimat[:,locinds[ldat.inds[0]]]**2
+    #                 ldat.gammas = gammas_real - gammas
+    #         elif len(ldat.ninds) > 0:
+    #             gammas = self._calc_kernel_from_node(node)
+    #             # add new input layers for the nodes that don't have one
+    #             for ind in ldat.ninds:
+    #                 nmaxind += 1
+    #                 gammas_real = self.phimat[:,locinds[ind]]**2
+    #                 # add node
+    #                 newnode = btstructs.SNode(nmaxind)
+    #                 layer_data = layerData([ind], self.alphas, gammas_real-gammas)
+    #                 layer_data.ninds = [ind]
+    #                 newnode.set_content({'layerdata': layer_data})
+    #                 self.output_tree.add_node_with_parent(newnode, node)
+    #             # empty the new indices
+    #             ldat.ninds = []
+
     def computeLinTerms(self, net, sov_data=None, eps=1e-4):
         if sov_data != None:
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
             alphas, gammas = self.getImportantModes(name='NET_eval', eps=eps)
-        lin_terms = []
+        lin_terms = {}
         for ii, loc in enumerate(self.getLocs('NET_eval')):
-            # create the true kernel
-            z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
-            # compute the NET approximation kernel
-            z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
-            # compute the lin term
-            lin_terms.append(z_k_true - z_k_net)
+            if not self.isRoot(self[loc['node']]):
+                # create the true kernel
+                z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
+                # compute the NET approximation kernel
+                z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
+                # compute the lin term
+                lin_terms[ii] = z_k_true - z_k_net
         return lin_terms
 

@@ -14,10 +14,10 @@
 #include <time.h>
 
 #include "Synapses.h"
+#include "IonChannels.h"
 #include "Tools.cc"
 
 using namespace std;
-
 
 struct IODat{
     // diagonal element of matrix
@@ -45,7 +45,7 @@ private:
     // time step
     double m_dt;
     // integration mode flag
-    int m_integ_mode; // '0' for steady-state inversion, '1' for implicit 
+    int m_integ_mode; // '0' for steady-state inversion, '1' for implicit
                       // convolution and '2' for single exponential integration
 
     // for inversion
@@ -76,7 +76,7 @@ public:
     int m_n_passed;
     // diagonal matrix element
     double m_denom;
-    // kernel integral (if ''integ_mode'' is '0', kernel value first time step 
+    // kernel integral (if ''integ_mode'' is '0', kernel value first time step
     // (if integ_mode is '1')
     double m_kbar;
     // flag to indicate whether node integrates soma or not ('0' means no, '1'
@@ -110,18 +110,6 @@ public:
     void advance(double dt, double conv_input);
 };
 
-// class LinNetNode : public NetNode{
-// public:
-//     double m_lxx = 0.0; m_lyy = 0.0;
-
-//     // initialization
-//     void reset() override;
-
-//     inline IODat IO();
-
-// }
-
-
 
 class LinTerm{
 private:
@@ -132,11 +120,11 @@ private:
     // time step
     double m_dt;
     // integration mode flag
-    int m_integ_mode; // '1' for implicit convolution and '2' for single 
+    int m_integ_mode; // '1' for implicit convolution and '2' for single
                       // exponential integration
 
-public:  
-    // kernel value first time step 
+public:
+    // kernel value first time step
     double m_kbar;
     // voltage variable
     double m_v_lin;
@@ -191,6 +179,8 @@ private:
     vector< vector< VoltageDependence* > > m_v_dep;
     // vector of all synaptic conductance windows
     vector< vector< ConductanceWindow* > > m_cond_w;
+    // vector of all ionchannels
+    vector< vector< IonChannel* > > m_chan;
     // vectors that represent input
     vector< double > m_f_in;
     vector< double > m_df_dv_in;
@@ -205,8 +195,10 @@ private:
     // timestep
     double m_dt;
     // integration type flag
-    double m_integ_mode; // '0' for steady-state inversion, '1' for implicit 
+    double m_integ_mode; // '0' for steady-state inversion, '1' for implicit
                          // convolution and '2' for single exponential integration
+
+    ChannelCreator* m_ccreate = new ChannelCreator();
 
     //recursion function
     void feedInputs(NETNode* node_ptr);
@@ -234,15 +226,16 @@ public:
 
     // initialization functions from python
     void initFromPython(double dt, double integ_mode, bool print_tree);
-    void addNodeFromPython(int node_index, int parent_index, 
+    void addNodeFromPython(int node_index, int parent_index,
                             int64_t* child_indices, int n_children,
                             int64_t* loc_indices, int n_locinds,
                             int64_t* newloc_indices, int n_newlocinds,
                             double* alphas, double* gammas, int n_exp);
-    void addLinTermFromPython(int loc_index, 
+    void addLinTermFromPython(int loc_index,
                             double* alphas, double* gammas, int n_exp);
+    void addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev);
     void addSynapseFromType(int loc_ind, int syn_type);
-    void addSynapseFromParams(int loc_ind, double e_r, 
+    void addSynapseFromParams(int loc_ind, double e_r,
                             double *params, int p_size);
     void reset();
 
@@ -265,7 +258,7 @@ public:
     double getSurfaceSingleSyn(int loc_index, int syn_index);
 
     // integration functions
-    void constructInputs(vector< double > v_m, 
+    void constructInputs(vector< double > v_m,
                             vector< vector< double > > g_syn); // untested
     void constructInput1Loc(int loc_ind, double v_m,
                             double *g_syn, int g_size);

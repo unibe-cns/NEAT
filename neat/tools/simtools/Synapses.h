@@ -14,7 +14,7 @@
 // conductance windows /////////////////////////////////////////////////////////
 class ConductanceWindow{
 protected:
-	double m_dt;
+	double m_dt = 0.0;
 	// conductance g
 	double m_g = 0.0;
 

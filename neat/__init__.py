@@ -18,6 +18,9 @@ from neat.trees.phystree import PhysNode
 from neat.trees.sovtree import SOVTree
 from neat.trees.sovtree import SOVNode
 
+from neat.trees.greenstree import GreensTree
+from neat.trees.greenstree import GreensNode
+
 from neat.trees.netree import NET
 from neat.trees.netree import NETNode
 from neat.trees.netree import Kernel

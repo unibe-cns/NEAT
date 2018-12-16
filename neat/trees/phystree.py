@@ -11,16 +11,21 @@ import numpy as np
 
 import warnings
 
-from neat.channels import ionchannels as ionc
-
 import morphtree
 from morphtree import MorphNode, MorphTree
+from neat.channels import channelcollection
 
 
 class PhysNode(MorphNode):
-    def __init__(self, index, p3d):
+    def __init__(self, index, p3d=None,
+                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         super(PhysNode, self).__init__(index, p3d)
         self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
+        # biophysical parameters
+        self.c_m = c_m # uF/cm^2
+        self.r_a = r_a # MOhm*cm
+        self.g_shunt = g_shunt
+        self.e_eq = e_eq
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
         '''
@@ -28,60 +33,86 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
-            c_m: float
-                the membrance capacitance (uF/cm^2)
-            r_a: float
-                the axial current (MOhm*cm)
-            g_shunt: float
-                A point-like shunt, located at x=1 on the node. Defaults to 0.
+        c_m: float
+            the membrance capacitance (uF/cm^2)
+        r_a: float
+            the axial current (MOhm*cm)
+        g_shunt: float
+            A point-like shunt, located at x=1 on the node. Defaults to 0.
         '''
         self.c_m = c_m # uF/cm^2
-        self.r_a = r_a # MOhm*cm 
+        self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt
 
-    def addCurrent(self, current_type, g_max, e_rev):
+    def addCurrent(self, channel_name, g_max, e_rev=None, channel_storage=None):
         '''
-        Add an ion channel current at this node. ('L' as `current_type`
+        Add an ion channel current at this node. ('L' as `channel_name`
         signifies the leak current)
 
         Parameters
         ----------
-            current_type: string
-                the name of the current
-            g_max: float
-                the conductance of the current (uS/cm^2)
-            e_rev: float
-                the reversal potential of the current (mV)
+        channel_name: string
+            the name of the current
+        g_max: float
+            the conductance of the current (uS/cm^2)
+        e_rev: float
+            the reversal potential of the current (mV)
         '''
-        self.currents[current_type] = (g_max, e_rev)
+        if e_rev is None:
+            e_rev = channelcollection.E_REV_DICT[channel_name]
+        self.currents[channel_name] = (g_max, e_rev)
+        if channel_name is not 'L' and \
+           channel_storage is not None and \
+           channel_name not in channel_storage:
+            channel_storage[channel_name] = \
+                eval('channelcollection.' + channel_name + '()')
 
-    def _setEEq(self, e_eq):
+    def getCurrent(self, channel_name, channel_storage=None):
+        '''
+        Returns an ``::class::neat.channels.ionchannels.IonChannel`` object. If
+        `channel_storage` is given,
+
+        Parameters
+        ----------
+        channel_name: string
+            the name of the ion channel
+        channel_storage: dict of ionchannels (optional)
+            keys are the names of the ion channels, and values the channel
+            instances
+        '''
+        try:
+            return channel_storage[channel_name]
+        except (KeyError, TypeError):
+            return eval('channelcollection.' + channel_name + '()')
+
+    def setEEq(self, e_eq):
         '''
         Set the equilibrium potential at the node.
 
         Parameters
         ----------
-            e_eq: float
-                the equilibrium potential (mV)
+        e_eq: float
+            the equilibrium potential (mV)
         '''
         self.e_eq = e_eq
 
-    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):   
+    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., channel_storage=None):
         gsum = 0.
         i_eq = 0.
         for channel_name in set(self.currents.keys()) - set('L'):
+            g, e = self.currents[channel_name]
             # create the ionchannel object
-            channel = eval('ionc.' + channel_name + '( \
-                                    g=gs[\'' + channel_name + '\'], \
-                                    e=es[\'' + channel_name + '\'], \
-                                    V0=params[0])')
-            i_chan = - channel.g0 * (e_eq_target - channel.e)
-            gsum += channel.g0
+            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+            # compute channel conductance and current
+            p_open = channel.computePOpen(e_eq_target)
+            g_chan = g * p_open
+            i_chan = g_chan * (e - e_eq_target)
+            gsum += g_chan
             i_eq += i_chan
         if self.c_m / (tau_m_target*1e-3) < gsum:
-            warnings.warn('Membrane time scale is chosen largen than \
-                           possible, decreasing membrane time scale')
-            tau_m_target = cm / (gsum+300.) 
+            warnings.warn('Membrane time scale is chosen larger than ' + \
+                          'possible, adding small leak conductance')
+            tau_m_target = self.c_m / (gsum + 20.)
         else:
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
@@ -89,22 +120,63 @@ class PhysNode(MorphNode):
         self.currents['L'] = (g_l, e_l)
         self.e_eq = e_eq_target
 
-    def getGTot(self):
-        if self.currents.keys() == ['L']:
-            return self.currents['L'][0]
-        else:
-            raise Exception('Not implemented yet')
+    def getGTot(self, v=None, channel_storage=None):
+        '''
+        Get the total conductance of the membrane at a steady state given voltage,
+        if nothing is given, the equilibrium potential is used to compute membrane
+        conductance.
+
+        Parameters
+        ----------
+            v: float (optional, defaults to `self.e_eq`)
+                the potential (in mV) at which to compute the membrane conductance
+
+        Returns
+        -------
+            float
+                the total conductance of the membrane (uS / cm^2)
+        '''
+        v = self.e_eq if v is None else v
+        g_tot = self.currents['L'][0]
+        for channel_name in set(self.currents.keys()) - set('L'):
+            g, e = self.currents[channel_name]
+            # create the ionchannel object
+            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+            g_tot += g * channel.computePOpen(v)
+            del channel
+
+        return g_tot
+
+    def setGTot(self, illegal):
+        raise AttributeError("`g_tot` is a read-only attribute, set the leak " + \
+                             "conductance by calling ``func:addCurrent`` with " + \
+                             " \'L\' as `channel_name`")
+
+    g_tot = property(getGTot, setGTot)
+
+
+    def __str__(self, with_parent=False, with_children=False):
+        node_string = super(PhysNode, self).__str__()
+        if self.parent_node is not None:
+            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
+        node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
+                       ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
+                            for cname, cpar in self.currents.iteritems()]) + \
+                       ', c_m = ' + str(self.c_m) + ' uF/cm^2)'
+        return node_string
 
 
 class PhysTree(MorphTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super(PhysTree, self).__init__(file_n=file_n, types=types)
-        # set basic physiology parameters (c_m = 1.0 uF/cm^2 and 
+        # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
         # r_a = 0.0001 MOhm*cm)
         for node in self:
             node.setPhysiology(1.0, 100./1e6)
+        self.channel_storage = {}
 
-    def createCorrespondingNode(self, node_index, p3d):
+    def createCorrespondingNode(self, node_index, p3d=None,
+                                      c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         '''
         Creates a node with the given index corresponding to the tree class.
 
@@ -113,46 +185,42 @@ class PhysTree(MorphTree):
             node_index: int
                 index of the new node
         '''
-        return PhysNode(node_index, p3d)
+        return PhysNode(node_index, p3d=p3d)
 
-    def addCurrent(self, current_type, g_max_distr, e_rev, node_arg=None,
-                        fill_tree=0, eval_type='pas'):
+    def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
         '''
         Adds a channel to the morphology.
 
         Parameters
         ----------
-            current_type: string
+            channel_name: string
                 The name of the channel type
             g_max_distr: float, dict or :func:`float -> float`
                 If float, the maximal conductance is set to this value for all
                 the nodes specified in `node_arg`. If it is a function, the input
-                must specify the distance from the soma (micron) and the output 
+                must specify the distance from the soma (micron) and the output
                 the ion channel density (uS/cm^2) at that distance. If it is a
-                dict, keys are the node indices and values the ion channel 
+                dict, keys are the node indices and values the ion channel
                 densities (uS/cm^2).
             node_arg:
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None
-            eval_type: {'pas', 'lin'}
-                Specifies the way the ion channel is evaluated in calculations. 
-                'pas' means that only the passive conductance at the local 
-                equilibrium potential is incorporated, whereas 'lin' means that 
-                the full semi-active channel is evaluated.
         '''
+        # add the ion channel to the nodes
         for node in self._convertNodeArgToNodes(node_arg):
             # get the ion channel conductance
             if type(g_max_distr) == float:
                 g_max = g_max_distr
             elif type(g_max_distr) == dict:
                 g_max = g_max_distr[node.index]
-            elif hasattr('__call__'):
+            elif hasattr(g_max_distr, '__call__'):
                 d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
                 g_max = g_max_distr(d2s)
             else:
                 raise TypeError('`g_max_distr` argument should be a float, dict \
                                 or a callable')
-            node.addCurrent(current_type, g_max, e_rev)
+            node.addCurrent(channel_name, g_max, e_rev,
+                            channel_storage=self.channel_storage)
 
     def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):
         '''
@@ -168,7 +236,7 @@ class PhysTree(MorphTree):
         '''
         assert tau_m_target > 0.
         for node in self:
-            node.fitLeakCurrent(e_eq_target=e_eq_target, 
+            node.fitLeakCurrent(e_eq_target=e_eq_target,
                                   tau_m_target=tau_m_target)
 
     def computeEquilibirumPotential(self):
@@ -184,7 +252,7 @@ class PhysTree(MorphTree):
                 np.abs(node.R - pnode.R) < eps and \
                 set(node.currents.keys()) == set(pnode.currents.keys()) and
                 not sum([sum([np.abs(curr[0] - pnode.currents[key][0]) > eps,
-                              np.abs(curr[1] - pnode.currents[key][1]) > eps]) 
+                              np.abs(curr[1] - pnode.currents[key][1]) > eps])
                          for key, curr in node.currents.iteritems()])):
                 comp_nodes.append(pnode)
         super(PhysTree, self).setCompTree(compnodes=comp_nodes)
@@ -238,7 +306,7 @@ class PhysTree(MorphTree):
     #         # set the last element
     #         j = i+1
     #         matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_) 
+    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_)
     #         matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
     #         locs.append({'node': node._index, 'x': 1.})
     #     numel_l[0] = numel+len(xvals)-1

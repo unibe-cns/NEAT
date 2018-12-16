@@ -295,7 +295,7 @@ class TestCNET():
         net_py.addNodeWithParent(node_5, node_3)
         net_py.addNodeWithParent(node_6, node_0)
         # linear terms
-        alphas = -1. / np.array([1.])
+        alphas = 1. / np.array([1.])
         gammas = np.array([1.])
         self.lin_terms = {1: Kernel((alphas, gammas)),
                           2: Kernel((alphas, gammas)),
@@ -473,7 +473,6 @@ class TestCNET():
         v_loc_newton = self.cnet.solveNewton([res['g_syn'][0][0][-1]])
         # compare
         assert np.allclose(v_loc_sim, v_loc_newton, atol=0.5)
-
         # do again with other synapses
         self.cnet.removeSynapse(0)
         self.cnet.addSynapse(2, "GABA", g_max=dt*0.1)
@@ -642,8 +641,8 @@ class TestCNET():
 
 if __name__ == '__main__':
     tst = TestCNET()
-    tst.testIOFunctions()
-    tst.testSolver()
-    tst.testIntegration()
+    # tst.testIOFunctions()
+    # tst.testSolver()
+    # tst.testIntegration()
     tst.testInversion()
 
