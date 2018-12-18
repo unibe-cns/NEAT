@@ -24,3 +24,6 @@ from neat.trees.greenstree import GreensNode
 from neat.trees.netree import NET
 from neat.trees.netree import NETNode
 from neat.trees.netree import Kernel
+
+from neat.trees.compartmenttree import CompartmentTree
+from neat.trees.compartmenttree import CompartmentNode

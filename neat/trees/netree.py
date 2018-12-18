@@ -40,8 +40,6 @@ class Kernel(object):
             self.c = np.array([self.c])
         elif not isinstance(self.c, np.ndarray):
             self.c = np.array(self.c)
-        # compute steady state impedance
-        self.k_bar = np.sum(self.c / self.a).real
 
     def __getitem__(self, ind):
         if ind == 0: return self.a
@@ -75,6 +73,23 @@ class Kernel(object):
             a = np.concatenate((self.a, kernel.a))
             c = np.concatenate((self.c, -kernel.c))
         return Kernel((a, c))
+
+    def getKBar(self):
+        return np.sum(self.c / self.a).real
+
+    def setKBar(self, kk):
+        raise AttributeError('`k_bar` is a read-only attribute, adjust attribute `c` ' + \
+                             'by multiplying with a factor to change `k_bar`')
+    k_bar = property(getKBar, setKBar)
+
+    # def __mul__(self, mm):
+    #     if isinstance(mm, float) or isinstance(mm, int):
+    #         self.c *= mm
+    #         self.k_bar = np.sum(self.c / self.a).real
+    #     else:
+    #         raise ValueError('Multiplication not implemented for this class, ' + \
+    #                          'input should be `int` or `float`')
+
 
     def __str__(self):
         return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
