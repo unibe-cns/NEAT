@@ -11,6 +11,7 @@ def sp_exp(x):
 E_REV_DICT = {
                 'TestChannel': -23.,
                 'h': -43.,
+                # Hay et al., 2011 channels
                 'h_HAY': -45.,
                 'Na_Ta': 50.,
                 'Na_p': 50.,
@@ -21,6 +22,20 @@ E_REV_DICT = {
                 'Ca_LVA': 50.,
                 'Ca_HVA': 50.,
                 'L': -75.,
+                # Miyasho et al., 2001 channels
+                'CaE': 50.,
+                'CaP': 50.,
+                'CaP2': 50.,
+                'CaT': 50.,
+                'NaP': 50.,
+                'NaT': 50.,
+                'K23': -85.,
+                'KC3': -85.,
+                'KA': -85.,
+                'KD': -85.,
+                'KM': -85.,
+                'Kh': -85.,
+                'Khh': -85.,
              }
 
 
@@ -298,4 +313,307 @@ class Ca_HVA(IonChannel):
         self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
         # base class constructor
         super(Ca_HVA, self).__init__()
+
+
+class CaE(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'ca'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m', 'h']])
+        self.powers = np.array([[1,1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 2.6/(1+sp_exp((self.sp_v+7)/(-8)))
+        spbetam =  0.18/(1+sp_exp((self.sp_v+26)/4))
+        spalphah = 0.0025/(1+sp_exp((self.sp_v+32)/8))
+        spbetah = 0.19/(1+sp_exp((self.sp_v+42)/(-10)))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(CaE, self).__init__()
+
+
+class CaP(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'ca'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m', 'h']])
+        self.powers = np.array([[1,1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 8.5 / (1. + sp_exp(-(self.sp_v - 8.) / 12.5))  #1/ms
+        spbetam = 35. / (1. + sp_exp((self.sp_v + 74.) / 14.5))  #1/ms
+        spalphah = 0.0015 / (1. + sp_exp((self.sp_v + 29.) / 8.))  #1/ms
+        spbetah = 0.0055 / (1. + sp_exp(-(self.sp_v + 23.) / 8.))  #1/ms
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(CaP, self).__init__()
+
+
+class CaP2(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'ca'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 8.5/(1+sp_exp((self.sp_v-8)/(-12.5)))
+        spbetam =  35/(1+sp_exp((self.sp_v+74)/14.5))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(CaP2, self).__init__()
+
+
+class CaT(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'ca'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m', 'h']])
+        self.powers = np.array([[1,1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 2.6/(1+sp_exp((self.sp_v+21)/(-8)))
+        spbetam =  0.18/(1+sp_exp((self.sp_v+40)/4))
+        spalphah = 0.0025/(1+sp_exp((self.sp_v+40)/8))
+        spbetah = 0.19/(1+sp_exp((self.sp_v+50)/(-10)))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(CaT, self).__init__()
+
+
+class NaF(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'na'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m', 'h']])
+        self.powers = np.array([[3,1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 35/sp_exp((self.sp_v+5)/(-10))
+        spbetam =  7/sp_exp((self.sp_v+65)/20)
+        spalphah = 0.225/(1+sp_exp((self.sp_v+80)/10))
+        spbetah = 7.5/sp_exp((self.sp_v-3)/(-18))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(NaF, self).__init__()
+
+
+class NaP(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'na'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m']])
+        self.powers = np.array([[3]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 200./(1+sp_exp((self.sp_v-18)/(-16)))
+        spbetam = 25/(1+sp_exp((self.sp_v+58)/8))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(NaP, self).__init__()
+
+
+class K23(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'na'
+        self.concentrations = ['ca']
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        self.sp_c = [sp.symbols[conc] for conc in self.concentrations]
+        # state variables
+        self.varnames = np.array([['m', 'z']])
+        self.powers = np.array([[1,2]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        zinf = 1. / (1. + 20. / (self.sp_c[0]*1000))
+        ztau = 10.
+        maux = 0.075 / sp_exp((self.sp_v + 5.) / 10.)
+        minf = 25. / (25. + maux)
+        mtau = 1. / (25. + maux)
+        self.varinf = np.array([[minf, zinf]])
+        self.tauinf = np.array([[mtau, ztau]]) # ms
+        # base class constructor
+        super(K23, self).__init__()
+
+
+class KC3(IonChannel):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'na'
+        self.concentrations = ['ca']
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        self.sp_c = [sp.symbols[conc] for conc in self.concentrations]
+        # state variables
+        self.varnames = np.array([['m', 'z']])
+        self.powers = np.array([[1,2]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        zinf = 1. / (1. + 400. / (self.sp_c[0]*1000))
+        ztau = sp.Float(10.)
+        maux = 0.11 / sp_exp((self.sp_v - 35.) / 14.9)
+        minf = 7.5 / (7.5 + maux)
+        mtau = 1. / (7.5 + maux)
+        self.varinf = np.array([[minf, zinf]])
+        self.tauinf = np.array([[mtau, ztau]]) # ms
+        # base class constructor
+        super(KC3, self).__init__()
+
+
+class KA(IonChannel):
+    def __init__(self):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m', 'h']])
+        self.powers = np.array([[4, 1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 1.4/(1+sp_exp((self.sp_v+27)/(-12)))
+        spbetam =  0.49/(1+sp_exp((self.sp_v+30)/4))
+        spalphah = 0.0175/(1+sp_exp((self.sp_v+50)/8))
+        spbetah = 1.3/(1+sp_exp((self.sp_v+13)/(-10)))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(KA, self).__init__()
+
+
+class KD(IonChannel):
+    def __init__(self):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m', 'h']])
+        self.powers = np.array([[1, 1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalpham = 8.5/(1+sp_exp((self.sp_v+17)/(-12.5)))
+        spbetam = 35/(1+sp_exp((self.sp_v+99)/14.5))
+        spalphah = 0.0015/(1+sp_exp((self.sp_v+89)/8))
+        spbetah = 0.0055/(1+sp_exp((self.sp_v+83)/(-8)))
+        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        # base class constructor
+        super(KD, self).__init__()
+
+
+class KM(IonChannel):
+    def __init__(self):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        self.varinf = np.array([[1.0 / (1+sp_exp(-(self.sp_v+35)/10))]])
+        self.tauinf = np.array([[1. / (3.3*(sp_exp((self.sp_v+35)/40)+sp_exp(-(self.sp_v+35)/20))/200)]]) # ms
+        # base class constructor
+        super(KM, self).__init__()
+
+
+class Kh(IonChannel):
+    def __init__(self):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['m'], ['n']])
+        self.powers = np.array([[1], [1]], dtype=int)
+        self.factors = np.array([[.8], [.2]])
+        # activation functions
+        auxinf = 1/(1+sp_exp((self.sp_v+78)/7))
+        # asomptotic state variable functions
+        self.varinf = np.array([[auxinf],
+                                [auxinf]])
+        # state variable relaxation time scales
+        self.tauinf = np.array([[sp.Float(38.)],
+                                [sp.Float(319.)]])
+        # base class constructor
+        super(Kh, self).__init__()
+
+
+class Khh(IonChannel):
+    def __init__(self):
+        '''
+        Purkinje Cell (Miyasho et al., 2001)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['n']])
+        self.powers = np.array([[4]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalphan = .01 * -(self.sp_v + 55.) / (sp_exp(-(self.sp_v + 55.) / 10.) - 1.)
+        spbetan = .125 * sp_exp(-(self.sp_v + 65.) / 80.)
+        self.varinf = np.array([[spalphan / (spalphan + spbetan)]])
+        self.tauinf = np.array([[1. / (spalphan + spbetan)]]) # ms
+        # base class constructor
+        super(KD, self).__init__()
+
+
+
+
 

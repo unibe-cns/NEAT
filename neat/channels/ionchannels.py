@@ -100,6 +100,7 @@ class IonChannel(object):
             self.ion = ''
         if not hasattr(self, 'concentrations'):
             self.concentrations = []
+        self.sp_c = [sp.symbols[conc] for conc in self.concentrations]
         # these attributes should be defined
         if not hasattr(self, 'varnames'):
             raise AttributeError('\'varnames\' is not defined')

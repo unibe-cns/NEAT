@@ -12,7 +12,7 @@ NEAT implements:
 * Green's function calculation with linearized ion channels [#f6]_.
 * The neural evaluation tree framework [#f7]_.
 * Various tools to plot, analyze and interact with neuronal morphologies.
-* A c++ simulator that simulates the NET framework.
+* A c++ simulator that simulates the NET framework [#f7]_.
 
 Installation
 ------------
