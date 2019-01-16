@@ -5,6 +5,16 @@ import scipy.optimize as so
 import os
 import copy
 
+CONC_DICT = {'na': 10., # mM
+             'k': 54.4, # mM
+             'ca': 1e-4,
+            }
+
+E_ION_DICT = {'na': 50.,
+             'k': -85.,
+             'ca': 50.,
+            }
+
 def _insert_function_prefixes(string, prefix='np',
                               functions=['exp', 'sin', 'cos', 'tan', 'pi']):
     '''
@@ -100,7 +110,7 @@ class IonChannel(object):
             self.ion = ''
         if not hasattr(self, 'concentrations'):
             self.concentrations = []
-        self.sp_c = [sp.symbols[conc] for conc in self.concentrations]
+        self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
         # these attributes should be defined
         if not hasattr(self, 'varnames'):
             raise AttributeError('\'varnames\' is not defined')
@@ -142,15 +152,22 @@ class IonChannel(object):
         # print sol
         self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
 
+    def _substituteConc(self, expr):
+        for sp_c, ion in zip(self.sp_c, self.concentrations):
+            expr = expr.subs(sp_c, CONC_DICT[ion])
+        return expr
+
     def lambdifyVarInf(self):
         f_varinf = np.zeros(self.varnames.shape, dtype=object)
         for ind, varinf in np.ndenumerate(self.varinf):
+            varinf = self._substituteConc(varinf)
             f_varinf[ind] = sp.lambdify(self.sp_v, varinf)
         return f_varinf
 
     def lambdifyTauInf(self):
         f_tauinf = np.zeros(self.varnames.shape, dtype=object)
         for ind, tauinf in np.ndenumerate(self.tauinf):
+            tauinf = self._substituteConc(tauinf)
             f_tauinf[ind] = sp.lambdify(self.sp_v, tauinf)
         return f_tauinf
 
@@ -173,10 +190,11 @@ class IonChannel(object):
         df_dx_aux = np.zeros(self.statevars.shape, dtype=object)
         # differentiate
         for ind, var in np.ndenumerate(self.statevars):
+            f_sv = self._substituteConc(self.fstatevar[ind])
             df_dv_aux[ind] = sp.lambdify(args,
-                                     sp.diff(self.fstatevar[ind], self.sp_v, 1))
+                                     sp.diff(f_sv, self.sp_v, 1))
             df_dx_aux[ind] = sp.lambdify(args,
-                                     sp.diff(self.fstatevar[ind], var, 1))
+                                     sp.diff(f_sv, var, 1))
         # define convenient functions
         def dp_dx(*args):
             dp_dx_list = [[] for _ in range(self.statevars.shape[0])]

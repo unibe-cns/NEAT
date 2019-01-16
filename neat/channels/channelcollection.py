@@ -7,6 +7,9 @@ from ionchannels import IonChannel
 def sp_exp(x):
     return sp.exp(x, evaluate=False)
 
+def sp_pow(x, y):
+    return sp.Pow(x, y, evaluate=False)
+
 # dictionary with suggested reversal potential for each channel
 E_REV_DICT = {
                 'TestChannel': -23.,
@@ -19,6 +22,7 @@ E_REV_DICT = {
                 'Kpst': -85.,
                 'Ktst': -85.,
                 'm': -85.,
+                'SK': -85.,
                 'Ca_LVA': 50.,
                 'Ca_HVA': 50.,
                 'L': -75.,
@@ -28,7 +32,7 @@ E_REV_DICT = {
                 'CaP2': 50.,
                 'CaT': 50.,
                 'NaP': 50.,
-                'NaT': 50.,
+                'NaF': 50.,
                 'K23': -85.,
                 'KC3': -85.,
                 'KA': -85.,
@@ -37,6 +41,31 @@ E_REV_DICT = {
                 'Kh': -85.,
                 'Khh': -85.,
              }
+
+
+class _func(object):
+    def __init__(self, eval_func_aux, eval_func_vtrap, e_trap):
+        self.eval_func_aux = eval_func_aux
+        self.eval_func_vtrap = eval_func_vtrap
+        self.e_trap = e_trap
+
+    def __call__(self, *args):
+        vv = args[0]
+        if isinstance(vv, float):
+            if np.abs(vv - self.e_trap) < 0.001:
+                return self.eval_func_vtrap(*args)
+            else:
+                return self.eval_func_aux(*args)
+        else:
+            fv_return = np.zeros_like(vv)
+            bool_vtrap = np.abs(vv - self.e_trap) < 0.0001
+            inds_vtrap = np.where(bool_vtrap)
+            args_ = [a[inds_vtrap] for a in args]
+            fv_return[inds_vtrap] = self.eval_func_vtrap(*args_)
+            inds = np.where(np.logical_not(bool_vtrap))
+            args_ = [a[inds] for a in args]
+            fv_return[inds] = self.eval_func_aux(*args_)
+            return fv_return
 
 
 class TestChannel(IonChannel):
@@ -67,6 +96,8 @@ class h(IonChannel):
         '''
         Hcn channel from (Bal and Oertel, 2000)
         '''
+        self.ion = ''
+        self.concentrations = []
         self.ratio = ratio
         self.tauf = 40. # ms
         self.taus = 300. # ms
@@ -168,6 +199,17 @@ class Na_p(IonChannel):
         # base class constructor
         super(Na_p, self).__init__()
 
+# mInf = 1.0/(1+exp((v- -52.6)/-4.6))
+# mAlpha = (0.182 * (v- -38))/(1-(exp(-(v- -38)/6)))
+#         mBeta  = (0.124 * (-v -38))/(1-(exp(-(-v -38)/6)))
+#         mTau = 6*(1/(mAlpha + mBeta))/qt
+
+#         hInf = 1.0/(1+exp((v- -48.8)/10))
+#     hAlpha = -2.88e-6 * (v + 17) / (1 - exp((v + 17)/4.63))
+#     hBeta = 6.94e-6 * (v + 64.4) / (1 - exp(-(v + 64.4)/2.63))
+#         hTau = (1/(hAlpha + hBeta))/qt
+
+
 
 class Kv3_1(IonChannel):
     def __init__(self):
@@ -265,6 +307,31 @@ class m(IonChannel):
         super(m, self).__init__()
 
 
+class SK(IonChannel):
+    def __init__(self):
+        '''
+        SK-type calcium-activated potassium current (Kohler et al., 1996)
+
+        used in (Hay et al., 2011)
+        '''
+        self.ion = 'k'
+        self.concentrations = ['ca']
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
+        # state variables
+        self.varnames = np.array([['z']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        zinf = 1. / (1. + sp_pow(0.00043 / self.sp_c[0], 4.8))
+        ztau = sp.Float(1.)
+        self.varinf = np.array([[zinf]])
+        self.tauinf = np.array([[ztau]]) # ms
+        # base class constructor
+        super(SK, self).__init__()
+
+
 class Ca_LVA(IonChannel):
     def __init__(self):
         '''
@@ -316,6 +383,7 @@ class Ca_HVA(IonChannel):
 
 
 class CaE(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
@@ -339,6 +407,7 @@ class CaE(IonChannel):
 
 
 class CaP(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
@@ -362,6 +431,7 @@ class CaP(IonChannel):
 
 
 class CaP2(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
@@ -376,13 +446,14 @@ class CaP2(IonChannel):
         # activation functions
         spalpham = 8.5/(1+sp_exp((self.sp_v-8)/(-12.5)))
         spbetam =  35/(1+sp_exp((self.sp_v+74)/14.5))
-        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
-        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        self.varinf = np.array([[spalpham / (spalpham + spbetam)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam)]]) # ms
         # base class constructor
         super(CaP2, self).__init__()
 
 
 class CaT(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
@@ -406,6 +477,7 @@ class CaT(IonChannel):
 
 
 class NaF(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
@@ -429,6 +501,7 @@ class NaF(IonChannel):
 
 
 class NaP(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
@@ -443,28 +516,29 @@ class NaP(IonChannel):
         # activation functions
         spalpham = 200./(1+sp_exp((self.sp_v-18)/(-16)))
         spbetam = 25/(1+sp_exp((self.sp_v+58)/8))
-        self.varinf = np.array([[spalpham / (spalpham + spbetam), spalphah / (spalphah + spbetah)]])
-        self.tauinf = np.array([[1. / (spalpham + spbetam), 1. / (spalphah + spbetah)]]) # ms
+        self.varinf = np.array([[spalpham / (spalpham + spbetam)]])
+        self.tauinf = np.array([[1. / (spalpham + spbetam)]]) # ms
         # base class constructor
         super(NaP, self).__init__()
 
 
 class K23(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
-        self.ion = 'na'
+        self.ion = 'k'
         self.concentrations = ['ca']
         # always include this line, to define a sympy voltage symbol
         self.sp_v = sp.symbols('v')
-        self.sp_c = [sp.symbols[conc] for conc in self.concentrations]
+        self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
         # state variables
         self.varnames = np.array([['m', 'z']])
         self.powers = np.array([[1,2]], dtype=int)
         self.factors = np.array([1.])
         # activation functions
         zinf = 1. / (1. + 20. / (self.sp_c[0]*1000))
-        ztau = 10.
+        ztau = sp.Float(10.)
         maux = 0.075 / sp_exp((self.sp_v + 5.) / 10.)
         minf = 25. / (25. + maux)
         mtau = 1. / (25. + maux)
@@ -475,14 +549,15 @@ class K23(IonChannel):
 
 
 class KC3(IonChannel):
+    def __init__(self):
         '''
         Purkinje Cell (Miyasho et al., 2001)
         '''
-        self.ion = 'na'
+        self.ion = 'k'
         self.concentrations = ['ca']
         # always include this line, to define a sympy voltage symbol
         self.sp_v = sp.symbols('v')
-        self.sp_c = [sp.symbols[conc] for conc in self.concentrations]
+        self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
         # state variables
         self.varnames = np.array([['m', 'z']])
         self.powers = np.array([[1,2]], dtype=int)
@@ -579,7 +654,7 @@ class Kh(IonChannel):
         # state variables
         self.varnames = np.array([['m'], ['n']])
         self.powers = np.array([[1], [1]], dtype=int)
-        self.factors = np.array([[.8], [.2]])
+        self.factors = np.array([.8, .2])
         # activation functions
         auxinf = 1/(1+sp_exp((self.sp_v+78)/7))
         # asomptotic state variable functions
@@ -610,8 +685,135 @@ class Khh(IonChannel):
         spbetan = .125 * sp_exp(-(self.sp_v + 65.) / 80.)
         self.varinf = np.array([[spalphan / (spalphan + spbetan)]])
         self.tauinf = np.array([[1. / (spalphan + spbetan)]]) # ms
+        # vtrap activation functions
+        spalphan_vtrap = .01 / (0.1 - (self.sp_v + 55.) / 200.)
+        self.varinf_vtrap = np.array([[spalphan_vtrap / (spalphan_vtrap + spbetan)]])
+        self.tauinf_vtrap = np.array([[1. / (spalphan_vtrap + spbetan)]]) # ms
         # base class constructor
-        super(KD, self).__init__()
+        super(Khh, self).__init__()
+
+    def lambdifyVarInf(self):
+        f_varinf_vtrap = np.zeros(self.varnames.shape, dtype=object)
+        for ind, varinf in np.ndenumerate(self.varinf_vtrap):
+            varinf = self._substituteConc(varinf)
+            f_varinf_vtrap[ind] = sp.lambdify(self.sp_v, varinf)
+
+        f_varinf_aux = super(Khh, self).lambdifyVarInf()
+
+        def f_varinf(vv):
+            if isinstance(vv, float):
+                if np.abs(vv + 55.) < 0.001:
+                    return f_varinf_vtrap[0,0](vv)
+                else:
+                    return f_varinf_aux[0,0](vv)
+            else:
+                fv_return = np.zeros_like(vv)
+                bool_vtrap = np.abs(vv + 55) < 0.0001
+                inds_vtrap = np.where(bool_vtrap)
+                fv_return[inds_vtrap] = f_varinf_vtrap[0,0](vv[inds_vtrap])
+                inds = np.where(np.logical_not(bool_vtrap))
+                fv_return[inds] = f_varinf_aux[0,0](vv[inds])
+                return fv_return
+
+        return np.array([[f_varinf]])
+
+    def lambdifyTauInf(self):
+        f_tauinf_vtrap = np.zeros(self.varnames.shape, dtype=object)
+        for ind, tauinf in np.ndenumerate(self.tauinf_vtrap):
+            tauinf = self._substituteConc(tauinf)
+            f_tauinf_vtrap[ind] = sp.lambdify(self.sp_v, tauinf)
+
+        f_tauinf_aux = super(Khh, self).lambdifyTauInf()
+
+        def f_tauinf(vv):
+            if isinstance(vv, float):
+                if np.abs(vv + 55.) < 0.001:
+                    return f_tauinf_vtrap[0,0](vv)
+                else:
+                    return f_tauinf_aux[0,0](vv)
+            else:
+                fv_return = np.zeros_like(vv)
+                bool_vtrap = np.abs(vv + 55) < 0.0001
+                inds_vtrap = np.where(bool_vtrap)
+                fv_return[inds_vtrap] = f_tauinf_vtrap[0,0](vv[inds_vtrap])
+                inds = np.where(np.logical_not(bool_vtrap))
+                fv_return[inds] = f_tauinf_aux[0,0](vv[inds])
+                return fv_return
+
+        return np.array([[f_tauinf]])
+
+    def lambdifyDerivatives(self):
+        fstatevar_vtrap = (self.varinf_vtrap - self.statevars) / self.tauinf_vtrap
+        # arguments for lambda function
+        args = [self.sp_v] + [statevar for ind, statevar in np.ndenumerate(self.statevars)]
+        # compute open probability derivatives to state vars
+        dp_dx_aux = np.zeros(self.statevars.shape, dtype=object)
+        for ind, var in np.ndenumerate(self.statevars):
+            dp_dx_aux[ind] = sp.lambdify(args,
+                                     sp.diff(self.p_open, var, 1))
+        # compute state variable derivatives
+        df_dv_aux = np.zeros(self.statevars.shape, dtype=object)
+        df_dx_aux = np.zeros(self.statevars.shape, dtype=object)
+        # differentiate
+        for ind, var in np.ndenumerate(self.statevars):
+            f_sv = self._substituteConc(fstatevar_vtrap[ind])
+            df_dv_aux[ind] = sp.lambdify(args,
+                                     sp.diff(f_sv, self.sp_v, 1))
+            df_dx_aux[ind] = sp.lambdify(args,
+                                     sp.diff(f_sv, var, 1))
+        # define convenient functions
+        def dp_dx_vtrap(*args):
+            dp_dx_list = [[] for _ in range(self.statevars.shape[0])]
+            for ind, dp_dx_ in np.ndenumerate(dp_dx_aux):
+                dp_dx_list[ind[0]].append(dp_dx_aux[ind](*args))
+            return np.array(dp_dx_list)
+        def df_dv_vtrap(*args):
+            df_dv_list = [[] for _ in range(self.statevars.shape[0])]
+            for ind, df_dv_ in np.ndenumerate(df_dv_aux):
+                df_dv_list[ind[0]].append(df_dv_aux[ind](*args))
+            return np.array(df_dv_list)
+        def df_dx_vtrap(*args):
+            df_dx_list = [[] for _ in range(self.statevars.shape[0])]
+            for ind, df_dx_ in np.ndenumerate(df_dx_aux):
+                df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
+            return np.array(df_dx_list)
+
+        dp_dx_aux_, df_dv_aux_, df_dx_aux_ = super(Khh, self).lambdifyDerivatives()
+
+        dp_dx = _func(dp_dx_aux_, dp_dx_vtrap, -55.)
+        df_dv = _func(df_dv_aux_, df_dv_vtrap, -55.)
+        df_dx = _func(df_dx_aux_, df_dx_vtrap, -55.)
+
+        return dp_dx, df_dv, df_dx
+
+    # def lambdifyTauInf(self):
+    #     f_tauinf = np.zeros(self.varnames.shape, dtype=object)
+    #     for ind, tauinf in np.ndenumerate(self.tauinf):
+    #         tauinf = self._substituteConc(tauinf)
+    #         f_tauinf[ind] = sp.lambdify(self.sp_v, tauinf)
+    #     return f_tauinf
+
+
+# class Khh(IonChannel):
+#     def __init__(self):
+#         '''
+#         Purkinje Cell (Miyasho et al., 2001)
+#         '''
+#         self.ion = 'k'
+#         self.concentrations = []
+#         # always include this line, to define a sympy voltage symbol
+#         self.sp_v = sp.symbols('v')
+#         # state variables
+#         self.varnames = np.array([['n']])
+#         self.powers = np.array([[4]], dtype=int)
+#         self.factors = np.array([1.])
+#         # activation functions
+#         spalphan = .01 * -(self.sp_v + 55.001) / (sp_exp(-(self.sp_v + 55.001) / 10.) - 1.)
+#         spbetan = .125 * sp_exp(-(self.sp_v + 65.) / 80.)
+#         self.varinf = np.array([[spalphan / (spalphan + spbetan)]])
+#         self.tauinf = np.array([[1. / (spalphan + spbetan)]]) # ms
+#         # base class constructor
+#         super(Khh, self).__init__()
 
 
 

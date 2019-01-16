@@ -107,16 +107,17 @@ class GreensNode(PhysNode):
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
-            # create the ionchannel object
-            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
-            # check if needs to be computed around expansion point
-            sv = self.expansion_points[channel_name]
-            # add channel contribution to membrane impedance
-            # g_m_aux -= g * (e - self.e_eq) * \
-            #            channel.computeLinear(self.e_eq, freqs)
-            # g_m_aux += g * channel.computePOpen(self.e_eq)
-            sv = self.expansion_points[channel_name]
-            g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
+            if g > 1e-10:
+                # create the ionchannel object
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                # check if needs to be computed around expansion point
+                sv = self.expansion_points[channel_name]
+                # add channel contribution to membrane impedance
+                # g_m_aux -= g * (e - self.e_eq) * \
+                #            channel.computeLinear(self.e_eq, freqs)
+                # g_m_aux += g * channel.computePOpen(self.e_eq)
+                sv = self.expansion_points[channel_name]
+                g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 

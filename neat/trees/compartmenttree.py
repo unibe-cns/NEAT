@@ -42,6 +42,7 @@ class CompartmentNode(SNode):
         # self.g_l = g_l # leak conductance (uS)
         self.e_eq = e_eq # equilibrium potential (mV)
         self.currents = {'L': [g_l, e_eq]} # ion channel currents and reversals
+        self.concmechs = {}
         self.expansion_points = {}
 
     def __str__(self, with_parent=False, with_children=False):
@@ -63,6 +64,19 @@ class CompartmentNode(SNode):
                 channel_storage[channel_name] = \
                                 eval('channelcollection.' + channel_name + '()')
             self.expansion_points[channel_name] = None
+
+    def addConcMech(self, ion, params={}):
+        '''
+        Add a concentration mechanism at this node.
+
+        Parameters
+        ----------
+        ion: string
+            the ion the mechanism is for
+        params: dict
+            parameters for the concentration mechanism (only used for NEURON model)
+        '''
+        self.concmechs[ion] = params
 
     def getCurrent(self, channel_name, channel_storage=None):
         '''
@@ -308,6 +322,19 @@ class CompartmentTree(STree):
         for ii, node in enumerate(self):
             node.addCurrent(channel_name, e_rev=e_rev,
                             channel_storage=self.channel_storage)
+
+    def addConcMech(self, ion, params={}):
+        '''
+        Add a concentration mechanism to the tree
+
+        Parameters
+        ----------
+        ion: string
+            the ion the mechanism is for
+        params: dict
+            parameters for the concentration mechanism (only used for NEURON model)
+        '''
+        for node in self: node.addConcMech(ion, params=params)
 
     def _permuteToTreeInds(self):
         return np.array([node.loc_ind for node in self])

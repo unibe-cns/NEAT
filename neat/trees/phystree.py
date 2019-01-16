@@ -21,6 +21,7 @@ class PhysNode(MorphNode):
                        c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         super(PhysNode, self).__init__(index, p3d)
         self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
+        self.concmechs = {}
         # biophysical parameters
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
@@ -66,6 +67,19 @@ class PhysNode(MorphNode):
            channel_name not in channel_storage:
             channel_storage[channel_name] = \
                 eval('channelcollection.' + channel_name + '()')
+
+    def addConcMech(self, ion, params={}):
+        '''
+        Add a concentration mechanism at this node.
+
+        Parameters
+        ----------
+        ion: string
+            the ion the mechanism is for
+        params: dict
+            parameters for the concentration mechanism (only used for NEURON model)
+        '''
+        self.concmechs[ion] = params
 
     def getCurrent(self, channel_name, channel_storage=None):
         '''
@@ -221,6 +235,19 @@ class PhysTree(MorphTree):
                                 or a callable')
             node.addCurrent(channel_name, g_max, e_rev,
                             channel_storage=self.channel_storage)
+
+    def addConcMech(self, ion, params={}):
+        '''
+        Add a concentration mechanism to the tree
+
+        Parameters
+        ----------
+        ion: string
+            the ion the mechanism is for
+        params: dict
+            parameters for the concentration mechanism (only used for NEURON model)
+        '''
+        for node in self: node.addConcMech(ion, params=params)
 
     def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):
         '''

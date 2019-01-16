@@ -239,15 +239,15 @@ class MorphNode(SNode):
     Attributes
     ----------
         xyz: numpy.array of floats
-            The xyz-coordinates associated with the node
+            The xyz-coordinates associated with the node (um)
         R: float
-            The radius of the node
+            The radius of the node (um)
         swc_type: int
             The type of node, according to the .swc file format convention:
             ``1`` is dendrites, ``2`` is axon, ``3`` is basal dendrite and ``4``
             is apical dendrite.
         L: float
-            The length of the node (in micron)
+            The length of the node (um)
     '''
     def __init__(self, index, p3d=None):
         super(MorphNode, self).__init__(index)
