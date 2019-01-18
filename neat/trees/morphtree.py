@@ -19,6 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import warnings
 import copy
+from collections import Counter
 
 from stree import SNode, STree
 from compartmenttree import CompartmentNode, CompartmentTree
@@ -1640,7 +1641,7 @@ class MorphTree(STree):
         return locs
 
     def distributeLocsRandom(self, num, dx=0.001, node_arg=None,
-                                add_soma=1, name='No'):
+                                add_soma=1, name='No', seed=None):
         '''
         Returns a list of input locations randomly distributed on the tree
 
@@ -1657,14 +1658,15 @@ class MorphTree(STree):
                 which means the locations are not stored
 
         output:
-            - [inlocs]: list of dictionnaries representing inlocs.
+            list of locs
         '''
+        np.random.seed(seed)
         # use the requested subset of nodes
         nodes = [node for node in self._convertNodeArgToNodes(node_arg)
                  if node.index != 1]
         # initialize the loclist with or without soma
         if add_soma:
-            locs = [{'node': 1, 'x': 0.}]
+            locs = [MorphLoc({'node': 1, 'x': 0.}, self)]
         else:
             locs = []
         # add the nodes
@@ -1718,6 +1720,51 @@ class MorphTree(STree):
         for node in self:
             if 'tag' in node.content:
                 del node.content['tag']
+
+    def _parseLocArg(self, loc_arg):
+        if isinstance(loc_arg, list):
+            locs = loc_arg
+        elif isinstance(loc_arg, str):
+            self._tryName(loc_arg)
+            locs = self.getLocs(loc_arg)
+        else:
+            raise IOError('invalid type for `loc_arg`, should be list or string')
+        return locs
+
+    def extendWithBifurcationLocs(self, loc_arg, name='No'):
+        '''
+        Gets the bifurcation locs within the provided locs
+
+        Parameters
+        ----------
+        loc_arg: list of :class:`MorphLoc` or string
+            the locations
+        name: string (optional)
+            The name under which the list of bifurcation locs will be stored.
+            Defaults to 'No' which means they are not stored.
+
+        Returns
+        -------
+        list of :class:`MorphLoc`
+            the bifurcation locs
+        '''
+        locs = self._parseLocArg(loc_arg)
+        # get the bifurcation locs
+        nodes = [self[loc['node']] for loc in locs]
+        bnodes = self.getBifurcationNodes(nodes)
+        blocs = [MorphLoc((bnode.index, 1.), self) for bnode in bnodes]
+        # retain unique locs
+        all_locs = locs + blocs
+        ii = 0
+        while ii < len(all_locs):
+            all_locs_aux = all_locs[ii+1:]
+            while all_locs[ii] in all_locs_aux:
+                all_locs_aux.remove(all_locs[ii])
+            all_locs = all_locs[:ii+1] + all_locs_aux
+            ii += 1
+        # store the locations
+        if name != 'No': self.storeLocs(all_locs, name=name)
+        return all_locs
 
     def makeXAxis(self, dx=10., node_arg=None, loc_arg=None):
         '''

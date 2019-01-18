@@ -7,8 +7,11 @@ File contains:
 Authors: B. Torben-Nielsen (legacy code), W. Wybo
 """
 
+import numpy as np
+
 import warnings
 import copy
+from collections import Counter
 
 class SNode(object):
     '''
@@ -716,6 +719,77 @@ class STree(object):
             if pnode != None:
                 node, cnode = self.upBifurcationNode(pnode, cnode=node)
         return node, cnode
+
+    # def getBifurcationNodes(self, nodes):
+    #     '''
+    #     Get the bifurcation nodes in bewteen the provided input nodes
+
+    #     Parameters
+    #     ----------
+    #     nodes: list of :class:`SNode`
+    #         the input nodes
+
+    #     Returns
+    #     -------
+    #     list of :class:`SNode`
+    #         the bifurcation nodes
+    #     '''
+    #     # find the 'leaf' within the list of nodes (i.e. most centripetal nodes)
+    #     pnodes = []
+    #     for node in nodes:
+    #         pnodes.extend([n for n in self.pathToRoot(node)])
+    #     pcount = Counter(pnodes)
+    #     nodes = [node for node in nodes if pcount[node] == 1]
+    #     # find the minimal set of bifurcations
+    #     bnodes = []
+    #     for node in nodes:
+    #         bnodes.extend([n for n in self.pathToRoot(node)[1:] if len(n.child_nodes) > 1])
+    #     bcount = Counter(bnodes)
+    #     return [self.root] + [bnode for bnode, count in bcount.iteritems() \
+    #                           if count > 1 and not self.isRoot(bnode)]
+
+    def getBifurcationNodes(self, nodes):
+        '''
+        Get the bifurcation nodes in bewteen the provided input nodes
+
+        Parameters
+        ----------
+        nodes: list of :class:`SNode`
+            the input nodes
+
+        Returns
+        -------
+        list of :class:`SNode`
+            the bifurcation nodes
+        '''
+        # tag all nodes
+        for node in self:
+            node['tag'] = 0
+        # find the 'leafs' within the list of nodes (i.e. most centripetal nodes)
+        pnodes = []
+        for node in nodes:
+            pnodes.extend([n for n in self.pathToRoot(node)])
+        pcount = Counter(pnodes)
+        nodes = [node for node in nodes if pcount[node] == 1]
+        # for each node, find nearest bifurcation towards root
+        pnodes = []
+        for node in nodes:
+            pnodes.extend([n for n in self.pathToRoot(node)])
+        for pathnode in pnodes:
+            pathnode['tag'] += 1
+        # find the bifurcation nodes
+        bifur_nodes = [self.root]
+        for node in self:
+            if len(node.child_nodes) > 1 and \
+               not np.any([cn['tag'] == 0 for cn in node.child_nodes]):
+                bifur_nodes.append(node)
+        # remove the tags
+        for node in self:
+            del node.content['tag']
+        # add root if necessary
+        if self.root not in bifur_nodes:
+            bifur_nodes = [self.root] + bifur_nodes
+        return bifur_nodes
 
     def __copy__(self, new_tree=None):
         '''

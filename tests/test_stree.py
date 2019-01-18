@@ -17,20 +17,55 @@ class TestSTree():
             0
 
         '''
-        if not hasattr(self, 'tree') or reinitialize:
-            print '>>> creating tree <<<'
-            # create the four nodes
-            node0 = SNode(0)
-            node1 = SNode(1)
-            node2 = SNode(2)
-            node3 = SNode(3)
-            self.nodelist = [node0, node1, node2, node3]
-            # create the tree and set its nodes
-            self.tree = STree()
-            self.tree.setRoot(node0)
-            self.tree.addNodeWithParent(node1, node0)
-            self.tree.addNodeWithParent(node2, node1)
-            self.tree.addNodeWithParent(node3, node1)
+        print '>>> creating tree <<<'
+        # create the four nodes
+        node0 = SNode(0)
+        node1 = SNode(1)
+        node2 = SNode(2)
+        node3 = SNode(3)
+        self.nodelist = [node0, node1, node2, node3]
+        # create the tree and set its nodes
+        self.tree = STree()
+        self.tree.setRoot(node0)
+        self.tree.addNodeWithParent(node1, node0)
+        self.tree.addNodeWithParent(node2, node1)
+        self.tree.addNodeWithParent(node3, node1)
+
+    def createTree2(self, reinitialize=0):
+        '''
+        Create a simple tree structure
+
+          4     5     6
+           \   /     /
+            \ /     /
+             2     3
+              \   /
+               \ /
+                1
+                |
+                |
+                0
+
+        '''
+        print '>>> creating tree <<<'
+        # create the nodes
+        node0 = SNode(0)
+        node1 = SNode(1)
+        node2 = SNode(2)
+        node3 = SNode(3)
+        node4 = SNode(4)
+        node5 = SNode(5)
+        node6 = SNode(6)
+        self.nodelist = [node0, node1, node2, node3, node4, node5, node6]
+        # create the tree and set its nodes
+        self.tree = STree()
+        self.tree.setRoot(node0)
+        self.tree.addNodeWithParent(node1, node0)
+        self.tree.addNodeWithParent(node2, node1)
+        self.tree.addNodeWithParent(node3, node1)
+        self.tree.addNodeWithParent(node4, node2)
+        self.tree.addNodeWithParent(node5, node2)
+        self.tree.addNodeWithParent(node6, node3)
 
     def testGetitem(self):
         self.createTree()
@@ -189,7 +224,27 @@ class TestSTree():
         nodes3 = self.tree.getNodesInSubtree(rn, subtree_root=rn)
         assert len(nodes3) == 1 and nodes3[0].index == 2
 
+    def testBifurcationNodes(self):
+        self.createTree()
+        nodes = [self.tree[3]]
+        bnodes = self.tree.getBifurcationNodes(nodes)
+        assert bnodes == [self.tree[0]]
+        nodes = [self.tree[2], self.tree[3]]
+        bnodes = self.tree.getBifurcationNodes(nodes)
+        assert bnodes == [self.tree[0], self.tree[1]]
+        # more complex tree
+        self.createTree2()
+        nodes = [self.tree[4], self.tree[5]]
+        bnodes = self.tree.getBifurcationNodes(nodes)
+        assert bnodes == [self.tree[0], self.tree[2]]
+        self.createTree2()
+        nodes = [self.tree[4], self.tree[5], self.tree[6]]
+        bnodes = self.tree.getBifurcationNodes(nodes)
+        assert bnodes == [self.tree[0], self.tree[1], self.tree[2]]
+
+
 
 if __name__ == '__main__':
     tst = TestSTree()
-    tst.testPaths()
+    # tst.testPaths()
+    tst.testBifurcationNodes()
