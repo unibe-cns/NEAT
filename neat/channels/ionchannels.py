@@ -214,6 +214,19 @@ class IonChannel(object):
 
         return dp_dx, df_dv, df_dx
 
+    def expansionPointAsString(self, v, statevars=None):
+        if statevars is None:
+            statevars = np.zeros(self.statevars.shape, dtype=float)
+            for ind, f_varinf in np.ndenumerate(self.f_varinf):
+                statevars[ind] = f_varinf(v)
+        rstring = 'v = %.2f'%(v) + ', sv --> '
+        for ind, sv in np.ndenumerate(statevars):
+            sv_name = self.varnames[ind]
+            rstring += sv_name + ' = %.6f, '%(sv)
+        p_open = self.computePOpen(v, statevars=statevars)
+        rstring += 'p_open = %.4f'%(p_open)
+        return rstring
+
     def computePOpen(self, v, statevars=None):
         if statevars is None:
             args = [v] + [f_varinf(v) for _, f_varinf in np.ndenumerate(self.f_varinf)]
@@ -267,6 +280,8 @@ class IonChannel(object):
     def computeLinSum(self, v, freqs, e_rev, statevars=None):
         return (e_rev - v) * self.computeLinear(v, freqs, statevars=statevars) - \
                self.computePOpen(v, statevars=statevars)
+    # def computeLinSum(self, v, freqs, e_rev, statevars=None):
+    #     return - self.computePOpen(v, statevars=statevars)
 
     def findMaxCurrent(self, freqs, e_rev):
         def f_min(xx):

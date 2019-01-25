@@ -163,9 +163,6 @@ class CompartmentNode(SNode):
             # check if needs to be computed around expansion point
             sv = self.expansion_points[channel_name]
             # add channel contribution to membrane impedance
-            # imp_aux = - (e - self.e_eq) * \
-            #             channel.computeLinear(self.e_eq, freqs)
-            # imp_aux += channel.computePOpen(self.e_eq)
             cond_terms[channel_name] = - channel.computeLinSum(self.e_eq, freqs, e,
                                                                statevars=sv)
 
@@ -196,19 +193,42 @@ class CompartmentNode(SNode):
     def getITot(self, v=None, channel_names=None, channel_storage=None):
         if channel_names is None: channel_names = self.currents.keys()
         v = self.e_eq if v is None else v
-        i_tot = self.currents['L'][0] * (v - self.currents['L'][1]) \
-                if 'L' in channel_names else 0.
+        i_tot = self.currents['L'][0] * (v - self.currents['L'][1]) if 'L' in channel_names else 0.
         for channel_name in channel_names:
             if channel_name != 'L':
                 g, e = self.currents[channel_name]
                 # create the ionchannel object
-                if channel_storage is not None:
-                    channel = channel_storage[channel_name]
-                else:
-                    channel = eval('channelcollection.' + channel_name + '()')
-                i_tot += g * channel.computePOpen(v) * (v - e)
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                # check if needs to be computed around expansion point
+                sv = self.expansion_points[channel_name]
+                i_tot += g * channel.computePOpen(v, statevars=sv) * (v - e)
 
         return i_tot
+
+    def getDrive(self, channel_name, v=None, channel_storage=None):
+        v = self.e_eq if v is None else v
+        _, e = self.currents[channel_name]
+        # create the ionchannel object
+        channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+        sv = self.expansion_points[channel_name]
+        return channel.computePOpen(v, statevars=sv) * (v - e)
+
+    # def getITot(self, v=None, channel_names=None, channel_storage=None):
+    #     if channel_names is None: channel_names = self.currents.keys()
+    #     v = self.e_eq if v is None else v
+    #     i_tot = self.currents['L'][0] * (v - self.currents['L'][1]) \
+    #             if 'L' in channel_names else 0.
+    #     for channel_name in channel_names:
+    #         if channel_name != 'L':
+    #             g, e = self.currents[channel_name]
+    #             # create the ionchannel object
+    #             if channel_storage is not None:
+    #                 channel = channel_storage[channel_name]
+    #             else:
+    #                 channel = eval('channelcollection.' + channel_name + '()')
+    #             i_tot += g * channel.computePOpen(v) * (v - e)
+
+    #     return i_tot
 
     def fitEL(self, channel_storage=None):
         i_eq = 0.
@@ -961,6 +981,63 @@ class CompartmentTree(STree):
     #             node.g_c = gc_vec[3*ii-2]
     #             node.currents['L'][0] = gc_vec[3*ii-1]
     #             node.ca  = gc_vec[3*ii]
+
+    def computeGChan(self, v_mat, i_mat,
+                     channel_names=None, other_channel_names=None):
+        '''
+        Parameters
+        ----------
+        v_mat: np.ndarray (n,k)
+        i_mat: np.ndarray (n,k)
+            n = nr. of locations, k = nr. of fit points
+        '''
+        # check size
+        assert v_mat.shape == i_mat.shape
+        assert v_mat.shape[0] == len(self)
+        n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(channel_names)
+        # create lin fit arrays
+        i_vec = np.zeros((n_loc, n_fp))
+        d_vec = np.zeros((n_loc, n_fp, n_chan))
+        # iterate over number of fit points
+        for jj, (i_, v_) in enumerate(zip(i_mat.T, v_mat.T)):
+            i_aux, d_aux = self._toVecGChan(i_, v_,
+                                            channel_names=channel_names,
+                                            other_channel_names=other_channel_names)
+            i_vec[:,jj] = i_aux
+            d_vec[:,jj,:] = d_aux
+
+        # iterate over locations:
+        g_chan = np.zeros((n_loc, n_fp))
+        for ll, (i_, d_) in enumerate(zip(i_vec, d_vec)):
+            node = self[ll]
+            # conductance fit at node ll
+            g_ = la.lstsq(d_, i_)[0]
+            # store the conductances
+            for ii, channel_name in enumerate(channel_names):
+                node.currents[channel_name][0] = g_[ii]
+
+    def _toVecGChan(self, i_, v_,
+                    channel_names=None, other_channel_names=None):
+        self.setEEq(v_)
+        i_vec = np.zeros(len(self))
+        d_vec = np.zeros((len(self), len(channel_names)))
+        for ii, node in enumerate(self):
+            i_vec[ii] += i_[node.loc_ind]
+            # add the channel terms
+            i_vec[ii] -= node.getITot(channel_names=other_channel_names,
+                                      channel_storage=self.channel_storage)
+            # add the coupling terms
+            pnode = node.parent_node
+            if pnode is not None:
+                i_vec[ii] += node.g_c * (v_[pnode.loc_ind] - v_[node.loc_ind])
+            for cnode in node.child_nodes:
+                i_vec[ii] += cnode.g_c * (v_[cnode.loc_ind] - v_[node.loc_ind])
+            # drive terms
+            for kk, channel_name in enumerate(channel_names):
+                d_vec[ii, kk] = node.getDrive(channel_name,
+                                              channel_storage=self.channel_storage)
+
+        return i_vec, d_vec
 
     def computeFakeGeometry(self, fake_c_m=1., fake_r_a=100.*1e-6,
                                   factor_r_a=1e-6, delta=1e-14,
