@@ -236,6 +236,27 @@ class PhysTree(MorphTree):
             node.addCurrent(channel_name, g_max, e_rev,
                             channel_storage=self.channel_storage)
 
+    def getChannelsInTree(self, store=False):
+        '''
+        Returns list of strings of all channel names in the tree
+
+        Parameters
+        ----------
+        store: bool, optional (default `False`)
+            if `True`, stores all channels in the tree in `self.channel_storage`
+            if they are not already there
+
+        Returns
+        -------
+        list of string
+            the channel names
+        '''
+        channel_names = list(set([c_name for node in self for c_name in node.currents if c_name != 'L']))
+        if store:
+            for c_name in channel_names:
+                self.channel_storage[c_name] = self.root.getCurrent(c_name)
+        return channel_names
+
     def addConcMech(self, ion, params={}):
         '''
         Add a concentration mechanism to the tree

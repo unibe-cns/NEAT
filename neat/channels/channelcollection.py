@@ -13,6 +13,7 @@ def sp_pow(x, y):
 # dictionary with suggested reversal potential for each channel
 E_REV_DICT = {
                 'TestChannel': -23.,
+                'TestChannel2': -23.,
                 'h': -43.,
                 # Hay et al., 2011 channels
                 'h_HAY': -45.,
@@ -89,6 +90,29 @@ class TestChannel(IonChannel):
                                 [2., 2., 3.]])
         # base class instructor
         super(TestChannel, self).__init__()
+
+
+class TestChannel2(IonChannel):
+    '''
+    Simple channel to test basic functionality
+    '''
+    def __init__(self):
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # basic factors to construct channel open probability
+        self.factors = np.array([.9,.1])
+        self.powers = np.array([[3,2],
+                                [2,1]])
+        self.varnames = np.array([['a00', 'a01'],
+                                  ['a10', 'a11']])
+        # asomptotic state variable functions
+        self.varinf = np.array([[sp.Float(.3), sp.Float(.5)],
+                                [sp.Float(.4), sp.Float(.6)]])
+        # state variable relaxation time scale
+        self.tauinf = np.array([[1., 2.],
+                                [2., 2.]])
+        # base class instructor
+        super(TestChannel2, self).__init__()
 
 
 class h(IonChannel):

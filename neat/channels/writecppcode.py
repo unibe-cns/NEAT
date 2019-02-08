@@ -48,7 +48,8 @@ fcc.close()
 fh.close()
 
 for name, channel_class in channelcollection.__dict__.items():
-    if isinstance(channel_class, type) and name != 'IonChannel':
+    if isinstance(channel_class, type) and name != 'IonChannel' and '_func' not in name:
+        print name
         chan = channel_class()
         chan.writeCPPCode(path, channelcollection.E_REV_DICT[name])
 
@@ -60,7 +61,7 @@ fh.write('public:\n')
 fh.write('    IonChannel* createInstance(string channel_name){\n')
 kk = 0
 for name, channel_class in channelcollection.__dict__.items():
-    if isinstance(channel_class, type) and name != 'IonChannel':
+    if isinstance(channel_class, type) and name != 'IonChannel' and '_func' not in name:
         if kk == 0:
             fh.write('        if(channel_name == \"' + name +'\"){\n')
         else:

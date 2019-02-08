@@ -16,6 +16,7 @@ from stree import SNode, STree
 from neat.channels import channelcollection
 
 import copy
+import warnings
 
 
 class CompartmentNode(SNode):
@@ -230,6 +231,16 @@ class CompartmentNode(SNode):
 
     #     return i_tot
 
+    def getDynamicDrive(self, channel_name, p_open, v):
+        assert p_open.shape == v.shape
+        _, e = self.currents[channel_name]
+        return p_open * (v - e)
+
+    def getDynamicI(self, channel_name, p_open, v):
+        assert p_open.shape == v.shape
+        g, e = self.currents[channel_name]
+        return g * p_open * (v - e)
+
     def fitEL(self, channel_storage=None):
         i_eq = 0.
         for channel_name in set(self.currents.keys()) - set('L'):
@@ -251,6 +262,14 @@ class CompartmentTree(STree):
     def __init__(self, root=None):
         super(CompartmentTree, self).__init__(root=root)
         self.channel_storage = {}
+        # for fitting the model
+        self.resetFitData()
+
+    def resetFitData(self):
+        self.fit_data = dict(mats_feature=[],
+                             vecs_target=[],
+                             weights_fit=[],
+                             channel_names=[])
 
     def createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
         '''
@@ -432,7 +451,7 @@ class CompartmentTree(STree):
 
         Parameters
         ----------
-            freqs: np.array (dtype = complex)
+            freqs: np.array (dtype = complex) or float
                 Frequencies at which the matrix is evaluated [Hz]
             channel_names: `None` or `list` of `str`
                 The channels to be included in the matrix
@@ -482,6 +501,64 @@ class CompartmentTree(STree):
             raise ValueError('invalid argument for `indexing`, ' + \
                              'has to be \'tree\' or \'locs\'')
 
+    def calcEigenvalues(self):
+        '''
+        Calculates the eigenvalues and eigenvectors of the passive system
+
+        Returns
+        -------
+        np.ndarray (ndim = 1, dtype = complex)
+            the eigenvalues
+        np.ndarray (ndim = 2, dtype = complex)
+            the right eigenvector matrix
+        '''
+        # get the system matrix
+        mat = self.calcSystemMatrix(freqs=0., channel_names=['L'],
+                                    with_ca=False, indexing='tree')
+        mat /= np.array([node.ca for node in self])
+        # compute the eigenvalues
+        alphas, phimat = la.eig(mat)
+        return -alphas*1e-3, phimat
+
+    def _calcConvolution(self, dt, inputs):
+        '''
+        Compute the convolution of the `inputs` with the impedance matrix of the
+        passive system
+
+        Parameters
+        ----------
+        inputs: np.ndarray (ndim = 3)
+            The inputs. First dimension is the input site (tree indices) and
+            last dimension is time. Middle dimension can be arbitrary. Convolution
+            is computed for all elements on the first 2 axes
+
+        Return
+        ------
+        np.ndarray (ndim = 4)
+            The convolutions
+        '''
+        # compute the system eigenvalues for convolution
+        alphas, phimat = self.calcEigenvalues()
+        # propagators to compute convolution
+        p0 = np.exp(alphas*dt)
+        p1 = - (1. - p0) / alphas
+        # multiply input matrix with phimat (original indices kct)
+        inputs = np.einsum('nk,kct->nkct', phimat, inputs)
+        inputs = np.einsum('nl,nkct->lnkct', phimat, inputs)
+        inputs = np.moveaxis(inputs, -1, 0) #tlnkc
+        # do the convolution
+        convres = np.zeros_like(inputs)
+        convvar = np.zeros(inputs.shape[1:])
+        for kk, inp in enumerate(inputs):
+            # convvar = p0 * convvar + p1 * inp # p0, p1 broadcast to trailing dimension of convvar, inp
+            convvar = np.einsum('n,lnkc->lnkc', p0, convvar) + \
+                      np.einsum('n,lnkc->lnkc', p1, inp) # p0, p1 broadcast to trailing dimension of convvar, inp
+            convres[kk,:,:,:,:] = convvar
+        # recast result
+        convres = np.sum(convres, axis=1)
+        convres = np.moveaxis(convres, 0, -1) # t last axis
+
+        return convres
 
     def _preprocessZMatArg(self, z_mat_arg):
         if isinstance(z_mat_arg, np.ndarray):
@@ -536,7 +613,7 @@ class CompartmentTree(STree):
         return freqs, w_freqs, z_mat_arg
 
 
-    def computeGMC(self, z_mat_arg, e_eqs=None, channel_names=None):
+    def computeGMC(self, z_mat_arg, e_eqs=None, channel_names=['L']):
         '''
         Fit the models' membrane and coupling conductances to a given steady
         state impedance matrix.
@@ -551,12 +628,14 @@ class CompartmentTree(STree):
         e_eqs: np.ndarray (ndim = 1, dtype = float) or float
             The equilibirum potentials in each compartment for each
             evaluation of ``z_mat``
+        channel_names: list of string (defaults to ['L'])
+            Names of the ion channels that have been included in the impedance
+            matrix calculation and for whom the conductances are fit. Default is
+            only leak conductance
         '''
         z_mat_arg = self._preprocessZMatArg(z_mat_arg)
         e_eqs, _ = self._preprocessEEqs(e_eqs)
         assert len(z_mat_arg) == len(e_eqs)
-        if channel_names is None:
-            channel_names = ['L'] + self.channel_storage.keys()
         # do the fit
         mats_feature = []
         vecs_target = []
@@ -647,9 +726,10 @@ class CompartmentTree(STree):
             raise ValueError('wrong state variable array')
         return svs
 
-    def computeGMv2(self, z_mat_arg, e_eqs=None, freqs=0., svs=None,
+    def computeGMSingleChan(self, z_mat_arg, e_eqs=None, freqs=0., svs=None,
                     w_e_eqs=None, w_freqs=None,
-                    channel_name=None):
+                    channel_name=None,
+                    return_matrices=False):
         '''
         Fit the models' conductances to a given impedance matrix.
 
@@ -705,15 +785,20 @@ class CompartmentTree(STree):
             vecs_target.append(vec_target_aux * np.sqrt(w_e_eq))
         mat_feature = np.concatenate(mats_feature)
         vec_target = np.concatenate(vecs_target)
-        # linear regression fit
-        res = la.lstsq(mat_feature, vec_target)
-        g_vec = res[0].real
-        # set the conductances
-        self._toTreeGM(g_vec, channel_names=channel_names)
+
+        if return_matrices:
+            return mat_feature, vec_target
+        else:
+            # linear regression fit
+            res = la.lstsq(mat_feature, vec_target)
+            g_vec = res[0].real
+            # set the conductances
+            self._toTreeGM(g_vec, channel_names=channel_names)
 
     def computeGM(self, z_mat_arg, e_eqs=None, freqs=0.,
                     w_e_eqs=None, w_freqs=None,
-                    channel_names=None, other_channel_names=None):
+                    channel_names=None, other_channel_names=None,
+                    return_matrices=False):
         '''
         Fit the models' conductances to a given impedance matrix.
 
@@ -770,15 +855,25 @@ class CompartmentTree(STree):
             vecs_target.append(vec_target_aux * np.sqrt(w_e_eq))
         mat_feature = np.concatenate(mats_feature)
         vec_target = np.concatenate(vecs_target)
-        # linear regression fit
-        res = la.lstsq(mat_feature, vec_target)
-        g_vec = res[0].real
-        # set the conductances
-        self._toTreeGM(g_vec, channel_names=channel_names)
 
-    def _toStructureTensorGM(self, freqs, channel_names):
-        g_vec = self._toVecGM(channel_names)
+        if return_matrices:
+            return mat_feature, vec_target
+        else:
+            # linear regression fit
+            res = la.lstsq(mat_feature, vec_target)
+            g_vec = res[0].real
+            # set the conductances
+            self._toTreeGM(g_vec, channel_names=channel_names)
+
+    def _toStructureTensorGM(self, freqs, channel_names, all_channel_names=None):
+        # to construct appropriate channel vector
+        if all_channel_names is None:
+            all_channel_names = channel_names
+        else:
+            assert set(channel_names).issubset(all_channel_names)
+        g_vec = self._toVecGM(all_channel_names)
         g_struct = np.zeros((len(freqs), len(self), len(self), len(g_vec)), dtype=freqs.dtype)
+        # fill the fit structure
         kk = 0 # counter
         for node in self:
             ii = node.index
@@ -786,8 +881,9 @@ class CompartmentTree(STree):
                                         channel_storage=self.channel_storage,
                                         channel_names=channel_names)
             # membrance conductance elements
-            for channel_name in channel_names:
-                g_struct[:,ii,ii,kk] += g_terms[channel_name]
+            for channel_name in all_channel_names:
+                if channel_name in channel_names:
+                    g_struct[:,ii,ii,kk] += g_terms[channel_name]
                 kk += 1
         return g_struct
 
@@ -807,6 +903,94 @@ class CompartmentTree(STree):
                 node.currents[channel_name][0] = g_vec[kk]
                 kk += 1
 
+    def computeGChanFromImpedance(self, z_mat, e_eq, freqs, weight=1.,
+                                channel_names=None, all_channel_names=None, other_channel_names=None,
+                                action='store'):
+        # to construct appropriate channel vector
+        if all_channel_names is None:
+            all_channel_names = channel_names
+        else:
+            assert set(channel_names).issubset(all_channel_names)
+        if other_channel_names is None and 'L' not in all_channel_names:
+            other_channel_names = ['L']
+        z_mat = self._permuteToTree(z_mat)
+        if isinstance(freqs, float):
+            freqs = np.array([freqs])
+        # set equilibrium conductances
+        self.setEEq(e_eq)
+        # feature matrix
+        g_struct = self._toStructureTensorGM(freqs=freqs, channel_names=channel_names,
+                                             all_channel_names=all_channel_names)
+        tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+        tshape = tensor_feature.shape
+        mat_feature = np.reshape(tensor_feature,
+                                     (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+        # target vector
+        g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
+                                             indexing='tree')
+        zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
+        mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+        vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
+
+        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+
+    def computeGSingleChanFromImpedance(self, z_mat, e_eq, freqs, sv=None, weight=1.,
+                                channel_name=None, all_channel_names=None, other_channel_names=None,
+                                action='store'):
+        # to construct appropriate channel vector
+        if all_channel_names is None:
+            all_channel_names = channel_names
+        else:
+            assert channel_name in all_channel_names
+        if other_channel_names is None and 'L' not in all_channel_names:
+            other_channel_names = ['L']
+        z_mat = self._permuteToTree(z_mat)
+        if isinstance(freqs, float):
+            freqs = np.array([freqs])
+        # set equilibrium conductances
+        self.setEEq(e_eq)
+        # set channel expansion point
+        self.setExpansionPoints({channel_name: sv})
+        # feature matrix
+        g_struct = self._toStructureTensorGM(freqs=freqs, channel_names=[channel_name],
+                                             all_channel_names=all_channel_names)
+        tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+        tshape = tensor_feature.shape
+        mat_feature = np.reshape(tensor_feature,
+                                     (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+        # target vector
+        g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
+                                             indexing='tree')
+        zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
+        mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+        vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
+
+        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+
+    def _fitResAction(self, action, mat_feature, vec_target, weight, channel_names):
+        if action == 'fit':
+            # linear regression fit
+            res = la.lstsq(mat_feature, vec_target)
+            g_vec = res[0].real
+            # set the conductances
+            self._toTreeGM(g_vec, channel_names=channel_names)
+        elif action == 'return':
+            return mat_feature, vec_target
+        elif action == 'store':
+            if len(self.fit_data['channel_names']) == 0:
+                self.fit_data['channel_names'] = channel_names
+            else:
+                try:
+                    assert self.fit_data['channel_names'] == channel_names
+                except AssertionError:
+                    raise IOError('`channel_names` does not agree with stored ' + \
+                                   'channel names for other fits')
+            self.fit_data['mats_feature'].append(mat_feature)
+            self.fit_data['vecs_target'].append(vec_target)
+            self.fit_data['weights_fit'].append(weight)
+        else:
+            raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
+
     def computeC(self, freqs, z_mat_arg, e_eqs=None, channel_names=None):
         '''
         Fit the models' capacitances to a given impedance matrix.
@@ -817,7 +1001,7 @@ class CompartmentTree(STree):
         ----------
             freqs: np.array (dtype = complex)
                 Frequencies at which the impedance matrix is evaluated
-            zf_mat: np.ndarray (ndim = 3, dtype = complex)
+            z_mat_arg: np.ndarray (ndim = 3, dtype = complex)
                 The impedance matrix. The first dimension corresponds to the
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
@@ -982,62 +1166,397 @@ class CompartmentTree(STree):
     #             node.currents['L'][0] = gc_vec[3*ii-1]
     #             node.ca  = gc_vec[3*ii]
 
-    def computeGChan(self, v_mat, i_mat,
-                     channel_names=None, other_channel_names=None):
+    # def computeGChan(self, v_mat, i_mat,
+    #                  p_open_channels=None, p_open_other_channels=None):
+    #     '''
+    #     Parameters
+    #     ----------
+    #     v_mat: np.ndarray (n,k)
+    #     i_mat: np.ndarray (n,k)
+    #         n = nr. of locations, k = nr. of fit points
+    #     '''
+    #     channel_names = p_open_channels.keys()
+    #     # check size
+    #     assert v_mat.shape == i_mat.shape
+    #     assert v_mat.shape[0] == len(self)
+    #     n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(channel_names)
+    #     # create lin fit arrays
+    #     i_vec = np.zeros((n_loc, n_fp))
+    #     d_vec = np.zeros((n_loc, n_fp, n_chan))
+    #     # iterate over number of fit points
+    #     for jj, (i_, v_) in enumerate(zip(i_mat.T, v_mat.T)):
+    #         i_aux, d_aux = self._toVecGChan(i_, v_,
+    #                                         p_open_channels=p_open_channels,
+    #                                         p_open_other_channels=p_open_other_channels)
+    #         i_vec[:,jj] = i_aux
+    #         d_vec[:,jj,:] = d_aux
+
+    #     # iterate over locations:
+    #     g_chan = np.zeros((n_loc, n_fp))
+    #     for ll, (i_, d_) in enumerate(zip(i_vec, d_vec)):
+    #         node = self[ll]
+    #         # conductance fit at node ll
+    #         g_ = la.lstsq(d_, i_)[0]
+    #         # store the conductances
+    #         for ii, channel_name in enumerate(channel_names):
+    #             node.currents[channel_name][0] = g_[ii]
+
+    def computeGChanFromTrace(self, dv_mat, v_mat, i_mat,
+                         p_open_channels=None, p_open_other_channels={}, test={},
+                         weight=1.,
+                         channel_names=None, all_channel_names=None, other_channel_names=None,
+                         action='store'):
         '''
+        Assumes leak conductance, coupling conductance and capacitance have
+        already been fitted
+
         Parameters
         ----------
+        dv_mat: np.ndarray (n,k)
         v_mat: np.ndarray (n,k)
         i_mat: np.ndarray (n,k)
             n = nr. of locations, k = nr. of fit points
         '''
+        # print '\nxxxxxxxx'
         # check size
         assert v_mat.shape == i_mat.shape
-        assert v_mat.shape[0] == len(self)
-        n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(channel_names)
-        # create lin fit arrays
-        i_vec = np.zeros((n_loc, n_fp))
-        d_vec = np.zeros((n_loc, n_fp, n_chan))
-        # iterate over number of fit points
-        for jj, (i_, v_) in enumerate(zip(i_mat.T, v_mat.T)):
-            i_aux, d_aux = self._toVecGChan(i_, v_,
-                                            channel_names=channel_names,
-                                            other_channel_names=other_channel_names)
-            i_vec[:,jj] = i_aux
-            d_vec[:,jj,:] = d_aux
+        assert dv_mat.shape == i_mat.shape
+        assert dv_mat.shape == i_mat.shape
+        for channel_name, p_open in p_open_channels.iteritems():
+            assert p_open.shape == i_mat.shape
+        for channel_name, p_open in p_open_other_channels.iteritems():
+            assert p_open.shape == i_mat.shape
 
-        # iterate over locations:
-        g_chan = np.zeros((n_loc, n_fp))
-        for ll, (i_, d_) in enumerate(zip(i_vec, d_vec)):
-            node = self[ll]
-            # conductance fit at node ll
-            g_ = la.lstsq(d_, i_)[0]
-            # store the conductances
-            for ii, channel_name in enumerate(channel_names):
-                node.currents[channel_name][0] = g_[ii]
+        # define channel name lists
+        if channel_names is None:
+            channel_names = p_open_channels.keys()
+        else:
+            assert set(channel_names) == set(p_open_channels.keys())
+        if other_channel_names is None:
+            other_channel_names = p_open_other_channels.keys()
+        else:
+            assert set(other_channel_names) == set(p_open_other_channels.keys())
+        if all_channel_names == None:
+            all_channel_names = channel_names
+        else:
+            assert set(channel_names).issubset(all_channel_names)
 
-    def _toVecGChan(self, i_, v_,
-                    channel_names=None, other_channel_names=None):
-        self.setEEq(v_)
-        i_vec = np.zeros(len(self))
-        d_vec = np.zeros((len(self), len(channel_names)))
+        # numbers for fit
+        n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(all_channel_names)
+
+        import matplotlib.pyplot as pl
+        from datarep.matplotlibsettings import *
+        t_arr = np.arange(n_fp)
+
+        mat_feature = np.zeros((n_fp * n_loc, n_loc * n_chan))
+        vec_target = np.zeros(n_fp * n_loc)
         for ii, node in enumerate(self):
-            i_vec[ii] += i_[node.loc_ind]
-            # add the channel terms
-            i_vec[ii] -= node.getITot(channel_names=other_channel_names,
-                                      channel_storage=self.channel_storage)
+            # define fit vectors
+            i_vec = np.zeros(n_fp)
+            d_vec = np.zeros((n_fp, n_chan))
+            # add input current
+            i_vec += i_mat[node.loc_ind]
+            # add capacitive current
+            i_vec -= node.ca * dv_mat[node.loc_ind] * 1e3 # convert to nA
             # add the coupling terms
             pnode = node.parent_node
             if pnode is not None:
-                i_vec[ii] += node.g_c * (v_[pnode.loc_ind] - v_[node.loc_ind])
+                i_vec += node.g_c * (v_mat[pnode.loc_ind] - v_mat[node.loc_ind])
             for cnode in node.child_nodes:
-                i_vec[ii] += cnode.g_c * (v_[cnode.loc_ind] - v_[node.loc_ind])
+                i_vec += cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind])
+            # add the leak terms
+            g_l, e_l = node.currents['L']
+            i_vec += g_l * (e_l - v_mat[node.loc_ind])
+            # add the ion channel current
+            for channel_name, p_open in p_open_other_channels.iteritems():
+                i_vec -= node.getDynamicI(channel_name,
+                                        p_open[node.loc_ind], v_mat[node.loc_ind])
             # drive terms
-            for kk, channel_name in enumerate(channel_names):
-                d_vec[ii, kk] = node.getDrive(channel_name,
-                                              channel_storage=self.channel_storage)
+            for kk, channel_name in enumerate(all_channel_names):
+                if channel_name in channel_names:
+                    p_open = p_open_channels[channel_name]
+                    d_vec[:, kk] = node.getDynamicDrive(channel_name,
+                                            p_open[node.loc_ind], v_mat[node.loc_ind])
 
-        return i_vec, d_vec
+            # do the fit
+            g_chan = la.lstsq(d_vec, i_vec)[0]
+            print 'g_chan =', g_chan
+            for kk, channel_name in enumerate(all_channel_names):
+                mat_feature[ii*n_fp:(ii+1)*n_fp, ii*n_chan+kk] = d_vec[:,kk]
+                vec_target[ii*n_fp:(ii+1)*n_fp] = i_vec
+
+
+            pl.figure('i @ ' + str(node), figsize=(10,5))
+            ax = pl.subplot(121)
+            ax.set_title('sum currents')
+            ax.plot(t_arr, i_vec, 'b')
+            # ax.plot(test['t'], test['iin'] + test['ic'] + test['il'], 'b--', lw=2)
+
+            # pl.plot(t_arr, d_vec[:,0], 'r')
+            ax.plot(t_arr, np.dot(d_vec, g_chan), 'g--')
+
+            ax = pl.subplot(122)
+            ax.set_title('individual currents')
+            ax.plot(t_arr, i_mat[node.loc_ind], c=colours[0], label=r'$I_{in}$')
+            # ax.plot(test['t'], test['iin'], c=colours[0], ls='--', lw=2)
+
+            ax.plot(t_arr, - node.ca * dv_mat[node.loc_ind] * 1e3, c=colours[1], label=r'$I_{cap}$')
+            # ax.plot(test['t'], test['ic'], c=colours[1], ls='--', lw=2)
+
+            ax.plot(t_arr, g_l * (e_l - v_mat[node.loc_ind]), c=colours[2], label=r'$I_{leak}$')
+            # ax.plot(test['t'], test['il'], c=colours[2], ls='--', lw=2)
+
+            if pnode is not None:
+                ax.plot(t_arr, node.g_c * (v_mat[pnode.loc_ind] - v_mat[node.loc_ind]), c=colours[3], label=r'$I_{c parent}$')
+            for ii, cnode in enumerate(node.child_nodes):
+                ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
+            ax.legend(loc=0)
+
+        pl.show()
+
+        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+
+    def computeGChanFromTraceConv(self, dt, v_mat, i_mat,
+                         p_open_channels=None, p_open_other_channels={}, test={},
+                         weight=1.,
+                         channel_names=None, all_channel_names=None, other_channel_names=None,
+                         action='store'):
+        '''
+        Assumes leak conductance, coupling conductance and capacitance have
+        already been fitted
+
+        Parameters
+        ----------
+        dv_mat: np.ndarray (n,k)
+        v_mat: np.ndarray (n,k)
+        i_mat: np.ndarray (n,k)
+            n = nr. of locations, k = nr. of fit points
+        '''
+        # print '\nxxxxxxxx'
+        # check size
+        assert v_mat.shape == i_mat.shape
+        for channel_name, p_open in p_open_channels.iteritems():
+            assert p_open.shape == i_mat.shape
+        for channel_name, p_open in p_open_other_channels.iteritems():
+            assert p_open.shape == i_mat.shape
+
+        # define channel name lists
+        if channel_names is None:
+            channel_names = p_open_channels.keys()
+        else:
+            assert set(channel_names) == set(p_open_channels.keys())
+        if other_channel_names is None:
+            other_channel_names = p_open_other_channels.keys()
+        else:
+            assert set(other_channel_names) == set(p_open_other_channels.keys())
+        if all_channel_names == None:
+            all_channel_names = channel_names
+        else:
+            assert set(channel_names).issubset(all_channel_names)
+
+        # permute inputs to tree
+        perm_inds = self._permuteToTreeInds()
+        v_mat = v_mat[perm_inds,:]
+        i_mat = i_mat[perm_inds,:]
+        for p_o in p_open_channels.itervalues():
+            p_o = p_o[perm_inds,:]
+        for p_o in p_open_other_channels.itervalues():
+            p_o = p_o[perm_inds,:]
+
+        # numbers for fit
+        n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(all_channel_names)
+
+        # compute convolution input current for fit
+        for channel_name, p_open in p_open_other_channels.iteritems():
+            for ii, node in enumerate(self):
+                i_mat[ii] -= node.getDynamicI(channel_name, p_open[ii], v_mat[ii])
+        v_i_in = self._calcConvolution(dt, i_mat[:,np.newaxis,:])
+        v_i_in = np.sum(v_i_in[:,:,0,:], axis=1)
+        v_fit = v_mat - v_i_in
+        v_fit = np.reshape(v_fit, n_loc*n_fp)
+        # compute channel drive convolutions
+        d_chan = np.zeros((n_loc, n_chan, n_fp))
+        for kk, channel_name in enumerate(all_channel_names):
+            if channel_name in channel_names:
+                p_open = p_open_channels[channel_name]
+                for ii, node in enumerate(self):
+                    d_chan[ii,kk,:] = node.getDynamicDrive(channel_name, p_open[ii], v_mat[ii])
+        v_d = self._calcConvolution(dt, d_chan)
+        v_d = np.reshape(v_d, (n_loc, n_loc*n_chan, n_fp))
+        v_d = np.moveaxis(v_d, -1, 1)
+        v_d = np.reshape(v_d, (n_loc * n_fp, n_loc*n_chan))
+        # create the matrices for fit
+        mat_feature = v_d
+        vec_target = v_fit
+
+        # import matplotlib.pyplot as pl
+        # from datarep.matplotlibsettings import *
+        # t_arr = np.arange(n_fp)
+
+        # mat_feature = np.zeros((n_fp * n_loc, n_loc * n_chan))
+        # vec_target = np.zeros(n_fp * n_loc)
+        # for ii, node in enumerate(self):
+        #     # define fit vectors
+        #     i_vec = np.zeros(n_fp)
+        #     d_vec = np.zeros((n_fp, n_chan))
+        #     # add input current
+        #     i_vec += i_mat[node.loc_ind]
+        #     # add capacitive current
+        #     i_vec -= node.ca * dv_mat[node.loc_ind] * 1e3 # convert to nA
+        #     # add the coupling terms
+        #     pnode = node.parent_node
+        #     if pnode is not None:
+        #         i_vec += node.g_c * (v_mat[pnode.loc_ind] - v_mat[node.loc_ind])
+        #     for cnode in node.child_nodes:
+        #         i_vec += cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind])
+        #     # add the leak terms
+        #     g_l, e_l = node.currents['L']
+        #     i_vec += g_l * (e_l - v_mat[node.loc_ind])
+        #     # add the ion channel current
+        #     for channel_name, p_open in p_open_other_channels.iteritems():
+        #         i_vec -= node.getDynamicI(channel_name,
+        #                                 p_open[node.loc_ind], v_mat[node.loc_ind])
+        #     # drive terms
+        #     for kk, channel_name in enumerate(all_channel_names):
+        #         if channel_name in channel_names:
+        #             p_open = p_open_channels[channel_name]
+        #             d_vec[:, kk] = node.getDynamicDrive(channel_name,
+        #                                     p_open[node.loc_ind], v_mat[node.loc_ind])
+
+        #     # do the fit
+        #     g_chan = la.lstsq(d_vec, i_vec)[0]
+        #     print 'g_chan =', g_chan
+        #     for kk, channel_name in enumerate(all_channel_names):
+        #         mat_feature[ii*n_fp:(ii+1)*n_fp, ii*n_chan+kk] = d_vec[:,kk]
+        #         vec_target[ii*n_fp:(ii+1)*n_fp] = i_vec
+
+
+        #     pl.figure('i @ ' + str(node), figsize=(10,5))
+        #     ax = pl.subplot(121)
+        #     ax.set_title('sum currents')
+        #     ax.plot(t_arr, i_vec, 'b')
+        #     # ax.plot(test['t'], test['iin'] + test['ic'] + test['il'], 'b--', lw=2)
+
+        #     # pl.plot(t_arr, d_vec[:,0], 'r')
+        #     ax.plot(t_arr, np.dot(d_vec, g_chan), 'g--')
+
+        #     ax = pl.subplot(122)
+        #     ax.set_title('individual currents')
+        #     ax.plot(t_arr, i_mat[node.loc_ind], c=colours[0], label=r'$I_{in}$')
+        #     # ax.plot(test['t'], test['iin'], c=colours[0], ls='--', lw=2)
+
+        #     ax.plot(t_arr, - node.ca * dv_mat[node.loc_ind] * 1e3, c=colours[1], label=r'$I_{cap}$')
+        #     # ax.plot(test['t'], test['ic'], c=colours[1], ls='--', lw=2)
+
+        #     ax.plot(t_arr, g_l * (e_l - v_mat[node.loc_ind]), c=colours[2], label=r'$I_{leak}$')
+        #     # ax.plot(test['t'], test['il'], c=colours[2], ls='--', lw=2)
+
+        #     if pnode is not None:
+        #         ax.plot(t_arr, node.g_c * (v_mat[pnode.loc_ind] - v_mat[node.loc_ind]), c=colours[3], label=r'$I_{c parent}$')
+        #     for ii, cnode in enumerate(node.child_nodes):
+        #         ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
+        #     ax.legend(loc=0)
+
+        # pl.show()
+
+        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+
+    def runFit(self):
+        fit_data = self.fit_data
+        if len(fit_data['mats_feature']) > 0:
+            # apply the weights
+            for (m_f, v_t, w_f) in zip(fit_data['mats_feature'], fit_data['vecs_target'], fit_data['weights_fit']):
+                nn = len(v_t)
+                m_f *= w_f / nn
+                v_t *= w_f / nn
+            # create the fit matrices
+            mat_feature = np.concatenate(fit_data['mats_feature'])
+            vec_target = np.concatenate(fit_data['vecs_target'])
+            # do the fit
+            self._fitResAction('fit', mat_feature, vec_target, 1., fit_data['channel_names'])
+            # reset fit data
+            self.resetFitData()
+        else:
+             warnings.warn('No fit matrices are stored, no fit has been performed', UserWarning)
+
+    def computeGMCombined(self,
+                            dv_mat=None, v_mat=None, i_mat=None,
+                            z_mat_arg=None,
+                            p_open_channels=None, p_open_other_channels={},
+                            e_eqs=None, freqs=0., w_e_eqs=None, w_freqs=None,
+                            channel_name=None,
+                            weight_fit1=1., weight_fit2=1.):
+        '''
+        Fit the models' conductances to a given impedance matrix.
+
+        Parameters
+        ----------
+        z_mat_arg: np.ndarray (ndim = 2 or 3, dtype = float or complex) or
+                   list of np.ndarray (ndim = 2 or 3, dtype = float or complex)
+            If a single array, represents the steady state impedance matrix,
+            If a list of arrays, represents the steady state impedance
+            matrices for each equilibrium potential in ``e_eqs``
+        e_eqs: np.ndarray (ndim = 1, dtype = float) or float
+            The equilibirum potentials in each compartment for each
+            evaluation of ``z_mat``
+        freqs: ``None`` or `np.array` of `complex
+            Frequencies at which the impedance matrices are evaluated. If None,
+            assumes that the steady state impedance matrices are provides
+        channel_names: ``None`` or `list` of `string`
+            The channel types to be included in the fit. If ``None``, all channel
+            types that have been added to the tree are included.
+        other_channel_names: ``None`` or `list` of `string`
+            The channels that are not to be included in the fit
+        '''
+        # matrices for impedance matrix fit
+        channel_names = p_open_channels.keys()
+        other_channel_names = p_open_other_channels.keys() + ['L']
+        mat_feature_1, vec_target_1 = \
+                self.computeGM(z_mat_arg,
+                               e_eqs=e_eqs, freqs=freqs, w_e_eqs=w_e_eqs, w_freqs=w_freqs,
+                               channel_names=channel_names,
+                               other_channel_names=other_channel_names,
+                               return_matrices=True)
+        # matrices for traces fit
+        mat_feature_2, vec_target_2 = \
+                self.computeGChanFromTrace(dv_mat, v_mat, i_mat,
+                                p_open_channels=p_open_channels,
+                                p_open_other_channels=p_open_other_channels,
+                                action='return')
+        # arange matrices for fit
+        w1 = weight_fit1 / float(len(vec_target_1))
+        w2 = weight_fit2 / float(len(vec_target_2))
+        mat_feature = np.concatenate((w1 * mat_feature_1, w2 * mat_feature_2), axis=0)
+        vec_target = np.concatenate((w1 * vec_target_1, w2 * vec_target_2))
+        # linear regression fit
+        res = la.lstsq(mat_feature, vec_target)
+        g_vec = res[0].real
+        print 'g_vec =', g_vec
+        # set the conductances
+        self._toTreeGM(g_vec, channel_names=channel_names)
+
+    # def _toVecGChan(self, i_, v_,
+    #                 channel_names=None, other_channel_names=None):
+    #     self.setEEq(v_)
+    #     i_vec = np.zeros(len(self))
+    #     d_vec = np.zeros((len(self), len(channel_names)))
+    #     for ii, node in enumerate(self):
+    #         i_vec[ii] += i_[node.loc_ind]
+    #         # add the channel terms
+    #         i_vec[ii] -= node.getITot(channel_names=other_channel_names,
+    #                                   channel_storage=self.channel_storage)
+    #         # add the coupling terms
+    #         pnode = node.parent_node
+    #         if pnode is not None:
+    #             i_vec[ii] += node.g_c * (v_[pnode.loc_ind] - v_[node.loc_ind])
+    #         for cnode in node.child_nodes:
+    #             i_vec[ii] += cnode.g_c * (v_[cnode.loc_ind] - v_[node.loc_ind])
+    #         # drive terms
+    #         for kk, channel_name in enumerate(channel_names):
+    #             d_vec[ii, kk] = node.getDrive(channel_name,
+    #                                           channel_storage=self.channel_storage)
+
+        # return i_vec, d_vec
 
     def computeFakeGeometry(self, fake_c_m=1., fake_r_a=100.*1e-6,
                                   factor_r_a=1e-6, delta=1e-14,

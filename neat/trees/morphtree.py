@@ -1602,7 +1602,8 @@ class MorphTree(STree):
         return locs
 
     @computationalTreetypeDecorator
-    def distributeLocsUniform(self, dx, node_arg=None, name='No'):
+    def distributeLocsUniform(self, dx, node_arg=None, add_bifurcations=False,
+                              name='No'):
         '''
         Distributes locations as uniform as possible, i.e. for a given distance
         between locations `dx`, locations are distributed equidistantly on each
@@ -1616,6 +1617,8 @@ class MorphTree(STree):
                 target distance in micron between the locations
             node_arg:
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`
+            add_bifurcations: bool
+                whether to ensure that all bifurcation nodes are added
             name: string
                 the name under which the locations are stored. Defaults to 'No'
                 which means the locations are not stored
@@ -1634,11 +1637,14 @@ class MorphTree(STree):
                                      set_as_comploc=True))
             else:
                 Nloc = np.round(node.L / dx)
+                if Nloc == 0 and len(node.child_nodes) > 1 and add_bifurcations:
+                    Nloc = 1
                 xvals = np.arange(1, Nloc+1) / float(Nloc)
                 locs.extend([MorphLoc((node.index, xv), self,
                                       set_as_comploc=True) for xv in xvals])
         if name != 'No': self.storeLocs(locs, name=name)
         return locs
+
 
     def distributeLocsRandom(self, num, dx=0.001, node_arg=None,
                                 add_soma=1, name='No', seed=None):

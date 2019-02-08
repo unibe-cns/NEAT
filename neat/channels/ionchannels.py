@@ -132,6 +132,8 @@ class IonChannel(object):
         self.p_open = sum(terms)
         # set the coefficients for the linear expansion
         # self.compute_lincoeff()
+        # construct lambda function for state variables
+        self.f_statevar = self.lambdifyFStatevar()
         # construct lambda functions for steady state activation
         self.f_varinf = self.lambdifyVarInf()
         # construct lambda functions for state variable time scales
@@ -176,6 +178,12 @@ class IonChannel(object):
         args = [self.sp_v] + [statevar for ind, statevar in np.ndenumerate(self.statevars)]
         # return lambda function
         return sp.lambdify(args, self.p_open)
+
+    def lambdifyFStatevar(self):
+        # arguments for lambda function
+        args = [self.sp_v] + [statevar for ind, statevar in np.ndenumerate(self.statevars)]
+        # return lambda function
+        return sp.lambdify(args, self.fstatevar)
 
     def lambdifyDerivatives(self):
         # arguments for lambda function
@@ -532,6 +540,11 @@ class IonChannel(object):
         file.close()
 
     def writeCPPCode(self, path, e_rev):
+        '''
+        Warning: concentration dependent ion channels get constant concentrations
+        substituted for c++ simulation
+        '''
+
         fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
         fh = open(os.path.join(path, 'Ionchannels.h'), 'a')
         # fstruct = open('cython_code/channelstruct.h', 'a')
@@ -560,8 +573,10 @@ class IonChannel(object):
         for ind, varinf in np.ndenumerate(self.varinf):
             tauinf = self.tauinf[ind]
             varname = self.varnames[ind]
-            fcc.write('    m_' + sp.printing.ccode(varname) + '_inf = ' + sp.printing.ccode(varinf) + ';' + '\n')
-            fcc.write('    m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf) + ';' + '\n')
+            varinf_ = self._substituteConc(varinf)
+            tauinf_ = self._substituteConc(tauinf)
+            fcc.write('    m_' + sp.printing.ccode(varname) + '_inf = ' + sp.printing.ccode(varinf_) + ';' + '\n')
+            fcc.write('    m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf_) + ';' + '\n')
         fcc.write('}' + '\n')
 
         fcc.write('double ' + self.__class__.__name__ + '::calcPOpen(){' + '\n')
