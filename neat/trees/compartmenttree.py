@@ -11,12 +11,28 @@ Author: W. Wybo
 import numpy as np
 import scipy.linalg as la
 import scipy.optimize as so
+import sympy as sp
 
 from stree import SNode, STree
 from neat.channels import channelcollection
 
 import copy
 import warnings
+import itertools
+from operator import mul
+
+
+class RowMat(object):
+    def __init__(self, row, ii):
+        self.row = row
+        self.ii = ii
+
+    def __mul__(self, rowmat):
+        row_res = self.row[rowmat.ii] * rowmat.row
+        return RowMat(row_res, self.ii)
+
+    def trace(self):
+        return self.row[self.ii]
 
 
 class CompartmentNode(SNode):
@@ -234,6 +250,58 @@ class CompartmentNode(SNode):
     def getDynamicDrive(self, channel_name, p_open, v):
         assert p_open.shape == v.shape
         _, e = self.currents[channel_name]
+        return p_open * (v - e)
+
+
+    def getDynamicDrive_(self, channel_name, v, dt, channel_storage=None):
+        # assert p_open.shape == v.shape
+        _, e = self.currents[channel_name]
+        if channel_storage is not None:
+            channel = channel_storage[channel_name]
+        else:
+            channel = eval('channelcollection.' + channel_name + '()')
+        # sv = np.zeros(list(channel.statevars.shape) + list(v.shape))
+        # p_open = np.zeros_like(v)
+        # for tt in range(len(v.shape)):
+        #     if tt == 0:
+        #         sv_inf_prev = channel.computeVarInf(v[:,tt])
+        #         tau_prev= channel.computeTauInf(v[:,tt])
+        #     else:
+        #         sv_inf = channel.computeVarInf(v[:,tt])
+        #         tau = channel.computeTauInf(v[:,tt])
+        #         sv_inf_aux = (sv_inf + sv_inf_prev) / 2.
+        #         tau_aux = (tau + tau_prev) / 2.
+        #         sv[:,:,tt] = (sv[:,tt-1] + dt * sv_inf_aux / tau_aux) / (1. + dt / tau_aux)
+        #         p_open[:,tt] = channel.computePOpen(v[:,tt], statevars=sv[:,:,tt])
+        #         sv_inf_prev = sv_inf
+        #         tau_prev = tau
+        # storage
+        p_open = np.zeros_like(v)
+        # initialize
+        sv_inf_prev = channel.computeVarInf(v[0])
+        tau_prev = channel.computeTauInf(v[0])
+        sv = sv_inf_prev
+        p_open[0] = channel.computePOpen(v[0], statevars=sv)
+        for tt in range(1,len(v)):
+            sv_inf = channel.computeVarInf(v[tt])
+            tau = channel.computeTauInf(v[tt])
+            # sv_inf_aux = (sv_inf + sv_inf_prev) / 2.
+            f_aux  = -2. / (tau + tau_prev)
+            h_prev = sv_inf_prev / tau_prev
+            h_now  = sv_inf / tau
+            # sv[:,:,tt] = (sv[:,:,tt-1] + dt * sv_inf_aux / tau_aux) / (1. + dt / tau_aux)
+            p0_aux = np.exp(f_aux * dt)
+            p1_aux = (1. - p0_aux) / (f_aux**2 * dt)
+            p2_aux = p0_aux / f_aux + p1_aux
+            p3_aux = -1. / f_aux - p1_aux
+            # next step sv
+            sv = p0_aux * sv + p2_aux * h_prev + p3_aux * h_now
+            # store for next step
+            sv_inf_prev = sv_inf
+            tau_prev = tau
+            # store open probability
+            p_open[tt] = channel.computePOpen(v[tt], statevars=sv)
+
         return p_open * (v - e)
 
     def getDynamicI(self, channel_name, p_open, v):
@@ -515,10 +583,30 @@ class CompartmentTree(STree):
         # get the system matrix
         mat = self.calcSystemMatrix(freqs=0., channel_names=['L'],
                                     with_ca=False, indexing='tree')
-        mat /= np.array([node.ca for node in self])
+        mat /= np.array([node.ca for node in self])[:,None]
+        # mat = mat.astype(complex)
         # compute the eigenvalues
         alphas, phimat = la.eig(mat)
-        return -alphas*1e-3, phimat
+        if max(np.max(np.abs(alphas.imag)), np.max(np.abs(phimat.imag))) < 1e-5:
+            alphas = alphas.real
+            phimat = phimat.real
+        phimat_inv = la.inv(phimat)
+        # print '\n>>> eig'
+        # print alphas
+        # print '>>> phimat'
+        # print phimat
+
+        # print '\n>>> eig original mat'
+        # print mat
+        # print '>>> eig reconstructed mat'
+        # print np.dot(phimat, np.dot(np.diag(alphas), np.linalg.inv(phimat)))
+        # print '>>> test orhogonal'
+        # print np.dot(phimat, np.linalg.inv(phimat))
+        # print ''
+
+        alphas /= -1e3
+        phimat_inv /= np.array([node.ca for node in self])[None,:] * 1e3
+        return alphas, phimat, phimat_inv
 
     def _calcConvolution(self, dt, inputs):
         '''
@@ -538,27 +626,45 @@ class CompartmentTree(STree):
             The convolutions
         '''
         # compute the system eigenvalues for convolution
-        alphas, phimat = self.calcEigenvalues()
-        # propagators to compute convolution
+        alphas, phimat, phimat_inv = self.calcEigenvalues()
+        # print '\n>>> z_mat eig'
+        # print np.dot(phimat, np.dot(np.diag(-1./alphas), phimat_inv))
+        # print '>>> z_mat direct'
+        # print self.calcImpedanceMatrix(freqs=0., indexing='tree', channel_names=['L'])
+        # print '>>> z_mat ratio'
+        # print np.dot(phimat, np.dot(np.diag(-1./alphas), phimat_inv)) / self.calcImpedanceMatrix(freqs=0., indexing='tree', channel_names=['L'])
+        # print '\n>>> g_mat eig'
+        # print np.dot(phimat, np.dot(np.diag(-alphas), phimat_inv))
+        # print '>>> g_mat direct'
+        # mat = self.calcSystemMatrix(freqs=0., channel_names=['L'],
+        #                             with_ca=False, indexing='tree')
+        # mat /= np.array([node.ca for node in self])[:,None]
+        # print mat
+        # propagator s to compute convolution
         p0 = np.exp(alphas*dt)
-        p1 = - (1. - p0) / alphas
+        p1_ = - (1. - p0) / alphas
+
+        p1 = - 1. / alphas + (p0 - 1.) / (alphas**2 * dt)
+        p2 =   p0 / alphas - (p0 - 1.) / (alphas**2 * dt)
         # multiply input matrix with phimat (original indices kct)
-        inputs = np.einsum('nk,kct->nkct', phimat, inputs)
-        inputs = np.einsum('nl,nkct->lnkct', phimat, inputs)
+        inputs = np.einsum('nk,kct->nkct', phimat_inv, inputs)
+        inputs = np.einsum('ln,nkct->lnkct', phimat, inputs)
         inputs = np.moveaxis(inputs, -1, 0) #tlnkc
         # do the convolution
         convres = np.zeros_like(inputs)
         convvar = np.zeros(inputs.shape[1:])
-        for kk, inp in enumerate(inputs):
-            # convvar = p0 * convvar + p1 * inp # p0, p1 broadcast to trailing dimension of convvar, inp
+        for kk, inp in enumerate(inputs[1:]):
+            inp_prev = inputs[kk]
             convvar = np.einsum('n,lnkc->lnkc', p0, convvar) + \
-                      np.einsum('n,lnkc->lnkc', p1, inp) # p0, p1 broadcast to trailing dimension of convvar, inp
-            convres[kk,:,:,:,:] = convvar
+                      np.einsum('n,lnkc->lnkc', p1, inp) + \
+                      np.einsum('n,lnkc->lnkc', p2, inp_prev)
+            convres[kk+1,:,:,:,:] = convvar
         # recast result
-        convres = np.sum(convres, axis=1)
-        convres = np.moveaxis(convres, 0, -1) # t last axis
+        # convres = np.sum(convres, axis=2)
+        convres = np.einsum('tlnkc->tlkc', convres)
+        convres = np.moveaxis(convres, 0, -1) # lnkct
 
-        return convres
+        return convres.real
 
     def _preprocessZMatArg(self, z_mat_arg):
         if isinstance(z_mat_arg, np.ndarray):
@@ -991,7 +1097,7 @@ class CompartmentTree(STree):
         else:
             raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
 
-    def computeC(self, freqs, z_mat_arg, e_eqs=None, channel_names=None):
+    def computeC(self, freqs, z_mat_arg, e_eqs=None, channel_names=None, w_freqs=None,):
         '''
         Fit the models' capacitances to a given impedance matrix.
 
@@ -1014,6 +1120,7 @@ class CompartmentTree(STree):
         elif isinstance(e_eqs, float):
             self.setEEq(e_eq)
             e_eqs = [self.getEEq() for _ in z_mat_arg]
+        freqs, w_freqs, z_mat_arg = self._preprocessFreqs(freqs, w_freqs=w_freqs, z_mat_arg=z_mat_arg)
         if channel_names is None:
             channel_names = ['L'] + self.channel_storage.keys()
         # convert to 3d matrices if they are two dimensional
@@ -1034,6 +1141,7 @@ class CompartmentTree(STree):
             c_struct = self._toStructureTensorC(freqs)
             # feature matrix
             tensor_feature = np.einsum('oij,ojkl->oikl', zf_mat, c_struct)
+            tensor_feature *= w_freqs[:,np.newaxis,np.newaxis,np.newaxis]
             tshape = tensor_feature.shape
             mat_feature_aux = np.reshape(tensor_feature, (tshape[0]*tshape[1]*tshape[2], tshape[3]))
             # target vector
@@ -1041,6 +1149,7 @@ class CompartmentTree(STree):
                                                  with_ca=False, indexing='tree')
             zg_prod = np.einsum('oij,ojk->oik', zf_mat, g_mat)
             mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+            mat_target *= w_freqs[:,np.newaxis,np.newaxis]
             vec_target_aux = np.reshape(mat_target,(tshape[0]*tshape[1]*tshape[2],))
             # store feature matrix and target vector for this voltage
             mats_feature.append(mat_feature_aux)
@@ -1068,6 +1177,135 @@ class CompartmentTree(STree):
     def _toTreeC(self, c_vec):
         for ii, node in enumerate(self):
             node.ca = c_vec[ii]
+
+    def computeCv2(self, taus_eig):
+        # c_0 = self._permuteToTree(c_0)
+        # print 'taus_m =', taus_m
+        # mat_sov = self._permuteToTree(mat_sov)
+        # # get the system matrix
+        # mat_sys = self.calcSystemMatrix(freqs=0., channel_names=['L'],
+        #                             with_ca=False, indexing='tree')
+        # for ii, node in enumerate(self):
+        #     # ca_node = la.lstsq(mat_sov[ii:ii+1,:].T, mat_sys[ii,:])[0][0].real
+        #     # node.ca = ca_node
+        #     ca_node = taus[ii] * node.currents['L'][0]
+        #     node.ca = ca_node
+
+        # c_0 = 1. / np.array([t_m * node.currents['L'][0] for t_m, node in zip(taus_m, self)])
+        c_0 = np.array([node.ca for node in self])
+        # construct the passive conductance matrix
+        g_mat = - self.calcSystemMatrix(freqs=0., channel_names=['L'],
+                                        with_ca=False, indexing='tree')
+        # row matrices for capacitance fit
+        g_mats = []
+        for ii, node in enumerate(self):
+            # g_m = np.zeros_like(g_mat)
+            # g_m[ii,:] = g_mat[ii,:]
+            # g_mats.append(g_m)
+            g_mats.append(RowMat(g_mat[ii,:], ii))
+        # construct fit functions polynomial trace fit
+        self._constructEigTraceFit(g_mats, taus_eig)
+        # solve by newton iteration
+        c_fit = self._sn_(c_0)
+        self._toTreeC(1./c_fit)
+        # self._toTreeC(1./c_0)
+
+    def _constructEigTraceFit(self, g_mats, taus_m):
+        g_mats_aux = []
+        for g_m in g_mats:
+            gg = np.zeros((len(self), len(self)))
+            gg[g_m.ii,:] = g_m.row
+            g_mats_aux.append(gg)
+
+
+        assert len(self) == len(g_mats)
+        assert len(self) == len(taus_m)
+        c_symbs = sp.symbols(['c_%d'%ii for ii in range(len(self))])
+        eqs = []
+        expr = sp.Float(1)
+        for ii in range(len(self)):
+            kk = ii+1
+            eq = sp.Float(-np.sum((-1./taus_m)**kk))
+            for inds in itertools.product(range(len(self)), repeat=kk):
+
+                rowmat_aux = g_mats[inds[-1]]
+                for jj in inds[::-1][1:]:
+                    rowmat_aux = rowmat_aux.__mul__(g_mats[jj])
+                # print 'row1:', rowmat_aux.row
+                m_tr = rowmat_aux.trace()
+
+
+                # mat_aux = np.linalg.multi_dot([g_mats_aux[jj] for jj in inds]) if len(inds) > 1 else \
+                #           g_mats_aux[inds[0]]
+                # print 'row2:\n', mat_aux
+                # m_tr = np.trace(mat_aux)
+
+                if np.abs(m_tr) > 1e-18:
+                    print '\n >>> ', inds
+                    expr = reduce(mul, [c_symbs[jj] for jj in inds])
+                    print expr, m_tr
+                    eq += expr * m_tr
+                    print eq, '<<<\n'
+
+            eqs.append(eq)
+
+        jac_eqs = [[sp.diff(eq, c_s, 1) for c_s in c_symbs] for eq in eqs]
+
+        print eqs
+        print jac_eqs
+
+        self.func = [sp.lambdify(c_symbs, eq) for eq in eqs]
+        self.jac = [[sp.lambdify(c_symbs, j_eq) for j_eq in j_eqs] for j_eqs in jac_eqs]
+
+    def _f_(self, c_arr):
+        return np.array([f_i(*c_arr) for f_i in self.func])
+
+    def _j_(self, c_arr):
+        return np.array([[j_ij(*c_arr) for j_ij in js] for js in self.jac])
+
+    def _sn_(self, c_prev, atol=1e-5, n_iter=0):
+        # if n_iter < 5:
+        print '__newiter__ (n = ' + str(n_iter) + '), \n-->  ca =', c_prev, '\n--> f(c) =', self._f_(c_prev)
+        c_new = c_prev - np.linalg.solve(self._j_(c_prev), self._f_(c_prev))
+        if np.max(np.abs(c_new - c_prev)) < atol or n_iter > 100:
+            return c_new
+        else:
+            return self._sn_(c_new, atol=atol, n_iter=n_iter+1)
+
+    def computeCv3(self, alphas, phimat, weight=None):
+        # np.set_printoptions(precision=2)
+        n_c, n_a = len(self), len(alphas)
+        assert phimat.shape == (n_a, n_c)
+        if weight is None: weight = np.ones_like(alphas)
+        # inds = self._permuteToTreeInds()
+        # phimat = phimat[:,inds]
+        # construct the passive conductance matrix
+        g_mat = - self.calcSystemMatrix(freqs=0., channel_names=['L'],
+                                        with_ca=False, indexing='tree')
+
+        ccc = 1. / np.array([nn.ca for nn in self])[:,None]
+
+        # print '\n>>> mat 1 ='
+        # print np.dot(ccc*g_mat, phimat.T).real
+        # print '>>> mat 2 ='
+        # print (alphas[None,:] * phimat.T).real
+
+        # construct feature matrix and target vector
+        mat_feature = np.zeros((n_a*n_c, n_c))
+        vec_target = np.zeros(n_a*n_c)
+        for ii, node in enumerate(self):
+            mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weight**2
+            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T), n_a) * weight**2
+
+        # least squares fit
+        c_vec = la.lstsq(mat_feature, vec_target)[0]
+        self._toTreeC(c_vec)
+
+        # ccc = 1. / c_vec[:,None]
+        # print '\n>>> mat 1 ='
+        # print np.dot(ccc*g_mat, phimat.T).real
+        # print '>>> mat 2 ='
+        # print (alphas[None,:] * phimat.T).real
 
     def computeGC(self, freqs, zf_mat, z_mat=None):
         '''
@@ -1244,9 +1482,9 @@ class CompartmentTree(STree):
         # numbers for fit
         n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(all_channel_names)
 
-        import matplotlib.pyplot as pl
-        from datarep.matplotlibsettings import *
-        t_arr = np.arange(n_fp)
+        # import matplotlib.pyplot as pl
+        # from datarep.matplotlibsettings import *
+        # t_arr = np.arange(n_fp)
 
         mat_feature = np.zeros((n_fp * n_loc, n_loc * n_chan))
         vec_target = np.zeros(n_fp * n_loc)
@@ -1278,41 +1516,41 @@ class CompartmentTree(STree):
                     d_vec[:, kk] = node.getDynamicDrive(channel_name,
                                             p_open[node.loc_ind], v_mat[node.loc_ind])
 
-            # do the fit
-            g_chan = la.lstsq(d_vec, i_vec)[0]
-            print 'g_chan =', g_chan
-            for kk, channel_name in enumerate(all_channel_names):
-                mat_feature[ii*n_fp:(ii+1)*n_fp, ii*n_chan+kk] = d_vec[:,kk]
-                vec_target[ii*n_fp:(ii+1)*n_fp] = i_vec
+            # # do the fit
+            # g_chan = la.lstsq(d_vec, i_vec)[0]
+            # print 'g_chan =', g_chan
+            # for kk, channel_name in enumerate(all_channel_names):
+            #     mat_feature[ii*n_fp:(ii+1)*n_fp, ii*n_chan+kk] = d_vec[:,kk]
+            #     vec_target[ii*n_fp:(ii+1)*n_fp] = i_vec
 
 
-            pl.figure('i @ ' + str(node), figsize=(10,5))
-            ax = pl.subplot(121)
-            ax.set_title('sum currents')
-            ax.plot(t_arr, i_vec, 'b')
-            # ax.plot(test['t'], test['iin'] + test['ic'] + test['il'], 'b--', lw=2)
+            # pl.figure('i @ ' + str(node), figsize=(10,5))
+            # ax = pl.subplot(121)
+            # ax.set_title('sum currents')
+            # ax.plot(t_arr, i_vec, 'b')
+            # # ax.plot(test['t'], test['iin'] + test['ic'] + test['il'], 'b--', lw=2)
 
-            # pl.plot(t_arr, d_vec[:,0], 'r')
-            ax.plot(t_arr, np.dot(d_vec, g_chan), 'g--')
+            # # pl.plot(t_arr, d_vec[:,0], 'r')
+            # ax.plot(t_arr, np.dot(d_vec, g_chan), 'g--')
 
-            ax = pl.subplot(122)
-            ax.set_title('individual currents')
-            ax.plot(t_arr, i_mat[node.loc_ind], c=colours[0], label=r'$I_{in}$')
-            # ax.plot(test['t'], test['iin'], c=colours[0], ls='--', lw=2)
+            # ax = pl.subplot(122)
+            # ax.set_title('individual currents')
+            # ax.plot(t_arr, i_mat[node.loc_ind], c=colours[0], label=r'$I_{in}$')
+            # # ax.plot(test['t'], test['iin'], c=colours[0], ls='--', lw=2)
 
-            ax.plot(t_arr, - node.ca * dv_mat[node.loc_ind] * 1e3, c=colours[1], label=r'$I_{cap}$')
-            # ax.plot(test['t'], test['ic'], c=colours[1], ls='--', lw=2)
+            # ax.plot(t_arr, - node.ca * dv_mat[node.loc_ind] * 1e3, c=colours[1], label=r'$I_{cap}$')
+            # # ax.plot(test['t'], test['ic'], c=colours[1], ls='--', lw=2)
 
-            ax.plot(t_arr, g_l * (e_l - v_mat[node.loc_ind]), c=colours[2], label=r'$I_{leak}$')
-            # ax.plot(test['t'], test['il'], c=colours[2], ls='--', lw=2)
+            # ax.plot(t_arr, g_l * (e_l - v_mat[node.loc_ind]), c=colours[2], label=r'$I_{leak}$')
+            # # ax.plot(test['t'], test['il'], c=colours[2], ls='--', lw=2)
 
-            if pnode is not None:
-                ax.plot(t_arr, node.g_c * (v_mat[pnode.loc_ind] - v_mat[node.loc_ind]), c=colours[3], label=r'$I_{c parent}$')
-            for ii, cnode in enumerate(node.child_nodes):
-                ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
-            ax.legend(loc=0)
+            # if pnode is not None:
+            #     ax.plot(t_arr, node.g_c * (v_mat[pnode.loc_ind] - v_mat[node.loc_ind]), c=colours[3], label=r'$I_{c parent}$')
+            # for ii, cnode in enumerate(node.child_nodes):
+            #     ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
+            # ax.legend(loc=0)
 
-        pl.show()
+        # pl.show()
 
         return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
 
@@ -1320,6 +1558,7 @@ class CompartmentTree(STree):
                          p_open_channels=None, p_open_other_channels={}, test={},
                          weight=1.,
                          channel_names=None, all_channel_names=None, other_channel_names=None,
+                         v_pas=None,
                          action='store'):
         '''
         Assumes leak conductance, coupling conductance and capacitance have
@@ -1354,6 +1593,8 @@ class CompartmentTree(STree):
         else:
             assert set(channel_names).issubset(all_channel_names)
 
+        es_eq = np.array([node.e_eq for node in self])
+
         # permute inputs to tree
         perm_inds = self._permuteToTreeInds()
         v_mat = v_mat[perm_inds,:]
@@ -1366,28 +1607,88 @@ class CompartmentTree(STree):
         # numbers for fit
         n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(all_channel_names)
 
-        # compute convolution input current for fit
-        for channel_name, p_open in p_open_other_channels.iteritems():
-            for ii, node in enumerate(self):
-                i_mat[ii] -= node.getDynamicI(channel_name, p_open[ii], v_mat[ii])
-        v_i_in = self._calcConvolution(dt, i_mat[:,np.newaxis,:])
-        v_i_in = np.sum(v_i_in[:,:,0,:], axis=1)
-        v_fit = v_mat - v_i_in
+        import matplotlib.pyplot as pl
+        from datarep.matplotlibsettings import *
+        t_arr = np.arange(n_fp)
+        pl.figure('v conv', figsize=(25,6))
+        ax = pl.subplot(161)
+        ax.set_title('v soma')
+        ax_ = pl.subplot(164)
+        ax_.set_title('v dend')
+
+        if v_pas is None:
+            # compute convolution input current for fit
+            for channel_name, p_open in p_open_other_channels.iteritems():
+                for ii, node in enumerate(self):
+                    i_mat[ii] -= node.getDynamicI(channel_name, p_open[ii], v_mat[ii])
+            v_i_in = self._calcConvolution(dt, i_mat[:,np.newaxis,:])
+            v_i_in = np.sum(v_i_in[:,:,0,:], axis=1)
+            v_fit = v_mat - es_eq[:,None] - v_i_in
+        else:
+            v_fit = v_mat - es_eq[:,None] - v_pas
+
+        if v_pas is None:
+            ax.plot(t_arr, v_i_in[0], 'b', label='v in')
+        else:
+            ax.plot(t_arr, v_pas[0], 'b', label='v pas')
+        ax.plot(t_arr, v_mat[0] - es_eq[0], 'r', label='v real')
+        ax.plot(t_arr, v_fit[0], 'y', label='v tofit')
+
+        if v_pas is None:
+            ax_.plot(t_arr, v_i_in[1], 'b', label='v in')
+        else:
+            ax_.plot(t_arr, v_pas[1], 'b', label='v pas')
+        ax_.plot(t_arr, v_mat[1] - es_eq[1], 'r', label='v real')
+        ax_.plot(t_arr, v_fit[1], 'y', label='v tofit')
+
         v_fit = np.reshape(v_fit, n_loc*n_fp)
+
+
         # compute channel drive convolutions
         d_chan = np.zeros((n_loc, n_chan, n_fp))
         for kk, channel_name in enumerate(all_channel_names):
             if channel_name in channel_names:
                 p_open = p_open_channels[channel_name]
                 for ii, node in enumerate(self):
-                    d_chan[ii,kk,:] = node.getDynamicDrive(channel_name, p_open[ii], v_mat[ii])
+                    # d_chan[ii,kk,:] -= node.getDynamicDrive(channel_name, p_open[ii], v_mat[ii])
+                    d_chan[ii,kk,:] -= node.getDynamicDrive_(channel_name, v_mat[ii], dt, channel_storage=self.channel_storage)
         v_d = self._calcConvolution(dt, d_chan)
+        v_d_aux = v_d
+
+        ax_d = pl.subplot(162)
+        ax_d.set_title('v_drive soma')
+        ax_d.plot(t_arr, v_d_aux[0,0,0,:], label='from soma')
+        ax_d.plot(t_arr, v_d_aux[0,1,0,:], label='from dend')
+        ax_d.legend(loc=0)
+        ax_d = pl.subplot(163)
+        ax_d.set_title('drive soma')
+        ax_d.plot(t_arr, d_chan[0,0,:])
+
+        ax_d = pl.subplot(165)
+        ax_d.set_title('v_drive dend')
+        ax_d.plot(t_arr, v_d_aux[1,0,0,:], label='from soma')
+        ax_d.plot(t_arr, v_d_aux[1,1,0,:], label='from dend')
+        ax_d.legend(loc=0)
+        ax_d = pl.subplot(166)
+        ax_d.set_title('drive dend')
+        ax_d.plot(t_arr, d_chan[1,0,:])
+
+
         v_d = np.reshape(v_d, (n_loc, n_loc*n_chan, n_fp))
         v_d = np.moveaxis(v_d, -1, 1)
         v_d = np.reshape(v_d, (n_loc * n_fp, n_loc*n_chan))
         # create the matrices for fit
         mat_feature = v_d
         vec_target = v_fit
+
+        g_vec = la.lstsq(mat_feature, vec_target)[0]
+        ax.plot(t_arr, g_vec[0]*v_d_aux[0,0,0,:] + g_vec[1]*v_d_aux[0,1,0,:], 'g--', label='v chanfit')
+        ax.legend(loc=0)
+        ax_.plot(t_arr, g_vec[0]*v_d_aux[1,0,0,:] + g_vec[1]*v_d_aux[1,0,0,:], 'g--', label='v chanfit')
+        ax_.legend(loc=0)
+        print 'g single fit =', g_vec
+
+
 
         # import matplotlib.pyplot as pl
         # from datarep.matplotlibsettings import *
@@ -1457,7 +1758,8 @@ class CompartmentTree(STree):
         #         ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
         #     ax.legend(loc=0)
 
-        # pl.show()
+        pl.tight_layout()
+        pl.show()
 
         return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
 
