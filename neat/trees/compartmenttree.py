@@ -642,27 +642,29 @@ class CompartmentTree(STree):
         # print mat
         # propagator s to compute convolution
         p0 = np.exp(alphas*dt)
-        p1_ = - (1. - p0) / alphas
-
+        # p1_ = - (1. - p0) / alphas
         p1 = - 1. / alphas + (p0 - 1.) / (alphas**2 * dt)
         p2 =   p0 / alphas - (p0 - 1.) / (alphas**2 * dt)
+        p_ = - 1. / alphas
         # multiply input matrix with phimat (original indices kct)
         inputs = np.einsum('nk,kct->nkct', phimat_inv, inputs)
         inputs = np.einsum('ln,nkct->lnkct', phimat, inputs)
         inputs = np.moveaxis(inputs, -1, 0) #tlnkc
         # do the convolution
         convres = np.zeros_like(inputs)
-        convvar = np.zeros(inputs.shape[1:])
+        # convvar = np.zeros(inputs.shape[1:])
+        convvar = np.einsum('n,lnkc->lnkc', p_, inputs[0])
+        convres[0] = convvar
         for kk, inp in enumerate(inputs[1:]):
             inp_prev = inputs[kk]
             convvar = np.einsum('n,lnkc->lnkc', p0, convvar) + \
                       np.einsum('n,lnkc->lnkc', p1, inp) + \
                       np.einsum('n,lnkc->lnkc', p2, inp_prev)
-            convres[kk+1,:,:,:,:] = convvar
+            convres[kk+1] = convvar
         # recast result
         # convres = np.sum(convres, axis=2)
         convres = np.einsum('tlnkc->tlkc', convres)
-        convres = np.moveaxis(convres, 0, -1) # lnkct
+        convres = np.moveaxis(convres, 0, -1) # lkct
 
         return convres.real
 
@@ -1089,8 +1091,12 @@ class CompartmentTree(STree):
                 try:
                     assert self.fit_data['channel_names'] == channel_names
                 except AssertionError:
+                    print str(channel_names)
+                    print str(self.fit_data['channel_names'])
                     raise IOError('`channel_names` does not agree with stored ' + \
-                                   'channel names for other fits')
+                                  'channel names for other fits\n' + \
+                                  '`channel_names`:      ' + str(channel_names) + \
+                                  '\nstored channel names: ' + str(self.fit_data['channel_names']))
             self.fit_data['mats_feature'].append(mat_feature)
             self.fit_data['vecs_target'].append(vec_target)
             self.fit_data['weights_fit'].append(weight)
@@ -1550,6 +1556,7 @@ class CompartmentTree(STree):
             #     ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
             # ax.legend(loc=0)
 
+
         # pl.show()
 
         return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
@@ -1571,6 +1578,10 @@ class CompartmentTree(STree):
         i_mat: np.ndarray (n,k)
             n = nr. of locations, k = nr. of fit points
         '''
+
+
+        import matplotlib.pyplot as pl
+        from datarep.matplotlibsettings import *
         # print '\nxxxxxxxx'
         # check size
         assert v_mat.shape == i_mat.shape
@@ -1607,14 +1618,13 @@ class CompartmentTree(STree):
         # numbers for fit
         n_loc, n_fp, n_chan = len(self), i_mat.shape[1], len(all_channel_names)
 
-        import matplotlib.pyplot as pl
-        from datarep.matplotlibsettings import *
-        t_arr = np.arange(n_fp)
-        pl.figure('v conv', figsize=(25,6))
-        ax = pl.subplot(161)
-        ax.set_title('v soma')
-        ax_ = pl.subplot(164)
-        ax_.set_title('v dend')
+        # import matplotlib.pyplot as pl
+        # from datarep.matplotlibsettings import *
+        # pl.figure('v conv', figsize=(25,6))
+        # ax = pl.subplot(161)
+        # ax.set_title('v soma')
+        # ax_ = pl.subplot(164)
+        # ax_.set_title('v dend')
 
         if v_pas is None:
             # compute convolution input current for fit
@@ -1626,20 +1636,21 @@ class CompartmentTree(STree):
             v_fit = v_mat - es_eq[:,None] - v_i_in
         else:
             v_fit = v_mat - es_eq[:,None] - v_pas
+        v_fit_aux = v_fit
 
-        if v_pas is None:
-            ax.plot(t_arr, v_i_in[0], 'b', label='v in')
-        else:
-            ax.plot(t_arr, v_pas[0], 'b', label='v pas')
-        ax.plot(t_arr, v_mat[0] - es_eq[0], 'r', label='v real')
-        ax.plot(t_arr, v_fit[0], 'y', label='v tofit')
+        # if v_pas is None:
+        #     ax.plot(t_arr, v_i_in[0], 'b', label='v in')
+        # else:
+        #     ax.plot(t_arr, v_pas[0], 'b', label='v pas')
+        # ax.plot(t_arr, v_mat[0] - es_eq[0], 'r', label='v real')
+        # ax.plot(t_arr, v_fit[0], 'y', label='v tofit')
 
-        if v_pas is None:
-            ax_.plot(t_arr, v_i_in[1], 'b', label='v in')
-        else:
-            ax_.plot(t_arr, v_pas[1], 'b', label='v pas')
-        ax_.plot(t_arr, v_mat[1] - es_eq[1], 'r', label='v real')
-        ax_.plot(t_arr, v_fit[1], 'y', label='v tofit')
+        # if v_pas is None:
+        #     ax_.plot(t_arr, v_i_in[1], 'b', label='v in')
+        # else:
+        #     ax_.plot(t_arr, v_pas[1], 'b', label='v pas')
+        # ax_.plot(t_arr, v_mat[1] - es_eq[1], 'r', label='v real')
+        # ax_.plot(t_arr, v_fit[1], 'y', label='v tofit')
 
         v_fit = np.reshape(v_fit, n_loc*n_fp)
 
@@ -1655,23 +1666,24 @@ class CompartmentTree(STree):
         v_d = self._calcConvolution(dt, d_chan)
         v_d_aux = v_d
 
-        ax_d = pl.subplot(162)
-        ax_d.set_title('v_drive soma')
-        ax_d.plot(t_arr, v_d_aux[0,0,0,:], label='from soma')
-        ax_d.plot(t_arr, v_d_aux[0,1,0,:], label='from dend')
-        ax_d.legend(loc=0)
-        ax_d = pl.subplot(163)
-        ax_d.set_title('drive soma')
-        ax_d.plot(t_arr, d_chan[0,0,:])
 
-        ax_d = pl.subplot(165)
-        ax_d.set_title('v_drive dend')
-        ax_d.plot(t_arr, v_d_aux[1,0,0,:], label='from soma')
-        ax_d.plot(t_arr, v_d_aux[1,1,0,:], label='from dend')
-        ax_d.legend(loc=0)
-        ax_d = pl.subplot(166)
-        ax_d.set_title('drive dend')
-        ax_d.plot(t_arr, d_chan[1,0,:])
+        # ax_d = pl.subplot(162)
+        # ax_d.set_title('v_drive soma')
+        # ax_d.plot(t_arr, v_d_aux[0,0,0,:], label='from soma')
+        # ax_d.plot(t_arr, v_d_aux[0,1,0,:], label='from dend')
+        # ax_d.legend(loc=0)
+        # ax_d = pl.subplot(163)
+        # ax_d.set_title('drive soma')
+        # ax_d.plot(t_arr, d_chan[0,0,:])
+
+        # ax_d = pl.subplot(165)
+        # ax_d.set_title('v_drive dend')
+        # ax_d.plot(t_arr, v_d_aux[1,0,0,:], label='from soma')
+        # ax_d.plot(t_arr, v_d_aux[1,1,0,:], label='from dend')
+        # ax_d.legend(loc=0)
+        # ax_d = pl.subplot(166)
+        # ax_d.set_title('drive dend')
+        # ax_d.plot(t_arr, d_chan[1,0,:])
 
 
         v_d = np.reshape(v_d, (n_loc, n_loc*n_chan, n_fp))
@@ -1682,11 +1694,56 @@ class CompartmentTree(STree):
         vec_target = v_fit
 
         g_vec = la.lstsq(mat_feature, vec_target)[0]
-        ax.plot(t_arr, g_vec[0]*v_d_aux[0,0,0,:] + g_vec[1]*v_d_aux[0,1,0,:], 'g--', label='v chanfit')
-        ax.legend(loc=0)
-        ax_.plot(t_arr, g_vec[0]*v_d_aux[1,0,0,:] + g_vec[1]*v_d_aux[1,0,0,:], 'g--', label='v chanfit')
-        ax_.legend(loc=0)
+        # ax.plot(t_arr, g_vec[0]*v_d_aux[0,0,0,:] + g_vec[1]*v_d_aux[0,1,0,:], 'g--', label='v chanfit')
+        # ax.legend(loc=0)
+        # ax_.plot(t_arr, g_vec[0]*v_d_aux[1,0,0,:] + g_vec[1]*v_d_aux[1,0,0,:], 'g--', label='v chanfit')
+        # ax_.legend(loc=0)
         print 'g single fit =', g_vec
+
+
+
+
+        n_panel = len(self)+1
+        t_arr = np.arange(n_fp) * dt
+
+        pl.figure('fit', figsize=(n_panel*3, n_panel*3))
+        gs = pl.GridSpec(n_panel,n_panel)
+        gs.update(top=0.98, bottom=0.05, left=0.05, right=0.98, hspace=0.4, wspace=0.4)
+
+        for ii, node in enumerate(self):
+            # plot voltage
+            ax_v = myAx(pl.subplot(gs[ii+1,0]))
+            ax_v.set_title('node %d'%node.index)
+            ax_v.plot(t_arr, v_mat[ii] - es_eq[ii], c='r', label=r'$V_{rec}$')
+            ax_v.plot(t_arr, v_i_in[ii], c='b', label=r'$V_{inp}$')
+            ax_v.plot(t_arr, v_fit_aux[ii], c='y', label=r'$V_{tofit}$')
+            # compute fitted voltage
+            v_fitted = np.zeros_like(t_arr)
+            for jj in range(n_loc):
+                for kk in range(n_chan):
+                    v_fitted += g_vec[jj*n_chan+kk] * v_d_aux[ii,jj,kk]
+            ax_v.plot(t_arr, v_fitted, c='c', ls='--', lw=1.6, label=r'$V_{fitted}$')
+            ax_v.set_xlabel(r'$t$ (ms)')
+            ax_v.set_ylabel(r'$V$ (mV)')
+            myLegend(ax_v, loc='upper left')
+
+            # plot drive
+            ax_d = myAx(pl.subplot(gs[0,ii+1]))
+            ax_d.set_title('node %d'%node.index)
+            for kk, cname in enumerate(channel_names):
+                ax_d.plot(t_arr, d_chan[ii,kk], c=colours[kk%len(colours)], label=cname)
+            ax_d.set_xlabel(r'$t$ (ms)')
+            ax_d.set_ylabel(r'$D$ (mV)')
+            myLegend(ax_d, loc='upper left')
+
+            for jj, node in enumerate(self):
+                # plot drive convolution
+                ax_vd = myAx(pl.subplot(gs[ii+1,jj+1]))
+                for kk, cname in enumerate(channel_names):
+                    ax_vd.plot(t_arr, g_vec[jj*n_chan+kk] * v_d_aux[ii,jj,kk], c=colours[kk%len(colours)], label=cname)
+                ax_vd.set_xlabel(r'$t$ (ms)')
+                ax_vd.set_ylabel(r'$C$ (mV)')
+                myLegend(ax_vd, loc='upper left')
 
 
 
@@ -1758,7 +1815,7 @@ class CompartmentTree(STree):
         #         ax.plot(t_arr, cnode.g_c * (v_mat[cnode.loc_ind] - v_mat[node.loc_ind]), c=colours[(4+ii)%len(colours)], label=r'$I_{c child}$')
         #     ax.legend(loc=0)
 
-        pl.tight_layout()
+        # pl.tight_layout()
         pl.show()
 
         return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)

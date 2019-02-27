@@ -775,6 +775,9 @@ class MorphTree(STree):
 
         self._computational_root = \
                     next(node for node in nodes if node.index == 1)
+        self._leafs_comp = [node for node in nodes if self.isLeaf(node)]
+        self._nodes_comp = nodes
+
         if set_as_primary_tree:
             self.treetype = 'computational'
         # create conversion of all coordinate arrays
@@ -834,6 +837,14 @@ class MorphTree(STree):
         Removes the computational tree
         '''
         self._computational_root = None
+        try:
+            delattr(self, "_nodes_comp")
+        except AttributeError as err:
+            pass
+        try:
+            delattr(self, "_leafs_comp")
+        except AttributeError as err:
+            pass
         self.treetype = 'original'
         for node in self:
             node.used_in_comptree = False
