@@ -220,6 +220,7 @@ class MorphLoc(object):
             for pathnode in path[1:]:
                 L1 = L0 + pathnode.L
                 Lloc = self.comp_loc['x']*compnode.L
+                if Lloc == 0.: Lloc += 1e-7
                 if Lloc > L0 and Lloc <= L1:
                     self.loc = {'node': pathnode.index,
                                 'x': (Lloc-L0-1e-8) / pathnode.L}

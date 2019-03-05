@@ -1078,7 +1078,8 @@ class CompartmentTree(STree):
     def _fitResAction(self, action, mat_feature, vec_target, weight, channel_names):
         if action == 'fit':
             # linear regression fit
-            res = la.lstsq(mat_feature, vec_target)
+            # res = la.lstsq(mat_feature, vec_target)
+            res = so.nnls(mat_feature, vec_target)
             g_vec = res[0].real
             # set the conductances
             self._toTreeGM(g_vec, channel_names=channel_names)
@@ -1103,7 +1104,7 @@ class CompartmentTree(STree):
         else:
             raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
 
-    def computeC(self, freqs, z_mat_arg, e_eqs=None, channel_names=None, w_freqs=None,):
+    def computeC_(self, freqs, z_mat_arg, e_eqs=None, channel_names=None, w_freqs=None,):
         '''
         Fit the models' capacitances to a given impedance matrix.
 
@@ -1278,7 +1279,7 @@ class CompartmentTree(STree):
         else:
             return self._sn_(c_new, atol=atol, n_iter=n_iter+1)
 
-    def computeCv3(self, alphas, phimat, weight=None):
+    def computeC(self, alphas, phimat, weight=None):
         # np.set_printoptions(precision=2)
         n_c, n_a = len(self), len(alphas)
         assert phimat.shape == (n_a, n_c)
@@ -1693,7 +1694,8 @@ class CompartmentTree(STree):
         mat_feature = v_d
         vec_target = v_fit
 
-        g_vec = la.lstsq(mat_feature, vec_target)[0]
+        # g_vec = la.lstsq(mat_feature, vec_target)[0]
+        g_vec = so.nnls(mat_feature, vec_target)[0]
         # ax.plot(t_arr, g_vec[0]*v_d_aux[0,0,0,:] + g_vec[1]*v_d_aux[0,1,0,:], 'g--', label='v chanfit')
         # ax.legend(loc=0)
         # ax_.plot(t_arr, g_vec[0]*v_d_aux[1,0,0,:] + g_vec[1]*v_d_aux[1,0,0,:], 'g--', label='v chanfit')

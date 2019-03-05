@@ -420,6 +420,10 @@ class SOVTree(PhysTree):
             raise IOError('One of the kwargs `locs`, `sov_data` or \
                             `name` must not be ``None``')
         absolute_importance = np.sum(np.abs(gammas), 1) / np.abs(alphas)
+        # absolute_importance = np.zeros(len(alphas))
+        # for kk, (alpha, phivec) in enumerate(zip(alphas, gammas)):
+            # absolute_importance[kk] = np.sqrt(np.sum(np.abs(np.dot(phivec[:,None], phivec[None,:]))) / np.abs(alpha))
+
         if importance_type == 'absolute':
             return absolute_importance
         elif importance_type =='relative':
