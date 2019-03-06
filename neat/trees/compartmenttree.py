@@ -207,18 +207,21 @@ class CompartmentNode(SNode):
 
     g_tot = property(getGTot, setGTot)
 
-    def getITot(self, v=None, channel_names=None, channel_storage=None):
+    def getITot(self, v=None, channel_names=None, channel_storage=None, p_open_channels={}):
         if channel_names is None: channel_names = self.currents.keys()
         v = self.e_eq if v is None else v
         i_tot = self.currents['L'][0] * (v - self.currents['L'][1]) if 'L' in channel_names else 0.
         for channel_name in channel_names:
             if channel_name != 'L':
                 g, e = self.currents[channel_name]
-                # create the ionchannel object
-                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
-                # check if needs to be computed around expansion point
-                sv = self.expansion_points[channel_name]
-                i_tot += g * channel.computePOpen(v, statevars=sv) * (v - e)
+                if channel_name not in p_open_channels:
+                    # create the ionchannel object
+                    channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                    # check if needs to be computed around expansion point
+                    sv = self.expansion_points[channel_name]
+                    i_tot += g * channel.computePOpen(v, statevars=sv) * (v - e)
+                else:
+                    i_tot += g * p_open_channels[channel_name] * (v - e)
 
         return i_tot
 
@@ -381,28 +384,31 @@ class CompartmentTree(STree):
             for channel_name in node.currents:
                 node.setExpansionPoint(channel_name, statevar='asymptotic')
 
-    def fitEL(self):
+    def fitEL(self, p_open_channels={}):
         '''
         Set the leak reversal potential to obtain the desired equilibrium
         potentials
         '''
+        for chan, p_o in p_open_channels.iteritems():
+            p_open_channels[chan] = self._permuteToTree(p_o)
         e_l_0 = self.getEEq()
         # compute the solutions
-        fun = self._fun(e_l_0)
+        fun = self._fun(e_l_0, p_open_channels=p_open_channels)
         jac = self._jac(e_l_0)
         e_l = np.linalg.solve(jac, -fun + np.dot(jac, e_l_0))
         # set the leak reversals
         for ii, node in enumerate(self):
             node.currents['L'][1] = e_l[ii]
 
-    def _fun(self, e_l):
+    def _fun(self, e_l, p_open_channels={}):
         # set the leak reversal potentials
         for ii, node in enumerate(self):
             node.currents['L'][1] = e_l[ii]
         # compute the function values (currents)
         fun_vals = np.zeros(len(self))
         for ii, node in enumerate(self):
-            fun_vals[ii] += node.getITot()
+            p_o_c = {chan: p_o[ii] for chan, p_o in p_open_channels.iteritems()}
+            fun_vals[ii] += node.getITot(p_open_channels=p_o_c)
             # add the parent node coupling term
             if node.parent_node is not None:
                 fun_vals[ii] += node.g_c * (node.e_eq - node.parent_node.e_eq)
