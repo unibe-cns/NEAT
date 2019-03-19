@@ -778,8 +778,14 @@ class Khh(IonChannel):
         # compute state variable derivatives
         df_dv_aux = np.zeros(self.statevars.shape, dtype=object)
         df_dx_aux = np.zeros(self.statevars.shape, dtype=object)
+        df_dc_aux = [np.zeros(self.statevars.shape, dtype=object) for _ in self.sp_c]
         # differentiate
         for ind, var in np.ndenumerate(self.statevars):
+            # derivatives to concentrations
+            for ii, sp_c in enumerate(self.sp_c):
+                df_dc_aux[ii][ind] = sp.lambdify(args,
+                                        self._substituteConc(sp.diff(f_sv, sp_c, 1)))
+            # derivative to voltage and state variable
             f_sv = self._substituteConc(fstatevar_vtrap[ind])
             df_dv_aux[ind] = sp.lambdify(args,
                                      sp.diff(f_sv, self.sp_v, 1))
@@ -801,14 +807,22 @@ class Khh(IonChannel):
             for ind, df_dx_ in np.ndenumerate(df_dx_aux):
                 df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
             return np.array(df_dx_list)
+        def df_dc_vtrap(*args):
+            df_dc_list = []
+            for ic, (sp_c, df_dc__) in enumerate(zip(self.sp_c, df_dc_aux)):
+                df_dc_list.append([[] for _ in range(self.statevars.shape[0])])
+                for ind, df_dc_ in np.ndenumerate(df_dc__):
+                    df_dc_list[-1][ind[0]].append(df_dc__[ind](*args))
+            return np.array(df_dc_list)
 
-        dp_dx_aux_, df_dv_aux_, df_dx_aux_ = super(Khh, self).lambdifyDerivatives()
+        dp_dx_aux_, df_dv_aux_, df_dx_aux_, df_dc_aux_ = super(Khh, self).lambdifyDerivatives()
 
         dp_dx = _func(dp_dx_aux_, dp_dx_vtrap, -55.)
         df_dv = _func(df_dv_aux_, df_dv_vtrap, -55.)
         df_dx = _func(df_dx_aux_, df_dx_vtrap, -55.)
+        df_dc = _func(df_dc_aux_, df_dc_vtrap, -55.)
 
-        return dp_dx, df_dv, df_dx
+        return dp_dx, df_dv, df_dx, df_dc
 
     # def lambdifyTauInf(self):
     #     f_tauinf = np.zeros(self.varnames.shape, dtype=object)

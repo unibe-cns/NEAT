@@ -93,7 +93,12 @@ class CompartmentNode(SNode):
         params: dict
             parameters for the concentration mechanism (only used for NEURON model)
         '''
-        self.concmechs[ion] = params
+        if set(params.keys()) == {'gamma', 'tau'}:
+            self.concmechs[ion] = concmechs.ExpConcMech(ion,
+                                        params['tau'], params['gamma'])
+        else:
+            warnings.warn('These parameters do not match any NEAT concentration ' + \
+                          'mechanism, no concentration mechanism has been added', UserWarning)
 
     def getCurrent(self, channel_name, channel_storage=None):
         '''
@@ -184,6 +189,29 @@ class CompartmentNode(SNode):
                                                                statevars=sv)
 
         return cond_terms
+
+    def calcMembraneConcentrationTerms(self, ion, channel_names=None, freqs=0.,
+                                        channel_storage=None):
+        if channel_names is None: channel_names = self.currents.keys()
+        conc_write_channels = np.zeros_like(freqs)
+        conc_read_channels  = np.zeros_like(freqs)
+        for channel_name, (g, e) in self.currents.iteritems():
+            if channel_name in channel_names and channel_name != 'L':
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                # check if needs to be computed around expansion point
+                sv = self.expansion_points[channel_name]
+                # if the channel adds to ion channel current, add it here
+                if channel.ion == ion:
+                    conc_write_channels = g * channel.computeLinSum(self.e_eq, freqs, e,
+                                                                     statevars=sv)
+                # if channel reads the ion channel current, add it here
+                if ion in channel.concentrations:
+                    conc_read_channels -= g * channel.computeLinConc(self.e_eq, freqs, e, ion,
+                                                                     statevars=sv)
+
+        return conc_write_channels * \
+               conc_read_channels * \
+               self.concmechs[ion].computeLin(freqs)
 
     def getGTot(self, v=None, channel_names=None, channel_storage=None):
         if channel_names is None: channel_names = self.currents.keys()
@@ -486,9 +514,11 @@ class CompartmentTree(STree):
         return [locs_unordered[ind] for ind in index_arr]
 
 
-    def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs'):
+    def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs',
+                                use_conc=False,):
         return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
-                             channel_names=channel_names, indexing=indexing))
+                             channel_names=channel_names, indexing=indexing,
+                             use_conc=use_conc))
 
     def calcConductanceMatrix(self, indexing='locs'):
         '''
@@ -516,7 +546,8 @@ class CompartmentTree(STree):
             raise ValueError('invalid argument for `indexing`, ' + \
                              'has to be \'tree\' or \'locs\'')
 
-    def calcSystemMatrix(self, freqs=0., channel_names=None, with_ca=True,
+    def calcSystemMatrix(self, freqs=0., channel_names=None,
+                               with_ca=True, use_conc=False,
                                indexing='locs'):
         '''
         Constructs the matrix of conductance and capacitance terms of the model
@@ -531,6 +562,8 @@ class CompartmentTree(STree):
                 The channels to be included in the matrix
             with_ca: `bool`
                 Whether or not to include the capacitive currents
+            use_conc: `bool`
+                wheter or not to use the concentration dynamics
             indexing: 'tree' or 'locs'
                 Whether the indexing order of the matrix corresponds to the tree
                 nodes (order in which they occur in the iteration) or to the
@@ -563,9 +596,16 @@ class CompartmentTree(STree):
                 s_mat[:,jj,ii] -= node.g_c
             # set the ion channel contributions
             g_terms = node.calcMembraneConductanceTerms(freqs=freqs,
-                                                    channel_names=channel_names)
+                                    channel_names=channel_names,
+                                    channel_storage=self.channel_storage)
             s_mat[:,ii,ii] += sum([node.currents[c_name][0] * g_term \
                                    for c_name, g_term in g_terms.iteritems()])
+            if use_conc:
+                for ion, concmech in node.concmechs.iteritems():
+                    c_term = node.calcMembraneConcentrationTerms(ion, freqs=freqs,
+                                        channel_names=channel_names,
+                                        channel_storage=self.channel_storage)
+                    s_mat[:,ii,ii] += concmech.gamma * c_term
         if indexing == 'locs':
             return self._permuteToLocs(s_mat[0,:,:]) if no_freq_dim else \
                    self._permuteToLocs(s_mat)
@@ -1109,6 +1149,65 @@ class CompartmentTree(STree):
             self.fit_data['weights_fit'].append(weight)
         else:
             raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
+
+
+    def computeConcMech(self, z_mat, e_eq, freqs, ion,
+                            channel_names=None, all_channel_names=None, other_channel_names=None):
+        z_mat = self._permuteToTree(z_mat)
+        if isinstance(freqs, float):
+            freqs = np.array([freqs])
+        # set equilibrium conductances
+        self.setEEq(e_eq)
+        # feature matrix
+        g_struct = self._toStructureTensorConc(ion, freqs, channel_names)
+        tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+        tshape = tensor_feature.shape
+        mat_feature = np.reshape(tensor_feature,
+                                     (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+        # target vector
+        g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names,
+                                             indexing='tree')
+        zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
+        mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
+        vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
+
+        # linear regression fit
+        res = la.lstsq(mat_feature, vec_target)
+
+        print '\nmat feature: '
+        print mat_feature
+
+        print '\nvec feature: '
+        print vec_target
+        c_vec = res[0].real
+        print '!!!! --->', c_vec
+        # set the capacitances
+        self._toTreeConc(c_vec, ion)
+
+    def _toStructureTensorConc(self, ion, freqs, channel_names):
+        # to construct appropriate channel vector
+        c_struct = np.zeros((len(freqs), len(self), len(self), len(self)), dtype=freqs.dtype)
+        # fill the fit structure
+        for node in self:
+            ii = node.index
+            c_term = node.calcMembraneConcentrationTerms(ion, freqs=freqs,
+                                    channel_names=channel_names,
+                                    channel_storage=self.channel_storage)
+            print 'c_term @ node %d ='%node.index
+            print c_term
+            c_struct[:,ii,ii,ii] += c_term
+        return c_struct
+
+    def _toVecConc(self, ion):
+        '''
+        Place concentration mechanisms to be fitted in a single vector
+        '''
+        return np.array([node.concmechs[ion].gamma for node in self])
+
+    def _toTreeConc(self, c_vec, ion):
+        for ii, node in enumerate(self):
+            node.concmechs[ion].gamma = c_vec[ii]
+
 
     def computeC_(self, freqs, z_mat_arg, e_eqs=None, channel_names=None, w_freqs=None,):
         '''

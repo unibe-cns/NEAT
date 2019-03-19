@@ -141,7 +141,7 @@ class IonChannel(object):
         # construct lambda function for passive opening
         self.f_p_open = self.lambdifyPOpen()
         # construct lambda function for linear current coefficient evaluations
-        self.dp_dx, self.df_dv, self.df_dx = \
+        self.dp_dx, self.df_dv, self.df_dx, self.df_dc = \
                         self.lambdifyDerivatives()
 
         # express statevar[0,0] as a function of the other state variables
@@ -196,13 +196,21 @@ class IonChannel(object):
         # compute state variable derivatives
         df_dv_aux = np.zeros(self.statevars.shape, dtype=object)
         df_dx_aux = np.zeros(self.statevars.shape, dtype=object)
+        df_dc_aux = [np.zeros(self.statevars.shape, dtype=object) for _ in self.sp_c]
         # differentiate
         for ind, var in np.ndenumerate(self.statevars):
-            f_sv = self._substituteConc(self.fstatevar[ind])
+            f_sv = self.fstatevar[ind]
+            # derivatives to concentrations
+            for ii, sp_c in enumerate(self.sp_c):
+                df_dc_aux[ii][ind] = sp.lambdify(args,
+                                        self._substituteConc(sp.diff(f_sv, sp_c, 1)))
+            # derivative to voltage and state variable
+            f_sv = self._substituteConc(f_sv)
             df_dv_aux[ind] = sp.lambdify(args,
                                      sp.diff(f_sv, self.sp_v, 1))
             df_dx_aux[ind] = sp.lambdify(args,
                                      sp.diff(f_sv, var, 1))
+
         # define convenient functions
         def dp_dx(*args):
             dp_dx_list = [[] for _ in range(self.statevars.shape[0])]
@@ -219,8 +227,15 @@ class IonChannel(object):
             for ind, df_dx_ in np.ndenumerate(df_dx_aux):
                 df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
             return np.array(df_dx_list)
+        def df_dc(*args):
+            df_dc_list = []
+            for ic, (sp_c, df_dc__) in enumerate(zip(self.sp_c, df_dc_aux)):
+                df_dc_list.append([[] for _ in range(self.statevars.shape[0])])
+                for ind, df_dc_ in np.ndenumerate(df_dc__):
+                    df_dc_list[-1][ind[0]].append(df_dc__[ind](*args))
+            return np.array(df_dc_list)
 
-        return dp_dx, df_dv, df_dx
+        return dp_dx, df_dv, df_dx, df_dc
 
     def expansionPointAsString(self, v, statevars=None):
         if statevars is None:
@@ -248,6 +263,13 @@ class IonChannel(object):
         else:
             args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
+
+    def computeDerivativesConc(self, v, statevars=None):
+        if statevars is None:
+            args = [v] + [f_varinf(v) for _, f_varinf in np.ndenumerate(self.f_varinf)]
+        else:
+            args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
+        return self.df_dc(*args)
 
     def computeVarInf(self, v):
         if isinstance(v, np.ndarray):
@@ -285,11 +307,26 @@ class IonChannel(object):
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
 
+    def computeLinearConc(self, v, freqs, ion, statevars=None):
+        ind_c = self.concentrations.index(ion)
+        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, statevars=statevars)
+        df_dc = self.computeDerivativesConc(v, statevars=statevars)
+        lin_f = np.zeros_like(freqs)
+        for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
+            df_dc_ = df_dc[ind_c][ind] * 1e3 # convert to 1 / s
+            df_dx_ = df_dx_arr[ind] * 1e3 # convert to 1 / s
+            # add to the impedance contribution
+            lin_f += dp_dx_ * df_dc_ / (freqs - df_dx_)
+        return lin_f
+
     def computeLinSum(self, v, freqs, e_rev, statevars=None):
         return (e_rev - v) * self.computeLinear(v, freqs, statevars=statevars) - \
                self.computePOpen(v, statevars=statevars)
     # def computeLinSum(self, v, freqs, e_rev, statevars=None):
     #     return - self.computePOpen(v, statevars=statevars)
+
+    def computeLinConc(self, v, freqs, e_rev, ion, statevars=None):\
+        return (e_rev - v) * self.computeLinearConc(v, freqs, ion, statevars=statevars)
 
     def findMaxCurrent(self, freqs, e_rev):
         def f_min(xx):

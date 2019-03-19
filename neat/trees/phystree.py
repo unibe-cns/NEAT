@@ -13,7 +13,7 @@ import warnings
 
 import morphtree
 from morphtree import MorphNode, MorphTree
-from neat.channels import channelcollection
+from neat.channels import channelcollection, concmechs
 
 
 class PhysNode(MorphNode):
@@ -79,7 +79,12 @@ class PhysNode(MorphNode):
         params: dict
             parameters for the concentration mechanism (only used for NEURON model)
         '''
-        self.concmechs[ion] = params
+        if set(params.keys()) == {'gamma', 'tau'}:
+            self.concmechs[ion] = concmechs.ExpConcMech(ion,
+                                        params['tau'], params['gamma'])
+        else:
+            warnings.warn('These parameters do not match any NEAT concentration ' + \
+                          'mechanism, no concentration mechanism has been added', UserWarning)
 
     def getCurrent(self, channel_name, channel_storage=None):
         '''
@@ -201,6 +206,7 @@ class PhysTree(MorphTree):
         '''
         return PhysNode(node_index, p3d=p3d)
 
+    @morphtree.originalTreetypeDecorator
     def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
         '''
         Adds a channel to the morphology.
@@ -236,6 +242,7 @@ class PhysTree(MorphTree):
             node.addCurrent(channel_name, g_max, e_rev,
                             channel_storage=self.channel_storage)
 
+    @morphtree.originalTreetypeDecorator
     def getChannelsInTree(self, store=False):
         '''
         Returns list of strings of all channel names in the tree
@@ -257,6 +264,7 @@ class PhysTree(MorphTree):
                 self.channel_storage[c_name] = self.root.getCurrent(c_name)
         return channel_names
 
+    @morphtree.originalTreetypeDecorator
     def addConcMech(self, ion, params={}):
         '''
         Add a concentration mechanism to the tree

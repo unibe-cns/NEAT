@@ -87,7 +87,7 @@ class GreensNode(PhysNode):
                                                         self.currents[channel_name][1])
         self.expansion_points[channel_name] = statevar
 
-    def calcMembraneImpedance(self, freqs, channel_storage=None):
+    def calcMembraneImpedance(self, freqs, use_conc=False, channel_storage=None):
         '''
         Compute the impedance of the membrane at the node
 
@@ -98,32 +98,55 @@ class GreensNode(PhysNode):
         channel_storage: dict of ion channels (optional)
             The ion channels that have been initialized already. If not
             provided, a new channel is initialized
+        use_conc: bool
+            if True, also uses concentration mechanisms to compute linearized
+            membrane impedance
 
         Returns
         -------
         `np.ndarray` (``dtype=complex``, ``ndim=1``)
             The membrane impedance
         '''
+        if use_conc:
+            g_m_ions = {conc: np.zeros_like(freqs) for conc in self.concmechs.keys()}
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
+        # loop over channels that do not read concentrations
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
             if g > 1e-10:
                 # create the ionchannel object
                 channel = self.getCurrent(channel_name, channel_storage=channel_storage)
-                # check if needs to be computed around expansion point
-                sv = self.expansion_points[channel_name]
-                # add channel contribution to membrane impedance
-                # g_m_aux -= g * (e - self.e_eq) * \
-                #            channel.computeLinear(self.e_eq, freqs)
-                # g_m_aux += g * channel.computePOpen(self.e_eq)
-                sv = self.expansion_points[channel_name]
-                g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
+                if len(channel.concentrations) == 0:
+                    # check if needs to be computed around expansion point
+                    sv = self.expansion_points[channel_name]
+                    # add channel contribution to membrane impedance
+                    g_ = g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
+                    g_m_aux -= g_
+                    if use_conc:
+                        g_m_ions[channel.ion] += g_
+        # loop over channels that do read concentrations
+        for channel_name in set(self.currents.keys()) - set('L'):
+            g, e = self.currents[channel_name]
+            if g > 1e-10:
+                # create the ionchannel object
+                channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+                if len(channel.concentrations) > 0:
+                    # check if needs to be computed around expansion point
+                    sv = self.expansion_points[channel_name]
+                    # add channel contribution to membrane impedance
+                    g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
+                    if use_conc:
+                        for ion in channel.concentrations:
+                            g_m_aux -= g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
+                                       self.concmechs[ion].computeLinear(freqs) * \
+                                       g_m_ions[ion]
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
-    def setImpedance(self, freqs, channel_storage=None):
+    def setImpedance(self, freqs, use_conc=False, channel_storage=None):
         self.counter = 0
-        self.z_m = self.calcMembraneImpedance(freqs, channel_storage=channel_storage)
+        self.z_m = self.calcMembraneImpedance(freqs, use_conc=use_conc,
+                                                channel_storage=channel_storage)
         self.z_a = self.r_a / (np.pi * self.R_**2)
         self.gamma = np.sqrt(self.z_a / self.z_m)
         self.z_c = self.z_a / self.gamma
@@ -197,14 +220,16 @@ class GreensNode(PhysNode):
 
 
 class SomaGreensNode(GreensNode):
-    def calcMembraneImpedance(self, freqs, channel_storage=None):
-        z_m = super(SomaGreensNode, self).calcMembraneImpedance(freqs, channel_storage=channel_storage)
+    def calcMembraneImpedance(self, freqs, use_conc=False, channel_storage=None):
+        z_m = super(SomaGreensNode, self).calcMembraneImpedance(freqs, use_conc=use_conc,
+                                                    channel_storage=channel_storage)
         # rescale for soma surface instead of cylinder radius
         return z_m / (2. * self.R_)
 
-    def setImpedance(self, freqs, channel_storage=None):
+    def setImpedance(self, freqs, use_conc=False, channel_storage=None):
         self.counter = 0
-        self.z_soma = self.calcMembraneImpedance(freqs, channel_storage=channel_storage)
+        self.z_soma = self.calcMembraneImpedance(freqs, use_conc=use_conc,
+                                                channel_storage=channel_storage)
 
     def collapseBranchToLeaf(self):
         return self.z_soma
@@ -250,7 +275,7 @@ class GreensTree(PhysTree):
             return GreensNode(node_index, p3d)
 
     @morphtree.computationalTreetypeDecorator
-    def setImpedance(self, freqs, pprint=False):
+    def setImpedance(self, freqs, use_conc=False, pprint=False):
         '''
         Set the boundary impedances for each node in the tree
 
@@ -258,6 +283,8 @@ class GreensTree(PhysTree):
         ----------
         freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
             frequencies at which the impedances will be evaluated [Hz]
+        use_conc: bool
+            whether or not to incorporate concentrations in the calculation
         pprint: bool (default ``False``)
             whether or not to print info on the progression of the algorithm
 
@@ -266,10 +293,12 @@ class GreensTree(PhysTree):
         # set the node specific impedances
         for node in self:
             node.rescaleLengthRadius()
-            node.setImpedance(freqs, channel_storage=self.channel_storage)
+            node.setImpedance(freqs, use_conc=use_conc,
+                                channel_storage=self.channel_storage)
         # recursion
-        self._impedanceFromLeaf(self.leafs[0], self.leafs[1:], pprint=pprint)
-        self._impedanceFromRoot(self.root)
+        if len(self) > 1:
+            self._impedanceFromLeaf(self.leafs[0], self.leafs[1:], pprint=pprint)
+            self._impedanceFromRoot(self.root)
         # clean
         for node in self:
             node.counter = 0

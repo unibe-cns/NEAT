@@ -308,19 +308,24 @@ class SOVTree(PhysTree):
         alphas     = zeros**2 / (self.tau_0*1e3)
         gammas     = np.zeros((len(alphas), len(locs)), dtype=complex)
         # fill the matrix of prefactors
-        for ii, loc in enumerate(locs):
-            loc_ = MorphLoc(loc, self)
-            if loc_['node'] == 1:
-                x = 0.
-                node = self.root.child_nodes[0]
-            else:
-                x = loc_['x']
-                node = self[loc_['node']]
-            # fill a column of the matrix, corresponding to current loc
-            gammas[:, ii] = node.kappa_m * \
-               (np.cos(node.q_vals_m*(1.-x)*node.L_sov/node.lambda_m) + \
-               node.mu_vals_m * np.sin(node.q_vals_m*(1.-x)*node.L_sov/node.lambda_m)) / \
-               np.sqrt(prefactors*1e3)
+        if len(self) > 1:
+            for ii, loc in enumerate(locs):
+                loc_ = MorphLoc(loc, self)
+                if loc_['node'] == 1:
+                    x = 0.
+                    node = self.root.child_nodes[0]
+                else:
+                    x = loc_['x']
+                    node = self[loc_['node']]
+                # fill a column of the matrix, corresponding to current loc
+                gammas[:, ii] = node.kappa_m * \
+                   (np.cos(node.q_vals_m*(1.-x)*node.L_sov/node.lambda_m) + \
+                   node.mu_vals_m * np.sin(node.q_vals_m*(1.-x)*node.L_sov/node.lambda_m)) / \
+                   np.sqrt(prefactors*1e3)
+        else:
+            alphas = np.array([1e-3 / self.root.tau_m])
+            gammas = np.array([[1e-3 / self.root.c_s]])
+
         # return the matrices
         return alphas, gammas
 
@@ -342,14 +347,16 @@ class SOVTree(PhysTree):
         '''
         self.tau_0 = np.pi#1.
         for node in self: node.setSOV(tau_0=self.tau_0)
-        # start the recursion through the tree
-        self._SOVFromLeaf(self.leafs[0], self.leafs[1:],
-                            maxspace_freq=maxspace_freq, pprint=pprint)
-        # zeros are now found, set the kappa factors
-        zeros = self.root.zeros
-        self._SOVFromRoot(self.root, zeros)
-        # clean
-        for node in self: node.counter = 0
+        if len(self) > 1:
+            # start the recursion through the tree
+            self._SOVFromLeaf(self.leafs[0], self.leafs[1:],
+                                maxspace_freq=maxspace_freq, pprint=pprint)
+            # zeros are now found, set the kappa factors
+            zeros = self.root.zeros
+            self._SOVFromRoot(self.root, zeros)
+            # clean
+            for node in self: node.counter = 0
+
 
     def _SOVFromLeaf(self, node, leafs, count=0,
                         maxspace_freq=500., pprint=False):
