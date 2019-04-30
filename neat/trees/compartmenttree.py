@@ -15,6 +15,7 @@ import sympy as sp
 
 from stree import SNode, STree
 from neat.channels import channelcollection
+from neat.tools import kernelextraction as ke
 
 import copy
 import warnings
@@ -202,8 +203,9 @@ class CompartmentNode(SNode):
                 sv = self.expansion_points[channel_name]
                 # if the channel adds to ion channel current, add it here
                 if channel.ion == ion:
-                    conc_write_channels = g * channel.computeLinSum(self.e_eq, freqs, e,
+                    conc_write_channels += g * channel.computeLinSum(self.e_eq, freqs, e,
                                                                      statevars=sv)
+                    # conc_write_channels += g * channel.computePOpen(self.e_eq, statevars=sv)
                 # if channel reads the ion channel current, add it here
                 if ion in channel.concentrations:
                     conc_read_channels -= g * channel.computeLinConc(self.e_eq, freqs, e, ion,
@@ -364,12 +366,6 @@ class CompartmentTree(STree):
         # for fitting the model
         self.resetFitData()
 
-    def resetFitData(self):
-        self.fit_data = dict(mats_feature=[],
-                             vecs_target=[],
-                             weights_fit=[],
-                             channel_names=[])
-
     def createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
         '''
         Creates a node with the given index corresponding to the tree class.
@@ -497,7 +493,6 @@ class CompartmentTree(STree):
         loc_inds = np.array([node.loc_ind for node in self])
         return np.argsort(loc_inds)
 
-
     def _permuteToLocs(self, mat):
         index_arr = self._permuteToLocsInds()
         if mat.ndim == 1:
@@ -515,7 +510,7 @@ class CompartmentTree(STree):
 
 
     def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs',
-                                use_conc=False,):
+                                use_conc=False):
         return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
                              channel_names=channel_names, indexing=indexing,
                              use_conc=use_conc))
@@ -615,7 +610,7 @@ class CompartmentTree(STree):
             raise ValueError('invalid argument for `indexing`, ' + \
                              'has to be \'tree\' or \'locs\'')
 
-    def calcEigenvalues(self):
+    def calcEigenvalues(self, indexing='tree'):
         '''
         Calculates the eigenvalues and eigenvectors of the passive system
 
@@ -625,11 +620,18 @@ class CompartmentTree(STree):
             the eigenvalues
         np.ndarray (ndim = 2, dtype = complex)
             the right eigenvector matrix
+        indexing: 'tree' or 'locs'
+            Whether the indexing order of the matrix corresponds to the tree
+            nodes (order in which they occur in the iteration) or to the
+            locations on which the reduced model is based
         '''
         # get the system matrix
         mat = self.calcSystemMatrix(freqs=0., channel_names=['L'],
-                                    with_ca=False, indexing='tree')
-        mat /= np.array([node.ca for node in self])[:,None]
+                                    with_ca=False, indexing=indexing)
+        ca_vec = np.array([node.ca for node in self])
+        if indexing == 'locs':
+            ca_vec = self._permuteToLocs(ca_vec)
+        mat /= ca_vec[:,None]
         # mat = mat.astype(complex)
         # compute the eigenvalues
         alphas, phimat = la.eig(mat)
@@ -651,7 +653,7 @@ class CompartmentTree(STree):
         # print ''
 
         alphas /= -1e3
-        phimat_inv /= np.array([node.ca for node in self])[None,:] * 1e3
+        phimat_inv /= ca_vec[None,:] * 1e3
         return alphas, phimat, phimat_inv
 
     def _calcConvolution(self, dt, inputs):
@@ -1086,14 +1088,15 @@ class CompartmentTree(STree):
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
 
-        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+        return self._fitResAction(action, mat_feature, vec_target, weight,
+                                  channel_names=all_channel_names)
 
     def computeGSingleChanFromImpedance(self, z_mat, e_eq, freqs, sv=None, weight=1.,
                                 channel_name=None, all_channel_names=None, other_channel_names=None,
                                 action='store'):
         # to construct appropriate channel vector
         if all_channel_names is None:
-            all_channel_names = channel_names
+            all_channel_names = [channel_name]
         else:
             assert channel_name in all_channel_names
         if other_channel_names is None and 'L' not in all_channel_names:
@@ -1119,40 +1122,22 @@ class CompartmentTree(STree):
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
 
-        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+        self.removeExpansionPoints()
 
-    def _fitResAction(self, action, mat_feature, vec_target, weight, channel_names):
-        if action == 'fit':
-            # linear regression fit
-            # res = la.lstsq(mat_feature, vec_target)
-            res = so.nnls(mat_feature, vec_target)
-            g_vec = res[0].real
-            # set the conductances
-            self._toTreeGM(g_vec, channel_names=channel_names)
-        elif action == 'return':
-            return mat_feature, vec_target
-        elif action == 'store':
-            if len(self.fit_data['channel_names']) == 0:
-                self.fit_data['channel_names'] = channel_names
-            else:
-                try:
-                    assert self.fit_data['channel_names'] == channel_names
-                except AssertionError:
-                    print str(channel_names)
-                    print str(self.fit_data['channel_names'])
-                    raise IOError('`channel_names` does not agree with stored ' + \
-                                  'channel names for other fits\n' + \
-                                  '`channel_names`:      ' + str(channel_names) + \
-                                  '\nstored channel names: ' + str(self.fit_data['channel_names']))
-            self.fit_data['mats_feature'].append(mat_feature)
-            self.fit_data['vecs_target'].append(vec_target)
-            self.fit_data['weights_fit'].append(weight)
-        else:
-            raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
+        return self._fitResAction(action, mat_feature, vec_target, weight,
+                                  channel_names=all_channel_names)
 
+    def computeConcMech(self, z_mat, e_eq, freqs, ion, sv_s=None,
+                        weight=1., channel_names=None, action='store'):
+        np.set_printoptions(precision=5, linewidth=200)
+        # print '\n', channel_names
+        # print self
 
-    def computeConcMech(self, z_mat, e_eq, freqs, ion,
-                            channel_names=None, all_channel_names=None, other_channel_names=None):
+        if sv_s is None:
+            sv_s = [None for _ in channel_names]
+        exp_points = {c_name: sv for c_name, sv in zip(channel_names, sv_s)}
+        self.setExpansionPoints(exp_points)
+
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
             freqs = np.array([freqs])
@@ -1160,6 +1145,13 @@ class CompartmentTree(STree):
         self.setEEq(e_eq)
         # feature matrix
         g_struct = self._toStructureTensorConc(ion, freqs, channel_names)
+
+        # print '\nz_mat:',
+        # print z_mat
+
+        # print '\ng_struct:'
+        # print g_struct
+
         tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
         tshape = tensor_feature.shape
         mat_feature = np.reshape(tensor_feature,
@@ -1167,22 +1159,38 @@ class CompartmentTree(STree):
         # target vector
         g_mat = self.calcSystemMatrix(freqs, channel_names=channel_names,
                                              indexing='tree')
+
+        # print '\ng_mat:'
+        # print g_mat
+
         zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
 
         # linear regression fit
-        res = la.lstsq(mat_feature, vec_target)
+        # res = la.lstsq(mat_feature, vec_target)
+        res = so.nnls(mat_feature, vec_target)
 
-        print '\nmat feature: '
-        print mat_feature
+        # print '\nmat feature: '
+        # print mat_feature
 
-        print '\nvec feature: '
-        print vec_target
+        # print '\nvec feature: '
+        # print vec_target
         c_vec = res[0].real
-        print '!!!! --->', c_vec
-        # set the capacitances
+        # set the concentration mechanism parameters
         self._toTreeConc(c_vec, ion)
+
+        print np.set_printoptions(precision=2)
+        print 'z_mat fitted   =\n', self.calcImpedanceMatrix(use_conc=True, freqs=freqs, channel_names=channel_names)[0].real
+
+        self._toTreeConc([28.469767, 28.160618, 28.078605], ion)
+        print 'z_mat standard =\n', self.calcImpedanceMatrix(use_conc=True, freqs=freqs, channel_names=channel_names)[0].real
+        print 'z_mat no conc  =\n', self.calcImpedanceMatrix(use_conc=False, freqs=freqs, channel_names=channel_names)[0].real
+        print 'gammas =\n', c_vec
+
+        self.removeExpansionPoints()
+
+        return self._fitResAction(action, mat_feature, vec_target, weight, ion=ion)
 
     def _toStructureTensorConc(self, ion, freqs, channel_names):
         # to construct appropriate channel vector
@@ -1193,8 +1201,8 @@ class CompartmentTree(STree):
             c_term = node.calcMembraneConcentrationTerms(ion, freqs=freqs,
                                     channel_names=channel_names,
                                     channel_storage=self.channel_storage)
-            print 'c_term @ node %d ='%node.index
-            print c_term
+            # print 'c_term @ node %d ='%node.index
+            # print c_term
             c_struct[:,ii,ii,ii] += c_term
         return c_struct
 
@@ -1384,7 +1392,7 @@ class CompartmentTree(STree):
         else:
             return self._sn_(c_new, atol=atol, n_iter=n_iter+1)
 
-    def computeC(self, alphas, phimat, weight=None):
+    def computeC(self, alphas, phimat, importance=None, tau_eps=5., weight=1., action='fit'):
         # np.set_printoptions(precision=2)
         n_c, n_a = len(self), len(alphas)
         assert phimat.shape == (n_a, n_c)
@@ -1395,22 +1403,32 @@ class CompartmentTree(STree):
         g_mat = - self.calcSystemMatrix(freqs=0., channel_names=['L'],
                                         with_ca=False, indexing='tree')
 
-        ccc = 1. / np.array([nn.ca for nn in self])[:,None]
+        # ccc = 1. / np.array([nn.ca for nn in self])[:,None]
 
         # print '\n>>> mat 1 ='
         # print np.dot(ccc*g_mat, phimat.T).real
         # print '>>> mat 2 ='
         # print (alphas[None,:] * phimat.T).real
+        # set lower limit for capacitance, fit not always well conditioned
+        g_tot = np.array([node.getGTot(channel_names=['L']) for node in self])
+        c_lim =  g_tot / (-alphas[0] * tau_eps)
+        gamma_mat = alphas[:,None] * phimat * c_lim[None,:]
 
         # construct feature matrix and target vector
         mat_feature = np.zeros((n_a*n_c, n_c))
         vec_target = np.zeros(n_a*n_c)
         for ii, node in enumerate(self):
             mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weight**2
-            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T), n_a) * weight**2
+            # vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T), n_a) * weight**2
+            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T) - gamma_mat[:,ii:ii+1], n_a) * weight**2
 
         # least squares fit
-        c_vec = la.lstsq(mat_feature, vec_target)[0]
+        # res = la.lstsq(mat_feature, vec_target)[0]
+        res = so.nnls(mat_feature, vec_target)[0]
+        # inds = np.where(c_vec <= 0.)[0]
+        # c_vec[inds] = 1e-7
+        # c_vec = np.abs(c_vec)
+        c_vec = res + c_lim
         self._toTreeC(c_vec)
 
         # ccc = 1. / c_vec[:,None]
@@ -1418,6 +1436,41 @@ class CompartmentTree(STree):
         # print np.dot(ccc*g_mat, phimat.T).real
         # print '>>> mat 2 ='
         # print (alphas[None,:] * phimat.T).real
+        # return self._fitResAction(action, mat_feature, vec_target, weight,
+        #                           capacitance=True)
+
+    # def computeCVF(self, freqs, zf_mat, weight=1., channel_names=['L'], action='store'):
+    #     fef = ke.fExpFitter()
+    #     n_c = len(self)
+    #     # permute to tree indices
+    #     zf_mat = self._permuteToTree(zf_mat)
+
+    #     print self
+
+    #     # construct feature matrix and target vector
+    #     mat_feature = np.zeros((n_c, n_c))
+    #     vec_target = np.zeros(n_c)
+    #     for ii, node in enumerate(self):
+    #         # if not self.isRoot(node):
+    #         if True:
+    #             a, c, _, _ = fef.fitFExp(freqs, zf_mat[:,ii,ii], deg=10)
+    #             # retain all but slowest exponential
+    #             inds = np.argsort(a)
+    #             a, c = a[inds[1:]], c[inds[1:]]
+    #             print '\n>>>'
+    #             print 1. / a
+    #             print c
+    #             print np.abs(c) / np.abs(a)
+    #             # find most important exponential
+    #             ind = np.argmax(np.abs(c) / np.abs(a))
+    #             # set in feature matrices
+    #             mat_feature[ii,ii] = 1./a[ind]
+    #             vec_target[ii] = node.getGTot(channel_names)
+    #     print mat_feature
+    #     print vec_target
+
+    #     return self._fitResAction(action, mat_feature, vec_target, weight,
+    #                               capacitance=True)
 
     def computeGC(self, freqs, zf_mat, z_mat=None):
         '''
@@ -1665,7 +1718,8 @@ class CompartmentTree(STree):
 
         # pl.show()
 
-        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+        return self._fitResAction(action, mat_feature, vec_target, weight,
+                                  channel_names=all_channel_names)
 
     def computeGChanFromTraceConv(self, dt, v_mat, i_mat,
                          p_open_channels=None, p_open_other_channels={}, test={},
@@ -1807,9 +1861,6 @@ class CompartmentTree(STree):
         # ax_.legend(loc=0)
         print 'g single fit =', g_vec
 
-
-
-
         n_panel = len(self)+1
         t_arr = np.arange(n_fp) * dt
 
@@ -1925,7 +1976,106 @@ class CompartmentTree(STree):
         # pl.tight_layout()
         pl.show()
 
-        return self._fitResAction(action, mat_feature, vec_target, weight, all_channel_names)
+        return self._fitResAction(action, mat_feature, vec_target, weight,
+                                  channel_names=all_channel_names)
+
+    # def _fitResAction(self, action, mat_feature, vec_target, weight, channel_names):
+    #     if action == 'fit':
+    #         # linear regression fit
+    #         # res = la.lstsq(mat_feature, vec_target)
+    #         res = so.nnls(mat_feature, vec_target)
+    #         g_vec = res[0].real
+    #         # set the conductances
+    #         self._toTreeGM(g_vec, channel_names=channel_names)
+    #     elif action == 'return':
+    #         return mat_feature, vec_target
+    #     elif action == 'store':
+    #         if len(self.fit_data['channel_names']) == 0:
+    #             self.fit_data['channel_names'] = channel_names
+    #         else:
+    #             try:
+    #                 assert self.fit_data['channel_names'] == channel_names
+    #             except AssertionError:
+    #                 print str(channel_names)
+    #                 print str(self.fit_data['channel_names'])
+    #                 raise IOError('`channel_names` does not agree with stored ' + \
+    #                               'channel names for other fits\n' + \
+    #                               '`channel_names`:      ' + str(channel_names) + \
+    #                               '\nstored channel names: ' + str(self.fit_data['channel_names']))
+    #         self.fit_data['mats_feature'].append(mat_feature)
+    #         self.fit_data['vecs_target'].append(vec_target)
+    #         self.fit_data['weights_fit'].append(weight)
+    #     else:
+    #         raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
+
+    def _fitResAction(self, action, mat_feature, vec_target, weight,
+                            capacitance=False, **kwargs):
+        if action == 'fit':
+            # linear regression fit
+            # res = la.lstsq(mat_feature, vec_target)
+            res = so.nnls(mat_feature, vec_target)
+            vec_res = res[0].real
+            # set the conductances
+            if 'channel_names' in kwargs:
+                self._toTreeGM(vec_res, channel_names=kwargs['channel_names'])
+            elif 'ion' in kwargs:
+                self._toTreeConc(vec_res, kwargs['ion'])
+            elif capacitance:
+                self._toTreeC(vec_res)
+            else:
+                raise IOError('Provide \'channel_names\' or \'ion\' as keyword argument, ' + \
+                              'or set \'capacitance\' to `True`')
+        elif action == 'return':
+            return mat_feature, vec_target
+        elif action == 'store':
+            if 'channel_names' in kwargs:
+                try:
+                    assert self.fit_data['ion'] == ''
+                except AssertionError:
+                    raise IOError('Stored fit matrices are concentration mech fits, ' + \
+                                  'do not try to store channel conductance fit matrices')
+                if len(self.fit_data['channel_names']) == 0:
+                    self.fit_data['channel_names'] = kwargs['channel_names']
+                else:
+                    try:
+                        assert self.fit_data['channel_names'] == kwargs['channel_names']
+                    except AssertionError:
+                        raise IOError('`channel_names` does not agree with stored ' + \
+                                      'channel names for other fits\n' + \
+                                      '`channel_names`:      ' + str(kwargs['channel_names']) + \
+                                      '\nstored channel names: ' + str(self.fit_data['channel_names']))
+            elif 'ion' in kwargs:
+                try:
+                    assert len(self.fit_data['channel_names']) == 0
+                except AssertionError:
+                    raise IOError('Stored fit matrices are channel conductance fits, ' + \
+                                  'do not try to store concentration fit matrices')
+                if self.fit_data['ion'] == '':
+                    self.fit_data['ion'] = kwargs['ion']
+                else:
+                    try:
+                        assert self.fit_data['ion'] == kwargs['ion']
+                    except AssertionError:
+                        raise IOError('`ion` does not agree with stored ion for ' + \
+                                      'other fits:\n' + \
+                                      '`ion`: ' + kwargs[ion] + \
+                                      '\nstored ion: ' + self.fit_data['ion'])
+            elif capacitance:
+                self.fit_data['c'] = True
+
+            self.fit_data['mats_feature'].append(mat_feature)
+            self.fit_data['vecs_target'].append(vec_target)
+            self.fit_data['weights_fit'].append(weight)
+        else:
+            raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
+
+    def resetFitData(self):
+        self.fit_data = dict(mats_feature=[],
+                             vecs_target=[],
+                             weights_fit=[],
+                             channel_names=[],
+                             ion='',
+                             c=False)
 
     def runFit(self):
         fit_data = self.fit_data
@@ -1939,7 +2089,15 @@ class CompartmentTree(STree):
             mat_feature = np.concatenate(fit_data['mats_feature'])
             vec_target = np.concatenate(fit_data['vecs_target'])
             # do the fit
-            self._fitResAction('fit', mat_feature, vec_target, 1., fit_data['channel_names'])
+            if len(fit_data['channel_names']) > 0:
+                self._fitResAction('fit', mat_feature, vec_target, 1.,
+                                   channel_names=fit_data['channel_names'])
+            elif fit_data['ion'] != '':
+                self._fitResAction('fit', mat_feature, vec_target, 1.,
+                                   ion=fit_data['ion'])
+            elif fit_data['c']:
+                self._fitResAction('fit', mat_feature, vec_target, 1.,
+                                   capacitance=True)
             # reset fit data
             self.resetFitData()
         else:

@@ -289,7 +289,7 @@ class SOVTree(PhysTree):
         Returns
         -------
             alphas: np.ndarray of complex (ndim = 1)
-                the reciprocals of mode time-scales
+                the reciprocals of mode time-scales (kHz)
             gammas: np.ndarray of complex (ndim = 2)
                 the spatial function associated with each mode, evaluated at
                 each locations. Dimension 0 is number of modes and dimension 1
@@ -387,7 +387,7 @@ class SOVTree(PhysTree):
             self._SOVFromRoot(cnode, zeros)
 
     def getModeImportance(self, locs=None, sov_data=None, name=None,
-                                importance_type='relative'):
+                                importance_type='simple'):
         '''
         Gives the overal importance of the SOV modes for a certain set of
         locations
@@ -426,18 +426,22 @@ class SOVTree(PhysTree):
         else:
             raise IOError('One of the kwargs `locs`, `sov_data` or \
                             `name` must not be ``None``')
-        absolute_importance = np.sum(np.abs(gammas), 1) / np.abs(alphas)
-        # absolute_importance = np.zeros(len(alphas))
-        # for kk, (alpha, phivec) in enumerate(zip(alphas, gammas)):
-            # absolute_importance[kk] = np.sqrt(np.sum(np.abs(np.dot(phivec[:,None], phivec[None,:]))) / np.abs(alpha))
+        if importance_type == 'simple':
+            absolute_importance = np.sum(np.abs(gammas), 1) / np.abs(alphas)
+        elif importance_type == 'full':
+            absolute_importance = np.zeros(len(alphas))
+            for kk, (alpha, phivec) in enumerate(zip(alphas, gammas)):
+                absolute_importance[kk] = np.sqrt(np.sum(np.abs(np.dot(phivec[:,None], phivec[None,:]))) / np.abs(alpha))
 
-        if importance_type == 'absolute':
-            return absolute_importance
-        elif importance_type =='relative':
-            return absolute_importance / np.max(absolute_importance)
+        # if importance_type == 'absolute':
+        #     return absolute_importance
+        # elif importance_type =='relative':
+        #     return absolute_importance / np.max(absolute_importance)
         else:
             raise ValueError('`importance_type` argument can be \'absolute\' or \
                               \'relative\'')
+
+        return absolute_importance / np.max(absolute_importance)
 
     def getImportantModes(self, locs=None, sov_data=None, name=None,
                                 eps=1e-4, sort_type='timescale'):
@@ -474,17 +478,15 @@ class SOVTree(PhysTree):
         '''
         if name is not None:
             alphas, gammas = self.getSOVMatrices(self.getLocs(name))
-            importance = self.getModeImportance(sov_data=(alphas, gammas))
         elif locs is not None:
             alphas, gammas = self.getSOVMatrices(locs)
-            importance = self.getModeImportance(sov_data=(alphas, gammas))
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
-            importance = self.getModeImportance(locs, sov_data=(alphas, gammas))
         else:
             raise IOError('At least one of the kwargs `locs`, `sov_data` or \
                             `name` must not be ``None``')
+        importance = self.getModeImportance(sov_data=(alphas, gammas), importance_type='simple')
         inds = np.where(importance > eps)[0]
         if sort_type == 'timescale':
             inds_sort = np.argsort(np.abs(alphas[inds]))

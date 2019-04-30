@@ -79,7 +79,7 @@ class GreensNode(PhysNode):
         KeyError: if `channel_name` is not in `self.currents`
         '''
         if isinstance(statevar, str):
-            if statevar == 'asymptotic':
+            if statevar == 'asymptotic' or statevar == None:
                 statevar = None
             elif statevar == 'max':
                 channel = self.getCurrent(channel_name, channel_storage=channel_storage)
@@ -124,6 +124,7 @@ class GreensNode(PhysNode):
                     g_m_aux -= g_
                     if use_conc:
                         g_m_ions[channel.ion] += g_
+                        # g_m_ions[channel.ion] += g * channel.computePOpen(self.e_eq, statevars=sv)
         # loop over channels that do read concentrations
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
@@ -156,10 +157,12 @@ class GreensNode(PhysNode):
         Set the boundary condition at the distal end of the segment
         '''
         if len(self.child_nodes) == 0:
-            self.z_distal = np.infty*np.ones(len(self.z_m))
+            self.z_distal = np.infty*np.ones(len(self.z_m)) if self.g_shunt < 1e-10 else \
+                            1. / self.g_shunt
         else:
-            self.z_distal = 1. / np.sum([1. / cnode.collapseBranchToRoot() \
-                                         for cnode in self.child_nodes], 0)
+            self.z_distal = 1. / (np.sum([1. / cnode.collapseBranchToRoot() \
+                                         for cnode in self.child_nodes], 0) + \
+                                  self.g_shunt)
 
     def setImpedanceProximal(self):
         '''
@@ -172,6 +175,7 @@ class GreensNode(PhysNode):
         val = 0.
         if self.parent_node is not None:
             val += 1. / self.parent_node.collapseBranchToLeaf()
+            val += self.parent_node.g_shunt
         for snode in sister_nodes:
             val += 1. / snode.collapseBranchToRoot()
         self.z_proximal = 1. / val
@@ -224,7 +228,8 @@ class SomaGreensNode(GreensNode):
         z_m = super(SomaGreensNode, self).calcMembraneImpedance(freqs, use_conc=use_conc,
                                                     channel_storage=channel_storage)
         # rescale for soma surface instead of cylinder radius
-        return z_m / (2. * self.R_)
+        # return z_m / (2. * self.R_)
+        return 1. / (2. * self.R_ / z_m + self.g_shunt)
 
     def setImpedance(self, freqs, use_conc=False, channel_storage=None):
         self.counter = 0

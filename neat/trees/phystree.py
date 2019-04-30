@@ -25,7 +25,7 @@ class PhysNode(MorphNode):
         # biophysical parameters
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
-        self.g_shunt = g_shunt
+        self.g_shunt = g_shunt # uS
         self.e_eq = e_eq
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
@@ -162,7 +162,6 @@ class PhysNode(MorphNode):
             # create the ionchannel object
             channel = self.getCurrent(channel_name, channel_storage=channel_storage)
             g_tot += g * channel.computePOpen(v)
-            del channel
 
         return g_tot
 
@@ -205,6 +204,12 @@ class PhysTree(MorphTree):
                 index of the new node
         '''
         return PhysNode(node_index, p3d=p3d)
+
+    @morphtree.originalTreetypeDecorator
+    def setEEq(self, e_eq):
+        if not hasattr(e_eq, '__iter__'):
+            e_eq = e_eq * np.ones(len(self))
+        for e, node in zip(e_eq, self): node.setEEq(e)
 
     @morphtree.originalTreetypeDecorator
     def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
@@ -265,7 +270,7 @@ class PhysTree(MorphTree):
         return channel_names
 
     @morphtree.originalTreetypeDecorator
-    def addConcMech(self, ion, params={}):
+    def addConcMech(self, ion, params={}, node_arg=None):
         '''
         Add a concentration mechanism to the tree
 
@@ -275,10 +280,14 @@ class PhysTree(MorphTree):
             the ion the mechanism is for
         params: dict
             parameters for the concentration mechanism (only used for NEURON model)
+        node_arg:
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            Defaults to None
         '''
-        for node in self: node.addConcMech(ion, params=params)
+        for node in self._convertNodeArgToNodes(node_arg):
+            node.addConcMech(ion, params=params)
 
-    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10.):
+    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., node_arg=None):
         '''
         Fits the leak current to fix equilibrium potential and membrane time-
         scale.
@@ -289,17 +298,20 @@ class PhysTree(MorphTree):
                 The target reversal potential (mV). Defaults to -75 mV.
             tau_m_target: float
                 The target membrane time-scale (ms). Defaults to 10 ms.
+            node_arg:
+                see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+                Defaults to None
         '''
         assert tau_m_target > 0.
-        for node in self:
-            node.fitLeakCurrent(e_eq_target=e_eq_target,
-                                  tau_m_target=tau_m_target)
+        for node in self._convertNodeArgToNodes(node_arg):
+            node.fitLeakCurrent(e_eq_target=e_eq_target, tau_m_target=tau_m_target,
+                                channel_storage=self.channel_storage)
 
     def computeEquilibirumPotential(self):
         pass
 
     def setCompTree(self, eps=1e-8):
-        comp_nodes = []
+        comp_nodes = [n for n in self if n.g_shunt > eps]
         for node in self.nodes[1:]:
             pnode = node.parent_node
             # check if parameters are the same
@@ -311,6 +323,7 @@ class PhysTree(MorphTree):
                               np.abs(curr[1] - pnode.currents[key][1]) > eps])
                          for key, curr in node.currents.iteritems()])):
                 comp_nodes.append(pnode)
+
         super(PhysTree, self).setCompTree(compnodes=comp_nodes)
 
     # @morphtree.originalTreetypeDecorator
