@@ -15,6 +15,7 @@ import matplotlib.pyplot as pl
 from stree import STree, SNode
 
 import copy
+import itertools
 
 
 class Kernel(object):
@@ -212,8 +213,8 @@ class NET(STree):
             indices of locations for which the full NET is evaluated. Otherwise
             will be indices of the input ``loc_inds``
         '''
-        loc_inds_newtree = [loc_ind for loc_ind in loc_inds \
-                                if loc_ind in self.root]
+        loc_inds_newtree = list({loc_ind for loc_ind in loc_inds \
+                                         if loc_ind in self.root})
         if loc_inds_newtree:
             new_root = NETNode(0, loc_inds_newtree,
                                 z_kernel=self.root.z_kernel)
@@ -227,15 +228,17 @@ class NET(STree):
                 return new_tree
             else:
                 for node in new_tree:
-                    node.loc_inds = [np.where(loc_inds == ind)[0][0] for ind in node.loc_inds]
+                    # node.loc_inds = [np.where(loc_inds == ind)[0][0] for ind in node.loc_inds]
+                    # node.loc_inds = sum([np.where(loc_inds == ind)[0].tolist() for ind in set(node.loc_inds)], [])
+                    node.loc_inds = sum([np.where(loc_inds == ind)[0].tolist() for ind in node.loc_inds], [])
                 new_tree.setNewLocInds()
                 return new_tree
         else:
             return None
 
     def _constructReducedTree(self, node, loc_inds, node_newtree, new_tree):
-        loc_inds_subtree = [loc_ind for loc_ind in loc_inds \
-                                if loc_ind in node]
+        loc_inds_subtree = list({loc_ind for loc_ind in loc_inds \
+                                         if loc_ind in node})
         if len(loc_inds_subtree) > 0:
             if loc_inds_subtree == loc_inds:
                 node_newtree.z_kernel += node.z_kernel
@@ -523,6 +526,67 @@ class NET(STree):
             comp = [node.index]
             node_comps.append(comp)
         node._setTentativeCompartments(node_comps)
+
+    def computeCondRescale(self, gs):
+        assert len(gs) == len(self.root.loc_inds)
+        # array for storing shunt factors
+        sfs = np.ones_like(gs)
+        # counter for recursion algorithm
+        for node in self:
+            node.counter = 0
+        # recursive algorithm to compute shunt factors
+        self._sweep(self.leafs[0], self.leafs[1:], sfs, gs)
+        # clean
+        for node in self:
+            node.counter = 0
+
+        return sfs
+
+    def _sweep(self, node, leafs, sfs, gs):
+        node.counter += 1
+        if node.counter >= len(node.child_nodes):
+            if not self.isRoot(node):
+                # compute the rescaled shunt factors
+                denom = 1. + node.z_bar * np.sum(sfs[node.loc_inds] * gs[node.loc_inds])
+                sfs[node.loc_inds] = sfs[node.loc_inds] / denom
+                # further recursion
+                self._sweep(node.parent_node, leafs, sfs, gs)
+        else:
+            self._sweep(leafs[0], leafs[1:], sfs, gs)
+
+    def improveInputImpedance(self, z_mat):
+        nmaxind = np.max([n.index for n in self])
+        for node in self.getNodes():
+            if len(node.loc_inds) == 1:
+                ind = node.loc_inds[0]
+                # recompute the kernel of this single loc layer
+                if node.parent_node is not None:
+                    p_k = self.calcTotalKernel(node.parent_node)
+                else:
+                    p_k = Kernel((node.kernel.a, np.zeros_like(node.kernel.a)))
+                f_z = (z_mat[ind,ind] - p_k.k_bar) / node.z_bar
+                node.z_kernel.c *= f_z
+            elif len(node.newloc_inds) > 0:
+                z_k_approx = self.calcTotalKernel(node)
+                # add new input nodes for the nodes that don't have one
+                tbr_inds = []
+                for ind in node.newloc_inds:
+                    nmaxind += 1
+                    f_z = (z_mat[ind,ind] - z_k_approx.k_bar)
+                    if np.abs(f_z) > 1e-7:
+                        f_z /= node.z_bar
+                        z_k_real = Kernel(dict(a=node.z_kernel.a, c=node.z_kernel.c*f_z))
+                        # add node
+                        newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real)
+                        newnode.newloc_inds = [ind]
+                        self.addNodeWithParent(newnode, node)
+                        tbr_inds.append(ind)
+                for ind in tbr_inds: node.newloc_inds.remove(ind)
+                # empty the new indices
+                node.newloc_inds = []
+
+        self.setNewLocInds()
+
 
     def plotDendrogram(self, ax,
                         plotargs={}, labelargs={}, textargs={},

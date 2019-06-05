@@ -172,6 +172,13 @@ class PhysNode(MorphNode):
 
     g_tot = property(getGTot, setGTot)
 
+    def asPassiveMembrane(self, v=None, channel_storage=None):
+        v = self.e_eq if v is None else v
+        g_l = self.getGTot(v=v, channel_storage=channel_storage)
+        t_m = self.c_m / g_l * 1e3 # time scale in ms
+        self.currents = {'L': (0., 0.)} # dummy values
+        self.fitLeakCurrent(e_eq_target=v, tau_m_target=t_m,
+                                channel_storage=channel_storage)
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(PhysNode, self).__str__()
@@ -206,10 +213,87 @@ class PhysTree(MorphTree):
         return PhysNode(node_index, p3d=p3d)
 
     @morphtree.originalTreetypeDecorator
+    def asPassiveMembrane(self, node_arg=None):
+        '''
+        Makes the membrane act as a passive membrane (for the nodes in
+        ``node_arg``), channels are assumed to add a conductance of
+        g_max * p_open to the membrane conductance, where p_open for each node
+        is evaluated at the equilibrium potential stored in that node
+
+        Parameters
+        ----------
+        node_arg: optional
+                see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+                Defaults to None. The nodes for which the membrane is set to
+                passive
+        '''
+        for node in self._convertNodeArgToNodes(node_arg):
+            node.asPassiveMembrane(channel_storage=self.channel_storage)
+
+    @morphtree.originalTreetypeDecorator
     def setEEq(self, e_eq):
         if not hasattr(e_eq, '__iter__'):
             e_eq = e_eq * np.ones(len(self))
         for e, node in zip(e_eq, self): node.setEEq(e)
+
+    @morphtree.originalTreetypeDecorator
+    def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
+        '''
+        Set specifice membrane capacitance, axial resistance and (optionally)
+        static point-like shunt conductances in the tree
+
+        Parameters
+        ----------
+        c_m_distr: float, dict or :func:`float -> float`
+            specific membrance capacitance
+        r_a_distr: float, dict or :func:`float -> float`
+            axial resistance
+        g_s_distr: float, dict, :func:`float -> float` or None (optional, default
+            is `None`)
+            point like shunt conductances (placed at `(node.index, 1.)` for the
+            nodes in ``node_arg``). By default no shunt conductances are added
+        node_arg: optional
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            Defaults to None
+        '''
+        for node in self._convertNodeArgToNodes(node_arg):
+            # get the membrane capacitance
+            if isinstance(c_m_distr, float):
+                c_m = c_m_distr
+            elif isinstance(c_m_distr, dict):
+                c_m = c_m_distr[node.index]
+            elif hasattr(c_m_distr, '__call__'):
+                d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
+                c_m = c_m_distr(d2s)
+            else:
+                raise TypeError('`c_m_distr` argument should be a float, dict ' + \
+                                'or a callable')
+            # get the axial resistance
+            if isinstance(r_a_distr, float):
+                r_a = r_a_distr
+            elif isinstance(r_a_distr, dict):
+                r_a = r_a_distr[node.index]
+            elif hasattr(r_a_distr, '__call__'):
+                d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
+                r_a = r_a_distr(d2s)
+            else:
+                raise TypeError('`r_a_distr` argument should be a float, dict ' + \
+                                'or a callable')
+            if g_s_distr is not None:
+                # get the static shunt conductances
+                if isinstance(g_s_distr, float):
+                    g_s = g_s_distr
+                elif isinstance(g_s_distr, dict):
+                    g_s = g_s_distr[node.index]
+                elif hasattr(g_s_distr, '__call__'):
+                    d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
+                    g_s = g_s_distr(d2s)
+                else:
+                    raise TypeError('`g_s_distr` argument should be a float, dict ' + \
+                                    'or a callable')
+            else:
+                g_s = 0.
+            node.setPhysiology(c_m, r_a, g_s)
 
     @morphtree.originalTreetypeDecorator
     def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
@@ -227,16 +311,16 @@ class PhysTree(MorphTree):
                 the ion channel density (uS/cm^2) at that distance. If it is a
                 dict, keys are the node indices and values the ion channel
                 densities (uS/cm^2).
-            node_arg:
+            node_arg: optional
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None
         '''
         # add the ion channel to the nodes
         for node in self._convertNodeArgToNodes(node_arg):
             # get the ion channel conductance
-            if type(g_max_distr) == float:
+            if isinstance(g_max_distr, float):
                 g_max = g_max_distr
-            elif type(g_max_distr) == dict:
+            elif isinstance(g_max_distr, dict):
                 g_max = g_max_distr[node.index]
             elif hasattr(g_max_distr, '__call__'):
                 d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
@@ -244,7 +328,7 @@ class PhysTree(MorphTree):
             else:
                 raise TypeError('`g_max_distr` argument should be a float, dict \
                                 or a callable')
-            node.addCurrent(channel_name, g_max, e_rev,
+            node.addCurrent(channel_name, g_max, e_rev=e_rev,
                             channel_storage=self.channel_storage)
 
     @morphtree.originalTreetypeDecorator
@@ -315,12 +399,19 @@ class PhysTree(MorphTree):
         for node in self.nodes[1:]:
             pnode = node.parent_node
             # check if parameters are the same
-            if not( np.abs(node.r_a - pnode.r_a) < eps and \
-                np.abs(node.c_m - pnode.c_m) < eps and \
-                np.abs(node.R - pnode.R) < eps and \
+            # if not( np.abs(node.r_a - pnode.r_a) < eps and \
+            #     np.abs(node.c_m - pnode.c_m) < eps and \
+            #     np.abs(node.R - pnode.R) < eps and \
+            #     set(node.currents.keys()) == set(pnode.currents.keys()) and
+            #     not sum([sum([np.abs(curr[0] - pnode.currents[key][0]),
+            #                   np.abs(curr[1] - pnode.currents[key][1])])
+            #              for key, curr in node.currents.iteritems()])):
+            if not( np.abs(node.r_a - pnode.r_a) < eps * np.max([node.r_a, pnode.r_a]) and \
+                np.abs(node.c_m - pnode.c_m) < eps * np.max([node.c_m, pnode.c_m]) and \
+                np.abs(node.R - pnode.R) < eps * np.max([node.R, pnode.R]) and \
                 set(node.currents.keys()) == set(pnode.currents.keys()) and
-                not sum([sum([np.abs(curr[0] - pnode.currents[key][0]) > eps,
-                              np.abs(curr[1] - pnode.currents[key][1]) > eps])
+                not sum([sum([np.abs(curr[0] - pnode.currents[key][0]) > eps * np.max([np.abs(curr[0]), np.abs(pnode.currents[key][0])]),
+                              np.abs(curr[1] - pnode.currents[key][1]) > eps * np.max([np.abs(curr[1]), np.abs(pnode.currents[key][1])])])
                          for key, curr in node.currents.iteritems()])):
                 comp_nodes.append(pnode)
 

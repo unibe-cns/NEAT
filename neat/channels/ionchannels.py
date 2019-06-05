@@ -133,7 +133,6 @@ class IonChannel(object):
         # set the coefficients for the linear expansion
         self.setLambdaFuncs()
 
-
     def setLambdaFuncs(self):
         # construct lambda function for state variables
         self.f_statevar = self.lambdifyFStatevar()

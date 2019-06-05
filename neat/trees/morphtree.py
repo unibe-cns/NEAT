@@ -122,9 +122,10 @@ class MorphLoc(object):
             else:
                 self.loc = loc
         elif isinstance(loc, MorphLoc):
-            self.__dict__.update({key: copy.deepcopy(val)
-                                  for key, val in loc.__dict__.iteritems()
-                                  if key != 'reftree'})
+            # self.__dict__.update({key: copy.deepcopy(val)
+            #                       for key, val in loc.__dict__.iteritems()
+            #                       if key != 'reftree'})
+            self.loc = loc.loc
             self.reftree = reftree
         else:
             raise TypeError('Not a valid location type, should be tuple or dict')
@@ -777,7 +778,8 @@ class MorphTree(STree):
         self._computational_root = \
                     next(node for node in nodes if node.index == 1)
         self._leafs_comp = [node for node in nodes if self.isLeaf(node)]
-        self._nodes_comp = nodes
+        self._nodes_comp = []
+        self._gatherNodes(self._computational_root, self._nodes_comp)
 
         if set_as_primary_tree:
             self.treetype = 'computational'
@@ -849,6 +851,30 @@ class MorphTree(STree):
         self.treetype = 'original'
         for node in self:
             node.used_in_comptree = False
+
+    def _convertLocargToLocs(self, locarg):
+        '''
+        Converts locations argument to list of :class:`MorphLoc`. Locations can
+        be specified as list of dictionaries, tuples or :class:`MorphLocs`
+        instances. The argument can also be a string, then it refers to a list
+        of locs stored on the morphology
+
+        Parameters
+        ----------
+        locarg: list of (i) dictionaries, (ii) tuples or (iii) list of
+            :class:`MorphLoc` or string
+
+        Returns
+        -------
+        list of :class:`MorphLoc`, each referencing the current tree
+        '''
+        if isinstance(locarg, list):
+            locs = [MorphLoc(loc, self) for loc in locarg]
+        elif isinstance(locarg, str):
+            locs = self.getLocs(locarg)
+        else:
+            raise IOError('`locarg` should be list of locs or string')
+        return locs
 
     def _convertNodeArgToNodes(self, node_arg):
         '''
@@ -1542,7 +1568,6 @@ class MorphTree(STree):
         elif isinstance(locarg, str):
             name = locarg
             self._tryName(name)
-            return name
         else:
             raise IOError('`locarg` should be list of locs or string')
 
@@ -1659,7 +1684,9 @@ class MorphTree(STree):
         assert dx > 0
         # distribute the locations
         locs = []
+        ii = 0
         for node in self._convertNodeArgToNodes(node_arg):
+            ii += 1
             if node.parent_node == None:
                 locs.append(MorphLoc((node.index, 0.5), self,
                                      set_as_comploc=True))
@@ -2401,6 +2428,9 @@ class MorphTree(STree):
     def createNewTree(self, name, fake_soma=False, store_loc_inds=False):
         '''
         Creates a new tree where the locs of a given 'name' are now the nodes.
+        Distance relations between locations are maintained (note that this
+        relation is stored in `L` attribute of :class:`MorphNode`, using the `p3d`
+        attribute containing the 3d coordinates does not maintain distances)
 
         Parameters
         ----------
@@ -2423,7 +2453,7 @@ class MorphTree(STree):
         self._tryName(name)
         nids = self.getNodeIndices(name)
         # create new tree
-        new_tree = MorphTree()
+        new_tree = self.__class__()
         if fake_soma:
             # find the common root of the set of locations
             snode = self.findCommonRoot(name)

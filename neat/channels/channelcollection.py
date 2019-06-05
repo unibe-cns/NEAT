@@ -46,8 +46,11 @@ E_REV_DICT = {
                 'K_v': -85.,
                 'K_m': -85.,
                 'K_ca': -85.,
+                'K_ir': -85.,
                 'H_distal': -43.,
+                'Ca_H': 50.,
                 'Ca_T': 50.,
+                'h_u': -43.
              }
 
 
@@ -712,128 +715,173 @@ class Khh(IonChannel):
         self.powers = np.array([[4]], dtype=int)
         self.factors = np.array([1.])
         # activation functions
-        spalphan = .01 * -(self.sp_v + 55.) / (sp_exp(-(self.sp_v + 55.) / 10.) - 1.)
+        spalphan = .01 * -(self.sp_v + 55.1234) / (sp_exp(-(self.sp_v + 55.1234) / 10.) - 1.)
         spbetan = .125 * sp_exp(-(self.sp_v + 65.) / 80.)
         self.varinf = np.array([[spalphan / (spalphan + spbetan)]])
         self.tauinf = np.array([[1. / (spalphan + spbetan)]]) # ms
         # vtrap activation functions
-        spalphan_vtrap = .01 / (0.1 - (self.sp_v + 55.) / 200.)
+        spalphan_vtrap = .01 / (0.1 - (self.sp_v + 55.1234) / 200.)
         self.varinf_vtrap = np.array([[spalphan_vtrap / (spalphan_vtrap + spbetan)]])
         self.tauinf_vtrap = np.array([[1. / (spalphan_vtrap + spbetan)]]) # ms
         # base class constructor
         super(Khh, self).__init__()
 
-    def lambdifyVarInf(self):
-        f_varinf_vtrap = np.zeros(self.varnames.shape, dtype=object)
-        for ind, varinf in np.ndenumerate(self.varinf_vtrap):
-            varinf = self._substituteConc(varinf)
-            f_varinf_vtrap[ind] = sp.lambdify(self.sp_v, varinf)
+    # def lambdifyVarInf(self):
+    #     f_varinf_vtrap = np.zeros(self.varnames.shape, dtype=object)
+    #     for ind, varinf in np.ndenumerate(self.varinf_vtrap):
+    #         varinf = self._substituteConc(varinf)
+    #         f_varinf_vtrap[ind] = sp.lambdify(self.sp_v, varinf)
 
-        f_varinf_aux = super(Khh, self).lambdifyVarInf()
+    #     f_varinf_aux = super(Khh, self).lambdifyVarInf()
 
-        f_varinf = _func(f_varinf_aux, f_varinf_vtrap, -55.)
+    #     # create the vtrap functions
+    #     f_varinf = np.zeros(self.varnames.shape, dtype=object)
+    #     for ind, f_varinf_aux_ in np.ndenumerate(f_varinf_aux):
+    #         f_varinf_vtrap_ = f_varinf_vtrap[ind]
+    #         f_varinf[ind] = _func(f_varinf_aux_, f_varinf_vtrap_, -55.)
 
-        # def f_varinf(vv):
-        #     if isinstance(vv, float):
-        #         if np.abs(vv + 55.) < 0.001:
-        #             return f_varinf_vtrap[0,0](vv)
-        #         else:
-        #             return f_varinf_aux[0,0](vv)
-        #     else:
-        #         fv_return = np.zeros_like(vv)
-        #         bool_vtrap = np.abs(vv + 55) < 0.0001
-        #         inds_vtrap = np.where(bool_vtrap)
-        #         fv_return[inds_vtrap] = f_varinf_vtrap[0,0](vv[inds_vtrap])
-        #         inds = np.where(np.logical_not(bool_vtrap))
-        #         fv_return[inds] = f_varinf_aux[0,0](vv[inds])
-        #         return fv_return
+    #     # def f_varinf(vv):
+    #     #     if isinstance(vv, float):
+    #     #         if np.abs(vv + 55.) < 0.001:
+    #     #             return f_varinf_vtrap[0,0](vv)
+    #     #         else:
+    #     #             return f_varinf_aux[0,0](vv)
+    #     #     else:
+    #     #         fv_return = np.zeros_like(vv)
+    #     #         bool_vtrap = np.abs(vv + 55) < 0.0001
+    #     #         inds_vtrap = np.where(bool_vtrap)
+    #     #         fv_return[inds_vtrap] = f_varinf_vtrap[0,0](vv[inds_vtrap])
+    #     #         inds = np.where(np.logical_not(bool_vtrap))
+    #     #         fv_return[inds] = f_varinf_aux[0,0](vv[inds])
+    #     #         return fv_return
 
-        return np.array([[f_varinf]])
+    #     return f_varinf
 
-    def lambdifyTauInf(self):
-        f_tauinf_vtrap = np.zeros(self.varnames.shape, dtype=object)
-        for ind, tauinf in np.ndenumerate(self.tauinf_vtrap):
-            tauinf = self._substituteConc(tauinf)
-            f_tauinf_vtrap[ind] = sp.lambdify(self.sp_v, tauinf)
+    # def lambdifyTauInf(self):
+    #     f_tauinf_vtrap = np.zeros(self.varnames.shape, dtype=object)
+    #     for ind, tauinf in np.ndenumerate(self.tauinf_vtrap):
+    #         tauinf = self._substituteConc(tauinf)
+    #         f_tauinf_vtrap[ind] = sp.lambdify(self.sp_v, tauinf)
 
-        f_tauinf_aux = super(Khh, self).lambdifyTauInf()
+    #     f_tauinf_aux = super(Khh, self).lambdifyTauInf()
 
-        f_tauinf = _func(f_tauinf_aux, f_tauinf_vtrap, -55.)
+    #     # create the vtrap functions
+    #     f_tauinf = np.zeros(self.varnames.shape, dtype=object)
+    #     for ind, f_tauinf_aux_ in np.ndenumerate(f_tauinf_aux):
+    #         f_tauinf_vtrap_ = f_tauinf_vtrap[ind]
+    #         f_tauinf[ind] = _func(f_tauinf_aux_, f_tauinf_vtrap_, -55.)
 
-        # def f_tauinf(vv):
-        #     if isinstance(vv, float):
-        #         if np.abs(vv + 55.) < 0.001:
-        #             return f_tauinf_vtrap[0,0](vv)
-        #         else:
-        #             return f_tauinf_aux[0,0](vv)
-        #     else:
-        #         fv_return = np.zeros_like(vv)
-        #         bool_vtrap = np.abs(vv + 55) < 0.0001
-        #         inds_vtrap = np.where(bool_vtrap)
-        #         fv_return[inds_vtrap] = f_tauinf_vtrap[0,0](vv[inds_vtrap])
-        #         inds = np.where(np.logical_not(bool_vtrap))
-        #         fv_return[inds] = f_tauinf_aux[0,0](vv[inds])
-        #         return fv_return
+    #     # def f_tauinf(vv):
+    #     #     if isinstance(vv, float):
+    #     #         if np.abs(vv + 55.) < 0.001:
+    #     #             return f_tauinf_vtrap[0,0](vv)
+    #     #         else:
+    #     #             return f_tauinf_aux[0,0](vv)
+    #     #     else:
+    #     #         fv_return = np.zeros_like(vv)
+    #     #         bool_vtrap = np.abs(vv + 55) < 0.0001
+    #     #         inds_vtrap = np.where(bool_vtrap)
+    #     #         fv_return[inds_vtrap] = f_tauinf_vtrap[0,0](vv[inds_vtrap])
+    #     #         inds = np.where(np.logical_not(bool_vtrap))
+    #     #         fv_return[inds] = f_tauinf_aux[0,0](vv[inds])
+    #     #         return fv_return
 
-        return np.array([[f_tauinf]])
+    #     return f_tauinf
 
-    def lambdifyDerivatives(self):
-        fstatevar_vtrap = (self.varinf_vtrap - self.statevars) / self.tauinf_vtrap
-        # arguments for lambda function
-        args = [self.sp_v] + [statevar for ind, statevar in np.ndenumerate(self.statevars)]
-        # compute open probability derivatives to state vars
-        dp_dx_aux = np.zeros(self.statevars.shape, dtype=object)
-        for ind, var in np.ndenumerate(self.statevars):
-            dp_dx_aux[ind] = sp.lambdify(args,
-                                     sp.diff(self.p_open, var, 1))
-        # compute state variable derivatives
-        df_dv_aux = np.zeros(self.statevars.shape, dtype=object)
-        df_dx_aux = np.zeros(self.statevars.shape, dtype=object)
-        df_dc_aux = [np.zeros(self.statevars.shape, dtype=object) for _ in self.sp_c]
-        # differentiate
-        for ind, var in np.ndenumerate(self.statevars):
-            # derivatives to concentrations
-            for ii, sp_c in enumerate(self.sp_c):
-                df_dc_aux[ii][ind] = sp.lambdify(args,
-                                        self._substituteConc(sp.diff(f_sv, sp_c, 1)))
-            # derivative to voltage and state variable
-            f_sv = self._substituteConc(fstatevar_vtrap[ind])
-            df_dv_aux[ind] = sp.lambdify(args,
-                                     sp.diff(f_sv, self.sp_v, 1))
-            df_dx_aux[ind] = sp.lambdify(args,
-                                     sp.diff(f_sv, var, 1))
-        # define convenient functions
-        def dp_dx_vtrap(*args):
-            dp_dx_list = [[] for _ in range(self.statevars.shape[0])]
-            for ind, dp_dx_ in np.ndenumerate(dp_dx_aux):
-                dp_dx_list[ind[0]].append(dp_dx_aux[ind](*args))
-            return np.array(dp_dx_list)
-        def df_dv_vtrap(*args):
-            df_dv_list = [[] for _ in range(self.statevars.shape[0])]
-            for ind, df_dv_ in np.ndenumerate(df_dv_aux):
-                df_dv_list[ind[0]].append(df_dv_aux[ind](*args))
-            return np.array(df_dv_list)
-        def df_dx_vtrap(*args):
-            df_dx_list = [[] for _ in range(self.statevars.shape[0])]
-            for ind, df_dx_ in np.ndenumerate(df_dx_aux):
-                df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
-            return np.array(df_dx_list)
-        def df_dc_vtrap(*args):
-            df_dc_list = []
-            for ic, (sp_c, df_dc__) in enumerate(zip(self.sp_c, df_dc_aux)):
-                df_dc_list.append([[] for _ in range(self.statevars.shape[0])])
-                for ind, df_dc_ in np.ndenumerate(df_dc__):
-                    df_dc_list[-1][ind[0]].append(df_dc__[ind](*args))
-            return np.array(df_dc_list)
+    # def lambdifyDerivatives(self):
+    #     fstatevar_vtrap = (self.varinf_vtrap - self.statevars) / self.tauinf_vtrap
+    #     # arguments for lambda function
+    #     args = [self.sp_v] + [statevar for ind, statevar in np.ndenumerate(self.statevars)]
+    #     # compute open probability derivatives to state vars
+    #     dp_dx_aux = np.zeros(self.statevars.shape, dtype=object)
+    #     for ind, var in np.ndenumerate(self.statevars):
+    #         dp_dx_aux[ind] = sp.lambdify(args,
+    #                                  sp.diff(self.p_open, var, 1))
+    #     # compute state variable derivatives
+    #     df_dv_aux = np.zeros(self.statevars.shape, dtype=object)
+    #     df_dx_aux = np.zeros(self.statevars.shape, dtype=object)
+    #     df_dc_aux = [np.zeros(self.statevars.shape, dtype=object) for _ in self.sp_c]
+    #     # differentiate
+    #     for ind, var in np.ndenumerate(self.statevars):
+    #         # derivatives to concentrations
+    #         for ii, sp_c in enumerate(self.sp_c):
+    #             df_dc_aux[ii][ind] = sp.lambdify(args,
+    #                                     self._substituteConc(sp.diff(f_sv, sp_c, 1)))
+    #         # derivative to voltage and state variable
+    #         f_sv = self._substituteConc(fstatevar_vtrap[ind])
+    #         df_dv_aux[ind] = sp.lambdify(args,
+    #                                  sp.diff(f_sv, self.sp_v, 1))
+    #         df_dx_aux[ind] = sp.lambdify(args,
+    #                                  sp.diff(f_sv, var, 1))
 
-        dp_dx_aux_, df_dv_aux_, df_dx_aux_, df_dc_aux_ = super(Khh, self).lambdifyDerivatives()
+    #     dp_dx_vtrap, df_dv_vtrap, df_dx_vtrap, df_dc_vtrap = super(Khh, self).lambdifyDerivatives()
 
-        dp_dx = _func(dp_dx_aux_, dp_dx_vtrap, -55.)
-        df_dv = _func(df_dv_aux_, df_dv_vtrap, -55.)
-        df_dx = _func(df_dx_aux_, df_dx_vtrap, -55.)
-        df_dc = _func(df_dc_aux_, df_dc_vtrap, -55.)
+    #     # define convenient functions
+    #     def dp_dx(*args):
+    #         dp_dx_list = [[] for _ in range(self.statevars.shape[0])]
+    #         for ind, dp_dx_ in np.ndenumerate(dp_dx_aux):
+    #             dp_dx_vt = dp_dx_vtrap[ind]
+    #             dp_dx_list[ind[0]].append(dp_dx_aux[ind](*args))_func(f_tauinf_aux_, f_tauinf_vtrap_, -55.)
+    #         return np.array(dp_dx_list)
+    #     def df_dv(*args):
+    #         df_dv_list = [[] for _ in range(self.statevars.shape[0])]
+    #         for ind, df_dv_ in np.ndenumerate(df_dv_aux):
+    #             df_dv_list[ind[0]].append(df_dv_aux[ind](*args))
+    #         return np.array(df_dv_list)
+    #     def df_dx(*args):
+    #         df_dx_list = [[] for _ in range(self.statevars.shape[0])]
+    #         for ind, df_dx_ in np.ndenumerate(df_dx_aux):
+    #             df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
+    #         return np.array(df_dx_list)
+    #     def df_dc(*args):
+    #         df_dc_list = []
+    #         for ic, (sp_c, df_dc__) in enumerate(zip(self.sp_c, df_dc_aux)):
+    #             df_dc_list.append([[] for _ in range(self.statevars.shape[0])])
+    #             for ind, df_dc_ in np.ndenumerate(df_dc__):
+    #                 df_dc_list[-1][ind[0]].append(df_dc__[ind](*args))
+    #         return np.array(df_dc_list)
 
-        return dp_dx, df_dv, df_dx, df_dc
+    #     dp_dx = _func(dp_dx_aux_, dp_dx_vtrap, -55.)
+    #     df_dv = _func(df_dv_aux_, df_dv_vtrap, -55.)
+    #     df_dx = _func(df_dx_aux_, df_dx_vtrap, -55.)
+    #     df_dc = _func(df_dc_aux_, df_dc_vtrap, -55.)
+    #     # # convenient functions
+    #     # def dp_dx_vtrap(*args):
+    #     #     dp_dx_list = [[] for _ in range(self.statevars.shape[0])]
+    #     #     for ind, dp_dx_ in np.ndenumerate(dp_dx_aux):
+    #     #         dp_dx_list[ind[0]].append(dp_dx_aux[ind](*args))
+    #     #     return np.array(dp_dx_list)
+    #     # def df_dv_vtrap(*args):
+    #     #     df_dv_list = [[] for _ in range(self.statevars.shape[0])]
+    #     #     for ind, df_dv_ in np.ndenumerate(df_dv_aux):
+    #     #         df_dv_list[ind[0]].append(df_dv_aux[ind](*args))
+    #     #     return np.array(df_dv_list)
+    #     # def df_dx_vtrap(*args):
+    #     #     df_dx_list = [[] for _ in range(self.statevars.shape[0])]
+    #     #     for ind, df_dx_ in np.ndenumerate(df_dx_aux):
+    #     #         df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
+    #     #     return np.array(df_dx_list)
+    #     # def df_dc_vtrap(*args):
+    #     #     df_dc_list = []
+    #     #     for ic, (sp_c, df_dc__) in enumerate(zip(self.sp_c, df_dc_aux)):
+    #     #         df_dc_list.append([[] for _ in range(self.statevars.shape[0])])
+    #     #         for ind, df_dc_ in np.ndenumerate(df_dc__):
+    #     #             df_dc_list[-1][ind[0]].append(df_dc__[ind](*args))
+    #     #     return np.array(df_dc_list)
+
+    #     # dp_dx = _func(dp_dx_aux_, dp_dx_vtrap, -55.)
+    #     # df_dv = _func(df_dv_aux_, df_dv_vtrap, -55.)
+    #     # df_dx = _func(df_dx_aux_, df_dx_vtrap, -55.)
+    #     # df_dc = _func(df_dc_aux_, df_dc_vtrap, -55.)
+
+
+    #     # create the vtrap functions
+    #     dp_dx = np.zeros(self.varnames.shape, dtype=object)
+    #     for ind, f_tauinf_aux_ in np.ndenumerate(f_tauinf_aux):
+    #         f_tauinf_vtrap_ = f_tauinf_vtrap[ind]
+    #         f_tauinf[ind] = _func(f_tauinf_aux_, f_tauinf_vtrap_, -55.)
+
+    #     return dp_dx, df_dv, df_dx, df_dc
 
     # def lambdifyTauInf(self):
     #     f_tauinf = np.zeros(self.varnames.shape, dtype=object)
@@ -1018,6 +1066,32 @@ class K_ca(IonChannel):
         # base class constructor
         super(K_ca, self).__init__()
 
+class K_ir(IonChannel):
+    def __init__(self):
+        '''
+        L2/3 Pyr (Branco et al., 2010)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
+        # state variables
+        self.varnames = np.array([['m']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # asomptotic state variable functions
+        self.varinf = np.array([[1. /  (1. + sp_exp((self.sp_v + 82.) / 13.))]])
+        # state variable relaxation time scales (defined as a table, values found on modelDB - accession no. 112834)
+        v_table = np.array([-1e8] + np.linspace(-100.,50.,16).tolist() + [1e8])
+        tau_table = np.array([3.7313] + [3.7313, 4.0000, 4.7170, 5.3763,
+                                         6.0606, 6.8966, 7.6923, 7.1429,
+                                         5.8824, 4.4444, 4.0000, 4.0000,
+                                         4.0000, 4.0000, 4.0000, 4.0000] + [4.000])
+        # self.tauinf = np.array([[sp.interpolating_spline(1, self.sp_v, v_table, tau_table)]]) / 2.
+        self.tauinf = np.array([[sp.Float(6.)]]) * 2.
+        # base class constructor
+        super(K_ir, self).__init__()
 
 class H_distal(IonChannel):
     def __init__(self):
@@ -1093,7 +1167,7 @@ class Ca_H(IonChannel):
 class Ca_R(IonChannel):
     def __init__(self):
         '''
-        R-type calciu channel (slow)
+        R-type calcium channel (slow)
 
         Used in (Poirazi et al, 2003)
         '''
@@ -1112,5 +1186,57 @@ class Ca_R(IonChannel):
                                  sp.Float(5.)]]) # ms
         # base class constructor
         super(Ca_R, self).__init__()
+
+class h_u(IonChannel):
+    def __init__(self):
+        '''
+        hcn channel
+
+        Used in (Mengual et al., 2019)
+        '''
+        self.ion = ''
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['q']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalphaq = 0.001*6.43*(self.sp_v+154.9) / (sp_exp((self.sp_v+154.9)/11.9)-1.)
+        spbetaq = 0.001*193*sp_exp(self.sp_v/33.1)
+        self.varinf = np.array([[spalphaq / (spalphaq + spbetaq)]])
+        self.tauinf = np.array([[1. / (spalphaq + spbetaq)]]) # ms
+        # base class constructor
+        super(h_u, self).__init__()
+
+class K_m35(IonChannel):
+    def __init__(self):
+        '''
+        m-type potassium channel
+
+        Used in (Mengual et al., 2010)
+        '''
+        self.ion = 'k'
+        self.concentrations = []
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # state variables
+        self.varnames = np.array([['n']])
+        self.powers = np.array([[1]], dtype=int)
+        self.factors = np.array([1.])
+        # activation functions
+        spalphan = 0.001 * (self.sp_v + 30.) / (1. - sp_exp(-(self.sp_v + 30.) / 9.))
+        spbetan = -0.001 * (self.sp_v + 30.) / (1. - sp_exp((self.sp_v + 30.) / 9.))
+        # asomptotic state variable functions
+        self.varinf = np.array([[spalphan / (spalphan + spbetan)]])
+        # state variable relaxation time scales
+        # self.tauinf = np.array([[1. / (2.71 * (spalphan + spbetan))]])
+        self.tauinf = np.array([[1. / (2.71*(spalphan + spbetan))]])
+        # base class constructor
+        super(K_m35, self).__init__()
+
+
+
 
 
