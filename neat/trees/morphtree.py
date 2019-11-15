@@ -162,6 +162,13 @@ class MorphLoc(object):
         else:
             return NotImplemented
 
+    def keys(self):
+        return ['node', 'x']
+
+    def __iter__(self):
+        yield self['node']
+        yield self['x']
+
     def __neq__(self, other_loc):
         result = self.__eq__(other_loc)
         if result is NotImplemented:
@@ -182,6 +189,9 @@ class MorphLoc(object):
 
     def __str__(self):
         return '{\'node\': %d, \'x\': %.2f }'%(self.loc['node'], self.loc['x'])
+
+    def __repr__(self):
+        return str(self)
 
     def _setComputationalLoc(self):
         if self.loc['node'] != 1:
@@ -852,7 +862,7 @@ class MorphTree(STree):
         for node in self:
             node.used_in_comptree = False
 
-    def _convertLocargToLocs(self, locarg):
+    def _convertLocArgToLocs(self, locarg):
         '''
         Converts locations argument to list of :class:`MorphLoc`. Locations can
         be specified as list of dictionaries, tuples or :class:`MorphLocs`
@@ -871,6 +881,7 @@ class MorphTree(STree):
         if isinstance(locarg, list):
             locs = [MorphLoc(loc, self) for loc in locarg]
         elif isinstance(locarg, str):
+            self._tryName(locarg)
             locs = self.getLocs(locarg)
         else:
             raise IOError('`locarg` should be list of locs or string')
@@ -1342,7 +1353,7 @@ class MorphTree(STree):
 
         return locinds
 
-    def getNearestLocinds(self, locs, name, direction=0, pprint=False):
+    def getNearestLocinds(self, locs, name, direction=0, check_siblings=True, pprint=False):
         '''
         For each location in the input location list, find the index of the
         closest location in a set of locations stored under a given name. The
@@ -1369,10 +1380,7 @@ class MorphTree(STree):
         # create the locs in a desirable format
         locs_ = []
         for loc in locs:
-            if type(loc) == dict or type(loc) == tuple:
-                locs_.append(MorphLoc(loc, self))
-            else:
-                locs_.append(copy.deepcopy(loc))
+            locs_.append(MorphLoc(loc, self))
         locs = locs_
         # look for the location indices
         loc_indices = []
@@ -1380,7 +1388,7 @@ class MorphTree(STree):
             loc_ind1 = None; loc_ind2 = None
             # find the location indices if necessary
             if direction == 0 or direction == 1:
-                loc_ind1 = self._findLocsDown(loc, name)
+                loc_ind1 = self._findLocsDown(loc, name, check_siblings=check_siblings)
             if direction == 0 or direction == 2:
                 loc_ind2 = self._findLocsUp(loc, name)
             # save the index of the closest location, if it exists and
@@ -1440,7 +1448,7 @@ class MorphTree(STree):
                 loc_ind = None
         return loc_ind
 
-    def _findLocsDown(self, loc, name):
+    def _findLocsDown(self, loc, name, check_siblings=True):
         look_further = False
         # look if there are locs on the same node
         n_inds = np.where(loc['node'] == self.nids[name] )[0]
@@ -1463,11 +1471,12 @@ class MorphTree(STree):
             loc_inds = []
             # check parent node
             if pnode != None:
-                ploc_ind = self._findLocsDown({'node': pnode.index, 'x': 1.}, name)
+                ploc_ind = self._findLocsDown({'node': pnode.index, 'x': 1.}, name,
+                                              check_siblings=check_siblings)
                 if ploc_ind != None:
                     loc_inds.append(ploc_ind)
             # check other child nodes of parent node
-            if pnode != None:
+            if pnode != None and check_siblings:
                 ocnodes = copy.copy(pnode.getChildNodes())
                 ocnodes.remove(node)
             else:
@@ -1489,6 +1498,89 @@ class MorphTree(STree):
             else:
                 loc_ind = None
         return loc_ind
+
+    def getNearestNeighbourLocinds(self, loc, locarg):
+        '''
+        Search nearest neighbours to `loc` in `locarg`.
+
+        Parameters
+        loc: tuple, dict or :class:`MorphLoc`
+        locarg: str or list of locs
+            see documentation of :func:`self._parseLocArg`
+
+        Returns
+        -------
+        list of ints
+            Indices of nearest neighbours of `loc` in `locarg`
+        '''
+        # preprocess locarg
+        loc = MorphLoc(loc, self)
+        if isinstance(locarg, str):
+            name = locarg
+            locs = self._parseLocArg(locarg)
+        else:
+            name = 'nn aux'
+            locs = locarg
+            self.storeLocs(locs, name=name)
+
+        nns = []
+        # search for nearest neighbours
+        node = self[loc['node']]
+        locinds_aux = np.where(node.index == self.nids[name])[0]
+        if len(locinds_aux) > 0:
+            dx = self.xs[name][locinds_aux] - loc['x']
+            # locs on node in down direction
+            inds_down = np.where(dx >= 0)[0]
+            if len(inds_down) > 0:
+                ind_aux = np.argmin(dx[inds_down])
+                nns.append(locinds_aux[inds_down][ind_aux])
+            else:
+                for c_node in node.child_nodes:
+                    self._searchNNDown(c_node, nns, name)
+            # locs on node in up direction
+            inds_up = np.where(dx <= 0)[0]
+            if len(inds_up) > 0:
+                ind_aux = np.argmax(dx[inds_up])
+                nns.append(locinds_aux[inds_up][ind_aux])
+            else:
+                self._searchNNUp(node, nns, name)
+        else:
+            for c_node in node.child_nodes:
+                self._searchNNDown(c_node, nns, name)
+            self._searchNNUp(node, nns, name)
+
+        if name == 'nn aux':
+            self.removeLocs(name)
+
+        return list(set(nns))
+
+    def _searchNNUp(self, node, nns, name):
+        p_node = node.parent_node
+        if p_node is not None:
+            # up direction
+            locinds_aux = np.where(p_node.index == self.nids[name])[0]
+            xval = 0.
+            if len(locinds_aux) > 0:
+                ind_aux = np.argmax(self.xs[name][locinds_aux])
+                locind = locinds_aux[ind_aux]
+                nns.append(locind)
+                xval = self.xs[name][locind]
+            else:
+                self._searchNNUp(p_node, nns, name)
+            # down direction
+            if xval < 1.-1e-5:
+                for c_node in set(p_node.child_nodes) - {node}:
+                    self._searchNNDown(c_node, nns, name)
+
+    def _searchNNDown(self, node, nns, name):
+        locinds_aux = np.where(node.index == self.nids[name])[0]
+        if len(locinds_aux) > 0:
+            ind_aux = np.argmin(self.xs[name][locinds_aux])
+            locind = locinds_aux[ind_aux]
+            nns.append(locind)
+        else:
+            for c_node in node.child_nodes:
+                    self._searchNNDown(c_node, nns, name)
 
     def getLeafLocinds(self, name):
         '''
@@ -1563,22 +1655,27 @@ class MorphTree(STree):
         # process input argument
         if isinstance(locarg, list):
             locs = [MorphLoc(loc, self) for loc in locarg]
-            name = 'comp_locs'
-            self.storeLocs(locs, name=name)
+            recompute = True
+            save = False
         elif isinstance(locarg, str):
             name = locarg
             self._tryName(name)
+            locs = self.getLocs(name)
+            recompute = not (name in self.d2s)
+            save = True
         else:
             raise IOError('`locarg` should be list of locs or string')
 
-        try:
-            return self.d2s[name]
-        except KeyError:
-            self._tryName(name)
-            locs = self.locs[name]
-            self.d2s[name] = np.array([self.pathLength({'node': 1, 'x': 0.}, loc) \
+        if recompute:
+            d2s = np.array([self.pathLength({'node': 1, 'x': 0.}, loc) \
                                         for loc in locs])
-            return self.d2s[name]
+        else:
+            d2s = self.d2s[name]
+
+        if save:
+            self.d2s[name] = d2s
+
+        return d2s
 
     def distancesToBifurcation(self, name):
         '''
@@ -1840,7 +1937,25 @@ class MorphTree(STree):
             the bifurcation locs
         '''
         locs = self._parseLocArg(loc_arg)
-        return reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
+        locs_ =  reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
+
+        # nds, xs = np.array([[loc['node'], loc['x']] for loc in locs]).T
+        # locs = []
+        # for nd, count in Counter(nds).iteritems():
+        #     if nd == 1:
+        #         locs.append((1,.5))
+        #     elif count > 1:
+        #         inds = np.where(nds == nd)[0]
+        #         xs_ = np.unique(xs[inds])
+        #         locs.extend([(nd, x) for x in xs_])
+        #     else:
+        #         ind = np.where(nds == nd)[0][0]
+        #         locs.append((nd, xs[ind]))
+
+        if name != 'No': self.storeLocs(locs_, name=name)
+        return locs_
+
+
 
     def makeXAxis(self, dx=10., node_arg=None, loc_arg=None):
         '''
@@ -2241,12 +2356,14 @@ class MorphTree(STree):
         self.storeLocs(marklocs, 'plotlocs')
         xs = self.xs['plotlocs']
         if type(locargs) == dict:
-            locargs['zorder'] = 1e4
-            locargs = [locargs for _ in marklocs]
+            if 'zorder' not in locargs:
+                locargs['zorder'] = 1e4
+                locargs = [locargs for _ in marklocs]
         else:
             assert len(locargs) == len(marklocs)
             for locarg in locargs:
-                locarg['zorder'] = 1e4
+                if 'zorder' not in locarg:
+                    locarg['zorder'] = 1e4
         # `marklabels` is a dictionary with as keys the index of the loc in
         # `marklocs` to which the label belongs. `labelargs` is the same for
         # every label

@@ -278,7 +278,7 @@ class SOVTree(PhysTree):
 
         Parameters
         ----------
-            locarg: see :func:`neat.MorphTree._convertLocargToLocs()`
+            locarg: see :func:`neat.MorphTree._parseLocArg()`
                 the locations at which to evaluate the SOV matrices
 
         Returns
@@ -290,7 +290,7 @@ class SOVTree(PhysTree):
                 each locations. Dimension 0 is number of modes and dimension 1
                 number of locations
         '''
-        locs = self._convertLocargToLocs(locarg)
+        locs = self._parseLocArg(locarg)
         # set up the matrices
         zeros      = self.root.zeros
         prefactors = self.root.prefactors
@@ -387,7 +387,7 @@ class SOVTree(PhysTree):
                 One of the keyword arguments ``locarg`` or ``sov_data``
                 must not be ``None``. If ``locarg`` is not ``None``, the importance
                 is evaluated at these locations (see
-                :func:`neat.MorphTree._convertLocargToLocs`).
+                :func:`neat.MorphTree._parseLocArg`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
                 the reciprocals of the mode timescales and a matrix with the
                 corresponding spatial mode functions.
@@ -403,7 +403,7 @@ class SOVTree(PhysTree):
                 of locations
         '''
         if locarg is not None:
-            locs = self._convertLocargToLocs(locarg)
+            locs = self._parseLocArg(locarg)
             alphas, gammas = self.getSOVMatrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
@@ -428,7 +428,8 @@ class SOVTree(PhysTree):
         return absolute_importance / np.max(absolute_importance)
 
     def getImportantModes(self, locarg=None, sov_data=None,
-                                eps=1e-4, sort_type='timescale'):
+                                eps=1e-4, sort_type='timescale',
+                                return_importance=False):
         '''
 
         Parameters
@@ -438,7 +439,7 @@ class SOVTree(PhysTree):
                 One of the keyword arguments ``locarg`` or ``sov_data``
                 must not be ``None``. If ``locarg`` is not ``None``, the importance
                 is evaluated at these locations (see
-                :func:`neat.MorphTree._convertLocargToLocs`).
+                :func:`neat.MorphTree._parseLocArg`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
                 the reciprocals of the mode timescales and a matrix with the
                 corresponding spatial mode functions.
@@ -460,7 +461,7 @@ class SOVTree(PhysTree):
                 number of locations
         '''
         if locarg is not None:
-            locs = self._convertLocargToLocs(locarg)
+            locs = self._parseLocArg(locarg)
             alphas, gammas = self.getSOVMatrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
@@ -469,16 +470,21 @@ class SOVTree(PhysTree):
             raise IOError('One of the kwargs `locarg` or `sov_data` must not be ``None``')
         importance = self.getModeImportance(sov_data=(alphas, gammas), importance_type='simple')
         inds = np.where(importance > eps)[0]
+        # only modes above importance cutoff
+        alphas, gammas, importance = alphas[inds], gammas[inds,:], importance[inds]
         if sort_type == 'timescale':
-            inds_sort = np.argsort(np.abs(alphas[inds]))
+            inds_sort = np.argsort(np.abs(alphas))
         elif sort_type == 'importance':
-            inds_sort = np.argsort(importance[inds])[::-1]
+            inds_sort = np.argsort(importance)[::-1]
         else:
             raise ValueError('`sort_type` argument can be \'timescale\' or \
                               \'importance\'')
-        return alphas[inds_sort], gammas[inds_sort,:]
+        if return_importance:
+            return alphas[inds_sort], gammas[inds_sort,:], importance[inds_sort]
+        else:
+            return alphas[inds_sort], gammas[inds_sort,:]
 
-    def calcImpedanceMatrix(self, locs=None, sov_data=None, name=None,
+    def calcImpedanceMatrix(self, locarg=None, sov_data=None, name=None,
                                   eps=1e-4, mem_limit=500, freqs=None):
         '''
         Compute the impedance matrix for a set of locations
@@ -490,7 +496,7 @@ class SOVTree(PhysTree):
                 One of the keyword arguments ``locarg`` or ``sov_data``
                 must not be ``None``. If ``locarg`` is not ``None``, the importance
                 is evaluated at these locations (see
-                :func:`neat.MorphTree._convertLocargToLocs`).
+                :func:`neat.MorphTree._parseLocArg`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
                 the reciprocals of the mode timescales and a matrix with the
                 corresponding spatial mode functions.
@@ -513,7 +519,7 @@ class SOVTree(PhysTree):
                 the frequency dependence at the first dimension
         '''
         if locarg is not None:
-            locs = self._convertLocargToLocs(locarg)
+            locs = self._parseLocArg(locarg)
             alphas, gammas = self.getSOVMatrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
@@ -574,7 +580,7 @@ class SOVTree(PhysTree):
         # create a set of location at which to evaluate the impedance matrix
         self.distributeLocsUniform(dx=dx, name='NET_eval')
         # compute the z_mat matrix
-        alphas, gammas = self.getImportantModes(name='NET_eval', eps=eps)
+        alphas, gammas = self.getImportantModes(locarg='NET_eval', eps=eps)
         z_mat = self.calcImpedanceMatrix(sov_data=(alphas, gammas))
         # derive the NET
         net = NET()
@@ -884,7 +890,7 @@ class SOVTree(PhysTree):
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            alphas, gammas = self.getImportantModes(name='NET_eval', eps=eps)
+            alphas, gammas = self.getImportantModes(locarg='NET_eval', eps=eps)
         lin_terms = {}
         for ii, loc in enumerate(self.getLocs('NET_eval')):
             if not self.isRoot(self[loc['node']]):

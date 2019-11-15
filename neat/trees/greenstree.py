@@ -382,7 +382,7 @@ class GreensTree(PhysTree):
         return z_f
 
     @morphtree.computationalTreetypeDecorator
-    def calcImpedanceMatrix(self, locarg):
+    def calcImpedanceMatrix(self, locarg, explicit_method=True):
         '''
         Computes the impedance matrix of a given set of locations for each
         frequency stored in `self.freqs`.
@@ -408,18 +408,76 @@ class GreensTree(PhysTree):
         else:
             raise IOError('`locarg` should be list of locs or string')
         z_mat = np.zeros((len(self.freqs), len(locs), len(locs)), dtype=complex)
-        for ii, loc0 in enumerate(locs):
-            jj = 0
-            while jj < ii:
-                loc1 = locs[jj]
-                z_f = self.calcZF(loc0, loc1)
-                z_mat[:,ii,jj] = z_f
-                z_mat[:,jj,ii] = z_f
-                jj += 1
-            z_f = self.calcZF(loc0, loc0)
-            z_mat[:,ii,ii] = z_f
+
+        if explicit_method:
+            for ii, loc0 in enumerate(locs):
+                jj = 0
+                while jj < ii:
+                    loc1 = locs[jj]
+                    z_f = self.calcZF(loc0, loc1)
+                    z_mat[:,ii,jj] = z_f
+                    z_mat[:,jj,ii] = z_f
+                    jj += 1
+                z_f = self.calcZF(loc0, loc0)
+                z_mat[:,ii,ii] = z_f
+
+        else:
+            for ii in range(len(locs)):
+                self._calcImpedanceMatrixFromNode(ii, locs, z_mat)
 
         return z_mat
+
+    def _calcImpedanceMatrixFromNode(self, ii, locs, z_mat):
+        node = self[locs[ii]['node']]
+        for jj, loc in enumerate(locs):
+            if loc['node'] == node.index and jj >= ii:
+                z_new = node.calcZF(locs[ii]['x'],loc['x'])
+                z_mat[:,ii,jj] = z_new
+                z_mat[:,jj,ii] = z_new
+        # move down
+        for c_node in node.child_nodes:
+            z_new = node.calcZF(locs[ii]['x'], 1.)
+            self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+
+        if node.parent_node is not None:
+            z_new = node.calcZF(locs[ii]['x'], 0.)
+            # move to sister nodes
+            for c_node in set(node.parent_node.child_nodes) - {node}:
+                self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+            # move up
+            self._calcImpedanceMatrixUp(ii, z_new, node.parent_node, locs, z_mat)
+
+    def _calcImpedanceMatrixUp(self, ii, z_0, node, locs, z_mat):
+        # compute impedances
+        z_in = node.calcZF(1.,1.)
+        for jj, loc in enumerate(locs):
+            if jj > ii and loc['node'] == node.index:
+                z_new = z_0 / z_in * node.calcZF(1.,loc['x'])
+                z_mat[:,ii,jj] = z_new
+                z_mat[:,jj,ii] = z_new
+
+        if node.parent_node is not None:
+            z_new = z_0 / z_in * node.calcZF(0., 1.)
+            # move to sister nodes
+            for c_node in set(node.parent_node.child_nodes) - {node}:
+                self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+            # move to parent node
+            z_new = z_0 / z_in * node.calcZF(0., 1.)
+            self._calcImpedanceMatrixUp(ii, z_new, node.parent_node, locs, z_mat)
+
+    def _calcImpedanceMatrixDown(self, ii, z_0, node, locs, z_mat):
+        # compute impedances
+        z_in = node.calcZF(0.,0.)
+        for jj, loc in enumerate(locs):
+            if jj > ii and loc['node'] == node.index:
+                z_new = z_0 / z_in * node.calcZF(0., loc['x'])
+                z_mat[:,ii,jj] = z_new
+                z_mat[:,jj,ii] = z_new
+
+        # recurse to child nodes
+        z_new = z_0 / z_in * node.calcZF(0., 1.)
+        for c_node in node.child_nodes:
+            self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
 
 
 

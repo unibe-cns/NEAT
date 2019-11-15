@@ -563,7 +563,7 @@ class NET(STree):
                 if node.parent_node is not None:
                     p_k = self.calcTotalKernel(node.parent_node)
                 else:
-                    p_k = Kernel((node.kernel.a, np.zeros_like(node.kernel.a)))
+                    p_k = Kernel((node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
                 f_z = (z_mat[ind,ind] - p_k.k_bar) / node.z_bar
                 node.z_kernel.c *= f_z
             elif len(node.newloc_inds) > 0:

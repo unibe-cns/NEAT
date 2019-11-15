@@ -696,7 +696,7 @@ class STree(object):
 
     def upBifurcationNode(self, node, cnode=None):
         '''
-        Find the nearest bifurcation node up from the input node.
+        Find the nearest bifurcation node up (towards root) from the input node.
 
         Parameters
         ----------
@@ -719,6 +719,28 @@ class STree(object):
             if pnode != None:
                 node, cnode = self.upBifurcationNode(pnode, cnode=node)
         return node, cnode
+
+    def downBifurcationNode(self, node):
+        '''
+        Find the nearest bifurcation node down (towards leafs) from the input node.
+
+        Parameters
+        ----------
+            node: :class:`SNode`
+                Starting node for search
+
+        Returns
+        -------
+        (node, cnode)
+            node: :class:`SNode`
+                the bifurcation node
+        '''
+        if len(node.child_nodes) > 1:
+            return node
+        elif len(node.child_nodes) == 0:
+            return None
+        else:
+            self.downBifurcationNode(node.child_nodes[0])
 
     # def getBifurcationNodes(self, nodes):
     #     '''
@@ -762,6 +784,8 @@ class STree(object):
         list of :class:`SNode`
             the bifurcation nodes
         '''
+        # unique nodes
+        nodes = reduce(lambda l, x: l.append(x) or l if x not in l else l, nodes, [])
         # tag all nodes
         for node in self:
             node['tag'] = 0
@@ -780,6 +804,8 @@ class STree(object):
         # find the bifurcation nodes
         bifur_nodes = [self.root]
         for node in self:
+            # !!! only works for bifurcations with two children
+            # TODO: extend for all bifurcations
             if len(node.child_nodes) > 1 and \
                not np.any([cn['tag'] == 0 for cn in node.child_nodes]):
                 bifur_nodes.append(node)
@@ -789,7 +815,42 @@ class STree(object):
         # add root if necessary
         if self.root not in bifur_nodes:
             bifur_nodes = [self.root] + bifur_nodes
+
         return bifur_nodes
+
+    def getNearestNeighbours(self, node, nodes):
+        '''
+        Find the nearest neighbours of `node` in `nodes`. If `nodes` contains
+        `node`, it is excluded from the search.
+
+        When a node in the up-direction is a bifurcation node and in `nodes`, nodes
+        in its other subtree are excluded from the search
+
+        !!! Untested
+        '''
+        nns = []
+        self._searchNNUp(node, nodes, nns)
+        self._searchNNDown(node, nodes, nns)
+        return nns
+
+    def _searchNNUp(self, node, nodes, nns):
+        p_node = node.parent_node
+        if p_node is not None:
+            # up direction
+            if p_node in nodes:
+                nns.append(p_node)
+            else:
+                self._searchNNUp(p_node, nodes, nns)
+                # down direction
+                for c_node in set(p_node.child_nodes) - {node}:
+                    self._searchNNDown(c_node, nodes, nns)
+
+    def _searchNNDown(self, node, nodes, nns):
+        for c_node in node.child_nodes:
+            if c_node in nodes:
+                nns.append(c_node)
+            else:
+                self._searchNNDown(c_node, nodes, nns)
 
     def __copy__(self, new_tree=None):
         '''

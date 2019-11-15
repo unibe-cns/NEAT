@@ -508,7 +508,6 @@ class CompartmentTree(STree):
         locs_unordered = [(node.index, .5) for node in self]
         return [locs_unordered[ind] for ind in index_arr]
 
-
     def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs',
                                 use_conc=False):
         return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
@@ -810,7 +809,8 @@ class CompartmentTree(STree):
         mat_feature = np.concatenate(mats_feature, 0)
         vec_target = np.concatenate(vecs_target)
         # linear regression fit
-        res = la.lstsq(mat_feature, vec_target)
+        # res = la.lstsq(mat_feature, vec_target)
+        res = so.nnls(mat_feature, vec_target)
         g_vec = res[0].real
         # set the conductances
         self._toTreeGMC(g_vec, channel_names)
@@ -1418,9 +1418,9 @@ class CompartmentTree(STree):
         mat_feature = np.zeros((n_a*n_c, n_c))
         vec_target = np.zeros(n_a*n_c)
         for ii, node in enumerate(self):
-            mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weight**2
+            mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weight
             # vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T), n_a) * weight**2
-            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T) - gamma_mat[:,ii:ii+1], n_a) * weight**2
+            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T) - gamma_mat[:,ii:ii+1], n_a) * weight
 
         # least squares fit
         # res = la.lstsq(mat_feature, vec_target)[0]
@@ -1439,38 +1439,178 @@ class CompartmentTree(STree):
         # return self._fitResAction(action, mat_feature, vec_target, weight,
         #                           capacitance=True)
 
-    # def computeCVF(self, freqs, zf_mat, weight=1., channel_names=['L'], action='store'):
-    #     fef = ke.fExpFitter()
-    #     n_c = len(self)
-    #     # permute to tree indices
-    #     zf_mat = self._permuteToTree(zf_mat)
+    def computeCVF(self, freqs, zf_mat, eps=.05, max_iter=20, action='store'):
+        fef = ke.fExpFitter()
+        n_c = len(self)
+        # reshape Zmat for vector fitting
+        zf_mat = self._permuteToTree(zf_mat)
+        zf_mat = np.reshape(zf_mat, (len(freqs),zf_mat.shape[1]*zf_mat.shape[2]))
+        # perform vector fit
+        alpha, gammas, pairs, rms = fef.fitFExp_vector(freqs, zf_mat.T, deg=n_c)
+        # print '\n>>>>>'
+        # print 'taus together = ', 1e3 / alpha
+        # print '<<<<<\n'
 
-    #     print self
+        # compute capacitances first approx
+        # gammas = np.reshape(gammas, (n_c, n_c, n_c))
+        # gammas_ = np.sum(gammas, axis=0)
+        # c1 = 1. / np.diag(gammas_).real
 
-    #     # construct feature matrix and target vector
-    #     mat_feature = np.zeros((n_c, n_c))
-    #     vec_target = np.zeros(n_c)
-    #     for ii, node in enumerate(self):
-    #         # if not self.isRoot(node):
-    #         if True:
-    #             a, c, _, _ = fef.fitFExp(freqs, zf_mat[:,ii,ii], deg=10)
-    #             # retain all but slowest exponential
-    #             inds = np.argsort(a)
-    #             a, c = a[inds[1:]], c[inds[1:]]
-    #             print '\n>>>'
-    #             print 1. / a
-    #             print c
-    #             print np.abs(c) / np.abs(a)
-    #             # find most important exponential
-    #             ind = np.argmax(np.abs(c) / np.abs(a))
-    #             # set in feature matrices
-    #             mat_feature[ii,ii] = 1./a[ind]
-    #             vec_target[ii] = node.getGTot(channel_names)
-    #     print mat_feature
-    #     print vec_target
+        taulist = []
 
-    #     return self._fitResAction(action, mat_feature, vec_target, weight,
-    #                               capacitance=True)
+        from datarep.matplotlibsettings import *
+        for ii, gamma in enumerate(gammas):
+            kk, ll = ii // n_c, ii % n_c
+
+            alpha_, gamma_, pair, rms = fef.fitFExp(freqs, zf_mat[:,ii], deg=n_c)
+            taus_ = 1e3 / alpha_
+            # print 'taus separate = ', taus_
+            taulist.extend(taus_.real.tolist())
+            kf_ = fef.sumFExp(freqs, alpha_, gamma_)
+
+
+            # kf = fef.sumFExp(freqs, alpha, gamma)
+            # pl.figure('kf %d <-> %d'%(kk,ll))
+            # pl.plot(freqs.imag, zf_mat[:,ii].real, c=colours[0])
+            # pl.plot(freqs.imag, zf_mat[:,ii].imag, c=colours[1])
+            # # pl.plot(freqs.imag, kf.real, ls='--', lw=1.6, c=colours[0])
+            # # pl.plot(freqs.imag, kf.imag, ls='--', lw=1.6, c=colours[1])
+            # pl.plot(freqs.imag, kf_.real, ls='-.', lw=1.6, c=colours[0])
+            # pl.plot(freqs.imag, kf_.imag, ls='-.', lw=1.6, c=colours[1])
+
+        from scipy.cluster.vq import kmeans
+        t_init = np.logspace(np.log10(np.min(taulist)), np.log10(np.max(taulist)), n_c)
+        # print t_init
+        logtau_all, _ = kmeans(np.log10(np.array(taulist)[:,None]), np.log10(t_init[:,None]))
+        tau_all = np.power(10., logtau_all)
+        # print tau_all
+
+        alpha = 1e3 / tau_all.reshape(tau_all.shape[0])
+        pairs = np.zeros_like(alpha, dtype=bool)
+
+        gammas = np.zeros((n_c, n_c, n_c))
+
+        for ii, zf in enumerate(zf_mat.T):
+            kk, ll = ii // n_c, ii % n_c
+
+            # print freqs.shape, zf.shape, alpha.shape, pair.ahsp
+
+            gamma = fef.fit_residues(freqs, zf, alpha, pair)
+            kf_ = fef.sumFExp(freqs, alpha, gamma)
+            gammas[:,kk,ll] = gamma.real
+
+            pl.figure('kf %d <-> %d'%(kk,ll))
+            pl.plot(freqs.imag, zf_mat[:,ii].real, c=colours[0])
+            pl.plot(freqs.imag, zf_mat[:,ii].imag, c=colours[1])
+            # pl.plot(freqs.imag, kf.real, ls='--', lw=1.6, c=colours[0])
+            # pl.plot(freqs.imag, kf.imag, ls='--', lw=1.6, c=colours[1])
+            pl.plot(freqs.imag, kf_.real, ls='-.', lw=1.6, c=colours[0])
+            pl.plot(freqs.imag, kf_.imag, ls='-.', lw=1.6, c=colours[1])
+
+        # pl.figure()
+        # ax = pl.gca()
+        # ax.hist(taulist, bins=np.logspace(-4,2,100))
+        # for tt in tau_all:
+        #     ax.axvline(tt, color='r')
+        # for tt in t_init:
+        #     ax.axvline(tt, color='b')
+        # ax.set_xscale('log')
+
+        # # pl.show()
+        # np.set_printoptions(precision=2, edgeitems=10, linewidth=500, suppress=True)
+        # gammas_ = np.sum(gammas, axis=0)
+        # print gammas_
+        # np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
+        # c1 = 1. / np.diag(gammas_).real
+
+        # # compute the matrix of the dynamical system
+        # g_mat = self.calcSystemMatrix(freqs=0., channel_names=['L'],
+        #                                 with_ca=False, indexing='tree')
+        # inds_zero = np.where(np.abs(g_mat) < 1e-16)
+        # ca_vec = np.array([node.ca for node in self])
+        # gc_mat = g_mat / ca_vec[:,None]
+        # np.set_printoptions(precision=4, edgeitems=10, linewidth=500, suppress=False)
+        # print '-- ca_vec original = ', ca_vec
+        # # algorithm iteration
+        # ca_diff = np.ones_like(ca_vec)
+        # kk = 0
+        # while np.mean(ca_diff) > eps and kk < max_iter:
+        #     print '\n>> iter no. %d'%kk
+        #     print '>> gc_mat_orig =\n', gc_mat
+        #     # compute Schur decomposition of the matrix
+        #     triang, umat = la.schur(gc_mat, output='complex')
+        #     triang_diag = np.diag(triang)
+        #     print '>> triang =\n', triang
+        #     ll,_ = np.linalg.eig(gc_mat)
+        #     print '>> eig orig =\n', ll
+        #     print '>> alphas =\n', alpha
+        #     # assing alphas to closest triang diag elements
+        #     inds = np.argsort(triang_diag)
+        #     np.fill_diagonal(triang, alpha[inds])
+        #     # construct closest matrix with given eigenvalues
+        #     gc_mat = np.dot(umat, np.dot(triang, np.conjugate(umat.T)))
+
+        #     triang, umat = la.schur(gc_mat, output='complex')
+        #     print '>> triang_new =\n', triang
+        #     ll, vv = np.linalg.eig(gc_mat)
+        #     print '>> eig new nozeros =\n', ll
+
+        #     print '>> gc new nozeros =\n', gc_mat
+        #     # construct closest system matrix
+        #     gc_mat[inds_zero] = 0.
+        #     ll, vv = np.linalg.eig(gc_mat)
+        #     print '>> eig new =\n', ll
+        #     print '>> gc new zeros =\n', gc_mat
+        #     # extract capacitances
+        #     ca_vec_ = np.sum(g_mat, axis=1) / np.sum(gc_mat, axis=1)
+
+        #     print '>> g ca difference =\n', g_mat - gc_mat * ca_vec_[:,None]
+
+        #     # continuation conditions
+        #     kk += 1
+        #     ca_diff = np.abs(ca_vec - ca_vec_) / ca_vec
+        #     ca_vec = ca_vec_
+
+
+        # g_mat = self.calcSystemMatrix(freqs=0., channel_names=['L'],
+        #                                 with_ca=False, indexing='tree')
+        # ca_vec = np.array([node.ca for node in self])
+
+        # #     print '   ca_vec = ', ca_vec
+        # # a_orig, _, _ = self.calcEigenvalues()
+        # eig_orig, _ = la.eig(g_mat / ca_vec[:,None])
+        # print '\n>> ca_orig =\n', ca_vec
+        # print '>> a_orig =\n', np.sort(eig_orig)[::-1]
+
+        # print '\n>> a_target =\n', alpha#*1e7
+
+        # # compute the matrix of the dynamical system
+        # # create the matrix pencil
+        # pencil = np.array([np.zeros_like(g_mat) for _ in range(len(self)+1)])
+        # for ii in range(len(self)):
+        #     pencil[ii+1,ii,:] = g_mat[ii]
+        # # create IEP solver
+        # from neat.tools.fittools import iepsolver
+        # ieps = iepsolver.IEPSolver(pencil)
+        # ieps.initLambdas(alpha[-2:-1])
+
+        # ppp = ieps.evalPencil(1./ca_vec)
+        # eig_orig, _ = la.eig(ppp)
+        # print '>> a_orig 2 =\n', np.sort(eig_orig)[::-1]
+        # # fit the capacitances
+        # c_fit, r_fit = ieps.minimizeResiduals(1./ca_vec, pprint=True)
+        # ca_new = 1. / c_fit
+
+        # eig_new, _ = la.eig(g_mat / ca_new[:,None])
+        # print '\n>> ca_new =\n', ca_new
+        # print '>> a_new =\n', np.sort(eig_new)[::-1]
+
+
+
+        # pl.show()
+
+        # c
+        # self._toTreeC(ca_new)
 
     def computeGC(self, freqs, zf_mat, z_mat=None):
         '''
