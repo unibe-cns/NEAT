@@ -1058,6 +1058,9 @@ class MorphTree(STree):
             #                  multiple soma location occur in input')
             warnings.warn('There are multiple locations on the soma in this set ' + \
                           'locations, this can cause issues in certain functions', UserWarning)
+
+        self.removeLocs(name)
+
         self.locs[name] = locs_
         self._nids_orig[name] = np.array([loc['node'] for loc in locs_])
         self._xs_orig[name] = np.array([loc['x'] for loc in locs_])
@@ -1098,8 +1101,8 @@ class MorphTree(STree):
             del self._nids_comp[name]
             del self._xs_orig[name]
             del self._xs_comp[name]
-        except KeyError:
-            warnings.warn('Locations of name %s were not defined'%name)
+        except KeyError: pass
+            # warnings.warn('Locations of name %s were not defined'%name)
         try:
             del self.d2s[name]
         except KeyError: pass
@@ -1582,7 +1585,7 @@ class MorphTree(STree):
             for c_node in node.child_nodes:
                     self._searchNNDown(c_node, nns, name)
 
-    def getLeafLocinds(self, name):
+    def getLeafLocinds(self, name, recompute=False):
         '''
         Find the indices in the desire location list that are 'leafs', i.e.
         locations for which no other location exist that is farther from the
@@ -1592,6 +1595,8 @@ class MorphTree(STree):
         ----------
             name: string
                 name of the desired set of locations
+            recompute: bool (optional, default ``False'')
+                whether or not to force recomputing the distances
 
         Returns
         -------
@@ -1599,6 +1604,8 @@ class MorphTree(STree):
                 the indices of the 'leaf' locations
         '''
         try:
+            if recompute:
+                raise KeyError
             self.leafinds[name]
         except KeyError:
             self._tryName(name)
@@ -1634,7 +1641,7 @@ class MorphTree(STree):
                     returnbool = True
         return returnbool
 
-    def distancesToSoma(self, locarg):
+    def distancesToSoma(self, locarg, recompute=False):
         '''
         Compute the distance of each location in a given set to the soma
 
@@ -1649,6 +1656,8 @@ class MorphTree(STree):
         -------
             numpy.array of floats
                 the distances to the soma of the corresponding locations
+            recompute: bool (optional, default ``False'')
+                whether or not to force recomputing the distances
 
         '''
 
@@ -1661,7 +1670,7 @@ class MorphTree(STree):
             name = locarg
             self._tryName(name)
             locs = self.getLocs(name)
-            recompute = not (name in self.d2s)
+            recompute = not (name in self.d2s) or recompute
             save = True
         else:
             raise IOError('`locarg` should be list of locs or string')
@@ -1677,7 +1686,7 @@ class MorphTree(STree):
 
         return d2s
 
-    def distancesToBifurcation(self, name):
+    def distancesToBifurcation(self, name, recompute=False):
         '''
         Compute the distance of each location to the nearest bifurcation in
         the direction of the root
@@ -1686,6 +1695,8 @@ class MorphTree(STree):
         ----------
             name: string
                 name of the set of locations
+            recompute: bool (optional, default ``False'')
+                whether or not to force recomputing the distances
 
         Returns
         -------
@@ -1694,6 +1705,8 @@ class MorphTree(STree):
                 locations
         '''
         try:
+            if recompute:
+                raise KeyError
             return self.d2b[name]
         except KeyError:
             self._tryName(name)
@@ -2007,7 +2020,7 @@ class MorphTree(STree):
                 self.treetype = 'computational'
         else:
             if isinstance(loc_arg, list):
-                self.storeLocs(locs, name='xaxis')
+                self.storeLocs(loc_arg, name='xaxis')
             elif isinstance(loc_arg, str):
                 self.storeLocs(self.getLocs(loc_arg), name='xaxis')
             else:
@@ -2019,7 +2032,7 @@ class MorphTree(STree):
         d_add = d2s[pinds[0]]
         for ii in xrange(0,len(pinds)-1):
             xaxis.extend((d_add + d2s[pinds[ii]+1:pinds[ii+1]+1] \
-                            - d2s[pinds[ii]+1]).tolist())
+                                - d2s[pinds[ii]+1]).tolist())
             d_add += d2s[pinds[ii+1]] - d2s[pinds[ii]+1]
         self.xaxis = np.array(xaxis)
 
@@ -2088,6 +2101,7 @@ class MorphTree(STree):
         d2s = self.distancesToSoma('xaxis')
         # make the plot
         lines = []
+
         line = ax.plot(self.xaxis[0:pinds[0]+1], parr[0:pinds[0]+1],
                        *args, **kwargs)
         lines.append(line[0])
@@ -2256,7 +2270,7 @@ class MorphTree(STree):
                             marklocs=[], locargs={},
                             marklabels={}, labelargs={},
                             cb_draw=0, cb_orientation='vertical', cb_label='',
-                            sb_draw=1, sb_scale=100, sb_width=5.):
+                            sb_draw=1, sb_scale=100, sb_width=5., set_lims=True):
         '''
         Plot the morphology projected on the x,y-plane
 
@@ -2318,6 +2332,8 @@ class MorphTree(STree):
                 Lenght of the scale bar (micron)
             sb_width: float
                 Width of the scale bar
+            set_lims: bool (optional, default ``True``)
+                set ``ax`` limits based on the morphology
         '''
         # default cmap
         if cmap is None:
@@ -2424,8 +2440,9 @@ class MorphTree(STree):
                               textcoords='offset points', **textargs)
             txt.set_path_effects([patheffects.withStroke(foreground="w",
                                                          linewidth=2)])
-        ax.set_xlim(xlim); ax.set_ylim(ylim)
-        ax.set_aspect('equal', 'datalim')
+        if set_lims:
+            ax.set_xlim(xlim); ax.set_ylim(ylim)
+            ax.set_aspect('equal', 'datalim')
         if cs != None and cb_draw:
             # create colorbar ax
             divider = make_axes_locatable(ax)

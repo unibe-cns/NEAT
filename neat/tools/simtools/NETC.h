@@ -221,7 +221,7 @@ private:
 
 public:
     // constructor, destructor
-    NETSimulator(int n_loc, double v_eq);
+    NETSimulator(int n_loc, double* v_eq);
     ~NETSimulator();
 
     // initialization functions from python
@@ -233,7 +233,8 @@ public:
                             double* alphas, double* gammas, int n_exp);
     void addLinTermFromPython(int loc_index,
                             double* alphas, double* gammas, int n_exp);
-    void addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev);
+    void addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev,
+                                 bool instantaneous, double* vs, int v_size);
     void addSynapseFromType(int loc_ind, int syn_type);
     void addSynapseFromParams(int loc_ind, double e_r,
                             double *params, int p_size);
@@ -258,10 +259,11 @@ public:
     double getSurfaceSingleSyn(int loc_index, int syn_index);
 
     // integration functions
-    void constructInputs(vector< double > v_m,
-                            vector< vector< double > > g_syn); // untested
-    void constructInput1Loc(int loc_ind, double v_m,
+    // void constructInputs(vector< double > v_m,
+    //                         vector< vector< double > > g_syn); // untested
+    void constructInputSyn1Loc(int loc_ind, double v_m,
                             double *g_syn, int g_size);
+    void constructInputChan1Loc(int loc_ind, double v_m);
     void setInputsToZero();
     void constructMatrix(double dt, double* mat, double* arr, int n_node);
     void solveMatrix();

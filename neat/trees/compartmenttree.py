@@ -176,7 +176,9 @@ class CompartmentNode(SNode):
             conductance term of a channel
         '''
         if channel_names is None: channel_names = self.currents.keys()
-        cond_terms = {'L': 1.} # leak conductance has 1 as prefactor
+        cond_terms = {}
+        if 'L' in channel_names:
+            cond_terms['L'] = 1. # leak conductance has 1 as prefactor
         for channel_name in set(channel_names) - set('L'):
             if channel_name not in self.currents:
                 self.addCurrent(channel_name, channel_storage=channel_storage)
@@ -542,7 +544,7 @@ class CompartmentTree(STree):
 
     def calcSystemMatrix(self, freqs=0., channel_names=None,
                                with_ca=True, use_conc=False,
-                               indexing='locs'):
+                               indexing='locs', add_L=True):
         '''
         Constructs the matrix of conductance and capacitance terms of the model
         for each frequency provided in ``freqs``. this matrix is evaluated at
@@ -562,6 +564,9 @@ class CompartmentTree(STree):
                 Whether the indexing order of the matrix corresponds to the tree
                 nodes (order in which they occur in the iteration) or to the
                 locations on which the reduced model is based
+            add_L: bool (default `True`)
+                whether to always add the leak conductance to the matrix
+                calculation, even when it is not in channel_names
 
         Returns
         -------
@@ -576,6 +581,8 @@ class CompartmentTree(STree):
             no_freq_dim = True
         if channel_names is None:
             channel_names = ['L'] + self.channel_storage.keys()
+        if add_L:
+            channel_names = ['L'] + copy.deepcopy(channel_names)
         s_mat = np.zeros((len(freqs), len(self), len(self)), dtype=freqs.dtype)
         for node in self:
             ii = node.index
@@ -823,7 +830,7 @@ class CompartmentTree(STree):
             ii = node.index
             g_terms = node.calcMembraneConductanceTerms(0.,
                                         channel_storage=self.channel_storage,
-                                        channel_names=channel_names)
+                                        channel_names=['L']+channel_names)
             if node.parent_node == None:
                 # membrance conductance elements
                 for channel_name in channel_names:
@@ -1117,7 +1124,7 @@ class CompartmentTree(STree):
                                      (tshape[0]*tshape[1]*tshape[2], tshape[3]))
         # target vector
         g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
-                                             indexing='tree')
+                                             indexing='tree', add_L=False)
         zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))

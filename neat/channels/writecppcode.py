@@ -4,7 +4,8 @@ Writes C++ simulation code for the ionchannels
 
 import os
 
-from neat.channels import channelcollection
+# from neat.channels import channelcollection
+import channelcollection
 
 
 path = '../tools/simtools/'
@@ -28,16 +29,22 @@ fh.write('using namespace std;' + '\n\n')
 fh.write('class IonChannel{' + '\n')
 fh.write('protected:' + '\n')
 fh.write('    double m_g_bar = 0.0, m_e_rev = 50.00000000;' + '\n')
+fh.write('    bool m_instantaneous = false' + ';\n')
 fh.write('public:' + '\n')
 fh.write('    void init(double g_bar, double e_rev){m_g_bar = g_bar; m_e_rev = e_rev;};' + '\n')
+fh.write('    void setInstantaneous(bool b){m_instantaneous = b;};' + '\n')
 fh.write('    virtual void calcFunStatevar(double v){};' + '\n')
 fh.write('    virtual double calcPOpen(){};' + '\n')
 fh.write('    virtual void setPOpen(){};' + '\n')
 fh.write('    virtual void setPOpenEQ(double v){};' + '\n')
 fh.write('    virtual void advance(double dt){};' + '\n')
 fh.write('    virtual double getCond(){return 0.0;};' + '\n')
+fh.write('    virtual double getCondNewton(){return 0.0;};' + '\n')
 fh.write('    virtual double f(double v){return 0.0;};' + '\n')
 fh.write('    virtual double DfDv(double v){return 0.0;};' + '\n')
+fh.write('    virtual void setfNewtonConstant(double* vs, int v_size){};' + '\n')
+fh.write('    virtual double fNewton(double v){return 0.0;};' + '\n')
+fh.write('    virtual double DfDvNewton(double v){return 0.0;};' + '\n')
 fh.write('};' + '\n')
 
 

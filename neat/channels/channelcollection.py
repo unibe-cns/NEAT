@@ -43,13 +43,17 @@ E_REV_DICT = {
                 'Khh': -85.,
                 # Branco et al., 2010 Channels
                 'Na': 50.,
+                'Na_shift': 50.,
                 'K_v': -85.,
+                'K_v_shift': -85.,
                 'K_m': -85.,
+                'K_m35': -85.,
                 'K_ca': -85.,
                 'K_ir': -85.,
                 'H_distal': -43.,
                 'Ca_H': 50.,
                 'Ca_T': 50.,
+                'Ca_R': 50.,
                 'h_u': -43.
              }
 
@@ -93,11 +97,11 @@ class TestChannel(IonChannel):
         self.varnames = np.array([['a00', 'a01', 'a02'],
                                   ['a10', 'a11', 'a12']])
         # asomptotic state variable functions
-        self.varinf = np.array([[1./(1.+sp_exp((self.sp_v-30.)/100.)), 1./(1.+sp_exp((-self.sp_v+30.)/100.)), -10.],
-                                [2./(1.+sp_exp((self.sp_v-30.)/100.)), 2./(1.+sp_exp((-self.sp_v+30.)/100.)), -30.]])
+        self.varinf = np.array([[1./(1.+sp_exp((self.sp_v-30.)/100.)), 1./(1.+sp_exp((-self.sp_v+30.)/100.)), sp.Float(-10.)],
+                                [2./(1.+sp_exp((self.sp_v-30.)/100.)), 2./(1.+sp_exp((-self.sp_v+30.)/100.)), sp.Float(-30.)]])
         # state variable relaxation time scale
-        self.tauinf = np.array([[1., 2., 1.],
-                                [2., 2., 3.]])
+        self.tauinf = np.array([[sp.Float(1.), sp.Float(2.), sp.Float(1.)],
+                                [sp.Float(2.), sp.Float(2.), sp.Float(3.)]])
         # base class instructor
         super(TestChannel, self).__init__()
 

@@ -38,7 +38,7 @@ void NETNode::setSimConstants(double dt, int integ_mode){
         m_p2.reserve(n_exp);
         // initialize the propagators
         complex< double > kbar_aux;
-        complex< double > one_c = 1.0 + 0.0i;
+        complex< double > one_c(1.0, 0.0);
         for(int ii = 0; ii < n_exp; ii++){
             m_p0.push_back(exp(m_alphas[ii]*dt));
             m_p1.push_back((m_p0[ii] - one_c) / m_alphas[ii]);
@@ -60,7 +60,8 @@ void NETNode::setSimConstants(){
 
 void NETNode::reset(){
     m_v_node = 0.0;
-    fill(m_yc.begin(), m_yc.end(), 0.0 + 0.0i);
+    complex< double > yy(0., 0.);
+    fill(m_yc.begin(), m_yc.end(), yy);
 }
 
 inline void NETNode::gatherInput(double xx, double yy){
@@ -154,7 +155,7 @@ inline IOLinDat NETNode::getLin(){
 
 inline void NETNode::advance(double dt, double conv_input){
     if(abs(dt - m_dt) > 1e-9) setSimConstants(dt, 1);
-    complex< double > v_aux = 0.0 + 0.0i;
+    complex< double > v_aux(0.0, 0.0);
     for(int ii = 0; ii < m_yc.size(); ii++){
         m_yc[ii] *= m_p0[ii];
         m_yc[ii] += m_p1[ii] * conv_input;
@@ -177,7 +178,7 @@ void LinTerm::setSimConstants(double dt, int integ_mode){
         m_p2.reserve(n_exp);
         // initialize the propagators
         complex< double > kbar_aux;
-        complex< double > one_c = 1.0 + 0.0i;
+        complex< double > one_c(1.0, 0.0);
         for(int ii = 0; ii < n_exp; ii++){
             m_p0.push_back(exp(m_alphas[ii]*dt));
             m_p1.push_back((m_p0[ii] - one_c) / m_alphas[ii]);
@@ -196,12 +197,13 @@ void LinTerm::setSimConstants(double dt, int integ_mode){
 
 void LinTerm::reset(){
     m_v_lin = 0.0;
-    fill(m_yc.begin(), m_yc.end(), 0.0 + 0.0i);
+    complex< double > yy(0., 0.);
+    fill(m_yc.begin(), m_yc.end(), yy);
 }
 
 void LinTerm::advance(double dt, double conv_input){
     if(abs(dt - m_dt) > 1e-9) setSimConstants(dt, 1);
-    complex< double > v_aux = 0.0 + 0.0i;
+    complex< double > v_aux(0.0, 0.0);
     for(int ii = 0; ii < m_yc.size(); ii++){
         m_yc[ii] *= m_p0[ii];
         m_yc[ii] += m_p1[ii] * conv_input;
@@ -214,12 +216,15 @@ void LinTerm::advance(double dt, double conv_input){
 
 ////////////////////////////////////////////////////////////////////////////////
 // constructor
-NETSimulator::NETSimulator(int n_loc, double v_eq):
+NETSimulator::NETSimulator(int n_loc, double* v_eq):
             m_v_dep(n_loc), m_cond_w(n_loc), m_chan(n_loc),
             m_f_in(n_loc), m_df_dv_in(n_loc),
             m_v_eq(n_loc), m_v_loc(n_loc){
     m_n_loc = n_loc;
-    fill(m_v_eq.begin(), m_v_eq.end(), v_eq);
+    for(int ii=0; ii < n_loc; ii++){
+        m_v_eq[ii] = v_eq[ii];
+    }
+    // fill(m_v_eq.begin(), m_v_eq.end(), v_eq);
 };
 
 // destructor
@@ -286,13 +291,16 @@ void NETSimulator::addLinTermFromPython(int loc_index,
     m_lin_terms.insert(pair< int, LinTerm >(loc_index, lin_term));
 }
 
-void NETSimulator::addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev){
+void NETSimulator::addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev,
+                                           bool instantaneous, double* vs, int v_size){
     if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
     if(g_bar < 0.) cerr << "'g_bar' must be positive" << endl;
     // create the ion channel
     IonChannel* chan = m_ccreate->createInstance(channel_name);
     chan->init(g_bar, e_rev);
     chan->setPOpenEQ(m_v_eq[loc_ind]);
+    chan->setInstantaneous(instantaneous);
+    chan->setfNewtonConstant(vs, v_size);
     m_chan[loc_ind].push_back(chan);
 };
 
@@ -338,7 +346,6 @@ void NETSimulator::addSynapseFromParams(int loc_ind, double e_r,
         cerr << "size of 'params' should be 1 for single exp window or 2 for "
                     "double exp window" << endl;
     }
-
 }
 
 void NETSimulator::removeSynapseFromIndex(int loc_ind, int syn_ind){
@@ -517,36 +524,51 @@ void NETSimulator::_getPathToRoot(NETNode* node, vector< NETNode* > &path){
         _getPathToRoot(&m_nodes[node->m_parent_index], path);
 }
 
-void NETSimulator::constructInputs(vector< double > v_m,
-                                   vector< vector< double > > g_syn){
-    // check sizes
-    size_t n_loc = m_n_loc;
-    if(v_m.size() != n_loc) std::cerr << "v_m has wrong size" << endl;
-    if(g_syn.size() != n_loc) std::cerr << "g_syn has wrong size" << endl;
-    for(int ii = 0; ii < g_syn.size(); ii++){
-        if(g_syn[ii].size() != m_v_dep[ii].size()){
-            cerr << "g_syn has wrong size" << endl;
-        }
-    }
-    // construct the inputs
-    setInputsToZero();
-    for(int ii = 0; ii < m_n_loc; ii++){
-        int n_syn = int(g_syn.size());
-        if(n_syn > 0)
-            constructInput1Loc(ii, v_m[ii], &g_syn[ii][0], n_syn);
-    }
-}
+// void NETSimulator::constructInputs(vector< double > v_m,
+//                                    vector< vector< double > > g_syn){
+//     // check sizes
+//     size_t n_loc = m_n_loc;
+//     if(v_m.size() != n_loc) std::cerr << "v_m has wrong size" << endl;
+//     if(g_syn.size() != n_loc) std::cerr << "g_syn has wrong size" << endl;
+//     for(int ii = 0; ii < g_syn.size(); ii++){
+//         if(g_syn[ii].size() != m_v_dep[ii].size()){
+//             cerr << "g_syn has wrong size" << endl;
+//         }
+//     }
+//     // construct the inputs
+//     setInputsToZero();
+//     for(int ii = 0; ii < m_n_loc; ii++){
+//         // synapse
+//         int n_syn = int(g_syn.size());
+//         if(n_syn > 0)
+//             constructInputSyn1Loc(ii, v_m[ii], &g_syn[ii][0], n_syn);
+//         // ion channels
+//         int n_chan = int(m_chan.size());
+//         if(n_chan > 0)
+//             constructInputChan1Loc(ii, v_m[ii]);
+//     }
+// }
 
 void NETSimulator::setInputsToZero(){
     fill(m_f_in.begin(), m_f_in.end(), 0.0);
     fill(m_df_dv_in.begin(), m_df_dv_in.end(), 0.0);
 }
 
-void NETSimulator::constructInput1Loc(int loc_ind, double v_m,
+void NETSimulator::constructInputSyn1Loc(int loc_ind, double v_m,
                                       double *g_syn, int g_size){
     for(int jj = 0; jj < g_size; jj++){
         m_f_in[loc_ind] -= g_syn[jj] * m_v_dep[loc_ind][jj]->f(v_m);
         m_df_dv_in[loc_ind] -= g_syn[jj] * m_v_dep[loc_ind][jj]->DfDv(v_m);
+    }
+}
+
+void NETSimulator::constructInputChan1Loc(int loc_ind, double v_m){
+    // construct aglrotihm input values at current location for channel
+    for(int jj = 0; jj < m_chan[loc_ind].size(); jj++){
+        m_f_in[loc_ind] -= m_chan[loc_ind][jj]->getCondNewton() *
+                           m_chan[loc_ind][jj]->fNewton(v_m);
+        m_df_dv_in[loc_ind] -= m_chan[loc_ind][jj]->getCondNewton() *
+                               m_chan[loc_ind][jj]->DfDvNewton(v_m);
     }
 }
 
@@ -730,8 +752,10 @@ void NETSimulator::advance(double dt){
             (*cwptr_it)->advance(dt);
         }
         // advance ion channel currents at locations
+        // cout << "DT = " << dt << endl;
         for(vector< IonChannel* >::iterator ioncptr_it = m_chan[loc_ind].begin();
             ioncptr_it != m_chan[loc_ind].end(); ioncptr_it++){
+            // cout << "Channel" << endl;
             (*ioncptr_it)->calcFunStatevar(m_v_loc[loc_ind]);
             (*ioncptr_it)->advance(dt);
             (*ioncptr_it)->setPOpen();

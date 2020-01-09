@@ -382,6 +382,31 @@ class TestMorphTree():
         assert locinds1[0] == 1
         assert locinds2[0] == 1
 
+    def testNearestNeighbours(self):
+        self.loadTree()
+
+        locs1 = [(4,1.), (5,.5), (7,.5)]
+        inds = self.tree.getNearestNeighbourLocinds((5,.7), locs1)
+        assert set(inds) == {1}
+        inds = self.tree.getNearestNeighbourLocinds((6,.7), locs1)
+        assert set(inds) == {1}
+        inds = self.tree.getNearestNeighbourLocinds((5,.5), locs1)
+        assert set(inds) == {1}
+        inds = self.tree.getNearestNeighbourLocinds((5,.4), locs1)
+        assert set(inds) == {0,1}
+
+        locs2 = [(4,.9), (5,.5), (7,.5)]
+        inds = self.tree.getNearestNeighbourLocinds((5,.4), locs2)
+        assert set(inds) == {0,1,2}
+
+        locs3 = [(1,.5), (4,.9), (7,.5)]
+        inds = self.tree.getNearestNeighbourLocinds((4,.8), locs3)
+        assert set(inds) == {0,1}
+
+        locs4 = [(5,.9), (6,.9), (7,.5), (8,.9)]
+        inds = self.tree.getNearestNeighbourLocinds((1,.5), locs4)
+        assert set(inds) == {0,2}
+
     def testDistances(self):
         self.loadTree()
         locs = [(1,.5), (4, 1.), (5, .5), (6, .5), (6, 1.)]
@@ -554,5 +579,6 @@ if __name__ == '__main__':
     tmt = TestMorphTree()
     # tmt.testPlotting(pshow=True)
     # tmt.testComptree()
-    tmt.testLocStorageRetrievalLookup()
+    # tmt.testLocStorageRetrievalLookup()
+    tmt.testNearestNeighbours()
 

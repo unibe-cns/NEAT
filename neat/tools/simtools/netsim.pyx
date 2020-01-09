@@ -20,6 +20,7 @@ from libcpp.pair cimport pair
 
 import copy
 import time
+import warnings
 
 from neat.channels import channelcollection
 
@@ -29,7 +30,7 @@ def c2r(arr_c):
 
 cdef extern from "NETC.h":
     cdef cppclass NETSimulator:
-        NETSimulator(int n_loc, double v_eq)
+        NETSimulator(int n_loc, double *v_eq)
 
         # initialize from python
         void initFromPython(double dt, double integ_mode, bool print_tree)
@@ -41,7 +42,8 @@ cdef extern from "NETC.h":
         void addLinTermFromPython(int loc_index,
                                 double *alphas, double *gammas, int n_exp)
         void addIonChannelFromPython(string channel_name, int loc_ind,
-                                     double g_bar, double e_rev);
+                                     double g_bar, double e_rev,
+                                     bool instantaneous, double *vs, int v_size);
         void addSynapseFromType(int loc_ind, int syn_type)
         void addSynapseFromParams(int loc_ind, double e_r,
                                 double *params, int p_size)
@@ -61,8 +63,9 @@ cdef extern from "NETC.h":
         void solveMatrix()
         void constructMatrix(double dt, double* mat, double* arr, int n_node);
         void setInputsToZero()
-        void constructInput1Loc(int loc_ind, double v_m,
+        void constructInputSyn1Loc(int loc_ind, double v_m,
                                 double *g_syn, int g_size)
+        void constructInputChan1Loc(int loc_ind, double v_m)
         void advance(double dt)
         void feedSpike(int loc_ind, int syn_ind, double g_max, int n_spike)
 
@@ -73,8 +76,8 @@ cdef class NETSim:
     cdef public int n_loc
     cdef public int n_node
     cdef public np.ndarray n_syn
-    # equilibrium potential
-    cdef public double v_eq
+    # equilibirum potentials
+    cdef public np.ndarray v_eq
     # flag indicating Newton solver (0) or integration with full kernels (1)
     cdef int mode
     # store the synapses, conductances and spikes
@@ -82,7 +85,16 @@ cdef class NETSim:
     cdef public list spike_times_py
 
     def __cinit__(self, net, lin_terms=None, v_eq=-75., print_tree=False):
-        self.v_eq = v_eq
+        self.n_loc = len(net.root.loc_inds)
+        # equibrium potentials
+        if isinstance(v_eq, float):
+            self.v_eq = v_eq * np.ones(self.n_loc)
+        elif len(v_eq) == self.n_loc:
+            self.v_eq = np.array(v_eq)
+        else:
+            raise IOError("Invalid value for input argument [v_eq] should be float " + \
+                          "or iterable of floats")
+        cdef np.ndarray[np.double_t, ndim=1] v_eq_arr = self.v_eq
         # temporary python objects
         self.syn_map_py = []
         self.spike_times_py = []
@@ -94,8 +106,7 @@ cdef class NETSim:
             else:
                 pnode_ind = -1
                 # initialize the C++ object
-                self.net_ptr = new NETSimulator(len(node.loc_inds), self.v_eq)
-                self.n_loc = len(node.loc_inds)
+                self.net_ptr = new NETSimulator(self.n_loc, &v_eq_arr[0])
                 self.n_syn = np.zeros(self.n_loc, dtype=int)
             cnode_inds = np.array([cnode.index for cnode in node.child_nodes], dtype=int)
             if len(cnode_inds) == 0: cnode_inds = np.array([-1])
@@ -224,11 +235,42 @@ cdef class NETSim:
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
         self.net_ptr.addVNodeToArr(&vc_arr[0], vc_arr.shape[0])
 
-    def addChannel(self, channel_name, loc_index, g_max, e_rev=None):
+    def addChannel(self, channel_name, loc_index, g_max, e_rev=None,
+                         instantaneous=False, v_const={}):
+        '''
+        Add an ion channel to the NET model
+
+        Parameters
+        ----------
+        channel_name: string
+            name of the ion channel
+        loc_index: int
+            index of the location
+        g_max: float
+            maximal conductance of the channel
+        e_rev: float (optional)
+            reversal potential (if not provide, default value is taken)
+        instantaneous: bool (optional, default to 'False')
+            whether the activation should be approximated as instantaneous if
+            such a state variable is present
+        v_const: dict {string: float} (optional)
+            state variables for which a voltage value is provided (< 1000 mV)
+            are fixed at their activation levels for this voltage value during
+            the Newton iteration. If the voltage value exceeds 1000 mV or is not
+            provided, state variable activations are computed based on actual
+            voltage during Newton iteration
+        '''
         if e_rev is None: e_rev = channelcollection.E_REV_DICT[channel_name]
         cdef string cname = channel_name.encode('UTF-8')
-        self.net_ptr.addIonChannelFromPython(cname, loc_index, g_max, e_rev)
-
+        # voltage values
+        chan = eval('channelcollection.' + channel_name + '()')
+        cdef np.ndarray[np.double_t, ndim=1] vs_arr = np.zeros(chan.statevars.size)
+        for ii, vn in enumerate(np.nditer(chan.varnames, flags=['refs_ok'])):
+            vn = str(vn)
+            vs_arr[ii] = v_const[vn] if vn in v_const else 1e4
+        # add the channel
+        self.net_ptr.addIonChannelFromPython(cname, loc_index, g_max, e_rev,
+                                             instantaneous, &vs_arr[0], vs_arr.shape[0])
 
     def addSynapse(self, loc_index, synarg, g_max=0.001, nmda_ratio=1.6):
         '''
@@ -391,7 +433,8 @@ cdef class NETSim:
                 raise ValueError('`g_syn[%d]` has incorrect size'%ii)
             if g_s.size > 0:
                 g_c = g_s
-                self.net_ptr.constructInput1Loc(ii, v_a, &g_c[0], g_c.shape[0])
+                self.net_ptr.constructInputSyn1Loc(ii, v_a, &g_c[0], g_c.shape[0])
+            self.net_ptr.constructInputChan1Loc(ii, v_a)
 
     def recastInput(self, g_syn):
         '''
@@ -477,7 +520,7 @@ cdef class NETSim:
             self.initialize(mode=0)
         # location voltage
         if v_0 is None:
-            v_0 = self.v_eq * np.ones(self.n_loc)
+            v_0 = self.v_eq
             v_alt = np.zeros(self.n_loc)
         if n_iter == 0:
             self.setVNodeFromVLoc(v_0)
@@ -489,7 +532,7 @@ cdef class NETSim:
         self.net_ptr.solveMatrix()
         v_new = self.getVLoc()
         # check for instability
-        if np.max(np.abs(v_new)) > 100.:
+        if np.max(np.abs(v_new)) > 1000.:
             # v_0 failed, so try v_alt
             if v_alt is not None:
                 self.setVNodeFromVLoc(v_alt)
@@ -497,7 +540,8 @@ cdef class NETSim:
                                             n_iter=0, n_max=n_max,
                                             v_0=v_alt, v_alt=None)
             else:
-                return Exception('Newton solver failed to converge')
+                warnings.warn('Newton solver failed to converge')
+                return np.array([np.nan for _ in range(self.n_loc)])
         elif np.linalg.norm(v_new - v_0) > v_eps and n_iter < n_max:
             # no convergence yet, move on to next step
             v_new = self.solveNewton(g_syn, v_eps=v_eps,

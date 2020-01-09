@@ -10,6 +10,7 @@ Date: 13/05/2016
 
 import numpy as np
 import scipy.linalg as la
+from scipy.cluster.vq import kmeans
 
 import math
 import copy

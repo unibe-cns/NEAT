@@ -604,6 +604,8 @@ class IonChannel(object):
                 fh.write('    double m_' + sp.printing.ccode(varname) +';\n')
         for ind, varname in np.ndenumerate(self.varnames):
                 fh.write('    double m_' + sp.printing.ccode(varname) + '_inf, m_tau_' + sp.printing.ccode(varname) + ';\n')
+        for ind, varname in np.ndenumerate(self.varnames):
+                fh.write('    double m_v_' + sp.printing.ccode(varname) + '= 10000.;\n')
         fh.write('    double m_p_open_eq = 0.0, m_p_open = 0.0;\n')
         fh.write('public:' + '\n')
         fh.write('    void calcFunStatevar(double v) override;' + '\n')
@@ -612,8 +614,12 @@ class IonChannel(object):
         fh.write('    void setPOpenEQ(double v) override;' + '\n')
         fh.write('    void advance(double dt) override;' + '\n')
         fh.write('    double getCond() override;' + '\n')
+        fh.write('    double getCondNewton() override;' + '\n')
         fh.write('    double f(double v) override;' + '\n')
         fh.write('    double DfDv(double v) override;' + '\n')
+        fh.write('    void setfNewtonConstant(double* vs, int v_size) override;' + '\n')
+        fh.write('    double fNewton(double v) override;' + '\n')
+        fh.write('    double DfDvNewton(double v) override;' + '\n')
         fh.write('};' + '\n')
 
         fcc.write('void ' + self.__class__.__name__ + '::calcFunStatevar(double v){' + '\n')
@@ -623,8 +629,28 @@ class IonChannel(object):
             varinf_ = self._substituteConc(varinf)
             tauinf_ = self._substituteConc(tauinf)
             fcc.write('    m_' + sp.printing.ccode(varname) + '_inf = ' + sp.printing.ccode(varinf_) + ';' + '\n')
-            fcc.write('    m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf_) + ';' + '\n')
+            if self.varinf.shape[1] == 2 and ind == (0,0):
+                fcc.write('    if(m_instantaneous)' + '\n')
+                fcc.write('        m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(sp.Float(1e-5))  + ';\n')
+                fcc.write('    else' + '\n')
+                fcc.write('        m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf_) + ';\n')
+            else:
+                fcc.write('    m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf_) + ';\n')
         fcc.write('}' + '\n')
+
+        # fcc.write('void ' + self.__class__.__name__ + '::calcFunStatevarInstantaneousAct(double v){' + '\n')
+        # for ind, varinf in np.ndenumerate(self.varinf):
+        #     if self.varinf.shape[1] == 2 and ind == (0,0):
+        #         # instantaneous activation approximation
+        #         tauinf = sp.Float(1e-5)
+        #     else:
+        #         tauinf = self.tauinf[ind]
+        #     varname = self.varnames[ind]
+        #     varinf_ = self._substituteConc(varinf)
+        #     tauinf_ = self._substituteConc(tauinf)
+        #     fcc.write('    m_' + sp.printing.ccode(varname) + '_inf = ' + sp.printing.ccode(varinf_) + ';' + '\n')
+        #     fcc.write('    m_tau_' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(tauinf_) + ';' + '\n')
+        # fcc.write('}' + '\n')
 
         fcc.write('double ' + self.__class__.__name__ + '::calcPOpen(){' + '\n')
         expr = copy.deepcopy(self.p_open)
@@ -672,6 +698,11 @@ class IonChannel(object):
         fcc.write('    return m_g_bar * (m_p_open - m_p_open_eq);' + '\n')
         fcc.write('}' + '\n')
 
+        fcc.write('double ' + self.__class__.__name__ + '::getCondNewton(){' + '\n')
+        fcc.write('    return m_g_bar;' + '\n')
+        fcc.write('}' + '\n')
+
+        # function for temporal integration
         fcc.write('double ' + self.__class__.__name__ + '::f(double v){' + '\n')
         fcc.write('    return (m_e_rev - v);' + '\n')
         fcc.write('}' + '\n')
@@ -679,6 +710,70 @@ class IonChannel(object):
         fcc.write('double ' + self.__class__.__name__ + '::DfDv(double v){' + '\n')
         fcc.write('    return -1.;' + '\n')
         fcc.write('}' + '\n')
+
+        # set voltage values to evaluate at constant voltage during newton iteration
+        fcc.write('void ' + self.__class__.__name__ + '::setfNewtonConstant(double* vs, int v_size){' + '\n')
+        fcc.write('    if(v_size != %d)'%self.statevars.size + '\n')
+        fcc.write('        cerr << "input arg [vs] has incorrect size, ' + \
+                  'should have same size as number of channel state variables" << endl' + ';\n')
+        for ii, statevar in enumerate(np.nditer(self.statevars, flags=['refs_ok'])):
+            fcc.write('    m_v_' + sp.printing.ccode(statevar) + ' = vs[%d]'%ii + ';\n')
+        fcc.write('}' + '\n')
+
+        # functions for solving Newton iteration
+        fcc.write('double ' + self.__class__.__name__ + '::fNewton(double v){' + '\n')
+        p_o = self.p_open
+        for ind, varname in np.ndenumerate(self.varnames):
+            v_var = sp.symbols('v_' + str(varname))
+            # substitute voltage symbol in the activation
+            varinf_ = self._substituteConc(self.varinf[ind]).subs(self.sp_v, v_var)
+            # assign dynamic or fixed voltage to the activation
+            fcc.write('    double ' + sp.printing.ccode(v_var) + ';\n')
+            fcc.write('    if(m_' + sp.printing.ccode(v_var) + ' > 1000.){' + '\n')
+            fcc.write('        ' + sp.printing.ccode(v_var) + ' = v' + ';\n')
+            fcc.write('    } else{' + '\n')
+            fcc.write('        ' + sp.printing.ccode(v_var) + ' = m_' + sp.printing.ccode(v_var) + ';\n')
+            fcc.write('    }' + '\n')
+            fcc.write('    double ' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(varinf_) + ';\n')
+            # p_o = p_o.subs(self.statevars[ind], varinf_)
+
+        fcc.write('    return (m_e_rev - v) * (' + sp.printing.ccode(p_o) + ' - m_p_open_eq)' + ';\n')
+        fcc.write('}' + '\n')
+
+        fcc.write('double ' + self.__class__.__name__ + '::DfDvNewton(double v){' + '\n')
+        p_o = self.p_open
+        # compute partial derivatives
+        dp_o = np.zeros_like(self.statevars)
+        for ind, var in np.ndenumerate(self.statevars):
+            dp_o[ind] = sp.diff(p_o, var, 1)
+        # print derivatives
+        for ind, varname in np.ndenumerate(self.varnames):
+            v_var = sp.symbols('v_' + str(varname))
+            # substitute voltage symbol in the activation
+            varinf_ = self._substituteConc(self.varinf[ind]).subs(self.sp_v, v_var)
+            dvarinf_dv = sp.diff(varinf_, v_var, 1)
+            # compute derivative
+            fcc.write('    double ' + sp.printing.ccode(v_var) + ';\n')
+            fcc.write('    double d' + sp.printing.ccode(varname) + '_dv;\n')
+            fcc.write('    if(m_' + sp.printing.ccode(v_var) + ' > 1000.){' + '\n')
+            fcc.write('        ' + sp.printing.ccode(v_var) + ' = v' + ';\n')
+            fcc.write('        d' + sp.printing.ccode(varname) + '_dv = ' + sp.printing.ccode(dvarinf_dv) + ';\n')
+            fcc.write('    } else{' + '\n')
+            fcc.write('        ' + sp.printing.ccode(v_var) + ' = m_' + sp.printing.ccode(v_var) + ';\n')
+            fcc.write('        d' + sp.printing.ccode(varname) + '_dv = 0;\n')
+            fcc.write('    }' + '\n')
+            fcc.write('    double ' + sp.printing.ccode(varname) + ' = ' + sp.printing.ccode(varinf_) + ';\n')
+
+            # subs
+            # p_o = p_o.subs(self.statevars[ind], varinf_)
+            # for ind_, _ in np.ndenumerate(self.varnames):
+            #     dp_o[ind_].subs(self.statevars[ind], varinf_)
+
+        expr_str = '+'.join([sp.printing.ccode(dp_o_) + ' * d' + sp.printing.ccode(self.varnames[ind]) + '_dv' for ind, dp_o_ in np.ndenumerate(dp_o)])
+
+        fcc.write('    return -1. * (' + sp.printing.ccode(p_o) + ' - m_p_open_eq) + (' + expr_str + ') * (m_e_rev - v)' + ';\n')
+        fcc.write('}' + '\n')
+
 
 
 

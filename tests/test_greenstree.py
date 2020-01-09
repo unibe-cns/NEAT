@@ -126,18 +126,25 @@ class TestGreensTree():
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
         self.tree.setImpedance(ft.s)
+        print '!!! ', ft.ind_0s
         # sets of location
         # sets of location
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         self.tree.storeLocs(locs, 'locs')
         self.sovtree.storeLocs(locs, 'locs')
         # compute impedance matrices with both methods
-        z_sov = self.sovtree.calcImpedanceMatrix(name='locs', eps=1e-10)
+        z_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10)
         z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
-        zf_sov = self.sovtree.calcImpedanceMatrix(name='locs', eps=1e-10, freqs=ft.s)
+        z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
+        print '> z_gf =\n', z_gf
+        print '> z_gf2 =\n', z_gf2
+        assert np.allclose(z_gf2, z_gf, atol=5e-6)
+        zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
         zf_gf = self.tree.calcImpedanceMatrix('locs')
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
+        zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
+        assert np.allclose(zf_gf2, zf_gf, atol=5e-6)
 
         # load trees
         self.loadValidationTree()
@@ -151,12 +158,16 @@ class TestGreensTree():
         self.tree.storeLocs(locs, 'locs')
         self.sovtree.storeLocs(locs, 'locs')
         # compute impedance matrices with both methods
-        z_sov = self.sovtree.calcImpedanceMatrix(name='locs', eps=1e-10)
+        z_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10)
         z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
-        zf_sov = self.sovtree.calcImpedanceMatrix(name='locs', eps=1e-10, freqs=ft.s)
+        z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
+        assert np.allclose(z_gf2, z_gf, atol=5e-6)
+        zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
         zf_gf = self.tree.calcImpedanceMatrix('locs')
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
+        zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
+        assert np.allclose(zf_gf2, zf_gf, atol=5e-6)
 
         # print z_sov
         # print z_gf
