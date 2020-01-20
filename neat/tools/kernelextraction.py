@@ -292,7 +292,7 @@ class fExpFitter(Fitter):
         return cnew
 
     def trialFunFit_constrained_2d(self, s, arr2d, alphas, pairs):
-        print '>>> multifun fit test v2 <<<'
+        print('>>> multifun fit test v2 <<<')
         deg = len(alphas)
         # construct f array
         arr1d = np.array([], dtype=complex)
@@ -326,7 +326,7 @@ class fExpFitter(Fitter):
         arr1d = np.concatenate((arr1d.real, arr1d.imag))
         # find auxiliary residues
         c = la.lstsq(A, arr1d)[0][-len(alphas):]
-        print 'cnew: ', c
+        print('cnew: ', c)
         # find zeros of fitted auxiliary function
         a = np.diag(alphas)
         b = np.ones(deg)
@@ -338,9 +338,9 @@ class fExpFitter(Fitter):
                 b[i:i+2] = np.array([2,0])
         # compute zeros of sum sigmafit
         H = a.real - np.dot(b[:,None], c[None,:])
-        print 'H: ', H
+        print('H: ', H)
         alphanew = np.linalg.eig(H)[0]
-        print 'alphanew: ', alphanew
+        print('alphanew: ', alphanew)
         inds = np.argsort(alphanew)
         alphanew = alphanew[inds]
         # indicates where pairs of complex conjugate poles occur
@@ -369,7 +369,7 @@ class fExpFitter(Fitter):
                     cnew[i:i+2] = np.array([cnew[i] + 1j * cnew[i+1], cnew[i] - 1j * cnew[i+1]])
             c2dnew[ind,:] = cnew
 
-        print 'cnew: ', c2dnew
+        print('cnew: ', c2dnew)
 
         return alphanew, c2dnew, pairs
 
@@ -433,13 +433,13 @@ class fExpFitter(Fitter):
             inds = np.where(np.logical_not(pairinds))[0]
             if len(inds) > 0:
                 if np.max(np.abs(alphas[inds].imag)) > 1e-6:
-                    print '!!! Warning: invalid pairs !!!'
-                    print 'original alphas: ', anew
-                    print 'original gammas: ', cnew
-                    print 'original pairs: ', pairs
-                    print 'new alphas: ', alphas
-                    print 'new gammas: ', gammas
-                    print 'new pairs: ', npairs
+                    print('!!! Warning: invalid pairs !!!')
+                    print('original alphas: ', anew)
+                    print('original gammas: ', cnew)
+                    print('original pairs: ', pairs)
+                    print('new alphas: ', alphas)
+                    print('new gammas: ', gammas)
+                    print('new pairs: ', npairs)
 
         return alphas, gammas, rms, approx, npairs
 
@@ -505,7 +505,7 @@ class fExpFitter(Fitter):
                 trialpoles = copy.copy(a)
                 k += 1
             if pprint and l > 5:
-                print 'Often found unstable poles (' + str(l) + ' times)'
+                print('Often found unstable poles (' + str(l) + ' times)')
             return alist, clist, rmslist, pairslist
         else:
             while rms > rtol and k < maxiter:
@@ -715,21 +715,21 @@ class fExpFitter(Fitter):
                 A_original = - np.sum(c * (np.exp(-a*t[-1]) - np.exp(-a*t[0])) / a)
                 A_new = - np.sum(cnew * (np.exp(-anew*t[-1]) - np.exp(-anew*t[0])) / anew)
                 if np.abs(A_original - A_new) > 1e-12 or np.isnan(A_new.real):
-                    print '!!! Warning: surfaces under kernels not equal !!!'
-                    print 'oringal surface: ', A_original
-                    print 'new surface: ', A_new
-                    print 'all a\'s: ', a
-                    print 'all gamma\'s: ', c
-                    print 'all pairs: ', pairs
-                    print 'tbg a\'s: ', a[inds]
-                    print 'tbg gamma\'s: ', c[inds]
-                    print 'tbg pairs: ', pairs[inds]
-                    print 'ntbg a\'s: ', a[inds_no]
-                    print 'ntbg gamma\'s: ', c[inds_no]
-                    print 'ntbg pairs: ', pairs[inds_no]
-                    print 'new a\'s: ', anew
-                    print 'new c\'s: ', cnew
-                    print 'new pairss: ', pairsnew
+                    print('!!! Warning: surfaces under kernels not equal !!!')
+                    print('oringal surface: ', A_original)
+                    print('new surface: ', A_new)
+                    print('all a\'s: ', a)
+                    print('all gamma\'s: ', c)
+                    print('all pairs: ', pairs)
+                    print('tbg a\'s: ', a[inds])
+                    print('tbg gamma\'s: ', c[inds])
+                    print('tbg pairs: ', pairs[inds])
+                    print('ntbg a\'s: ', a[inds_no])
+                    print('ntbg gamma\'s: ', c[inds_no])
+                    print('ntbg pairs: ', pairs[inds_no])
+                    print('new a\'s: ', anew)
+                    print('new c\'s: ', cnew)
+                    print('new pairss: ', pairsnew)
 
             if pplot and (np.abs(A_original - A_new) > 1e-12 or np.isnan(A_new.real)):
             #~ if pplot:
@@ -740,10 +740,10 @@ class fExpFitter(Fitter):
                 e_ = ef.sumExp(t, -A, C)
                 se = ef.sumExp(t, -a, c)
                 e = ef.sumExp(t, -anew, cnew)
-                print 'integral original reduced: ', - np.sum(c[inds] * (np.exp(-a[inds]*t[-1]) - np.exp(-a[inds]*t[0])) / a[inds])
-                print 'integral fit reduced: ', - np.sum(C * (np.exp(-A*t[-1]) - np.exp(-A*t[0])) / A)
-                print 'final a\'s :', anew
-                print 'new a\'s :', A
+                print('integral original reduced: ', - np.sum(c[inds] * (np.exp(-a[inds]*t[-1]) - np.exp(-a[inds]*t[0])) / a[inds]))
+                print('integral fit reduced: ', - np.sum(C * (np.exp(-A*t[-1]) - np.exp(-A*t[0])) / A))
+                print('final a\'s :', anew)
+                print('new a\'s :', A)
                 import matplotlib.pyplot as pl
                 pl.figure('reduce_exp problem')
                 pl.plot(t*1000, se, 'r', label='original kernel')
@@ -788,7 +788,7 @@ class fExpFitter(Fitter):
         rmsfinal = rms
 
         if pprint and rmsfinal > rtol:
-            print 'Target accuracy was not reached'
+            print('Target accuracy was not reached')
 
         return alpha, gamma, pairs, rmsfinal
 
@@ -891,10 +891,10 @@ class fExpFitter(Fitter):
                 rms = np.sqrt(((np.abs(approx-y) / np.max(np.abs(y)))**2).sum() / len(y))
             surface_after = np.sum(gamma / alpha)
             if np.abs(surface_original - surface_after) > rtol * surface_original:
-                print 'surface original: ', surface_original
-                print 'surface after: ', surface_after
+                print('surface original: ', surface_original)
+                print('surface after: ', surface_after)
             if np.min(alpha.real) < 0.:
-                print '!!!owowow!!!'
+                print('!!!owowow!!!')
         else:
             alist, clist, rmslist, pairslist = self._run_fit(s, y, trialpoles, pairs, rtol, maxiter, constrained, zerostart)
             indmin = np.argmin(np.array(rmslist))
@@ -999,7 +999,7 @@ class FourrierTools(object):
         # create the frequency points at which to evaluate the transform
         self.s = create_logspace_freqarray(fmax=fmax, base=base, num=num)
         self.t = tarr
-        self.ind_0s = len(self.s) / 2
+        self.ind_0s = len(self.s) // 2
         # create the quadrature matrix
         self.set_quad()
         self.set_quad_inv()
@@ -1108,8 +1108,8 @@ class expExtractor(object):
                 if rms > rms_:
                     ak = ak_; ck = ck_; pk = pk_; rms = rms_
             if rms > atol and pprint:
-                print 'No sane fit achieved for N=' + str(N)
-                print 'RMSE:', rms
+                print('No sane fit achieved for N=' + str(N))
+                print('RMSE:', rms)
             self.kfit[N] = {'a': ak, 'c': ck, 'p': pk}
         return self.kfit[N]
 
@@ -1119,8 +1119,8 @@ class expExtractor(object):
                         initpoles='log10', realpoles=True, zerostart=False, constrained=True, reduce_numexp=False)
         ak *= 1e-3; #ck *= 1e-3  # convert units to ms
         if rms > atol and pprint:
-            print 'No sane fit achieved for N=' + str(N)
-            print 'RMSE:', rms
+            print('No sane fit achieved for N=' + str(N))
+            print('RMSE:', rms)
         res = {'a': ak, 'c': ck, 'p': pk}
         if store:
             self.kfit[N] = res
@@ -1137,8 +1137,8 @@ class expExtractor(object):
         # ck *= 1e-3
         pk = np.zeros(ak.shape, dtype=bool)
         if rms > atol and pprint:
-            print 'No sane fit achieved for N=' + str(N)
-            print 'RMSE:', rms
+            print('No sane fit achieved for N=' + str(N))
+            print('RMSE:', rms)
         res = {'a': ak, 'c': ck, 'p': pk}
         if store:
             self.kfit[N] = res

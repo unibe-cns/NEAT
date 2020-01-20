@@ -445,7 +445,8 @@ cdef class NETSim:
         g_syn : list of np.ndarray (`ndim`=1) or single iterable over floats
             if list, contains ``self.n_loc`` arrays (`ndim`=1), each containing
             the conductances of synapses at the corresponding location
-            if single iterable, contains conductances of synapses synapses
+            if single iterable, contains conductances of each synapse on the
+            synapse stack
 
         Returns
         -------
@@ -664,7 +665,7 @@ cdef class NETSim:
                                                   for ii in rec_g_syn_inds}
 
         if pprint:
-            print '\n>>> Integrating NET model for ' + str(tmax) + ' ms. <<<'
+            print('\n>>> Integrating NET model for ' + str(tmax) + ' ms. <<<')
             start = time.clock()
 
         # cython loop
@@ -702,7 +703,7 @@ cdef class NETSim:
 
         if pprint:
             stop = time.clock()
-            print '>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<\n'
+            print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<\n')
 
         #return the result
         resdict = {'t': t_sim, 'v_loc': v_loc}
