@@ -12,7 +12,7 @@ Author: W. Wybo
 import numpy as np
 import matplotlib.pyplot as pl
 
-from .stree import STree, SNode
+from stree import STree, SNode
 
 import copy
 import itertools
@@ -24,9 +24,9 @@ class Kernel(object):
         if isinstance(kernel, dict):
             self.a = copy.deepcopy(kernel['a'])
             self.c = copy.deepcopy(kernel['c'])
-        elif isinstance(kernel, float) or isinstance(kernel, int):
+        elif isinstance(kernel, float):
             self.a = np.array([1.])
-            self.c = np.array([kernel]).astype(float)
+            self.c = np.array([kernel])
         elif isinstance(kernel, Kernel):
             self.a = copy.deepcopy(kernel.a)
             self.c = copy.deepcopy(kernel.c)
@@ -90,6 +90,7 @@ class Kernel(object):
     #     else:
     #         raise ValueError('Multiplication not implemented for this class, ' + \
     #                          'input should be `int` or `float`')
+
 
     def __str__(self):
         return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
@@ -330,7 +331,7 @@ class NET(STree):
                 else:
                     break
         if len(loc_inds) == 2:
-            return list(Iz_dict.values())[0]
+            return Iz_dict.values()[0]
         else:
             return Iz_dict
 
@@ -630,11 +631,11 @@ class NET(STree):
         '''
         if cs_comp:
             # compute the compartmental colormap if necessary
-            arr = np.array([list(cs_comp.values())])
+            arr = np.array([cs_comp.values()])
             max_cs = np.max(arr)
             min_cs = np.min(arr)
             norm_cs = (max_cs - min_cs) * (1. + 1./100.)
-            for key, val in cs_comp.items():
+            for key, val in cs_comp.iteritems():
                 cs_comp[key] = (cs_comp[key] - min_cs) / norm_cs
             if cmap is None: cmap = pl.get_cmap('jet')
             cs_comp['cm'] = cmap
@@ -691,7 +692,7 @@ class NET(STree):
                                         cs_comp={}):
         # check if part of compartment
         if cs_comp:
-            if node.index in list(cs_comp.keys()):
+            if node.index in cs_comp.keys():
                 plotargs = copy.deepcopy(plotargs)
                 plotargs['color'] = cs_comp['cm'](cs_comp[node.index])
         # impedance of layer

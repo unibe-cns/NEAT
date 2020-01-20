@@ -13,10 +13,10 @@ import numpy as np
 import itertools
 import copy
 
-from . import morphtree
-from .morphtree import MorphLoc
-from .phystree import PhysNode, PhysTree
-from .netree import NETNode, NET, Kernel
+import morphtree
+from morphtree import MorphLoc
+from phystree import PhysNode, PhysTree
+from netree import NETNode, NET, Kernel
 
 from neat.tools.fittools import zerofinding as zf
 from neat.tools.fittools import histogramsegmentation as hs
@@ -136,14 +136,14 @@ class SOVNode(PhysNode):
         if np.abs(f(xval)) < 1e-20:
             xval = (xval+lpoles[1])/2.
         if pprint:
-            print('')
-            print('xval: ', xval)
+            print ''
+            print 'xval: ', xval
         # find zeros larger than xval
-        if pprint: print('finding real poles')
+        if pprint: print 'finding real poles'
         PF = zf.poleFinder(fun=f, dfun=dfdx, global_poles={'poles': lpoles, 'pmultiplicities': lpmultiplicities})
         poles, pmultiplicities = PF.find_real_zeros(vmin=xval)
         # find the first zero
-        if pprint: print('finding first pole')
+        if pprint: print 'finding first pole'
         p1 = []; pm1 = []
         zf.find_zeros_on_segment(p1, pm1, 0., xval, f, dfdx, lpoles, lpmultiplicities, pprint=pprint)
         self.poles = np.concatenate((p1, poles)).real; self.pmultiplicities = np.concatenate((pm1, pmultiplicities)).real
@@ -230,7 +230,7 @@ class SomaSOVNode(SOVNode):
         if np.abs(f(xval)) < 1e-20:
             xval = (xval+lpoles[1])/2.
         if pprint:
-            print('xval: ', xval)
+            print 'xval: ', xval
         # find zeros larger than xval
         PF = zf.poleFinder(fun=f, dfun=dfdx, global_poles={'poles': lpoles, 'pmultiplicities': lpmultiplicities})
         zeros, multiplicities = PF.find_real_zeros(vmin=xval)
@@ -349,7 +349,7 @@ class SOVTree(PhysTree):
     def _SOVFromLeaf(self, node, leafs, count=0,
                         maxspace_freq=500., pprint=False):
         if pprint:
-            print('Forward sweep: ' + str(node))
+            print 'Forward sweep: ' + str(node)
         pnode = node.parent_node
         # log how many times recursion has passed at node
         if not self.isLeaf(node):
@@ -537,7 +537,7 @@ class SOVTree(PhysTree):
                                y_activation[:,np.newaxis,np.newaxis], 0).real
             else:
                 z_mat = np.zeros((n_loc, n_loc))
-                for ii, jj in itertools.product(range(n_loc), range(n_loc)):
+                for ii, jj in itertools.product(xrange(n_loc), xrange(n_loc)):
                     z_mat[ii,jj] = np.sum(gammas[:,ii] * \
                                           gammas[:,jj] * \
                                           y_activation).real
@@ -545,7 +545,7 @@ class SOVTree(PhysTree):
             # construct the 3d fourrier matrix
             y_activation = 1e3 / (alphas[np.newaxis,:]*1e3 + freqs[:,np.newaxis])
             z_mat = np.zeros((len(freqs), n_loc, n_loc), dtype=complex)
-            for ii, jj in itertools.product(range(n_loc), range(n_loc)):
+            for ii, jj in itertools.product(xrange(n_loc), xrange(n_loc)):
                 z_mat[:,ii,jj] = np.sum(gammas[np.newaxis,:,ii] * \
                                         gammas[np.newaxis,:,jj] * \
                                         y_activation, 1)
@@ -690,10 +690,10 @@ class SOVTree(PhysTree):
 
                 # print stuff
                 if pprint:
-                    print(node)
-                    print('n_loc =', len(node.loc_inds))
-                    print('(locind0, size) = ', (k_inds[0], z_mat.shape[0]))
-                    print('')
+                    print node
+                    print 'n_loc =', len(node.loc_inds)
+                    print '(locind0, size) = ', (k_inds[0], z_mat.shape[0])
+                    print ''
 
                 if k_inds[0] == 0:
                     # start new branches, split where they originate from soma by
@@ -729,9 +729,9 @@ class SOVTree(PhysTree):
                     # make new z_mat matrix
                     k_seqs = consecutive(k_inds)
                     if pprint:
-                        print('\n>>> consecutive')
-                        print('nseq:', len(k_seqs))
-                        for k_seq in k_seqs: print('sequence:', k_seq)
+                        print '\n>>> consecutive'
+                        print 'nseq:', len(k_seqs)
+                        for k_seq in k_seqs: print 'sequence:', k_seq
                     for k_seq in k_seqs:
                         inds = np.meshgrid(k_seq, k_seq, indexing='ij')
                         z_mat_new = copy.deepcopy(z_mat[inds[0], inds[1]])
@@ -748,11 +748,11 @@ class SOVTree(PhysTree):
                 use_hist=True, pprint=False, add_lin_terms=False):
         # print stuff
         if pprint:
-            print('>>> node index = ', node._index)
+            print '>>> node index = ', node._index
             if pnode != None:
-                print('parent index = ', pnode._index)
+                print 'parent index = ', pnode._index
             else:
-                print('start')
+                print 'start'
         # get the diagonal
         z_diag = np.diag(z_mat)
 
@@ -768,7 +768,7 @@ class SOVTree(PhysTree):
                 if np.all(np.diff(z_diag) > 0):
                     z_min = z_max_prev
                     z_max = z_min + dz
-                    if pprint: print('--> +', dz)
+                    if pprint: print '--> +', dz
                 elif use_hist:
                     z_hist = np.histogram(z_mat.flatten(), n_bins, density=False)
                     # find the histogram partition
@@ -787,15 +787,15 @@ class SOVTree(PhysTree):
                     z_avg = z_hist[0][ii]
                     if z_max - z_min > dz:
                         z_max = z_min + dz
-                    if pprint: print('--> hist: +', str(z_max - z_min))
+                    if pprint: print '--> hist: +', str(z_max - z_min)
                 else:
                     z_min = z_max_prev
                     z_max = z_min + dz
-                    if pprint: print('--> +', dz)
+                    if pprint: print '--> +', dz
             else:
                 z_min = z_max_prev
                 z_max = np.max(z_mat)
-                if pprint: print('--> all: +', str(z_max - z_min))
+                if pprint: print '--> all: +', str(z_max - z_min)
         d_inds = np.where(z_diag <= z_max+1e-15)[0]
         # make sure that there is at least one element in the layer
         while len(d_inds) == 0:
@@ -838,9 +838,9 @@ class SOVTree(PhysTree):
             net.root = node
 
         if pprint:
-            print('(locind0, size) = ', (true_loc_inds[0], z_mat.shape[0]))
-            print('(zmin, zmax, n_bins) = ', (z_min, z_max, n_bins))
-            print('')
+            print '(locind0, size) = ', (true_loc_inds[0], z_mat.shape[0])
+            print '(zmin, zmax, n_bins) = ', (z_min, z_max, n_bins)
+            print ''
 
         # move on to the next layers
         if len(d_inds) < len(z_diag):

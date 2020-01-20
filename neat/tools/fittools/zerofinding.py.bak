@@ -190,8 +190,8 @@ class poleFinder:
         self.inner_contours = []; self.secondary_contours = []
         # set curves if args are given
         if len(kwargs) > 0:
-            if 'poles' in list(kwargs.keys()):
-                if 'pmultiplicities' in list(kwargs.keys()):
+            if 'poles' in kwargs.keys():
+                if 'pmultiplicities' in kwargs.keys():
                     self.set_contour(kwargs['contour'], make_arrays=make_arrays, use_known_zeros=use_known_zeros, 
                                         poles=kwargs['poles'], pmultiplicities=kwargs['pmultiplicities'])
                 else:
@@ -298,7 +298,7 @@ class poleFinder:
         G  = np.zeros((len(phis), len(phis)), dtype=complex)
         G1 = np.zeros((len(phis), len(phis)), dtype=complex)
         prow = [monicPolynomial(npol.polymul(pols[1].coef, pols[j].coef), coef_type='normal').f_polynomial() for j in range(len(phis))]
-        for i,j in itertools.product(list(range(len(phis))), list(range(len(phis)))):
+        for i,j in itertools.product(range(len(phis)), range(len(phis))):
             G [i,j] = self.inner_prod(phis[i], phis[j])
             G1[i,j] = self.inner_prod(phis[i], prow[j])
         return G, G1
@@ -394,7 +394,7 @@ class poleFinder:
         N = int(round(residue.real))
         accuracy = np.abs(N - residue)
         if pprint:
-            print('residue =', residue)
+            print 'residue =', residue
 
         return accuracy < eps
 
@@ -410,7 +410,7 @@ class poleFinder:
         residue = self.inner_prod(p_unity, p_unity)
         N = int(round(residue.real))
         accuracy = np.abs(N - residue)
-        if pprint: print('N =', N, ' (accuracy =', accuracy, ')')
+        if pprint: print 'N =', N, ' (accuracy =', accuracy, ')'
         # if N is zero
         if N == 0:
             n = 0
@@ -422,7 +422,7 @@ class poleFinder:
             # compute arithmetic mean of nodes
             p_aux = monicPolynomial( [0.] ).f_polynomial()
             mu = self.inner_prod( p_unity, p_aux ) / N
-            if pprint: print('mu =', mu)
+            if pprint: print 'mu =', mu
             # append first polynomial
             pol = monicPolynomial( [-mu] )
             phis.append( pol.f_polynomial() ); pols.append( pol ) # phi_1
@@ -432,7 +432,7 @@ class poleFinder:
             # initialization
             r = 1; t = 0
             while r+t < N:
-                if pprint: print(str(r+t))
+                if pprint: print str(r+t)
                 # naive criterion to check if phi_r+t+1 is regular
                 prod_aux, maxpsum = self.inner_prod(phis[-1], phis[-1], compute_maxpsum=True)
                 # compute eigenvalues of the next pencil
@@ -442,7 +442,7 @@ class poleFinder:
                 # check if these eigenvalues lie within the contour
                 if self.points_within_contour(eigv+mu):
                 # if np.abs(prod_aux)/maxpsum > eps_reg:
-                    if pprint: print(str(r+t) + '.1')
+                    if pprint: print str(r+t) + '.1'
                     # compute next FOP in the regular way
                     pol = monicPolynomial(eigv, coef_type='zeros')
                     phis.append(pol.f_polynomial()); pols.append(pol)
@@ -450,7 +450,7 @@ class poleFinder:
                     n = r
                     zeros = eigv + mu
                 else:
-                    if pprint: print(str(r+t) + '.2')
+                    if pprint: print str(r+t) + '.2'
                     c = npol.polyfromroots([mu])
                     pol = monicPolynomial(npol.polymul(c, pols[-1].coef), coef_type='normal')
                     pols.append(pol); phis.append(pol.f_polynomial())
@@ -470,13 +470,13 @@ class poleFinder:
             sane = True
         # for printing result
         if pprint:
-            print('>>> Result of computation of zeros <<<')
-            print('number of zeros = ', n - len(np.where(nu == 0)[0]))
+            print '>>> Result of computation of zeros <<<'
+            print 'number of zeros = ', n - len(np.where(nu == 0)[0])
             pstring = 'yes!' if sane == 1 else 'no!'
-            print('sane? ' + pstring)
+            print 'sane? ' + pstring
             for i, zero in enumerate(zeros):
-                print('zero #' + str(i+1) + ' = ' + str(zero) + ' (multiplicity = ' + str(nu[i]) + ')')
-            print('')
+                print 'zero #' + str(i+1) + ' = ' + str(zero) + ' (multiplicity = ' + str(nu[i]) + ')'
+            print ''
         # eliminate spurious zeros (the ones with zero multiplicity)
         inds_ = np.argsort(zeros.real)
         # inds = np.where(nu[inds_] > 0)[0]
@@ -500,7 +500,7 @@ class poleFinder:
         assert np.abs(self.contour.center.imag) < 1e-10*self.contour.radius
         # increase the depth parameter
         depth += 1
-        if pprint: print('depth =', depth)
+        if pprint: print 'depth =', depth
         # store the original contour parameters to restore this contour later on
         if contourparams_orig == None:
             contourparams_orig = (self.contour.center, self.contour.radius)
@@ -566,7 +566,7 @@ class poleFinder:
         p_unity = pol_unity.f_polynomial()
         s0 = int(round(self.inner_prod(p_unity, p_unity).real))
         N =  s0 + 2*P_estimate
-        if pprint: print('N =', N)
+        if pprint: print 'N =', N
         # list of FOPs
         phis = []; pols = []
         phis.append( p_unity ); pols.append( pol_unity ) # phi_0
@@ -583,7 +583,7 @@ class poleFinder:
             # compute arithmetic mean of nodes
             p_aux = monicPolynomial( [0.] ).f_polynomial()
             mu = self.inner_prod( p_unity, p_aux ) / N
-            if pprint: print('mu =', mu)
+            if pprint: print 'mu =', mu
             # append first polynomial
             pol = monicPolynomial( [-mu] )
             phis.append( pol.f_polynomial() ); pols.append( pol ) # phi_1
@@ -593,7 +593,7 @@ class poleFinder:
             # initialization
             r = 1; t = 0
         while r+t < N:
-            if pprint: print('1.')
+            if pprint: print '1.'
             # naive criterion to check if phi_r+t+1 is regular
             prod_aux, maxpsum = self.inner_prod( phis[-1], phis[-1], compute_maxpsum=True )
             # compute eigenvalues of the next pencil
@@ -602,14 +602,14 @@ class poleFinder:
             # check if these eigenvalues lie within the contour
             if self.points_within_contour(eigv+mu):
             # if np.abs(prod_aux)/maxpsum > eps_reg:
-                if pprint: print('1.1')
+                if pprint: print '1.1'
                 # compute next FOP in the regular way
                 pol = monicPolynomial(eigv, coef_type='zeros')
                 phis.append(pol.f_polynomial()); pols.append(pol)
                 r += t+1; t = 0
                 allsmall = True; tau = 0
                 while allsmall and (r+tau) < N:
-                    if pprint: print('1.1.1')
+                    if pprint: print '1.1.1'
                     # if all further inner porducts are zero
                     taupol = npol.polyfromroots([mu for _ in range(tau)])
                     tauphi = monicPolynomial(npol.polymul(taupol, pols[-1].coef), coef_type='normal').f_polynomial()
@@ -618,12 +618,12 @@ class poleFinder:
                     if np.abs(ip)/maxpsum > eps_stop:
                         allsmall = False
                 if allsmall:
-                    if pprint: print('1.1.2: STOP')
+                    if pprint: print '1.1.2: STOP'
                     n = r
                     zeros = eigv + mu
                     t = N # STOP
             else:
-                if pprint: print('1.2')
+                if pprint: print '1.2'
                 c = npol.polyfromroots([mu])
                 pol = monicPolynomial(npol.polymul(c, pols[-1].coef), coef_type='normal')
                 pols.append(pol); phis.append(pol.f_polynomial())
@@ -638,11 +638,11 @@ class poleFinder:
         nu = np.round(nu).real.astype(int)
         # for printing result
         if pprint:
-            print('>>> Result of computation of zeros <<<')
-            print('number of zeros = ', n - len(np.where(nu == 0)[0]))
+            print '>>> Result of computation of zeros <<<'
+            print 'number of zeros = ', n - len(np.where(nu == 0)[0])
             for i, zero in enumerate(zeros):
-                print('zero #' + str(i+1) + ' = ' + str(zero) + ' (multiplicity = ' + str(nu[i]) + ')')
-            print('')
+                print 'zero #' + str(i+1) + ' = ' + str(zero) + ' (multiplicity = ' + str(nu[i]) + ')'
+            print ''
         # eliminate spurious zeros (the ones with zero multiplicity)
         inds = np.where(nu > 0)[0]
         return zeros[inds], n, nu[inds]
@@ -708,10 +708,10 @@ def find_zeros_on_segment(zeros, zmultiplicities, xmin, xmax, fun, dfun, poles, 
     if pprint:
         # print ''
         # print '>>> <<<'
-        print(xtree)
-        print('xmin = ', xmin, ', xmax = ', xmax)
-        print('radius = ', (xmax-xmin)/2., ', center = ', (xmax+xmin)/2.)
-        print(PF.test_contour(pprint=pprint))
+        print xtree
+        print 'xmin = ', xmin, ', xmax = ', xmax
+        print 'radius = ', (xmax-xmin)/2., ', center = ', (xmax+xmin)/2.
+        print PF.test_contour(pprint=pprint)
 
     if PF.test_contour():
         # find the zero

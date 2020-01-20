@@ -108,14 +108,14 @@ class IEPSolver(object):
         fvec = self.nm.getFC()
         jfmat = self.nm.getJFC()
 
-        print('!! Jf =')
-        print(jfmat)
+        print '!! Jf ='
+        print jfmat
 
         jfaux = np.dot(jfmat.T, jfmat)
         # compute next C vec
         delta_c = la.solve(jfaux, -np.dot(jfmat.T, fvec))
         if pprint:
-            print('>> norm(Delta C) =', la.norm(delta_c))
+            print '>> norm(Delta C) =', la.norm(delta_c)
         if inplace:
             cvec += delta_c
             return cvec
@@ -131,14 +131,14 @@ class IEPSolver(object):
             rr = self.nm.calcResidual()
             kk += 1
             if pprint:
-                print('\n---- Iter no. %d ----'%kk)
-                print('>> residual =', rr)
-                print('>> c =', cc)
+                print '\n---- Iter no. %d ----'%kk
+                print '>> residual =', rr
+                print '>> c =', cc
 
         if pprint:
-            print('\n---- Final eigenvalues ----')
+            print '\n---- Final eigenvalues ----'
             eig, _ = la.eig(self.evalPencil(cc))
-            print('>> eig =', eig)
+            print '>> eig =', eig
 
         if return_residual:
             return cc, rr
@@ -194,20 +194,20 @@ class TestIEPSolver(object):
         self.ieps._evalQRs(self.c_orig)
         f0 = self.ieps.nm.getFC()
         jf0 = self.ieps.nm.getJFC()
-        print('jf0 =\n', jf0)
+        print 'jf0 =\n', jf0
         self.ieps._evalQRs(c_1)
         f1 = self.ieps.nm.getFC()
-        print('\n!!!')
-        print(ii)
-        print(f0)
-        print(f1)
-        print('!!!\n')
+        print '\n!!!'
+        print ii
+        print f0
+        print f1
+        print '!!!\n'
         # evaluate approximate jacobian
         jf_col = (f1 - f0) / dc_arr[ii]
         # check if correct
         assert jf0.shape == (self.ieps.N, self.ieps.K-1)
-        print(jf0[:,ii])
-        print(jf_col)
+        print jf0[:,ii]
+        print jf_col
         assert np.allclose(jf_col, jf0[:,ii])
 
     def plotContinuity(self, dc_range=np.linspace(-1.,1.,100)):
@@ -220,9 +220,10 @@ class TestIEPSolver(object):
             self.ieps._evalQRs(c_1)
             rvar_range[jj] = self.ieps.nm.getFC()
 
-        # for kk in range(self.n_size):
-        #     pl.plot(dc_range, rvar_range[:,kk])
-        # pl.show()
+        from datarep.matplotlibsettings import *
+        for kk in range(self.n_size):
+            pl.plot(dc_range, rvar_range[:,kk])
+        pl.show()
 
     def plotJacobian(self, dc_range=np.linspace(-1.,1.,100)):
         delta_c = dc_range[1] - dc_range[0]
@@ -241,48 +242,48 @@ class TestIEPSolver(object):
         drvar_approx = (rvar_range[1:,:] - rvar_range[:-1,:]) / delta_c
 
 
-        # # from datarep.matplotlibsettings import *
-        # for kk in range(self.n_size):
-        #     pl.plot(dc_, drvar_approx[:,kk], c=colours[kk%len(colours)])
-        #     pl.plot(dc_range, drvar_range[:,kk], lw=2, ls='--', c=colours[kk%len(colours)])
-        # pl.show()
+        from datarep.matplotlibsettings import *
+        for kk in range(self.n_size):
+            pl.plot(dc_, drvar_approx[:,kk], c=colours[kk%len(colours)])
+            pl.plot(dc_range, drvar_range[:,kk], lw=2, ls='--', c=colours[kk%len(colours)])
+        pl.show()
 
 
     def testSolver(self, eps=1.):
 
-        print('\nc_0 =', self.c_orig)
+        print '\nc_0 =', self.c_orig
         p0 = self.ieps.evalPencil(self.c_orig)
         eig0, _ = la.eig(p0)
-        print('eig_0 =', eig0.real)
+        print 'eig_0 =', eig0.real
 
         self.ieps._evalQRs(self.c_orig)
         r0 = self.ieps.nm.getFC()
-        print('r_0 =', r0)
+        print 'r_0 =', r0
 
 
         c_perturb = self.c_orig + eps * np.random.randn(*self.c_orig.shape)
-        print('\nc_1 =', c_perturb)
+        print '\nc_1 =', c_perturb
 
         p1 = self.ieps.evalPencil(c_perturb)
         eig1, _ = la.eig(p1)
-        print('eig_1 =', eig1.real)
+        print 'eig_1 =', eig1.real
 
         self.ieps._evalQRs(c_perturb)
         r1 = self.ieps.nm.getFC()
-        print('r_1 =', r1)
+        print 'r_1 =', r1
 
         # c_fit = ieps(c_perturb, pprint=True)
         c_fit, r_fit = self.ieps.minimizeResiduals(c_perturb, pprint=True)
 
 
-        print('\nc_fit =', c_fit)
+        print '\nc_fit =', c_fit
         p_fit = self.ieps.evalPencil(c_fit)
         eig2, _ = la.eig(p_fit)
-        print('eig_fit =', eig2.real)
+        print 'eig_fit =', eig2.real
 
         self.ieps._evalQRs(c_fit)
         r2 = self.ieps.nm.getFC()
-        print('r_fit =', r2)
+        print 'r_fit =', r2
 
 if __name__ == '__main__':
     ts = TestIEPSolver()

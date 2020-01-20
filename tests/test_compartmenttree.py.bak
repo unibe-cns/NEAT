@@ -18,7 +18,7 @@ class TestCompartmentTree():
                 |
                 1
         '''
-        print('>>> loading T-tree <<<')
+        print '>>> loading T-tree <<<'
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
@@ -338,13 +338,13 @@ class TestCompartmentTree():
         ctree.addCurrent(channel_name)
         ctree.computeGChan(dv_end, v_end, i_in, p_open_channels={channel_name: p_open})
 
-        print('\n>>> currents old method:')
+        print '\n>>> currents old method:'
         for node in ctree_z:
-            print(node.currents)
+            print node.currents
 
-        print('\n>>> currents new method:')
+        print '\n>>> currents new method:'
         for node in ctree:
-            print(node.currents)
+            print node.currents
 
         self.load(morph_n=morph_name, channel=channel_name)
         sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
@@ -447,10 +447,10 @@ class TestCompartmentTree():
         sim_tree_biophys.deleteModel()
         e_eqs = np.array([v_m[-1] for v_m in res_biophys['v_m']])
         ctree.setEEq(e_eqs)
-        print(e_eqs)
+        print e_eqs
 
-        print('\n>>> passive model:')
-        print(ctree)
+        print '\n>>> passive model:'
+        print ctree
 
         # load active model
         self.load(morph_n=morph_name, channel=channel_name)
@@ -515,7 +515,7 @@ class TestCompartmentTree():
         i_mat = np.concatenate([-res['i_in'] for res in reslist], axis=1)
         p_o_mat = np.concatenate([res['chan'][channel_name]['p_open'] for res in reslist], axis=1)
 
-        print(list(res['chan'].keys()))
+        print res['chan'].keys()
 
         import matplotlib.pyplot as pl
         pl.figure('traces', figsize=(10,5))
@@ -523,8 +523,8 @@ class TestCompartmentTree():
         ax.set_title('p_open')
         ax.plot(res['t'], res['chan'][channel_name]['p_open'][0], 'b')
         ax.plot(res['t'], res['chan'][channel_name]['m'][0]**3 * res['chan'][channel_name]['h'][0], 'r--')
-        print('p_o end = ', res['chan'][channel_name]['p_open'][0][-1])
-        print('p_o max = ', np.max(res['chan'][channel_name]['p_open'][0]))
+        print 'p_o end = ', res['chan'][channel_name]['p_open'][0][-1]
+        print 'p_o max = ', np.max(res['chan'][channel_name]['p_open'][0])
 
         ax = pl.subplot(122)
         ax.set_title('v_fit')
@@ -583,21 +583,21 @@ class TestCompartmentTree():
         ctree.addCurrent(channel_name)
         ctree.computeGChanFromTrace(dv_mat, v_mat, i_mat, p_open_channels={channel_name: p_o_mat}, action='fit')
 
-        print('\n>>> currents original:')
+        print '\n>>> currents original:'
         for node in self.greens_tree:
-            print(node.currents)
+            print node.currents
 
-        print('\n>>> currents old method:')
+        print '\n>>> currents old method:'
         for node in ctree_z:
-            print(node.currents)
+            print node.currents
 
-        print('\n>>> currents trace method currents (deriv):')
+        print '\n>>> currents trace method currents (deriv):'
         for node in ctree:
-            print(node.currents)
+            print node.currents
 
-        print('\n>>> currents trace method voltage (conv)')
+        print '\n>>> currents trace method voltage (conv)'
         for node in ctree_c2:
-            print(node.currents)
+            print node.currents
 
 
         # print '\n>>> currents combined method:'
@@ -681,11 +681,11 @@ class TestCompartmentTree():
             node.currents[channel_name][0] = 4.0*np.pi*(self.greens_tree[1].R*1e-4)**2 * 1.71*1e6 # sodium conducance
             # node.currents[channel_name][0] = 4.0*np.pi*(self.greens_tree[1].R*1e-4)**2 * 0.*1e6 # sodium conducance
 
-        print('\n>>> model:')
-        print(ctree)
-        print('>>> currents:')
+        print '\n>>> model:'
+        print ctree
+        print '>>> currents:'
         for node in ctree:
-            print(node.currents)
+            print node.currents
 
         # locs_comp = [(0,0.5), (1,0.5)]
         locs_comp = [(0,0.5)]
@@ -705,8 +705,8 @@ class TestCompartmentTree():
                 # temporary, should be replaced by native neat function
                 sim_tree = neuronmodel.createReducedModel(ctree)
                 sim_tree.initModel(dt=dt, t_calibrate=500.)
-                print(sim_tree)
-                print('capacitance:', sim_tree.sections[0](0.5).cm * sim_tree.sections[0](0.5).area())
+                print sim_tree
+                print 'capacitance:', sim_tree.sections[0](0.5).cm * sim_tree.sections[0](0.5).area()
                 sim_tree.addIClamp(loc, i_amp, t_start, t_dur)
                 sim_tree.storeLocs(locs_comp, name='rec locs')
                 # run the simulation
@@ -790,8 +790,8 @@ class TestCompartmentTree():
         ctree_.addCurrent(channel_name)
         ctree_.computeGChan(dv_mat, v_mat, i_mat, p_open_channels={channel_name: p_o_mat}, test=test_res)
 
-        print('\n>>> model fit:')
-        print(ctree_)
+        print '\n>>> model fit:'
+        print ctree_
 
         # print '\n>>> currents original:'
         # for node in self.greens_tree:

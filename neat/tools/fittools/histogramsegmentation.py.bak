@@ -83,13 +83,13 @@ class histogramSegmentator:
             [p]: numpy array, array of probabilies
 
         output:
-            boolean, whether the hypothesis is true
+            boolean, whether the hypothesis is true 
         '''
         assert len(r) == len(p)
         N = len(p)
         # compute values for all intervals
-        rvec = np.zeros(N*(N+1)//2)
-        pvec = np.zeros(N*(N+1)//2)
+        rvec = np.zeros(N*(N+1)/2)
+        pvec = np.zeros(N*(N+1)/2)
         for j0 in range(N):
             for j1 in range(j0,N):
                 k = (N-j0)*j0 + j1
@@ -152,7 +152,7 @@ class histogramSegmentator:
                 k += 1
             k+=1
             n_iter += 1
-            if pprint: print('>>> iter: ' + str(n_iter) + ' <<<')
+            if pprint: print '>>> iter: ' + str(n_iter) + ' <<<'
         if fix_minima:
             for k in range(len(p_inds) - 1):
                 i0p = p_inds[k]
@@ -172,7 +172,7 @@ class empiricalInterpolation:
         self.fmat = fmat
 
     def run_EIM(self, eps=1e-2, Mmax=50, pprint=False):
-        if pprint: print('>>> running EIM <<<')
+        if pprint: print '>>> running EIM <<<'
         Q = np.zeros((len(self.xgrid),0))
         I_ps = []
         I_mus = []
@@ -186,9 +186,9 @@ class empiricalInterpolation:
         # get the first residue
         res = R[:,iMu]
         # iterate untill the desired precision is reached
-        M = 0; E_m = eps+1
+        M = 0; E_m = eps+1 
         while M < Mmax and E_m > eps:
-            if pprint: print('> iter', M, ' eps =', E_m)
+            if pprint: print '> iter', M, ' eps =', E_m
             M += 1
             # get the interpolation point index and add it to the list
             iP = np.argmax(np.abs(res))
@@ -214,7 +214,7 @@ class empiricalInterpolation:
             E_m = Rsup[iMu]
             E_ms.append(E_m)
         else:
-            if pprint: print('> finished, eps =', E_m)
+            if pprint: print '> finished, eps =', E_m
 
         self.G = G
         self.Q = Q

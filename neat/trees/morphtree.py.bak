@@ -21,9 +21,8 @@ import warnings
 import copy
 from collections import Counter
 
-from .stree import SNode, STree
-from .compartmenttree import CompartmentNode, CompartmentTree
-from functools import reduce
+from stree import SNode, STree
+from compartmenttree import CompartmentNode, CompartmentTree
 
 
 def originalTreetypeDecorator(fun):
@@ -635,7 +634,7 @@ class MorphTree(STree):
                     all_nodes[index] = (swc_type, node, parent_index)
 
         if soma_type == 1:
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in all_nodes.items() :
                 if index == 1:
                     self.setRoot(node)
                 elif index in (2,3):
@@ -653,7 +652,7 @@ class MorphTree(STree):
             # get all some info
             soma_cylinders = []
             connected_to_root = []
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in all_nodes.items() :
                 if swc_type == 1 and not index == 1:
                     soma_cylinders.append((node, parent_index))
                     if index > 1 :
@@ -669,7 +668,7 @@ class MorphTree(STree):
             self.addNodeWithParent(s_node_2,self._root)
 
             # add the other points
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in all_nodes.items() :
                 if swc_type == 1:
                     pass
                 else:
@@ -995,7 +994,7 @@ class MorphTree(STree):
             path1 = self.pathToRoot(node1)[::-1]
             path2 = self.pathToRoot(node2)[::-1]
             path = path1 if len(path1) < len(path2) else path2
-            ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
+            ind = next((ii for ii in xrange(len(path)) if path1[ii] != path2[ii]),
                        len(path))
             if path1[ind-1] == node1:
                 L  = node1.L * (1. - loc1['x'])
@@ -1134,7 +1133,7 @@ class MorphTree(STree):
         except KeyError as err:
             err.args = ('\'' + err.args[0] \
                              + '\' name not in use. Possible names are ' \
-                             + str(list(self.locs.keys())),)
+                             + str(self.locs.keys()),)
             raise
 
     def getLocs(self, name):
@@ -1843,7 +1842,7 @@ class MorphTree(STree):
         else:
             locs = []
         # add the nodes
-        for ii in range(num):
+        for ii in xrange(num):
             nodes_left = [node.index for node in nodes
                             if 'tag' not in node.content]
             if len(nodes_left) < 1:
@@ -2031,7 +2030,7 @@ class MorphTree(STree):
         d2s = self.distancesToSoma('xaxis')
         xaxis = d2s[0:pinds[0]+1].tolist()
         d_add = d2s[pinds[0]]
-        for ii in range(0,len(pinds)-1):
+        for ii in xrange(0,len(pinds)-1):
             xaxis.extend((d_add + d2s[pinds[ii]+1:pinds[ii+1]+1] \
                                 - d2s[pinds[ii]+1]).tolist())
             d_add += d2s[pinds[ii+1]] - d2s[pinds[ii]+1]
@@ -2106,10 +2105,10 @@ class MorphTree(STree):
         line = ax.plot(self.xaxis[0:pinds[0]+1], parr[0:pinds[0]+1],
                        *args, **kwargs)
         lines.append(line[0])
-        if 'label' in list(kwargs.keys()):
+        if 'label' in kwargs.keys():
             kwargs = copy.deepcopy(kwargs)
             del kwargs['label']
-        for ii in range(0,len(pinds)-1):
+        for ii in xrange(0,len(pinds)-1):
             line = ax.plot(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
                             parr[pinds[ii]+1:pinds[ii+1]+1],
                             *args, **kwargs)
@@ -2137,7 +2136,7 @@ class MorphTree(STree):
         pinds = self.getLeafLocinds('xaxis')
         d2s = self.distancesToSoma('xaxis')
         lines[0].set_data(self.xaxis[0:pinds[0]+1], parr[0:pinds[0]+1])
-        for ii in range(0,len(pinds)-1):
+        for ii in xrange(0,len(pinds)-1):
             ll = ii+1
             lines[ll].set_data(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
                                 parr[pinds[ii]+1:pinds[ii+1]+1])
@@ -2194,7 +2193,7 @@ class MorphTree(STree):
         line = ax.plot(d2s[0:pinds[0]+1], parr[0:pinds[0]+1], **kwargs)
         lines.append(line[0])
         if 'label' in kwargs: del kwargs['label']
-        for ii in range(0,len(pinds)-1):
+        for ii in xrange(0,len(pinds)-1):
             if cmap != None:
                 kwargs['c'] = cmap((cs[locs[pinds[ii]+1]['node']]-min_cs)/norm_cs)
             line = ax.plot(d2s[pinds[ii]+1:pinds[ii+1]+1],
@@ -2251,7 +2250,7 @@ class MorphTree(STree):
         ax.plot(self.xaxis[0:pinds[0]+1], [ylim[0]+1e-9 for _ in d2s[0:pinds[0]+1]],
                                     c=cmap((cplot[0]-min_cs)/norm_cs), lw=10)
         for ii in range(0,len(pinds)-1):
-            if locs[pinds[ii]+1]['node'] in list(cs.keys()):
+            if locs[pinds[ii]+1]['node'] in cs.keys():
                 ax.plot(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
                         [ylim[0]+1e-9 for _ in d2s[pinds[ii]+1:pinds[ii+1]+1]],
                         c=cmap((cs[locs[pinds[ii]+1]['node']]-min_cs)/norm_cs), lw=10)
@@ -2538,10 +2537,10 @@ class MorphTree(STree):
             line = event.artist
             node = node_line_associators[line.get_label()]
             # print the associated node
-            print('\n>>> line segment at ' + str(node) + \
+            print '\n>>> line segment at ' + str(node) + \
                    ', distance to soma (um) = ' + \
                    str(self.pathLength({'node': node.index, 'x': 1},
-                                       {'node': 1, 'x':0.})))
+                                       {'node': 1, 'x':0.}))
         # show morphology
         cid = fig.canvas.mpl_connect('pick_event', onPick)
         pl.show()

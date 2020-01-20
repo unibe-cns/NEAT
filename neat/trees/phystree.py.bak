@@ -11,8 +11,8 @@ import numpy as np
 
 import warnings
 
-from . import morphtree
-from .morphtree import MorphNode, MorphTree
+import morphtree
+from morphtree import MorphNode, MorphTree
 from neat.channels import channelcollection, concmechs
 
 
@@ -186,7 +186,7 @@ class PhysNode(MorphNode):
             node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
         node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
                        ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
-                            for cname, cpar in self.currents.items()]) + \
+                            for cname, cpar in self.currents.iteritems()]) + \
                        ', c_m = ' + str(self.c_m) + ' uF/cm^2)'
         return node_string
 
@@ -412,7 +412,7 @@ class PhysTree(MorphTree):
                 set(node.currents.keys()) == set(pnode.currents.keys()) and
                 not sum([sum([np.abs(curr[0] - pnode.currents[key][0]) > eps * np.max([np.abs(curr[0]), np.abs(pnode.currents[key][0])]),
                               np.abs(curr[1] - pnode.currents[key][1]) > eps * np.max([np.abs(curr[1]), np.abs(pnode.currents[key][1])])])
-                         for key, curr in node.currents.items()])):
+                         for key, curr in node.currents.iteritems()])):
                 comp_nodes.append(pnode)
 
         super(PhysTree, self).setCompTree(compnodes=comp_nodes)

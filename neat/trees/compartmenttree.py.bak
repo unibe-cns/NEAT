@@ -13,7 +13,7 @@ import scipy.linalg as la
 import scipy.optimize as so
 import sympy as sp
 
-from .stree import SNode, STree
+from stree import SNode, STree
 from neat.channels import channelcollection
 from neat.tools import kernelextraction as ke
 
@@ -21,7 +21,6 @@ import copy
 import warnings
 import itertools
 from operator import mul
-from functools import reduce
 
 
 class RowMat(object):
@@ -70,7 +69,7 @@ class CompartmentNode(SNode):
             node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
         node_string += ' --- (g_c = %.12f uS, '%self.g_c + \
                        ', '.join(['g_' + cname + ' = %.12f uS'%cpar[0] \
-                            for cname, cpar in self.currents.items()]) + \
+                            for cname, cpar in self.currents.iteritems()]) + \
                        ', c = %.12f uF)'%self.ca
         return node_string
 
@@ -176,7 +175,7 @@ class CompartmentNode(SNode):
             Each entry in the dict is of the same type as ``freqs`` and is the
             conductance term of a channel
         '''
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None: channel_names = self.currents.keys()
         cond_terms = {}
         if 'L' in channel_names:
             cond_terms['L'] = 1. # leak conductance has 1 as prefactor
@@ -196,10 +195,10 @@ class CompartmentNode(SNode):
 
     def calcMembraneConcentrationTerms(self, ion, channel_names=None, freqs=0.,
                                         channel_storage=None):
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None: channel_names = self.currents.keys()
         conc_write_channels = np.zeros_like(freqs)
         conc_read_channels  = np.zeros_like(freqs)
-        for channel_name, (g, e) in self.currents.items():
+        for channel_name, (g, e) in self.currents.iteritems():
             if channel_name in channel_names and channel_name != 'L':
                 channel = self.getCurrent(channel_name, channel_storage=channel_storage)
                 # check if needs to be computed around expansion point
@@ -219,7 +218,7 @@ class CompartmentNode(SNode):
                self.concmechs[ion].computeLin(freqs)
 
     def getGTot(self, v=None, channel_names=None, channel_storage=None):
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None: channel_names = self.currents.keys()
         g_tot = self.currents['L'][0] if 'L' in channel_names else 0.
         v = self.e_eq if v is None else v
         for channel_name in channel_names:
@@ -241,7 +240,7 @@ class CompartmentNode(SNode):
     g_tot = property(getGTot, setGTot)
 
     def getITot(self, v=None, channel_names=None, channel_storage=None, p_open_channels={}):
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None: channel_names = self.currents.keys()
         v = self.e_eq if v is None else v
         i_tot = self.currents['L'][0] * (v - self.currents['L'][1]) if 'L' in channel_names else 0.
         for channel_name in channel_names:
@@ -392,7 +391,7 @@ class CompartmentTree(STree):
 
     def setExpansionPoints(self, expansion_points):
         to_tree_inds = self._permuteToTreeInds()
-        for channel_name, expansion_point in expansion_points.items():
+        for channel_name, expansion_point in expansion_points.iteritems():
             # if one set of state variables, set throughout neuron
             if isinstance(expansion_point, str) or \
                expansion_point is None:
@@ -416,7 +415,7 @@ class CompartmentTree(STree):
         Set the leak reversal potential to obtain the desired equilibrium
         potentials
         '''
-        for chan, p_o in p_open_channels.items():
+        for chan, p_o in p_open_channels.iteritems():
             p_open_channels[chan] = self._permuteToTree(p_o)
         e_l_0 = self.getEEq()
         # compute the solutions
@@ -434,7 +433,7 @@ class CompartmentTree(STree):
         # compute the function values (currents)
         fun_vals = np.zeros(len(self))
         for ii, node in enumerate(self):
-            p_o_c = {chan: p_o[ii] for chan, p_o in p_open_channels.items()}
+            p_o_c = {chan: p_o[ii] for chan, p_o in p_open_channels.iteritems()}
             fun_vals[ii] += node.getITot(p_open_channels=p_o_c)
             # add the parent node coupling term
             if node.parent_node is not None:
@@ -581,7 +580,7 @@ class CompartmentTree(STree):
             freqs = np.array([freqs])
             no_freq_dim = True
         if channel_names is None:
-            channel_names = ['L'] + list(self.channel_storage.keys())
+            channel_names = ['L'] + self.channel_storage.keys()
         if add_L:
             channel_names = ['L'] + copy.deepcopy(channel_names)
         s_mat = np.zeros((len(freqs), len(self), len(self)), dtype=freqs.dtype)
@@ -601,9 +600,9 @@ class CompartmentTree(STree):
                                     channel_names=channel_names,
                                     channel_storage=self.channel_storage)
             s_mat[:,ii,ii] += sum([node.currents[c_name][0] * g_term \
-                                   for c_name, g_term in g_terms.items()])
+                                   for c_name, g_term in g_terms.iteritems()])
             if use_conc:
-                for ion, concmech in node.concmechs.items():
+                for ion, concmech in node.concmechs.iteritems():
                     c_term = node.calcMembraneConcentrationTerms(ion, freqs=freqs,
                                         channel_names=channel_names,
                                         channel_storage=self.channel_storage)
@@ -991,7 +990,7 @@ class CompartmentTree(STree):
         assert len(z_mat_arg) == len(e_eqs)
         freqs, w_freqs, z_mat_arg = self._preprocessFreqs(freqs, w_freqs=w_freqs, z_mat_arg=z_mat_arg)
         if channel_names is None:
-            channel_names = ['L'] + list(self.channel_storage.keys())
+            channel_names = ['L'] + self.channel_storage.keys()
         if other_channel_names == None:
             other_channel_names = list(set(self.channel_storage.keys()) - set(channel_names))
         # do the fit
@@ -1188,13 +1187,13 @@ class CompartmentTree(STree):
         # set the concentration mechanism parameters
         self._toTreeConc(c_vec, ion)
 
-        print(np.set_printoptions(precision=2))
-        print('z_mat fitted   =\n', self.calcImpedanceMatrix(use_conc=True, freqs=freqs, channel_names=channel_names)[0].real)
+        print np.set_printoptions(precision=2)
+        print 'z_mat fitted   =\n', self.calcImpedanceMatrix(use_conc=True, freqs=freqs, channel_names=channel_names)[0].real
 
         self._toTreeConc([28.469767, 28.160618, 28.078605], ion)
-        print('z_mat standard =\n', self.calcImpedanceMatrix(use_conc=True, freqs=freqs, channel_names=channel_names)[0].real)
-        print('z_mat no conc  =\n', self.calcImpedanceMatrix(use_conc=False, freqs=freqs, channel_names=channel_names)[0].real)
-        print('gammas =\n', c_vec)
+        print 'z_mat standard =\n', self.calcImpedanceMatrix(use_conc=True, freqs=freqs, channel_names=channel_names)[0].real
+        print 'z_mat no conc  =\n', self.calcImpedanceMatrix(use_conc=False, freqs=freqs, channel_names=channel_names)[0].real
+        print 'gammas =\n', c_vec
 
         self.removeExpansionPoints()
 
@@ -1250,7 +1249,7 @@ class CompartmentTree(STree):
             e_eqs = [self.getEEq() for _ in z_mat_arg]
         freqs, w_freqs, z_mat_arg = self._preprocessFreqs(freqs, w_freqs=w_freqs, z_mat_arg=z_mat_arg)
         if channel_names is None:
-            channel_names = ['L'] + list(self.channel_storage.keys())
+            channel_names = ['L'] + self.channel_storage.keys()
         # convert to 3d matrices if they are two dimensional
         z_mat_arg_ = []
         for z_mat in z_mat_arg:
@@ -1354,7 +1353,7 @@ class CompartmentTree(STree):
         for ii in range(len(self)):
             kk = ii+1
             eq = sp.Float(-np.sum((-1./taus_m)**kk))
-            for inds in itertools.product(list(range(len(self))), repeat=kk):
+            for inds in itertools.product(range(len(self)), repeat=kk):
 
                 rowmat_aux = g_mats[inds[-1]]
                 for jj in inds[::-1][1:]:
@@ -1369,18 +1368,18 @@ class CompartmentTree(STree):
                 # m_tr = np.trace(mat_aux)
 
                 if np.abs(m_tr) > 1e-18:
-                    print('\n >>> ', inds)
+                    print '\n >>> ', inds
                     expr = reduce(mul, [c_symbs[jj] for jj in inds])
-                    print(expr, m_tr)
+                    print expr, m_tr
                     eq += expr * m_tr
-                    print(eq, '<<<\n')
+                    print eq, '<<<\n'
 
             eqs.append(eq)
 
         jac_eqs = [[sp.diff(eq, c_s, 1) for c_s in c_symbs] for eq in eqs]
 
-        print(eqs)
-        print(jac_eqs)
+        print eqs
+        print jac_eqs
 
         self.func = [sp.lambdify(c_symbs, eq) for eq in eqs]
         self.jac = [[sp.lambdify(c_symbs, j_eq) for j_eq in j_eqs] for j_eqs in jac_eqs]
@@ -1393,7 +1392,7 @@ class CompartmentTree(STree):
 
     def _sn_(self, c_prev, atol=1e-5, n_iter=0):
         # if n_iter < 5:
-        print('__newiter__ (n = ' + str(n_iter) + '), \n-->  ca =', c_prev, '\n--> f(c) =', self._f_(c_prev))
+        print '__newiter__ (n = ' + str(n_iter) + '), \n-->  ca =', c_prev, '\n--> f(c) =', self._f_(c_prev)
         c_new = c_prev - np.linalg.solve(self._j_(c_prev), self._f_(c_prev))
         if np.max(np.abs(c_new - c_prev)) < atol or n_iter > 100:
             return c_new
@@ -1466,7 +1465,7 @@ class CompartmentTree(STree):
 
         taulist = []
 
-        # from datarep.matplotlibsettings import *
+        from datarep.matplotlibsettings import *
         for ii, gamma in enumerate(gammas):
             kk, ll = ii // n_c, ii % n_c
 
@@ -1773,18 +1772,18 @@ class CompartmentTree(STree):
         assert v_mat.shape == i_mat.shape
         assert dv_mat.shape == i_mat.shape
         assert dv_mat.shape == i_mat.shape
-        for channel_name, p_open in p_open_channels.items():
+        for channel_name, p_open in p_open_channels.iteritems():
             assert p_open.shape == i_mat.shape
-        for channel_name, p_open in p_open_other_channels.items():
+        for channel_name, p_open in p_open_other_channels.iteritems():
             assert p_open.shape == i_mat.shape
 
         # define channel name lists
         if channel_names is None:
-            channel_names = list(p_open_channels.keys())
+            channel_names = p_open_channels.keys()
         else:
             assert set(channel_names) == set(p_open_channels.keys())
         if other_channel_names is None:
-            other_channel_names = list(p_open_other_channels.keys())
+            other_channel_names = p_open_other_channels.keys()
         else:
             assert set(other_channel_names) == set(p_open_other_channels.keys())
         if all_channel_names == None:
@@ -1819,7 +1818,7 @@ class CompartmentTree(STree):
             g_l, e_l = node.currents['L']
             i_vec += g_l * (e_l - v_mat[node.loc_ind])
             # add the ion channel current
-            for channel_name, p_open in p_open_other_channels.items():
+            for channel_name, p_open in p_open_other_channels.iteritems():
                 i_vec -= node.getDynamicI(channel_name,
                                         p_open[node.loc_ind], v_mat[node.loc_ind])
             # drive terms
@@ -1889,22 +1888,22 @@ class CompartmentTree(STree):
 
 
         import matplotlib.pyplot as pl
-        # from datarep.matplotlibsettings import *
+        from datarep.matplotlibsettings import *
         # print '\nxxxxxxxx'
         # check size
         assert v_mat.shape == i_mat.shape
-        for channel_name, p_open in p_open_channels.items():
+        for channel_name, p_open in p_open_channels.iteritems():
             assert p_open.shape == i_mat.shape
-        for channel_name, p_open in p_open_other_channels.items():
+        for channel_name, p_open in p_open_other_channels.iteritems():
             assert p_open.shape == i_mat.shape
 
         # define channel name lists
         if channel_names is None:
-            channel_names = list(p_open_channels.keys())
+            channel_names = p_open_channels.keys()
         else:
             assert set(channel_names) == set(p_open_channels.keys())
         if other_channel_names is None:
-            other_channel_names = list(p_open_other_channels.keys())
+            other_channel_names = p_open_other_channels.keys()
         else:
             assert set(other_channel_names) == set(p_open_other_channels.keys())
         if all_channel_names == None:
@@ -1918,9 +1917,9 @@ class CompartmentTree(STree):
         perm_inds = self._permuteToTreeInds()
         v_mat = v_mat[perm_inds,:]
         i_mat = i_mat[perm_inds,:]
-        for p_o in p_open_channels.values():
+        for p_o in p_open_channels.itervalues():
             p_o = p_o[perm_inds,:]
-        for p_o in p_open_other_channels.values():
+        for p_o in p_open_other_channels.itervalues():
             p_o = p_o[perm_inds,:]
 
         # numbers for fit
@@ -1936,7 +1935,7 @@ class CompartmentTree(STree):
 
         if v_pas is None:
             # compute convolution input current for fit
-            for channel_name, p_open in p_open_other_channels.items():
+            for channel_name, p_open in p_open_other_channels.iteritems():
                 for ii, node in enumerate(self):
                     i_mat[ii] -= node.getDynamicI(channel_name, p_open[ii], v_mat[ii])
             v_i_in = self._calcConvolution(dt, i_mat[:,np.newaxis,:])
@@ -2007,7 +2006,7 @@ class CompartmentTree(STree):
         # ax.legend(loc=0)
         # ax_.plot(t_arr, g_vec[0]*v_d_aux[1,0,0,:] + g_vec[1]*v_d_aux[1,0,0,:], 'g--', label='v chanfit')
         # ax_.legend(loc=0)
-        print('g single fit =', g_vec)
+        print 'g single fit =', g_vec
 
         n_panel = len(self)+1
         t_arr = np.arange(n_fp) * dt
@@ -2281,8 +2280,8 @@ class CompartmentTree(STree):
             The channels that are not to be included in the fit
         '''
         # matrices for impedance matrix fit
-        channel_names = list(p_open_channels.keys())
-        other_channel_names = list(p_open_other_channels.keys()) + ['L']
+        channel_names = p_open_channels.keys()
+        other_channel_names = p_open_other_channels.keys() + ['L']
         mat_feature_1, vec_target_1 = \
                 self.computeGM(z_mat_arg,
                                e_eqs=e_eqs, freqs=freqs, w_e_eqs=w_e_eqs, w_freqs=w_freqs,
@@ -2303,7 +2302,7 @@ class CompartmentTree(STree):
         # linear regression fit
         res = la.lstsq(mat_feature, vec_target)
         g_vec = res[0].real
-        print('g_vec =', g_vec)
+        print 'g_vec =', g_vec
         # set the conductances
         self._toTreeGM(g_vec, channel_names=channel_names)
 

@@ -12,9 +12,9 @@ import numpy as np
 
 import copy
 
-from . import morphtree
-from .morphtree import MorphLoc
-from .phystree import PhysNode, PhysTree
+import morphtree
+from morphtree import MorphLoc
+from phystree import PhysNode, PhysTree
 from neat.channels import channelcollection
 
 
@@ -108,7 +108,7 @@ class GreensNode(PhysNode):
             The membrane impedance
         '''
         if use_conc:
-            g_m_ions = {conc: np.zeros_like(freqs) for conc in list(self.concmechs.keys())}
+            g_m_ions = {conc: np.zeros_like(freqs) for conc in self.concmechs.keys()}
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
         # loop over channels that do not read concentrations
         for channel_name in set(self.currents.keys()) - set('L'):
@@ -311,7 +311,7 @@ class GreensTree(PhysTree):
 
     def _impedanceFromLeaf(self, node, leafs, pprint=False):
         if pprint:
-            print('Forward sweep: ' + str(node))
+            print 'Forward sweep: ' + str(node)
         pnode = node.parent_node
         # log how many times recursion has passed at node
         if not self.isLeaf(node):

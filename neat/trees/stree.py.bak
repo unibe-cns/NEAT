@@ -12,7 +12,6 @@ import numpy as np
 import warnings
 import copy
 from collections import Counter
-from functools import reduce
 
 class SNode(object):
     '''
@@ -236,7 +235,7 @@ class STree(object):
         Check if the indices of the tree are number in the same order as they
         appear in the iterator
         '''
-        return list(range(len(self))) == [node.index for node in self]
+        return range(len(self)) == [node.index for node in self]
 
     def getNodes(self, recompute_flag=1):
         '''
@@ -582,7 +581,7 @@ class STree(object):
         path1 = self.pathToRoot(from_node)[::-1]
         path2 = self.pathToRoot(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
+        ind = next((ii for ii in xrange(len(path)) if path1[ii] != path2[ii]),
                    len(path))
         return path1[ind:][::-1] + path2[ind-1:]
 
@@ -606,7 +605,7 @@ class STree(object):
         path1 = self.pathToRoot(from_node)[::-1]
         path2 = self.pathToRoot(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
+        ind = next((ii for ii in xrange(len(path)) if path1[ii] != path2[ii]),
                    len(path))
         return path1[ind-1:] + path2[ind:]
 

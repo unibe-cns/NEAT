@@ -23,7 +23,7 @@ dependencies = ['numpy>=1.14.1',
                 'sympy>=1.1.1',
                 'sklearn>=0.19.1']
 
-ext = Extension("neat.netsim",
+ext = Extension("netsim",
                 ["neat/tools/simtools/netsim.pyx",
                  "neat/tools/simtools/NETC.cc",
                  "neat/tools/simtools/Synapses.cc",
@@ -31,8 +31,25 @@ ext = Extension("neat.netsim",
                  "neat/tools/simtools/Tools.cc"],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
-                                    # "-mmacosx-version-min=10.9"],
                 include_dirs=[numpy.get_include()])
+
+# setup(
+#     name='neat',
+#     version=pversion,
+#     packages=['neat',
+#               'neat.trees',
+#               'neat.tools',
+#               'neat.tools.fittools',
+#               'neat.tools.plottools',
+#               'neat.channels'],
+#     ext_modules=[ext],
+#     cmdclass={'build_ext': build_ext},
+#     include_package_data=True,
+#     author='Willem Wybo',
+#     classifiers=['Development Status :: 3 - Alpha',
+#                  'Programming Language :: Python :: 3.7'],
+#     install_requires=dependencies,
+# )
 
 setup(
     name='neat',
@@ -43,11 +60,13 @@ setup(
               'neat.tools.fittools',
               'neat.tools.plottools',
               'neat.channels'],
+    ext_package='neat',
+    # ext_modules=cythonize([ext]),
     ext_modules=[ext],
     cmdclass={'build_ext': build_ext},
     include_package_data=True,
     author='Willem Wybo',
     classifiers=['Development Status :: 3 - Alpha',
-                 'Programming Language :: Python :: 2.7'],
+                 'Programming Language :: Python :: 3.7'],
     install_requires=dependencies,
 )
