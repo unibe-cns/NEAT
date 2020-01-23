@@ -1076,6 +1076,7 @@ class CompartmentTree(STree):
             assert set(channel_names).issubset(all_channel_names)
         if other_channel_names is None and 'L' not in all_channel_names:
             other_channel_names = ['L']
+
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
             freqs = np.array([freqs])
@@ -1090,7 +1091,8 @@ class CompartmentTree(STree):
                                      (tshape[0]*tshape[1]*tshape[2], tshape[3]))
         # target vector
         g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
-                                             indexing='tree')
+                                             indexing='tree', add_L=False)
+
         zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
@@ -1108,6 +1110,7 @@ class CompartmentTree(STree):
             assert channel_name in all_channel_names
         if other_channel_names is None and 'L' not in all_channel_names:
             other_channel_names = ['L']
+
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
             freqs = np.array([freqs])
@@ -1125,6 +1128,7 @@ class CompartmentTree(STree):
         # target vector
         g_mat = self.calcSystemMatrix(freqs, channel_names=other_channel_names,
                                              indexing='tree', add_L=False)
+
         zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
