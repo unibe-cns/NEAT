@@ -149,13 +149,18 @@ class TestSTree():
         # reinitialize original tree
         self.createTree(reinitialize=1)
 
-    def testDegreeOrderNode(self):
+    def testDegreeOrderDepthNode(self):
         self.createTree()
         assert self.tree.orderOfNode(self.nodelist[0]) == -1
         assert self.tree.orderOfNode(self.nodelist[1]) == 0
         assert self.tree.orderOfNode(self.nodelist[2]) == 0
+
         assert self.tree.degreeOfNode(self.nodelist[1]) == 2
         assert self.tree.degreeOfNode(self.nodelist[2]) == 1
+
+        assert self.tree.depthOfNode(self.nodelist[0]) == 0
+        assert self.tree.depthOfNode(self.nodelist[1]) == 1
+        assert self.tree.depthOfNode(self.nodelist[2]) == 2
 
     def testPaths(self):
         self.createTree()
@@ -247,4 +252,5 @@ class TestSTree():
 if __name__ == '__main__':
     tst = TestSTree()
     # tst.testPaths()
-    tst.testBifurcationNodes()
+    # tst.testBifurcationNodes()
+    tst.testDegreeOrderDepthNode()

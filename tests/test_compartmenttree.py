@@ -4,7 +4,7 @@ import matplotlib.pyplot as pl
 import pytest
 import random
 import copy
-from neat import SOVTree, SOVNode, Kernel, GreensTree
+from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
 
 
@@ -370,8 +370,6 @@ class TestCompartmentTree():
         res__ = sim_tree_.run(500.)
         sim_tree_.deleteModel()
 
-
-        import matplotlib.pyplot as pl
         pl.figure('v')
         pl.plot(res['t'], res['v_m'][0], 'b')
         pl.plot(res['t'], res['v_m'][-1], 'r')
@@ -820,8 +818,6 @@ class TestCompartmentTree():
         res_ = sim_tree_.run(t_max)
         sim_tree_.deleteModel()
 
-
-
         import matplotlib.pyplot as pl
         pl.figure('v')
         pl.plot(res['t'], res['v_m'][0], 'b')
@@ -832,18 +828,108 @@ class TestCompartmentTree():
         pl.show()
 
 
+class TestCompartmentTreePlotting():
+    def _initTree1(self):
+        '''
+        1   2
+         \ /
+          0
+        '''
+        croot = CompartmentNode(0, loc_ind=0)
+        cnode1 = CompartmentNode(1, loc_ind=1)
+        cnode2 = CompartmentNode(2, loc_ind=2)
+
+        ctree = CompartmentTree(root=croot)
+        ctree.addNodeWithParent(cnode1, croot)
+        ctree.addNodeWithParent(cnode2, croot)
+
+        self.ctree = ctree
+
+    def _initTree2(self):
+        '''
+        3
+        |
+        2
+        |
+        1
+        |
+        0
+        '''
+        croot = CompartmentNode(0, loc_ind=0)
+        cnode1 = CompartmentNode(1, loc_ind=1)
+        cnode2 = CompartmentNode(2, loc_ind=2)
+        cnode3 = CompartmentNode(3, loc_ind=3)
+
+        ctree = CompartmentTree(root=croot)
+        ctree.addNodeWithParent(cnode1, croot)
+        ctree.addNodeWithParent(cnode2, cnode1)
+        ctree.addNodeWithParent(cnode3, cnode2)
+
+        self.ctree = ctree
+
+    def _initTree3(self):
+        '''
+        4 5 6 7   8
+         \|/   \ /
+          1  2  3
+           \ | /
+            \|/
+             0
+        '''
+        cns = [CompartmentNode(ii, loc_ind=ii) for ii in range(9)]
+
+        ctree = CompartmentTree(root=cns[0])
+        # first order children
+        ctree.addNodeWithParent(cns[1], cns[0])
+        ctree.addNodeWithParent(cns[2], cns[0])
+        ctree.addNodeWithParent(cns[3], cns[0])
+        # second order children
+        ctree.addNodeWithParent(cns[4], cns[1])
+        ctree.addNodeWithParent(cns[5], cns[1])
+        ctree.addNodeWithParent(cns[6], cns[1])
+        ctree.addNodeWithParent(cns[7], cns[3])
+        ctree.addNodeWithParent(cns[8], cns[3])
+
+        self.ctree = ctree
+
+    def testPlot(self, pshow=False):
+        pl.figure('trees', figsize=(9,4))
+        ax1, ax2, ax3 = pl.subplot(131), pl.subplot(132), pl.subplot(133)
+
+        self._initTree1()
+        self.ctree.plotDendrogram(ax1, plotargs={'lw': 1, 'c': 'k'})
+
+        self._initTree2()
+        self.ctree.plotDendrogram(ax2, plotargs={'lw': 1, 'c': 'DarkGrey'},
+                                       labelargs={'marker': 'o', 'ms': 6, 'mfc':'y', 'mec':'r'})
+
+        self._initTree3()
+        labelargs = {0: {'marker': 'o', 'ms': 6, 'mfc':'y', 'mec':'r'},
+                     3: {'marker': 's', 'ms': 10, 'mfc':'c', 'mec':'g'},
+                     5: {'marker': 'v', 'ms': 12, 'mfc':'c', 'mec':'k'}}
+        nodelabels = {1: '1', 4: ':-o', 8: ':-)', 9: ':-('}
+        textargs = {'fontsize': 10}
+        self.ctree.plotDendrogram(ax3, plotargs={'lw': 1, 'c': 'k'},
+                                       labelargs=labelargs, nodelabels=nodelabels, textargs=textargs)
+
+        if pshow:
+            pl.show()
 
 
 
 
 if __name__ == '__main__':
-    tcomp = TestCompartmentTree()
+    # tcomp = TestCompartmentTree()
     # tcomp.testTreeDerivation()
     # tcomp.testFitting()
     # tcomp.testReordering()
     # tcomp.testLocationMapping()
     # tcomp.testGChanFitSteadyState()
 
-    tcomp.testGChanFitDynamic()
+    # tcomp.testGChanFitDynamic()
     # tcomp.testGChanFitDynamicComp()
+
+    tplot = TestCompartmentTreePlotting()
+    tplot.testPlot(pshow=True)
+
 

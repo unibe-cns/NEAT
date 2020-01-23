@@ -507,12 +507,32 @@ class STree(object):
         ----------
             node: :class:`SNode`
                 root of the sub tree
+
+        Returns
+        -------
+        :class:`STree`
+            Subtree of with ``node`` as root
         '''
         subtree = STree()
         cp = copy.copy(node)
         cp.setParentNode(None)
         subtree.setRoot(cp)
         return subtree
+
+    def depthOfNode(self, node):
+        '''
+        compute the depth of the node (number of edges between node and root)
+
+        Parameters
+        ----------
+        node: :class:`SNode`
+
+        Returns
+        -------
+        int
+            depth of the node
+        '''
+        return len(self.pathToRoot(node)) - 1
 
     def degreeOfNode(self, node):
         '''

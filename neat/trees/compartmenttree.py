@@ -2394,6 +2394,120 @@ class CompartmentTree(STree):
             raise ValueError('Invalid `method` argument, should be 1 or 2')
 
 
+    def plotDendrogram(self, ax,
+                        plotargs={}, labelargs={}, textargs={},
+                        nodelabels={},
+                        y_max=None):
+        '''
+        Generate a dendrogram of the NET
+
+        Parameters
+        ----------
+            ax: :class:`matplotlib.axes`
+                the axes object in which the plot will be made
+            plotargs : dict (string : value)
+                keyword args for the matplotlib plot function, specifies the
+                line properties of the dendrogram
+            labelargs : dict (string : value)
+                keyword args for the matplotlib plot function, specifies the
+                marker properties for the node points. Or dict with keys node
+                indices, and with values dicts with keyword args for the
+                matplotlib function that specify the marker properties for
+                specific node points. The entry under key -1 specifies the
+                properties for all nodes not explicitly in the keys.
+            textargs : dict (string : value)
+                keyword args for matplotlib textproperties
+            nodelabels: dict (int: string) or None
+                labels of the nodes. If None, nodes are named by default
+                according to their location indices. If empty dict, no labels
+                are added.
+            y_max: int, float or None
+                specifies the y-scale. If None, the scale is computed from
+                ``self``. By default, y=1 is added for each child of a node, so
+                if y_max is smaller than the depth of the tree, part of it will
+                not be plotted
+        '''
+        # get the number of leafs to determine the dendrogram spacing
+        rnode    = self.root
+        n_branch  = self.degreeOfNode(rnode)
+        l_spacing = np.linspace(0., 1., n_branch+1)
+        if y_max is None:
+            y_max = np.max([self.depthOfNode(n) for n in self.leafs]) + 1.5
+        y_min = .5
+        # plot the dendrogram
+        self._expandDendrogram(rnode, 0.5, None, 0.,
+                    l_spacing, y_max, ax,
+                    plotargs=plotargs, labelargs=labelargs, textargs=textargs,
+                    nodelabels=nodelabels)
+        # limits
+        ax.set_ylim((y_min, y_max))
+        ax.set_xlim((0.,1.))
+
+        ax.axes.get_xaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.axison = False
+
+        return y_max
+
+    def _expandDendrogram(self, node, x0, xprev, y0,
+                                        l_spacing, y_max, ax,
+                                        plotargs={}, labelargs={}, textargs={},
+                                        nodelabels={}):
+        # impedance of layer
+        ynew = y0 + 1.
+        # plot vertical connection line
+        # ax.vlines(x0, y0, ynew, **plotargs)
+        if xprev is not None:
+            ax.plot([xprev, x0], [y0, ynew], **plotargs)
+        # get the child nodes for recursion
+        l0 = 0
+        for i, cnode in enumerate(node.child_nodes):
+            # attribute space on xaxis
+            deg = self.degreeOfNode(cnode)
+            l1 = l0 + deg
+            # new quantities
+            xnew = (l_spacing[l0] + l_spacing[l1]) / 2.
+            # horizontal connection line limits
+            if i == 0:
+                xnew0 = xnew
+            if i == len(node.child_nodes)-1:
+                xnew1 = xnew
+            # recursion
+            self._expandDendrogram(cnode, xnew, x0, ynew,
+                    l_spacing[l0:l1+1], y_max, ax,
+                    plotargs=plotargs, labelargs=labelargs, textargs=textargs,
+                    nodelabels=nodelabels)
+            # next index
+            l0 = l1
+        # add label and maybe text annotation to node
+        if node.index in labelargs:
+            ax.plot([x0], [ynew], **labelargs[node.index])
+        elif -1 in labelargs:
+            ax.plot([x0], [ynew], **labelargs[-1])
+        else:
+            try:
+                ax.plot([x0], [ynew], **labelargs)
+            except TypeError as e:
+                pass
+        if textargs:
+            if nodelabels != None:
+                if node.index in nodelabels:
+                    if labelargs == {}:
+                        ax.plot([x0], [ynew], **nodelabels[node.index][1])
+                        ax.annotate(nodelabels[node.index][0],
+                                    xy=(x0, ynew), xytext=(x0+0.04, ynew+y_max*0.04),
+                                    bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
+                                    **textargs)
+                    else:
+                        ax.annotate(nodelabels[node.index],
+                                    xy=(x0, ynew), xytext=(x0+0.04, ynew+y_max*0.04),
+                                    bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
+                                    **textargs)
+            else:
+                ax.annotate(r'$N='+''.join([str(ind) for ind in node.loc_inds])+'$',
+                                 xy=(x0, ynew), xytext=(x0+0.04, ynew+y_max*0.04),
+                                 bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
+                                 **textargs)
 
 
 
