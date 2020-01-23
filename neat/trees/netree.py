@@ -91,9 +91,13 @@ class Kernel(object):
     #         raise ValueError('Multiplication not implemented for this class, ' + \
     #                          'input should be `int` or `float`')
 
-    def __str__(self):
-        return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
-               'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
+    def __str__(self, as_timescale=False):
+        if as_timescale:
+            return 't = ' + np.array2string(1./self.a, precision=4, max_line_width=1000) + '\n' + \
+                   'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
+        else:
+            return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
+                   'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
 
     def ft(self, s_arr):
         return np.sum(self.c[:,None]*1e3 / (self.a[:,None]*1e3 + s_arr[None,:]), 0)
