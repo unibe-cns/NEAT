@@ -15,6 +15,32 @@ E_ION_DICT = {'na': 50.,
              'ca': 50.,
             }
 
+
+class _func(object):
+    def __init__(self, eval_func_aux, eval_func_vtrap, e_trap):
+        self.eval_func_aux = eval_func_aux
+        self.eval_func_vtrap = eval_func_vtrap
+        self.e_trap = e_trap
+
+    def __call__(self, *args):
+        vv = args[0]
+        if isinstance(vv, float):
+            if np.abs(vv - self.e_trap) < 0.001:
+                return self.eval_func_vtrap(*args)
+            else:
+                return self.eval_func_aux(*args)
+        else:
+            fv_return = np.zeros_like(vv)
+            bool_vtrap = np.abs(vv - self.e_trap) < 0.0001
+            inds_vtrap = np.where(bool_vtrap)
+            args_ = [a[inds_vtrap] for a in args]
+            fv_return[inds_vtrap] = self.eval_func_vtrap(*args_)
+            inds = np.where(np.logical_not(bool_vtrap))
+            args_ = [a[inds] for a in args]
+            fv_return[inds] = self.eval_func_aux(*args_)
+            return fv_return
+
+
 def _insert_function_prefixes(string, prefix='np',
                               functions=['exp', 'sin', 'cos', 'tan', 'pi']):
     '''

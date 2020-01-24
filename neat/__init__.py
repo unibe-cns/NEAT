@@ -27,3 +27,9 @@ from neat.trees.netree import Kernel
 
 from neat.trees.compartmenttree import CompartmentTree
 from neat.trees.compartmenttree import CompartmentNode
+
+from neat.tools.simtools.neuron.neuronmodel import NeuronSimTree
+from neat.tools.simtools.neuron.neuronmodel import NeuronSimNode
+from neat.tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
+
+from neat.channels.ionchannels import IonChannel
