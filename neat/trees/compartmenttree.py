@@ -2396,7 +2396,7 @@ class CompartmentTree(STree):
 
     def plotDendrogram(self, ax,
                         plotargs={}, labelargs={}, textargs={},
-                        nodelabels={},
+                        nodelabels={}, bbox=None,
                         y_max=None):
         '''
         Generate a dendrogram of the NET
@@ -2438,7 +2438,7 @@ class CompartmentTree(STree):
         self._expandDendrogram(rnode, 0.5, None, 0.,
                     l_spacing, y_max, ax,
                     plotargs=plotargs, labelargs=labelargs, textargs=textargs,
-                    nodelabels=nodelabels)
+                    nodelabels=nodelabels, bbox=bbox)
         # limits
         ax.set_ylim((y_min, y_max))
         ax.set_xlim((0.,1.))
@@ -2452,7 +2452,7 @@ class CompartmentTree(STree):
     def _expandDendrogram(self, node, x0, xprev, y0,
                                         l_spacing, y_max, ax,
                                         plotargs={}, labelargs={}, textargs={},
-                                        nodelabels={}):
+                                        nodelabels={}, bbox=None):
         # impedance of layer
         ynew = y0 + 1.
         # plot vertical connection line
@@ -2476,7 +2476,7 @@ class CompartmentTree(STree):
             self._expandDendrogram(cnode, xnew, x0, ynew,
                     l_spacing[l0:l1+1], y_max, ax,
                     plotargs=plotargs, labelargs=labelargs, textargs=textargs,
-                    nodelabels=nodelabels)
+                    nodelabels=nodelabels, bbox=None)
             # next index
             l0 = l1
         # add label and maybe text annotation to node
@@ -2495,18 +2495,18 @@ class CompartmentTree(STree):
                     if labelargs == {}:
                         ax.plot([x0], [ynew], **nodelabels[node.index][1])
                         ax.annotate(nodelabels[node.index][0],
-                                    xy=(x0, ynew), xytext=(x0+0.04, ynew+y_max*0.04),
-                                    bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
+                                    xy=(x0, ynew), xytext=(x0+0.06, ynew),#+y_max*0.04),
+                                    bbox=bbox,
                                     **textargs)
                     else:
                         ax.annotate(nodelabels[node.index],
-                                    xy=(x0, ynew), xytext=(x0+0.04, ynew+y_max*0.04),
-                                    bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
+                                    xy=(x0, ynew), xytext=(x0+0.06, ynew),#+y_max*0.04),
+                                    bbox=bbox,
                                     **textargs)
             else:
                 ax.annotate(r'$N='+''.join([str(ind) for ind in node.loc_inds])+'$',
-                                 xy=(x0, ynew), xytext=(x0+0.04, ynew+y_max*0.04),
-                                 bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
+                                 xy=(x0, ynew), xytext=(x0+0.06, ynew),#+y_max*0.04),
+                                 bbox=bbox,
                                  **textargs)
 
 
