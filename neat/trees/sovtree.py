@@ -30,10 +30,10 @@ class SOVNode(PhysNode):
     def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
-    def setSOV(self, tau_0=0.02):
+    def setSOV(self, tau_0=0.02, channel_storage=None):
         self.counter = 0
         # segment parameters
-        self.g_m        = self.getGTot() # uS/cm^2
+        self.g_m        = self.getGTot(channel_storage=channel_storage) # uS/cm^2
         # parameters for SOV approach
         self.R_sov      = self.R * 1e-4 # convert um to cm
         self.L_sov      = self.L * 1e-4 # convert um to cm
@@ -162,7 +162,7 @@ class SomaSOVNode(SOVNode):
     def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
-    def setSOV(self, tau_0=0.02):
+    def setSOV(self, tau_0=0.02, channel_storage=None):
         self.counter = 0
         # convert to cm
         self.R_sov      = self.R * 1e-4 # convert um to cm
@@ -170,7 +170,7 @@ class SomaSOVNode(SOVNode):
         # surface
         self.A = 4.0*np.pi*self.R_sov**2 # cm^2
         # total conductance
-        self.g_m        = self.getGTot() # uS/cm^2
+        self.g_m        = self.getGTot(channel_storage=channel_storage) # uS/cm^2
         # parameters for the SOV approach
         self.tau_m      = self.c_m / self.g_m # s
         self.eps_m      = self.tau_m / tau_0 # ns
@@ -333,8 +333,9 @@ class SOVTree(PhysTree):
                 roughly corresponds to the maximal spatial frequency of the
                 smallest time-scale mode
         '''
+
         self.tau_0 = np.pi#1.
-        for node in self: node.setSOV(tau_0=self.tau_0)
+        for node in self: node.setSOV(tau_0=self.tau_0, channel_storage=self.channel_storage)
         if len(self) > 1:
             # start the recursion through the tree
             self._SOVFromLeaf(self.leafs[0], self.leafs[1:],
@@ -422,8 +423,8 @@ class SOVTree(PhysTree):
         # elif importance_type =='relative':
         #     return absolute_importance / np.max(absolute_importance)
         else:
-            raise ValueError('`importance_type` argument can be \'absolute\' or \
-                              \'relative\'')
+            raise ValueError('`importance_type` argument can be \'simple\' or \
+                              \'full\'')
 
         return absolute_importance / np.max(absolute_importance)
 

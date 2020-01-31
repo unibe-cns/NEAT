@@ -497,11 +497,11 @@ class STree(object):
         for ind, node in enumerate(self):
             node.index = ind+n
 
-    def getSubTree(self, node):
+    def getSubTree(self, node, new_tree=None):
         '''
         Get the subtree of the specified node. The root of the subtree is a new
         node with the same children as the original node, but None instead of a
-        parent. The other nodes are retained.
+        parent.
 
         Parameters
         ----------
@@ -513,11 +513,17 @@ class STree(object):
         :class:`STree`
             Subtree of with ``node`` as root
         '''
-        subtree = STree()
-        cp = copy.copy(node)
-        cp.setParentNode(None)
-        subtree.setRoot(cp)
-        return subtree
+        if new_tree is None:
+            new_tree = STree()
+
+        new_node = new_tree.createCorrespondingNode(node.index)
+        node.__copy__(new_node=new_node)
+        new_node.setParentNode(None)
+        new_tree.setRoot(new_node)
+
+        self._recurseCopy(node, new_tree)
+
+        return new_tree
 
     def depthOfNode(self, node):
         '''

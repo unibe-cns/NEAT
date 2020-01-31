@@ -1400,23 +1400,16 @@ class CompartmentTree(STree):
         else:
             return self._sn_(c_new, atol=atol, n_iter=n_iter+1)
 
-    def computeC(self, alphas, phimat, importance=None, tau_eps=5., weight=1., action='fit'):
+    def computeC(self, alphas, phimat, importance=None, tau_eps=5.,
+                       weights=None, weight=1., action='fit'):
         # np.set_printoptions(precision=2)
         n_c, n_a = len(self), len(alphas)
         assert phimat.shape == (n_a, n_c)
-        if weight is None: weight = np.ones_like(alphas)
-        # inds = self._permuteToTreeInds()
-        # phimat = phimat[:,inds]
+        if weights is None: weights = np.ones_like(alphas)
         # construct the passive conductance matrix
         g_mat = - self.calcSystemMatrix(freqs=0., channel_names=['L'],
                                         with_ca=False, indexing='tree')
 
-        # ccc = 1. / np.array([nn.ca for nn in self])[:,None]
-
-        # print '\n>>> mat 1 ='
-        # print np.dot(ccc*g_mat, phimat.T).real
-        # print '>>> mat 2 ='
-        # print (alphas[None,:] * phimat.T).real
         # set lower limit for capacitance, fit not always well conditioned
         g_tot = np.array([node.getGTot(channel_names=['L']) for node in self])
         c_lim =  g_tot / (-alphas[0] * tau_eps)
@@ -1426,26 +1419,17 @@ class CompartmentTree(STree):
         mat_feature = np.zeros((n_a*n_c, n_c))
         vec_target = np.zeros(n_a*n_c)
         for ii, node in enumerate(self):
-            mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weight
-            # vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T), n_a) * weight**2
-            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T) - gamma_mat[:,ii:ii+1], n_a) * weight
+            mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weights
+            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T) - gamma_mat[:,ii:ii+1], n_a) * weights
 
         # least squares fit
-        # res = la.lstsq(mat_feature, vec_target)[0]
         res = so.nnls(mat_feature, vec_target)[0]
-        # inds = np.where(c_vec <= 0.)[0]
-        # c_vec[inds] = 1e-7
-        # c_vec = np.abs(c_vec)
         c_vec = res + c_lim
         self._toTreeC(c_vec)
 
-        # ccc = 1. / c_vec[:,None]
-        # print '\n>>> mat 1 ='
-        # print np.dot(ccc*g_mat, phimat.T).real
-        # print '>>> mat 2 ='
-        # print (alphas[None,:] * phimat.T).real
+        # !!! do not run _fitResAction with this, not working
         # return self._fitResAction(action, mat_feature, vec_target, weight,
-        #                           capacitance=True)
+        #                           ca_lim=c_lim)
 
     def computeCVF(self, freqs, zf_mat, eps=.05, max_iter=20, action='store'):
         fef = ke.fExpFitter()
@@ -2157,7 +2141,7 @@ class CompartmentTree(STree):
     #         raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
 
     def _fitResAction(self, action, mat_feature, vec_target, weight,
-                            capacitance=False, **kwargs):
+                            ca_lim=[], **kwargs):
         if action == 'fit':
             # linear regression fit
             # res = la.lstsq(mat_feature, vec_target)
@@ -2168,8 +2152,15 @@ class CompartmentTree(STree):
                 self._toTreeGM(vec_res, channel_names=kwargs['channel_names'])
             elif 'ion' in kwargs:
                 self._toTreeConc(vec_res, kwargs['ion'])
-            elif capacitance:
-                self._toTreeC(vec_res)
+            elif len(ca_lim) > 0:
+                if ca_lim[0] != -1:
+                    try:
+                        self.fit_data['c'].append(ca_lim)
+                    except KeyError:
+                        self.fit_data['c'] = [ca_lim]
+
+                clim = self.fit_data['c']
+                self._toTreeC(vec_res + np.mean(clim, axis=-1))
             else:
                 raise IOError('Provide \'channel_names\' or \'ion\' as keyword argument, ' + \
                               'or set \'capacitance\' to `True`')
@@ -2208,8 +2199,11 @@ class CompartmentTree(STree):
                                       'other fits:\n' + \
                                       '`ion`: ' + kwargs[ion] + \
                                       '\nstored ion: ' + self.fit_data['ion'])
-            elif capacitance:
-                self.fit_data['c'] = True
+            elif len(ca_lim) > 0:
+                try:
+                    self.fit_data['c'].append(ca_lim)
+                except KeyError:
+                    self.fit_data['c'] = [ca_lim]
 
             self.fit_data['mats_feature'].append(mat_feature)
             self.fit_data['vecs_target'].append(vec_target)
@@ -2222,8 +2216,7 @@ class CompartmentTree(STree):
                              vecs_target=[],
                              weights_fit=[],
                              channel_names=[],
-                             ion='',
-                             c=False)
+                             ion='')
 
     def runFit(self):
         fit_data = self.fit_data
@@ -2245,7 +2238,7 @@ class CompartmentTree(STree):
                                    ion=fit_data['ion'])
             elif fit_data['c']:
                 self._fitResAction('fit', mat_feature, vec_target, 1.,
-                                   capacitance=True)
+                                   ca_lim=[-1])
             # reset fit data
             self.resetFitData()
         else:
@@ -2443,9 +2436,15 @@ class CompartmentTree(STree):
         ax.set_ylim((y_min, y_max))
         ax.set_xlim((0.,1.))
 
-        ax.axes.get_xaxis().set_visible(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.axison = False
+        ax.spines['top'].set_color('none')
+        ax.spines['bottom'].set_color('none')
+        ax.spines['right'].set_color('none')
+        ax.spines['left'].set_color('none')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        # ax.axes.get_xaxis().set_visible(False)
+        # ax.axes.get_yaxis().set_visible(False)
+        # ax.axison = False
 
         return y_max
 

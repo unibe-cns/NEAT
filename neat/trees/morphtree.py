@@ -2439,11 +2439,12 @@ class MorphTree(STree):
             dx = xlim[1]-xlim[0]
             ax.plot([xlim[0],xlim[0]+scale],
                     [ylim[0],ylim[0]],
-                    'k', linewidth=sb_width)
+                    'k', linewidth=sb_width, zorder=1e5)
             txt = ax.annotate(r'' + str(scale) + ' $\mu$m',
                               xy=(xlim[0]+scale/2., ylim[0]),
-                              xycoords='data', xytext=(0,dy/200.), ha='center', va='bottom',
-                              textcoords='offset points', **textargs)
+                              xycoords='data', xytext=(xlim[0]+scale/2.,ylim[0]-dy/200.), ha='center', va='top',
+                              **textargs)
+                              # textcoords='offset points', **textargs)
             txt.set_path_effects([patheffects.withStroke(foreground="w",
                                                          linewidth=2)])
         if set_lims:
