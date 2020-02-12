@@ -1,3 +1,4 @@
+import warnings
 
 # This is a hack to allow running headless e.g. Jenkins
 import os
@@ -28,8 +29,11 @@ from neat.trees.netree import Kernel
 from neat.trees.compartmenttree import CompartmentTree
 from neat.trees.compartmenttree import CompartmentNode
 
-from neat.tools.simtools.neuron.neuronmodel import NeuronSimTree
-from neat.tools.simtools.neuron.neuronmodel import NeuronSimNode
-from neat.tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
+try:
+    from neat.tools.simtools.neuron.neuronmodel import NeuronSimTree
+    from neat.tools.simtools.neuron.neuronmodel import NeuronSimNode
+    from neat.tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
+except ModuleNotFoundError:
+    warnings.warn('NEURON not available', UserWarning)
 
 from neat.channels.ionchannels import IonChannel
