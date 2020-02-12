@@ -21,7 +21,7 @@ dependencies = ['numpy>=1.14.1',
                 'cython>=0.27.3',
                 'scipy>=1.0.0',
                 'sympy>=1.1.1',
-                'sklearn>=0.19.1']
+                'scikit-learn>=0.19.1']
 
 ext = Extension("netsim",
                 ["neat/tools/simtools/net/netsim.pyx",
