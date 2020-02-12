@@ -14,7 +14,7 @@
 #include <time.h>
 
 #include "Synapses.h"
-#include "IonChannels.h"
+#include "Ionchannels.h"
 #include "Tools.cc"
 
 using namespace std;
