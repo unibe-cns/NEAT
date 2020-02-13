@@ -1087,6 +1087,17 @@ class MorphTree(STree):
         self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc['node']]))
         self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc['x']]))
 
+    def clearLocs(self):
+        '''
+        Remove all set of locs stored in the tree
+        '''
+        self.locs = {}
+        self._nids_orig = {}; self._nids_comp = {}
+        self._xs_orig = {}; self._xs_comp = {}
+        self.d2s = {}
+        self.d2b = {}
+        self.leafinds = {}
+
     def removeLocs(self, name):
         '''
         Remove a set of locations of a given name
