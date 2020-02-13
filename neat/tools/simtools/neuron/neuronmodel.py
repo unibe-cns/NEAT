@@ -4,8 +4,8 @@ import copy
 
 import numpy as np
 
-import neat
-from neat import PhysTree, PhysNode, MorphLoc
+from ....trees.morphtree import MorphLoc
+from ....trees.phystree import PhysTree, PhysNode
 
 import neuron
 from neuron import h

@@ -33,6 +33,7 @@ try:
     from neat.tools.simtools.neuron.neuronmodel import NeuronSimTree
     from neat.tools.simtools.neuron.neuronmodel import NeuronSimNode
     from neat.tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
+    from neat.tools.simtools.neuron.neuronmodel import createReducedModel
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 

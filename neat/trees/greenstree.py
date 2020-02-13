@@ -15,8 +15,7 @@ import copy
 from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
-from neat.channels import channelcollection
-
+from ..channels import channelcollection
 
 
 class GreensNode(PhysNode):

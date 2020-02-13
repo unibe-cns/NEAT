@@ -18,8 +18,8 @@ from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
 from .netree import NETNode, NET, Kernel
 
-from neat.tools.fittools import zerofinding as zf
-from neat.tools.fittools import histogramsegmentation as hs
+from ..tools.fittools import zerofinding as zf
+from ..tools.fittools import histogramsegmentation as hs
 
 
 def consecutive(data, stepsize=1):

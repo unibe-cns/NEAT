@@ -13,7 +13,7 @@ import warnings
 
 from . import morphtree
 from .morphtree import MorphNode, MorphTree
-from neat.channels import channelcollection, concmechs
+from ..channels import channelcollection, concmechs
 
 
 class PhysNode(MorphNode):

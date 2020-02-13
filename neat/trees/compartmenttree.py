@@ -14,8 +14,8 @@ import scipy.optimize as so
 import sympy as sp
 
 from .stree import SNode, STree
-from neat.channels import channelcollection
-from neat.tools import kernelextraction as ke
+from ..channels import channelcollection
+from ..tools import kernelextraction as ke
 
 import copy
 import warnings
@@ -23,8 +23,6 @@ import itertools
 from operator import mul
 from functools import reduce
 
-
-from datarep.matplotlibsettings import *
 
 class RowMat(object):
     def __init__(self, row, ii):
