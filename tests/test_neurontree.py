@@ -257,14 +257,21 @@ class TestNeuron():
 
 
 class TestReducedNeuron():
-    def loadTwoCompartmentModel(self):
+    def addLocinds(self):
+        for ii, cn in enumerate(self.ctree):
+            cn.loc_ind = ii
+
+    def loadTwoCompartmentModel(self, w_locinds=True):
         # simple two compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(root=pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
         self.ctree.addNodeWithParent(cnode, pnode)
 
-    def loadTModel(self):
+        if w_locinds:
+            self.addLocinds()
+
+    def loadTModel(self, w_locinds=True):
         # simple T compartment model
         # pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         # self.ctree = CompartmentTree(root=pnode)
@@ -283,7 +290,10 @@ class TestReducedNeuron():
         lnode1 = CompartmentNode(3, ca=1.5e-6, g_l=2.5e-4, g_c=5e-3)
         self.ctree.addNodeWithParent(lnode1, cnode)
 
-    def loadThreeCompartmentModel(self):
+        if w_locinds:
+            self.addLocinds()
+
+    def loadThreeCompartmentModel(self, w_locinds=True):
         # simple 3 compartment model
         pnode = CompartmentNode(0, ca=1.9e-6, g_l=1.8e-3)
         self.ctree = CompartmentTree(root=pnode)
@@ -292,7 +302,10 @@ class TestReducedNeuron():
         lnode0 = CompartmentNode(2, ca=1.9e-6, g_l=0.3e-4, g_c=3.8e-3)
         self.ctree.addNodeWithParent(lnode0, cnode)
 
-    def loadMultiDendModel(self):
+        if w_locinds:
+            self.addLocinds()
+
+    def loadMultiDendModel(self, w_locinds=True):
         # simple 3 compartment model
         pnode = CompartmentNode(0, ca=1.9e-6, g_l=1.8e-3)
         self.ctree = CompartmentTree(root=pnode)
@@ -302,6 +315,9 @@ class TestReducedNeuron():
         self.ctree.addNodeWithParent(cnode1, pnode)
         cnode2 = CompartmentNode(3, ca=1.3e-6, g_l=0.5e-4, g_c=2.7e-2)
         self.ctree.addNodeWithParent(cnode2, pnode)
+
+        if w_locinds:
+            self.addLocinds()
 
     def testGeometry1(self):
         fake_c_m = 1.
@@ -400,7 +416,14 @@ class TestReducedNeuron():
     def testImpedanceProperties1(self):
         fake_c_m = 1.
         fake_r_a = 100.*1e-6
-        # create the two compartment model
+        # create the two compartment model without locinds
+        self.loadTwoCompartmentModel(w_locinds=False)
+        ctree = self.ctree
+        # check if error is raised if loc_inds have not been set
+        with pytest.raises(AttributeError):
+            ctree.calcImpedanceMatrix()
+
+        # create the two compartment model with locinds
         self.loadTwoCompartmentModel()
         ctree = self.ctree
         # compute the impedance matrix exactly
@@ -597,13 +620,13 @@ class TestReducedNeuron():
 
 
 if __name__ == '__main__':
-    tn = TestNeuron()
+    # tn = TestNeuron()
     # tn.testPassive(pplot=True)
     # tn.testActive(pplot=True)
-    tn.testChannelRecording()
+    # tn.testChannelRecording()
 
-    # trn = TestReducedNeuron()
-    # trn.testGeometry1()
-    # trn.testImpedanceProperties1()
-    # trn.testGeometry2()
-    # trn.testImpedanceProperties2()
+    trn = TestReducedNeuron()
+    trn.testGeometry1()
+    trn.testImpedanceProperties1()
+    trn.testGeometry2()
+    trn.testImpedanceProperties2()

@@ -54,7 +54,7 @@ class CompartmentNode(SNode):
     def __init__(self, index, loc_ind=None, ca=1., g_c=0., g_l=1e-2, e_eq=-75.):
         super(CompartmentNode, self).__init__(index)
         # location index this node corresponds to
-        self.loc_ind = loc_ind
+        self._loc_ind = loc_ind
         # compartment params
         self.ca = ca   # capacitance (uF)
         self.g_c = g_c # coupling conductance (uS)
@@ -63,6 +63,18 @@ class CompartmentNode(SNode):
         self.currents = {'L': [g_l, e_eq]} # ion channel currents and reversals
         self.concmechs = {}
         self.expansion_points = {}
+
+    def setLocInd(self, loc_ind):
+        self._loc_ind = loc_ind
+
+    def getLocInd(self):
+        if self._loc_ind is None:
+            raise AttributeError("`self.loc_ind` is undefined, this node has " + \
+                                 "not been associated with a location")
+        else:
+            return self._loc_ind
+
+    loc_ind = property(getLocInd, setLocInd)
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(CompartmentNode, self).__str__()
