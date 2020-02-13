@@ -99,9 +99,14 @@ class PhysNode(MorphNode):
             keys are the names of the ion channels, and values the channel
             instances
         '''
-        try:
-            return channel_storage[channel_name]
-        except (KeyError, TypeError):
+        if channel_storage is not None:
+            try:
+                return channel_storage[channel_name]
+            except (KeyError):
+                chan = eval('channelcollection.' + channel_name + '()')
+                channel_storage[channel_name] = chan
+                return chan
+        else:
             return eval('channelcollection.' + channel_name + '()')
 
     def setEEq(self, e_eq):
@@ -232,6 +237,15 @@ class PhysTree(MorphTree):
 
     @morphtree.originalTreetypeDecorator
     def setEEq(self, e_eq):
+        '''
+        Set the equilibrium potentials throughout the tree. Can be iterable,
+        than the `len(e_eq)` is assumed to be the same as `len(self)`
+
+        Parameters
+        ----------
+        e_eq: float or iterable of floats
+            The equilibrium potentials
+        '''
         if not hasattr(e_eq, '__iter__'):
             e_eq = e_eq * np.ones(len(self))
         for e, node in zip(e_eq, self): node.setEEq(e)

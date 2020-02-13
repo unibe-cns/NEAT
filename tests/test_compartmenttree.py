@@ -78,10 +78,10 @@ class TestCompartmentTree():
         self.tree.storeLocs(locs_soma+locs_dist_nobifur, 'dist_nobifur')
         self.tree.storeLocs(locs_soma+locs_dist_bifur, 'dist_bifur')
         # derive steady state impedance matrices
-        z_mat_prox         = self.tree.calcImpedanceMatrix(name='prox')
-        z_mat_bifur        = self.tree.calcImpedanceMatrix(name='bifur')
-        z_mat_dist_nobifur = self.tree.calcImpedanceMatrix(name='dist_nobifur')
-        z_mat_dist_bifur   = self.tree.calcImpedanceMatrix(name='dist_bifur')
+        z_mat_prox         = self.tree.calcImpedanceMatrix(locarg='prox')
+        z_mat_bifur        = self.tree.calcImpedanceMatrix(locarg='bifur')
+        z_mat_dist_nobifur = self.tree.calcImpedanceMatrix(locarg='dist_nobifur')
+        z_mat_dist_bifur   = self.tree.calcImpedanceMatrix(locarg='dist_bifur')
         # create the tree structures
         ctree_prox         = self.tree.createCompartmentTree('prox')
         ctree_bifur        = self.tree.createCompartmentTree('bifur')
@@ -302,12 +302,12 @@ class TestCompartmentTree():
         # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
 
         # compute c
-        alphas, phimat = self.sov_tree.getImportantModes(locs=locs, sort_type='importance', eps=1e-9)
+        alphas, phimat = self.sov_tree.getImportantModes(locarg=locs, sort_type='importance', eps=1e-9)
         n_mode = len(locs)
         alphas = alphas[:n_mode]
         phimat = phimat[:n_mode, :]
-        importance = self.sovtree.getModeImportance(sov_data=(alphas, phimat), importance_type='absolute')
-        ctree.computeCv3(-alphas*1e3, phimat, weight=importance)
+        importance = self.sovtree.getModeImportance(sov_data=(alphas, phimat), importance_type='simple')
+        ctree.computeC(-alphas*1e3, phimat, weight=importance)
         # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
 
         # do the impedance matrix fit for the channel
@@ -427,12 +427,12 @@ class TestCompartmentTree():
         ctree.computeGMC(z_mat_pas[0,:,:], channel_names=['L'])
         # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
         # compute c
-        alphas, phimat = self.sov_tree.getImportantModes(locs=locs, sort_type='importance', eps=1e-9)
+        alphas, phimat = self.sov_tree.getImportantModes(locarg=locs, sort_type='importance', eps=1e-9)
         n_mode = len(locs)
         alphas = alphas[:n_mode]
         phimat = phimat[:n_mode, :]
-        importance = self.sov_tree.getModeImportance(sov_data=(alphas, phimat), importance_type='absolute')
-        ctree.computeCv3(-alphas*1e3, phimat, weight=importance)
+        importance = self.sov_tree.getModeImportance(sov_data=(alphas, phimat), importance_type='simple')
+        ctree.computeC(-alphas*1e3, phimat, weight=importance)
 
 
         # set e_eq

@@ -1087,6 +1087,17 @@ class MorphTree(STree):
         self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc['node']]))
         self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc['x']]))
 
+    def clearLocs(self):
+        '''
+        Remove all set of locs stored in the tree
+        '''
+        self.locs = {}
+        self._nids_orig = {}; self._nids_comp = {}
+        self._xs_orig = {}; self._xs_comp = {}
+        self.d2s = {}
+        self.d2b = {}
+        self.leafinds = {}
+
     def removeLocs(self, name):
         '''
         Remove a set of locations of a given name
@@ -1906,7 +1917,8 @@ class MorphTree(STree):
 
     def extendWithBifurcationLocs(self, loc_arg, name='No'):
         '''
-        Gets the bifurcation locs within the provided locs
+        Extends input loc_arg with the intermediate bifurcations. They are
+        appended to the end of the list
 
         Parameters
         ----------
@@ -2271,7 +2283,8 @@ class MorphTree(STree):
                             marklocs=[], locargs={},
                             marklabels={}, labelargs={},
                             cb_draw=0, cb_orientation='vertical', cb_label='',
-                            sb_draw=1, sb_scale=100, sb_width=5., set_lims=True):
+                            sb_draw=1, sb_scale=100, sb_width=5.,
+                            set_lims=True, lims_margin=.1):
         '''
         Plot the morphology projected on the x,y-plane
 
@@ -2335,6 +2348,9 @@ class MorphTree(STree):
                 Width of the scale bar
             set_lims: bool (optional, default ``True``)
                 set ``ax`` limits based on the morphology
+            lims_margin: float
+                the margin, as fraction of total width and height of tree, at
+                which the limits are placed
         '''
         # default cmap
         if cmap is None:
@@ -2425,20 +2441,21 @@ class MorphTree(STree):
         # margins
         dx = xlim[1]-xlim[0]
         dy = ylim[1]-ylim[0]
-        xlim[0] -= dx*.1; xlim[1] += dx*.1
-        ylim[0] -= dy*.1; ylim[1] += dy*.1
+        xlim[0] -= dx*lims_margin; xlim[1] += dx*lims_margin
+        ylim[0] -= dy*lims_margin; ylim[1] += dy*lims_margin
         # draw a scale bar
         if sb_draw:
             scale = sb_scale
             dy = ylim[1]-ylim[0]
             dx = xlim[1]-xlim[0]
-            ax.plot([xlim[0]+dx*0.01,xlim[0]+dx*0.01+scale],
-                    [ylim[0]+dy*0.01,ylim[0]+dy*0.01],
-                    'k', linewidth=sb_width)
+            ax.plot([xlim[0],xlim[0]+scale],
+                    [ylim[0],ylim[0]],
+                    'k', linewidth=sb_width, zorder=1e5)
             txt = ax.annotate(r'' + str(scale) + ' $\mu$m',
-                              xy=(xlim[0]+dx*0.01+scale/2., ylim[0]+dy*0.02),
-                              xycoords='data', xytext=(-28,8),
-                              textcoords='offset points', **textargs)
+                              xy=(xlim[0]+scale/2., ylim[0]),
+                              xycoords='data', xytext=(xlim[0]+scale/2.,ylim[0]-dy/200.), ha='center', va='top',
+                              **textargs)
+                              # textcoords='offset points', **textargs)
             txt.set_path_effects([patheffects.withStroke(foreground="w",
                                                          linewidth=2)])
         if set_lims:
