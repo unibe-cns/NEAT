@@ -37,3 +37,5 @@ except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 
 from neat.channels.ionchannels import IonChannel
+
+from neat.tools.fittools.compartmentfitter import CompartmentFitter
