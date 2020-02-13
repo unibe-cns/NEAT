@@ -376,7 +376,7 @@ class NeuronSimTree(PhysTree):
                             rec = h.Vector()
                             exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_var' + str(ind) +')')
                             res['chan'][channel_name][varname].append(rec)
-                        except NameError:
+                        except AttributeError:
                             # the channel does not exist here
                             res['chan'][channel_name][varname].append([])
         if len(record_concentrations) > 0:
