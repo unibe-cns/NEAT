@@ -923,12 +923,6 @@ class SOVTree(PhysTree):
                 z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
                 # compute the lin term
                 lin_terms[ii] = z_k_true - z_k_net
-                print('\nIn derivation:')
-                print('zk true =', z_k_true.k_bar)
-                print('zk net =', z_k_net.k_bar)
-                print('zk lin =', lin_terms[ii].k_bar)
-                print('zk sum =', (z_k_net + lin_terms[ii]).k_bar)
-
 
         return lin_terms
 
