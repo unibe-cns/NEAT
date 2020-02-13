@@ -7,6 +7,7 @@ import os
 # from neat.channels import channelcollection
 from . import channelcollection
 
+print('--> Writing c++ channel file')
 path = os.path.join(os.path.dirname(__file__), '../tools/simtools/net/')
 # path = '../tools/simtools/net/'
 
@@ -56,7 +57,6 @@ fh.close()
 
 for name, channel_class in list(channelcollection.__dict__.items()):
     if isinstance(channel_class, type) and name != 'IonChannel' and '_func' not in name:
-        print(name)
         chan = channel_class()
         chan.writeCPPCode(path, channelcollection.E_REV_DICT[name])
 

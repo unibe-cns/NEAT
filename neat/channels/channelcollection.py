@@ -16,6 +16,7 @@ E_REV_DICT = {
                 'TestChannel2': -23.,
                 'Na_Ta': 50.,
                 'Kv3_1': -85.,
+                'h': -43.
              }
 
 
@@ -113,6 +114,34 @@ class Kv3_1(IonChannel):
         self.tauinf = np.array([[4. / (1. + sp_exp(-(self.sp_v + 46.56) / 44.14))]]) # ms
         # base class constructor
         super(Kv3_1, self).__init__()
+
+
+class h(IonChannel):
+    def __init__(self, ratio=0.2):
+        '''
+        Hcn channel from (Bal and Oertel, 2000)
+        '''
+        self.ion = ''
+        self.concentrations = []
+        self.ratio = ratio
+        self.tauf = 40. # ms
+        self.taus = 300. # ms
+        # always include this line, to define a sympy voltage symbol
+        self.sp_v = sp.symbols('v')
+        # basic factors to construct channel open probability
+        self.varnames = np.array([['hf'],
+                                  ['hs']])
+        self.powers = np.array([[1],
+                                [1]], dtype=int)
+        self.factors = np.array([1.-self.ratio, self.ratio])
+        # asomptotic state variable functions
+        self.varinf = np.array([[1./(1.+sp_exp((self.sp_v+82.)/7.))],
+                                [1./(1.+sp_exp((self.sp_v+82.)/7.))]])
+        # state variable relaxation time scales
+        self.tauinf = np.array([[sp.Float(self.tauf)],
+                                [sp.Float(self.taus)]])
+        # base class constructor
+        super(h, self).__init__()
 
 
 

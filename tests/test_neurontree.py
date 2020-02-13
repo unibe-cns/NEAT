@@ -56,7 +56,7 @@ class TestNeuron():
                 1
         '''
         v_eq = -75.
-        self.dt = 0.025
+        self.dt = 0.1
         self.tmax = 100.
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
@@ -66,9 +66,6 @@ class TestNeuron():
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent('h', 50., -43.)
         self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
-        # for node in self.greenstree:
-        #     print node.getGTot(channel_storage=self.greenstree.channel_storage)
-        #     print node.currents
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
@@ -97,9 +94,8 @@ class TestNeuron():
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent('TestChannel2', 50., -23.)
         self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
-        # for node in self.greenstree:
-        #     print node.getGTot(channel_storage=self.greenstree.channel_storage)
-        #     print node.currents
+        for node in self.greenstree:
+            print(node)
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
@@ -170,10 +166,10 @@ class TestNeuron():
                     jj += 1
             pl.show()
 
-    def testActive(self):
+    def testActive(self, pplot=False):
         self.loadTTreeActive()
         # set of locations
-        locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
+        locs = [(1, .5), (4, .5), (6, .5), (7, .5), (8, .5)]
         # compute impedance matrix with Green's function
         zf_mat_gf = self.greenstree.calcImpedanceMatrix(locs)
         z_mat_gf = zf_mat_gf[self.ft.ind_0s].real
@@ -182,14 +178,12 @@ class TestNeuron():
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zk_mat_gf[:,ii,jj] = self.ft.FT_inv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
         # test the steady state impedance matrix
-        z_mat_neuron = self.neurontree.calcImpedanceMatrix(locs, t_dur=1300.)
-        print(z_mat_gf)
-        print(z_mat_neuron)
+        z_mat_neuron = self.neurontree.calcImpedanceMatrix(locs, t_dur=500.)
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=5.)
         # test the temporal matrix
         tk, zk_mat_neuron = self.neurontree.calcImpedanceKernelMatrix(locs)
         assert np.allclose(zk_mat_gf[int(2./self.dt):,:,:],
-                           zk_mat_neuron[int(2./self.dt):,:,:], atol=.3)
+                           zk_mat_neuron[int(2./self.dt):,:,:], atol=.5)
         if pplot:
             # plot kernels
             pl.figure()
@@ -620,13 +614,13 @@ class TestReducedNeuron():
 
 
 if __name__ == '__main__':
-    # tn = TestNeuron()
+    tn = TestNeuron()
     # tn.testPassive(pplot=True)
-    # tn.testActive(pplot=True)
-    # tn.testChannelRecording()
+    # tn.testActive()
+    tn.testChannelRecording()
 
-    trn = TestReducedNeuron()
-    trn.testGeometry1()
-    trn.testImpedanceProperties1()
-    trn.testGeometry2()
-    trn.testImpedanceProperties2()
+    # trn = TestReducedNeuron()
+    # trn.testGeometry1()
+    # trn.testImpedanceProperties1()
+    # trn.testGeometry2()
+    # trn.testImpedanceProperties2()

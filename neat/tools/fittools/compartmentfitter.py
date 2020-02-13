@@ -218,9 +218,9 @@ class FitTreeGF(GreensTree):
         st_nodes = self.gatherNodes(self[root_loc['node']])
         d2s_loc = self.pathLength(root_loc, (1,0.5))
         net_locs = self.distributeLocsOnNodes(d2s=np.arange(d2s_loc, 5000., dx),
-                                   node_arg=st_nodes, name='NET_eval')
+                                   node_arg=st_nodes, name='net eval')
         # compute the impedance matrix for net calculation
-        z_mat = self.calcImpedanceMatrix('NET_eval', explicit_method=False)[0]
+        z_mat = self.calcImpedanceMatrix('net eval', explicit_method=False)[0]
         # assert np.allclose(z_mat, z_mat_)
         # derive the NET
         net = NET()
@@ -833,7 +833,7 @@ class CompartmentFitter(object):
         net.improveInputImpedance(z_mat)
 
         # prune the NET to only retain ``locs``
-        loc_inds = greens_tree.getNearestLocinds([c_loc]+locs, 'NET_eval')
+        loc_inds = greens_tree.getNearestLocinds([c_loc]+locs, 'net eval')
         net_reduced = net.getReducedTree(loc_inds, indexing='locs')
 
         return net_reduced
