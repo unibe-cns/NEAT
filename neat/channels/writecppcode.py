@@ -7,11 +7,11 @@ import os
 # from neat.channels import channelcollection
 from . import channelcollection
 
+path = os.path.join(os.path.dirname(__file__), '../tools/simtools/net/')
+# path = '../tools/simtools/net/'
 
-path = '../tools/simtools/'
-
-fcc = open(os.path.join(path, 'Ionchannels.cc'), 'wb')
-fh = open(os.path.join(path, 'Ionchannels.h'), 'wb')
+fcc = open(os.path.join(path, 'Ionchannels.cc'), 'w')
+fh = open(os.path.join(path, 'Ionchannels.h'), 'w')
 fh.write('#include <iostream>' + '\n')
 fh.write('#include <string>' + '\n')
 fh.write('#include <vector>' + '\n')

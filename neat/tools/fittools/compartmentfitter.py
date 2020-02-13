@@ -9,17 +9,20 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
-from neat import PhysTree, GreensTree, SOVTree, NET, NETNode, MorphLoc, Kernel
-from neat.channels import channelcollection
-from neat.tools import kernelextraction as ke
-from neatneuron import neuronmodel as neurm
-from datarep import paths
+from ...trees.morphtree import MorphLoc
+from ...trees.phystree import PhysTree
+from ...trees.greenstree import GreensTree
+from ...trees.sovtree import SOVTree
+from ...trees.netree import NET, NETNode, Kernel
+
+from ...channels import channelcollection
+from ...tools import kernelextraction as ke
+from ...tools.simtools.neuron import neuronmodel as neurm
 
 import dill
 from pathos.multiprocessing import ProcessingPool
 from pathos.threading import ThreadPool
 import warnings
-
 
 
 def consecutive(inds):

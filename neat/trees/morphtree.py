@@ -20,10 +20,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import warnings
 import copy
 from collections import Counter
+from functools import reduce
 
 from .stree import SNode, STree
 from .compartmenttree import CompartmentNode, CompartmentTree
-from functools import reduce
 
 
 def originalTreetypeDecorator(fun):

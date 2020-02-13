@@ -217,4 +217,4 @@ class TestGreensTree():
 if __name__ == '__main__':
     tgt = TestGreensTree()
     tgt.testBasicProperties()
-    # tgt.testValues()
+    tgt.testValues()

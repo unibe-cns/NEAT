@@ -14,8 +14,8 @@ import scipy.optimize as so
 import sympy as sp
 
 from .stree import SNode, STree
-from neat.channels import channelcollection
-from neat.tools import kernelextraction as ke
+from ..channels import channelcollection
+from ..tools import kernelextraction as ke
 
 import copy
 import warnings
@@ -23,8 +23,6 @@ import itertools
 from operator import mul
 from functools import reduce
 
-
-from datarep.matplotlibsettings import *
 
 class RowMat(object):
     def __init__(self, row, ii):
@@ -77,7 +75,7 @@ class CompartmentNode(SNode):
         return node_string
 
     def addCurrent(self, channel_name, e_rev=None, channel_storage=None):
-        if channel_name is not 'L':
+        if channel_name != 'L':
             if e_rev is None:
                 e_rev = channelcollection.E_REV_DICT[channel_name]
             self.currents[channel_name] = [0., e_rev]

@@ -13,7 +13,7 @@ import warnings
 
 from . import morphtree
 from .morphtree import MorphNode, MorphTree
-from neat.channels import channelcollection, concmechs
+from ..channels import channelcollection, concmechs
 
 
 class PhysNode(MorphNode):
@@ -62,7 +62,7 @@ class PhysNode(MorphNode):
         if e_rev is None:
             e_rev = channelcollection.E_REV_DICT[channel_name]
         self.currents[channel_name] = (g_max, e_rev)
-        if channel_name is not 'L' and \
+        if channel_name != 'L' and \
            channel_storage is not None and \
            channel_name not in channel_storage:
             channel_storage[channel_name] = \

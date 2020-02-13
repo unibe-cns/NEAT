@@ -18,8 +18,8 @@ from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
 from .netree import NETNode, NET, Kernel
 
-from neat.tools.fittools import zerofinding as zf
-from neat.tools.fittools import histogramsegmentation as hs
+from ..tools.fittools import zerofinding as zf
+from ..tools.fittools import histogramsegmentation as hs
 
 
 def consecutive(data, stepsize=1):
@@ -579,15 +579,15 @@ class SOVTree(PhysTree):
             :class:`NETree`
         '''
         # create a set of location at which to evaluate the impedance matrix
-        self.distributeLocsUniform(dx=dx, name='NET_eval')
+        self.distributeLocsUniform(dx=dx, name='net eval')
         # compute the z_mat matrix
-        alphas, gammas = self.getImportantModes(locarg='NET_eval', eps=eps)
+        alphas, gammas = self.getImportantModes(locarg='net eval', eps=eps)
         z_mat = self.calcImpedanceMatrix(sov_data=(alphas, gammas))
         # derive the NET
         net = NET()
         self._addLayerA(net, None,
                         z_mat, alphas, gammas,
-                        0., 0, np.arange(len(self.getLocs('NET_eval'))),
+                        0., 0, np.arange(len(self.getLocs('net eval'))),
                         dz=dz,
                         use_hist=use_hist, add_lin_terms=add_lin_terms,
                         pprint=pprint)
@@ -625,7 +625,7 @@ class SOVTree(PhysTree):
         #     pl.axvline(xarr[pi], c='g', ls='--')
         # pl.figure()
         # ax = pl.gca()
-        # self.makeXAxis(loc_arg='NET_eval')
+        # self.makeXAxis(loc_arg='net eval')
         # self.plot1D(ax, z_mat[0,:])
         # pl.show()
 
@@ -887,13 +887,35 @@ class SOVTree(PhysTree):
         net.setNewLocInds()
 
     def computeLinTerms(self, net, sov_data=None, eps=1e-4):
+        '''
+        Construct linear terms for `net' so that transfer impedance to soma is
+        exactly matched
+
+        Parameters
+        ----------
+        net: :class:`NETree`
+            the neural evaluation tree (NET)
+        sov_data: None or tuple of mode matrices
+            If ``sov_data`` is not ``None``, it is a tuple of a vector of
+            the reciprocals of the mode timescales and a matrix with the
+            corresponding spatial mode functions.
+        eps: float
+            the cutoff threshold in relative importance below which modes
+            are truncated
+
+        Returns
+        -------
+        lin_terms: dict of {int: :class:`Kernel`}
+            the kernels associated with linear terms of the NET, keys are
+            indices of their corresponding location stored inder 'net eval'
+        '''
         if sov_data != None:
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            alphas, gammas = self.getImportantModes(locarg='NET_eval', eps=eps)
+            alphas, gammas = self.getImportantModes(locarg='net eval', eps=eps)
         lin_terms = {}
-        for ii, loc in enumerate(self.getLocs('NET_eval')):
+        for ii, loc in enumerate(self.getLocs('net eval')):
             if not self.isRoot(self[loc['node']]):
                 # create the true kernel
                 z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
@@ -901,5 +923,12 @@ class SOVTree(PhysTree):
                 z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
                 # compute the lin term
                 lin_terms[ii] = z_k_true - z_k_net
+                print('\nIn derivation:')
+                print('zk true =', z_k_true.k_bar)
+                print('zk net =', z_k_net.k_bar)
+                print('zk lin =', lin_terms[ii].k_bar)
+                print('zk sum =', (z_k_net + lin_terms[ii]).k_bar)
+
+
         return lin_terms
 

@@ -21,17 +21,18 @@ dependencies = ['numpy>=1.14.1',
                 'cython>=0.27.3',
                 'scipy>=1.0.0',
                 'sympy>=1.1.1',
-                'sklearn>=0.19.1']
+                'scikit-learn>=0.19.1']
 
 ext = Extension("netsim",
-                ["neat/tools/simtools/netsim.pyx",
-                 "neat/tools/simtools/NETC.cc",
-                 "neat/tools/simtools/Synapses.cc",
-                 "neat/tools/simtools/Ionchannels.cc",
-                 "neat/tools/simtools/Tools.cc"],
+                ["neat/tools/simtools/net/netsim.pyx",
+                 "neat/tools/simtools/net/NETC.cc",
+                 "neat/tools/simtools/net/Synapses.cc",
+                 "neat/tools/simtools/net/Ionchannels.cc",
+                 "neat/tools/simtools/net/Tools.cc"],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
                 include_dirs=[numpy.get_include()])
+
 
 # setup(
 #     name='neat',
@@ -59,7 +60,10 @@ setup(
               'neat.tools',
               'neat.tools.fittools',
               'neat.tools.plottools',
+              'neat.tools.simtools.neuron',
               'neat.channels'],
+    # package_dir={'neat': 'neat/tools'},
+    # package_data={'neat': ['neat/tools/simtools/neuron/mech/*.mod']},
     ext_package='neat',
     # ext_modules=cythonize([ext]),
     ext_modules=[ext],

@@ -144,15 +144,13 @@ class TestSOVTree():
         self.tree.calcSOVEquations()
         # construct the NET
         net = self.tree.constructNET(dz=20.)
-        # print str(net)
         # contruct the NET with linear terms
         net, lin_terms = self.tree.constructNET(dz=20., add_lin_terms=True)
         # check if correct
-        alphas, gammas = self.tree.getImportantModes(locarg='NET_eval',
+        alphas, gammas = self.tree.getImportantModes(locarg='net eval',
                                                 eps=1e-4, sort_type='timescale')
-        for ii, lin_term in enumerate(lin_terms.values()):
+        for ii, lin_term in lin_terms.items():
             z_k_trans = net.getReducedTree([0,ii]).getRoot().z_kernel + lin_term
-
             assert np.abs(z_k_trans.k_bar - Kernel((alphas, gammas[:,0]*gammas[:,ii])).k_bar) < 1e-8
 
 
