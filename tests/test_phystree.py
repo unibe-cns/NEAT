@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as pl
 
 import pytest
+import copy
 
 from neat import PhysTree, PhysNode
+from neat.channels import channelcollection
 
 
 class TestPhysTree():
@@ -35,13 +37,155 @@ class TestPhysTree():
         tau_distr = lambda x: x + 100.
         for node in self.tree:
             d2s = self.tree.pathLength({'node': node.index, 'x': 1.}, (1., 0.5))
-            node.fitLeakCurrent(e_eq_target=-75., tau_m_target=tau_distr(d2s))
+            node.fitLeakCurrent(self.tree.channel_storage,
+                                e_eq_target=-75., tau_m_target=tau_distr(d2s))
             assert np.abs(node.c_m - 1.0) < 1e-9
             assert np.abs(node.currents['L'][0] - 1. / (tau_distr(d2s)*1e-3)) < \
                    1e-9
             assert np.abs(node.e_eq + 75.) < 1e-9
 
+    def testPhysiologySetting(self):
+        self.loadTree(reinitialize=1)
+        d2s = {1:0., 4:50., 5:125., 6:175., 7:125., 8:175.}
+        # passive parameters as float
+        c_m = 1.; r_a = 100.*1e-6
+        self.tree.setPhysiology(c_m, r_a)
+        for node in self.tree:
+            assert np.abs(node.c_m - c_m) < 1e-10
+            assert np.abs(node.r_a - r_a) < 1e-10
+        # passive parameters as function
+        c_m = lambda x: .5*x + 1.
+        r_a = lambda x: np.exp(0.01*x) * 100*1e-6
+        self.tree.setPhysiology(c_m, r_a)
+        for node in self.tree:
+            assert np.abs(node.c_m - c_m(d2s[node.index])) < 1e-10
+            assert np.abs(node.r_a - r_a(d2s[node.index])) < 1e-10
+        # passive parameters as incomplete dict
+        r_a = 100.*1e-6
+        c_m = {1:1., 4:1.2}
+        with pytest.raises(KeyError):
+            self.tree.setPhysiology(c_m, r_a)
+        # passive parameters as complete dict
+        c_m.update({5:1.1, 6:0.9, 7:0.8, 8:1.})
+        self.tree.setPhysiology(c_m, r_a)
+        for node in self.tree:
+            assert np.abs(node.c_m - c_m[node.index]) < 1e-10
+
+        # equilibrium potential as float
+        e_eq = -75.
+        self.tree.setEEq(e_eq)
+        for node in self.tree:
+            assert np.abs(node.e_eq - e_eq) < 1e-10
+        # equilibrium potential as dict
+        e_eq = {1:-75., 4:-74., 5:-73., 6:-72., 7:-71., 8:-70.}
+        self.tree.setEEq(e_eq)
+        for node in self.tree:
+            assert np.abs(node.e_eq - e_eq[node.index]) < 1e-10
+        # equilibrium potential as function
+        e_eq = lambda x: -70. + 0.1*x
+        self.tree.setEEq(e_eq)
+        for node in self.tree:
+            assert np.abs(node.e_eq - e_eq(d2s[node.index])) < 1e-10
+        # as wrong type
+        with pytest.raises(TypeError):
+            self.tree.setEEq([])
+            self.tree.setPhysiology([], [])
+
+        # leak as float
+        g_l, e_l = 100., -75.
+        self.tree.setLeakCurrent(g_l, e_l)
+        for node in self.tree:
+            g, e = node.currents['L']
+            assert np.abs(g - g_l) < 1e-10
+            assert np.abs(e - e_l) < 1e-10
+        # equilibrium potential as dict
+        g_l = {1:101., 4:103., 5:105., 6:107., 7:108., 8:109.}
+        e_l = {1:-75., 4:-74., 5:-73., 6:-72., 7:-71., 8:-70.}
+        self.tree.setLeakCurrent(g_l, e_l)
+        for node in self.tree:
+            g, e = node.currents['L']
+            assert np.abs(g - g_l[node.index]) < 1e-10
+            assert np.abs(e - e_l[node.index]) < 1e-10
+        # equilibrium potential as function
+        g_l = lambda x: 100. + 0.05*x
+        e_l = lambda x: -70. + 0.05*x
+        self.tree.setLeakCurrent(g_l, e_l)
+        for node in self.tree:
+            g, e = node.currents['L']
+            assert np.abs(g - g_l(d2s[node.index])) < 1e-10
+            assert np.abs(e - e_l(d2s[node.index])) < 1e-10
+        # as wrong type
+        with pytest.raises(TypeError):
+            self.tree.setLeakCurrent([])
+
+        # gmax as potential as float
+        e_rev = 100.
+        g_max = 100.
+        channel = channelcollection.TestChannel2()
+        self.tree.addCurrent(channel, g_max, e_rev)
+        for node in self.tree:
+            g_m = node.currents['TestChannel2'][0]
+            assert np.abs(g_m - g_max) < 1e-10
+        # equilibrium potential as dict
+        g_max = {1:101., 4:103., 5:104., 6:106., 7:107., 8:110.}
+        self.tree.addCurrent(channel, g_max, e_rev)
+        for node in self.tree:
+            g_m = node.currents['TestChannel2'][0]
+            assert np.abs(g_m - g_max[node.index]) < 1e-10
+        # equilibrium potential as function
+        g_max = lambda x: 100. + 0.005 * x**2
+        self.tree.addCurrent(channel, g_max, e_rev)
+        for node in self.tree:
+            g_m = node.currents['TestChannel2'][0]
+            assert np.abs(g_m - g_max(d2s[node.index])) < 1e-10
+        # test is channel is stored
+        assert isinstance(self.tree.channel_storage[channel.__class__.__name__],
+                          channelcollection.TestChannel2)
+
+    def testMembraneFunctions(self):
+        self.loadTree(reinitialize=1)
+        self.tree.setPhysiology(1., 100*1e-6)
+        # passive parameters
+        c_m = 1.; r_a = 100.*1e-6; e_eq = -75.
+        self.tree.setPhysiology(c_m, r_a)
+        self.tree.setEEq(e_eq)
+        # channel
+        p_open =  .9 * .3**3 * .5**2 + .1 * .4**2 * .6**1 # TestChannel2
+        g_chan, e_chan = 100., 100.
+        channel = channelcollection.TestChannel2()
+        self.tree.addCurrent(channel, g_chan, e_chan)
+        # fit the leak current
+        self.tree.fitLeakCurrent(e_eq_target=-30., tau_m_target=10.)
+
+        # test if fit was correct
+        for node in self.tree:
+            tau_mem = c_m / (node.currents['L'][0] + g_chan*p_open) * 1e3
+            assert np.abs(tau_mem - 10.) < 1e-10
+            e_eq = (node.currents['L'][0]*node.currents['L'][1] + \
+                    g_chan*p_open*e_chan) / (node.currents['L'][0] + g_chan*p_open)
+            assert np.abs(e_eq - (-30.)) < 1e-10
+
+        # test if warning is raised for impossible to reach time scale
+        with pytest.warns(UserWarning):
+            tree = copy.deepcopy(self.tree)
+            tree.fitLeakCurrent(e_eq_target=-30., tau_m_target=100000.)
+
+        # total membrane conductance
+        g_pas = self.tree[1].currents['L'][0] + g_chan*p_open
+        # make passive membrane
+        tree = copy.deepcopy(self.tree)
+        tree.asPassiveMembrane()
+        # test if fit was correct
+        for node in tree:
+            assert np.abs(node.currents['L'][0] - g_pas) < 1e-10
+
+    def testCompTree(self):
+        pass # TODO
+
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
-    tphys.testLeakDistr()
+    # tphys.testLeakDistr()
+    # tphys.testPhysiologySetting()
+    # tphys.testMembraneFunctions()
+    # tphys.testCompTree()

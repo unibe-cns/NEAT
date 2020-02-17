@@ -45,7 +45,7 @@ class PhysNode(MorphNode):
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt
 
-    def addCurrent(self, channel_name, g_max, e_rev=None, channel_storage=None):
+    def _addCurrent(self, channel_name, g_max, e_rev):
         '''
         Add an ion channel current at this node. ('L' as `channel_name`
         signifies the leak current)
@@ -59,14 +59,7 @@ class PhysNode(MorphNode):
         e_rev: float
             the reversal potential of the current (mV)
         '''
-        if e_rev is None:
-            e_rev = channelcollection.E_REV_DICT[channel_name]
         self.currents[channel_name] = (g_max, e_rev)
-        if channel_name != 'L' and \
-           channel_storage is not None and \
-           channel_name not in channel_storage:
-            channel_storage[channel_name] = \
-                eval('channelcollection.' + channel_name + '()')
 
     def addConcMech(self, ion, params={}):
         '''
@@ -86,29 +79,6 @@ class PhysNode(MorphNode):
             warnings.warn('These parameters do not match any NEAT concentration ' + \
                           'mechanism, no concentration mechanism has been added', UserWarning)
 
-    def getCurrent(self, channel_name, channel_storage=None):
-        '''
-        Returns an ``::class::neat.channels.ionchannels.IonChannel`` object. If
-        `channel_storage` is given,
-
-        Parameters
-        ----------
-        channel_name: string
-            the name of the ion channel
-        channel_storage: dict of ionchannels (optional)
-            keys are the names of the ion channels, and values the channel
-            instances
-        '''
-        if channel_storage is not None:
-            try:
-                return channel_storage[channel_name]
-            except (KeyError):
-                chan = eval('channelcollection.' + channel_name + '()')
-                channel_storage[channel_name] = chan
-                return chan
-        else:
-            return eval('channelcollection.' + channel_name + '()')
-
     def setEEq(self, e_eq):
         '''
         Set the equilibrium potential at the node.
@@ -120,19 +90,23 @@ class PhysNode(MorphNode):
         '''
         self.e_eq = e_eq
 
-    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., channel_storage=None):
+    def fitLeakCurrent(self, channel_storage, e_eq_target=-75., tau_m_target=10.):
+        '''
+        '''
         gsum = 0.
         i_eq = 0.
+
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
-            # create the ionchannel object
-            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+            # get the ionchannel object
+            channel = channel_storage[channel_name]
             # compute channel conductance and current
             p_open = channel.computePOpen(e_eq_target)
             g_chan = g * p_open
             i_chan = g_chan * (e - e_eq_target)
             gsum += g_chan
             i_eq += i_chan
+
         if self.c_m / (tau_m_target*1e-3) < gsum:
             warnings.warn('Membrane time scale is chosen larger than ' + \
                           'possible, adding small leak conductance')
@@ -144,7 +118,7 @@ class PhysNode(MorphNode):
         self.currents['L'] = (g_l, e_l)
         self.e_eq = e_eq_target
 
-    def getGTot(self, v=None, channel_storage=None):
+    def getGTot(self, channel_storage, v=None):
         '''
         Get the total conductance of the membrane at a steady state given voltage,
         if nothing is given, the equilibrium potential is used to compute membrane
@@ -165,25 +139,17 @@ class PhysNode(MorphNode):
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
             # create the ionchannel object
-            channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+            channel = channel_storage[channel_name]
             g_tot += g * channel.computePOpen(v)
 
         return g_tot
 
-    def setGTot(self, illegal):
-        raise AttributeError("`g_tot` is a read-only attribute, set the leak " + \
-                             "conductance by calling ``func:addCurrent`` with " + \
-                             " \'L\' as `channel_name`")
-
-    g_tot = property(getGTot, setGTot)
-
-    def asPassiveMembrane(self, v=None, channel_storage=None):
+    def asPassiveMembrane(self, channel_storage, v=None):
         v = self.e_eq if v is None else v
-        g_l = self.getGTot(v=v, channel_storage=channel_storage)
+        g_l = self.getGTot(channel_storage, v=v)
         t_m = self.c_m / g_l * 1e3 # time scale in ms
         self.currents = {'L': (0., 0.)} # dummy values
-        self.fitLeakCurrent(e_eq_target=v, tau_m_target=t_m,
-                                channel_storage=channel_storage)
+        self.fitLeakCurrent(channel_storage, e_eq_target=v, tau_m_target=t_m)
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(PhysNode, self).__str__()
@@ -233,28 +199,42 @@ class PhysTree(MorphTree):
                 passive
         '''
         for node in self._convertNodeArgToNodes(node_arg):
-            node.asPassiveMembrane(channel_storage=self.channel_storage)
+            node.asPassiveMembrane(self.channel_storage)
+
+    def _distr2Float(self, distr, node, argname=''):
+        if isinstance(distr, float):
+            val = distr
+        elif isinstance(distr, dict):
+            val = distr[node.index]
+        elif hasattr(distr, '__call__'):
+            d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
+            val = distr(d2s)
+        else:
+            raise TypeError(argname + ' argument should be a float, dict ' + \
+                            'or a callable')
+        return val
 
     @morphtree.originalTreetypeDecorator
-    def setEEq(self, e_eq):
+    def setEEq(self, e_eq_distr, node_arg=None):
         '''
-        Set the equilibrium potentials throughout the tree. Can be iterable,
-        than the `len(e_eq)` is assumed to be the same as `len(self)`
+        Set the equilibrium potentials throughout the tree
 
         Parameters
         ----------
-        e_eq: float or iterable of floats
-            The equilibrium potentials
+        e_eq_distr: float, dict or :func:`float -> float`
+            The equilibrium potentials [mV]
         '''
-        if not hasattr(e_eq, '__iter__'):
-            e_eq = e_eq * np.ones(len(self))
-        for e, node in zip(e_eq, self): node.setEEq(e)
+        for node in self._convertNodeArgToNodes(node_arg):
+            e = self._distr2Float(e_eq_distr, node, argname='`e_eq_distr`')
+            node.setEEq(e)
 
     @morphtree.originalTreetypeDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
         '''
         Set specifice membrane capacitance, axial resistance and (optionally)
-        static point-like shunt conductances in the tree
+        static point-like shunt conductances in the tree. Capacitance is stored
+        at each node as the attribute 'c_m' and axial resistance as the
+        attribute 'r_a'
 
         Parameters
         ----------
@@ -271,79 +251,78 @@ class PhysTree(MorphTree):
             Defaults to None
         '''
         for node in self._convertNodeArgToNodes(node_arg):
-            # get the membrane capacitance
-            if isinstance(c_m_distr, float):
-                c_m = c_m_distr
-            elif isinstance(c_m_distr, dict):
-                c_m = c_m_distr[node.index]
-            elif hasattr(c_m_distr, '__call__'):
-                d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
-                c_m = c_m_distr(d2s)
-            else:
-                raise TypeError('`c_m_distr` argument should be a float, dict ' + \
-                                'or a callable')
-            # get the axial resistance
-            if isinstance(r_a_distr, float):
-                r_a = r_a_distr
-            elif isinstance(r_a_distr, dict):
-                r_a = r_a_distr[node.index]
-            elif hasattr(r_a_distr, '__call__'):
-                d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
-                r_a = r_a_distr(d2s)
-            else:
-                raise TypeError('`r_a_distr` argument should be a float, dict ' + \
-                                'or a callable')
-            if g_s_distr is not None:
-                # get the static shunt conductances
-                if isinstance(g_s_distr, float):
-                    g_s = g_s_distr
-                elif isinstance(g_s_distr, dict):
-                    g_s = g_s_distr[node.index]
-                elif hasattr(g_s_distr, '__call__'):
-                    d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
-                    g_s = g_s_distr(d2s)
-                else:
-                    raise TypeError('`g_s_distr` argument should be a float, dict ' + \
-                                    'or a callable')
-            else:
-                g_s = 0.
+            c_m = self._distr2Float(c_m_distr, node, argname='`c_m_distr`')
+            r_a = self._distr2Float(r_a_distr, node, argname='`r_a_distr`')
+            g_s = self._distr2Float(g_s_distr, node, argname='`g_s_distr`') if \
+                  g_s_distr is not None else 0.
             node.setPhysiology(c_m, r_a, g_s)
 
-    @morphtree.originalTreetypeDecorator
-    def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
+    def setLeakCurrent(self, g_l_distr, e_l_distr, node_arg=None):
         '''
-        Adds a channel to the morphology.
+        Set the parameters of the leak current. At each node, leak is stored
+        under the attribute `node.currents['L']` at a tuple `(g_l, e_l)` with
+        `g_l` the conductance [uS/cm^2] and `e_l` the reversal [mV]
+
+        parameters:
+        ----------
+        g_l_distr: float, dict or :func:`float -> float`
+            If float, the leak conductance is set to this value for all
+            the nodes specified in `node_arg`. If it is a function, the input
+            must specify the distance from the soma (micron) and the output
+            the leak conductance [uS/cm^2] at that distance. If it is a
+            dict, keys are the node indices and values the ion leak
+            conductances [uS/cm^2].
+        e_l_distr: float, dict or :func:`float -> float`
+            If float, the reversal [mV] is set to this value for all
+            the nodes specified in `node_arg`. If it is a function, the input
+            must specify the distance from the soma [um] and the output
+            the reversal at that distance. If it is a
+            dict, keys are the node indices and values the ion reversals.
+        node_arg: optional
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            Defaults to None
+        '''
+        for node in self._convertNodeArgToNodes(node_arg):
+            g_l = self._distr2Float(g_l_distr, node, argname='`g_l_distr`')
+            e_l = self._distr2Float(e_l_distr, node, argname='`e_l_distr`')
+            node._addCurrent('L', g_l, e_l)
+
+    @morphtree.originalTreetypeDecorator
+    def addCurrent(self, channel, g_max_distr, e_rev_distr, node_arg=None):
+        '''
+        Adds a channel to the morphology. At each node, the channel is stored
+        under the attribute `node.currents[channel.__class__.__name__]` as a
+        tuple `(g_max, e_rev)` with `g_max` the maximal conductance [uS/cm^2]
+        and `e_rev` the reversal [mV]
 
         Parameters
         ----------
-            channel_name: string
-                The name of the channel type
-            g_max_distr: float, dict or :func:`float -> float`
-                If float, the maximal conductance is set to this value for all
-                the nodes specified in `node_arg`. If it is a function, the input
-                must specify the distance from the soma (micron) and the output
-                the ion channel density (uS/cm^2) at that distance. If it is a
-                dict, keys are the node indices and values the ion channel
-                densities (uS/cm^2).
-            node_arg: optional
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`.
-                Defaults to None
+        channel_name: :class:`IonChannel`
+            The ion channel
+        g_max_distr: float, dict or :func:`float -> float`
+            If float, the maximal conductance is set to this value for all
+            the nodes specified in `node_arg`. If it is a function, the input
+            must specify the distance from the soma (micron) and the output
+            the ion channel density (uS/cm^2) at that distance. If it is a
+            dict, keys are the node indices and values the ion channel
+            densities (uS/cm^2).
+        e_rev_distr: float, dict or :func:`float -> float`
+            If float, the reversal (mV) is set to this value for all
+            the nodes specified in `node_arg`. If it is a function, the input
+            must specify the distance from the soma (micron) and the output
+            the reversal at that distance. If it is a
+            dict, keys are the node indices and values the ion reversals.
+        node_arg: optional
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            Defaults to None
         '''
+        channel_name = channel.__class__.__name__
+        self.channel_storage[channel_name] = channel
         # add the ion channel to the nodes
         for node in self._convertNodeArgToNodes(node_arg):
-            # get the ion channel conductance
-            if isinstance(g_max_distr, float):
-                g_max = g_max_distr
-            elif isinstance(g_max_distr, dict):
-                g_max = g_max_distr[node.index]
-            elif hasattr(g_max_distr, '__call__'):
-                d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
-                g_max = g_max_distr(d2s)
-            else:
-                raise TypeError('`g_max_distr` argument should be a float, dict \
-                                or a callable')
-            node.addCurrent(channel_name, g_max, e_rev=e_rev,
-                            channel_storage=self.channel_storage)
+            g_max = self._distr2Float(g_max_distr, node, argname='`g_max_distr`')
+            e_rev = self._distr2Float(e_rev_distr, node, argname='`e_rev_distr`')
+            node._addCurrent(channel_name, g_max, e_rev)
 
     @morphtree.originalTreetypeDecorator
     def getChannelsInTree(self, store=False):
@@ -361,11 +340,7 @@ class PhysTree(MorphTree):
         list of string
             the channel names
         '''
-        channel_names = list(set([c_name for node in self for c_name in node.currents if c_name != 'L']))
-        if store:
-            for c_name in channel_names:
-                self.channel_storage[c_name] = self.root.getCurrent(c_name)
-        return channel_names
+        return self.channel_storage.keys()
 
     @morphtree.originalTreetypeDecorator
     def addConcMech(self, ion, params={}, node_arg=None):
@@ -390,6 +365,8 @@ class PhysTree(MorphTree):
         Fits the leak current to fix equilibrium potential and membrane time-
         scale.
 
+        !!! Should only be called after all ion channels have been added !!!
+
         Parameters
         ----------
             e_eq_target: float
@@ -404,9 +381,6 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             node.fitLeakCurrent(e_eq_target=e_eq_target, tau_m_target=tau_m_target,
                                 channel_storage=self.channel_storage)
-
-    def computeEquilibirumPotential(self):
-        pass
 
     def setCompTree(self, eps=1e-8):
         comp_nodes = [n for n in self if n.g_shunt > eps]

@@ -15,7 +15,6 @@ import copy
 from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
-from ..channels import channelcollection
 
 
 class GreensNode(PhysNode):
