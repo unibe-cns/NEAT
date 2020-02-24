@@ -9,7 +9,7 @@ from neat.channels import channelcollection
 
 
 class TestPhysTree():
-    def loadTree(self, reinitialize=0):
+    def loadTree(self, reinitialize=0, segments=False):
         '''
         Load the T-tree morphology in memory
 
@@ -20,8 +20,9 @@ class TestPhysTree():
         '''
         if not hasattr(self, 'tree') or reinitialize:
             print('>>> loading T-tree <<<')
-            fname = 'test_morphologies/Ttree.swc'
-            self.tree = PhysTree(fname, types=[1,3,4])
+            fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
+            self.tree = PhysTree('test_morphologies/'+fname, types=[1,3,4])
+
 
     def testLeakDistr(self):
         self.loadTree(reinitialize=1)
@@ -141,6 +142,9 @@ class TestPhysTree():
         # test is channel is stored
         assert isinstance(self.tree.channel_storage[channel.__class__.__name__],
                           channelcollection.TestChannel2)
+        # check if error is thrown if an ionchannel is not give
+        with pytest.raises(IOError):
+            self.tree.addCurrent('TestChannel2', g_max, e_rev)
 
     def testMembraneFunctions(self):
         self.loadTree(reinitialize=1)
@@ -180,7 +184,49 @@ class TestPhysTree():
             assert np.abs(node.currents['L'][0] - g_pas) < 1e-10
 
     def testCompTree(self):
-        pass # TODO
+        self.loadTree(reinitialize=1, segments=True)
+
+        # capacitance axial resistance constant
+        c_m = 1.; r_a = 100.*1e-6
+        self.tree.setPhysiology(c_m, r_a)
+        self.tree.setCompTree()
+        self.tree.treetype = 'computational'
+        assert [n.index for n in self.tree] == [1,8,10,12]
+        # capacitance and axial resistance change
+        c_m = lambda x: 1. if x < 200. else 1.6
+        r_a = lambda x: 1. if x < 300. else 1.6
+        self.tree.setPhysiology(c_m, r_a)
+        self.tree.setCompTree()
+        self.tree.treetype = 'computational'
+        assert [n.index for n in self.tree] == [1,5,6,8,10,12]
+        # leak current changes
+        g_l = lambda x: 100. if x < 400. else 160.
+        self.tree.setLeakCurrent(g_l, -75.)
+        self.tree.setCompTree()
+        self.tree.treetype = 'computational'
+        assert [n.index for n in self.tree] == [1,5,6,7,8,10,12]
+        # leak current & reversal change
+        g_l = 100.
+        e_l = {ind: -75. for ind in [1,4,5,6,7,8,11,12]}
+        e_l.update({ind: -55. for ind in [9,10]})
+        self.tree.setLeakCurrent(g_l, e_l)
+        self.tree.setCompTree()
+        self.tree.treetype = 'computational'
+        assert [n.index for n in self.tree] == [1,5,6,8,10,12]
+        # leak current & reversal change
+        g_l = 100.
+        e_l = {ind: -75. for ind in [1,4,5,6,7,8,10,11,12]}
+        e_l.update({9: -55.})
+        self.tree.setLeakCurrent(g_l, e_l)
+        self.tree.setCompTree()
+        self.tree.treetype = 'computational'
+        assert [n.index for n in self.tree] == [1,5,6,8,9,10,12]
+        # shunt
+        self.tree.treetype = 'original'
+        self.tree[7].g_shunt = 1.
+        self.tree.setCompTree()
+        self.tree.treetype = 'computational'
+        assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
 
 if __name__ == '__main__':
@@ -188,4 +234,4 @@ if __name__ == '__main__':
     # tphys.testLeakDistr()
     # tphys.testPhysiologySetting()
     # tphys.testMembraneFunctions()
-    # tphys.testCompTree()
+    tphys.testCompTree()

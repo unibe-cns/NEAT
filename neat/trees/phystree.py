@@ -13,7 +13,7 @@ import warnings
 
 from . import morphtree
 from .morphtree import MorphNode, MorphTree
-from ..channels import channelcollection, concmechs
+from ..channels import concmechs, ionchannels
 
 
 class PhysNode(MorphNode):
@@ -257,6 +257,7 @@ class PhysTree(MorphTree):
                   g_s_distr is not None else 0.
             node.setPhysiology(c_m, r_a, g_s)
 
+    @morphtree.originalTreetypeDecorator
     def setLeakCurrent(self, g_l_distr, e_l_distr, node_arg=None):
         '''
         Set the parameters of the leak current. At each node, leak is stored
@@ -316,6 +317,9 @@ class PhysTree(MorphTree):
             see documentation of :func:`MorphTree._convertNodeArgToNodes`.
             Defaults to None
         '''
+        if not isinstance(channel, ionchannels.IonChannel):
+            raise IOError('`channel` argmument needs to be of class `neat.IonChannel`')
+
         channel_name = channel.__class__.__name__
         self.channel_storage[channel_name] = channel
         # add the ion channel to the nodes
@@ -360,6 +364,7 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             node.addConcMech(ion, params=params)
 
+    @morphtree.originalTreetypeDecorator
     def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., node_arg=None):
         '''
         Fits the leak current to fix equilibrium potential and membrane time-
@@ -382,28 +387,43 @@ class PhysTree(MorphTree):
             node.fitLeakCurrent(e_eq_target=e_eq_target, tau_m_target=tau_m_target,
                                 channel_storage=self.channel_storage)
 
-    def setCompTree(self, eps=1e-8):
-        comp_nodes = [n for n in self if n.g_shunt > eps]
-        for node in self.nodes[1:]:
-            pnode = node.parent_node
-            # check if parameters are the same
-            # if not( np.abs(node.r_a - pnode.r_a) < eps and \
-            #     np.abs(node.c_m - pnode.c_m) < eps and \
-            #     np.abs(node.R - pnode.R) < eps and \
-            #     set(node.currents.keys()) == set(pnode.currents.keys()) and
-            #     not sum([sum([np.abs(curr[0] - pnode.currents[key][0]),
-            #                   np.abs(curr[1] - pnode.currents[key][1])])
-            #              for key, curr in node.currents.iteritems()])):
-            if not( np.abs(node.r_a - pnode.r_a) < eps * np.max([node.r_a, pnode.r_a]) and \
-                np.abs(node.c_m - pnode.c_m) < eps * np.max([node.c_m, pnode.c_m]) and \
-                np.abs(node.R - pnode.R) < eps * np.max([node.R, pnode.R]) and \
-                set(node.currents.keys()) == set(pnode.currents.keys()) and
-                not sum([sum([np.abs(curr[0] - pnode.currents[key][0]) > eps * np.max([np.abs(curr[0]), np.abs(pnode.currents[key][0])]),
-                              np.abs(curr[1] - pnode.currents[key][1]) > eps * np.max([np.abs(curr[1]), np.abs(pnode.currents[key][1])])])
-                         for key, curr in node.currents.items()])):
-                comp_nodes.append(pnode)
+    def _evaluateCompCriteria(self, node, eps=1e-8, rbool=False):
+        '''
+        Return ``True`` if relative difference in any physiological parameters
+        between node and child node is larger than margin ``eps``
 
-        super(PhysTree, self).setCompTree(compnodes=comp_nodes)
+        Parameters
+        ----------
+        node: ::class::`MorphNode`
+            node that is compared to parent node
+        eps: float (optional, default ``1e-8``)
+            the margin
+
+        return
+        ------
+        bool
+        '''
+        rbool = super(PhysTree, self)._evaluateCompCriteria(node, eps=eps, rbool=rbool)
+
+        if not rbool:
+            cnode = node.child_nodes[0]
+            rbool = np.abs(node.r_a - cnode.r_a) > eps * np.max([node.r_a, cnode.r_a])
+        if not rbool:
+            rbool = np.abs(node.c_m - cnode.c_m) > eps * np.max([node.c_m, cnode.c_m])
+        if not rbool:
+            rbool = set(node.currents.keys()) != set(cnode.currents.keys())
+        if not rbool:
+            for chan_name, channel in node.currents.items():
+                if not rbool:
+                    rbool = np.abs(channel[0] - cnode.currents[chan_name][0]) > eps * \
+                             np.max([np.abs(channel[0]), np.abs(cnode.currents[chan_name][0])])
+                if not rbool:
+                    rbool = np.abs(channel[1] - cnode.currents[chan_name][1]) > eps * \
+                             np.max([np.abs(channel[1]), np.abs(cnode.currents[chan_name][1])])
+        if not rbool:
+            rbool = node.g_shunt > 0.001*eps
+
+        return rbool
 
     # @morphtree.originalTreetypeDecorator
     # def _calcFdMatrix(self, dx=10.):
