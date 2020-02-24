@@ -126,7 +126,7 @@ class TestNeuron():
         test_chan = channelcollection.TestChannel2()
         fname = 'test_morphologies/Tsovtree.swc'
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree[1].addCurrent(test_chan, 50., e_rev=23.)
+        self.greenstree.addCurrent(test_chan, 50., 23., node_arg=[self.greenstree[1]])
         self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
         # for node in self.greenstree:
         #     print node.getGTot(channel_storage=self.greenstree.channel_storage)
