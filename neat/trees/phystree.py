@@ -59,7 +59,7 @@ class PhysNode(MorphNode):
         e_rev: float
             the reversal potential of the current (mV)
         '''
-        self.currents[channel_name] = (g_max, e_rev)
+        self.currents[channel_name] = [g_max, e_rev]
 
     def addConcMech(self, ion, params={}):
         '''
@@ -233,8 +233,8 @@ class PhysTree(MorphTree):
         '''
         Set specifice membrane capacitance, axial resistance and (optionally)
         static point-like shunt conductances in the tree. Capacitance is stored
-        at each node as the attribute 'c_m' and axial resistance as the
-        attribute 'r_a'
+        at each node as the attribute 'c_m' (uF/cm2) and axial resistance as the
+        attribute 'r_a' (MOhm*cm)
 
         Parameters
         ----------
