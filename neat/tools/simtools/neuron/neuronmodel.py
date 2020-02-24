@@ -148,9 +148,6 @@ class NeuronSimTree(PhysTree):
         self.netcons = []
         self.vecs = []
         self.storeLocs([{'node': 1, 'x': 0.}], 'rec locs')
-        # self.storeLocs([{'node': 1, 'x': 0.}], 'rec locs')
-        # delete all hoc objects
-        # h('forall delete_section()')
 
     def _createNeuronTree(self, pprint):
         for node in self:
@@ -653,13 +650,6 @@ def createReducedModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
             sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
     return sim_tree
 
-
-# def _setSWCIndices(morph_tree):
-#     for ii, node in enumerate(morph_tree.__iter__(skip_inds=[])):
-#         if morph_tree.isRoot(node):
-#             node.index = 1
-#         else:
-#             node.index = ii+3
 
 
 
