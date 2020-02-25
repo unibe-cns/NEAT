@@ -294,7 +294,6 @@ class TestCompartmentTree():
         self.greens_tree = GreensTree(file_n='test_morphologies/ball.swc')
         # capacitance and axial resistance
         self.greens_tree.setPhysiology(0.8, 100./1e6)
-        self.greens_tree.setLeakCurrent(100., -75.)
         # ion channels
         k_chan = channelcollection.Kv3_1()
         self.greens_tree.addCurrent(k_chan, 0.766*1e6, -85.)
@@ -302,6 +301,7 @@ class TestCompartmentTree():
         self.greens_tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
         self.greens_tree.fitLeakCurrent(-75., 10.)
+        print(self.greens_tree)
         # set computational tree
         self.greens_tree.setCompTree()
         # set the impedances
