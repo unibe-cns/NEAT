@@ -346,7 +346,7 @@ class SOVTree(PhysTree):
             # clean
             for node in self: node.counter = 0
         else:
-            self[1].setSOV()
+            self[1].setSOV(tau_0=self.tau_0, channel_storage=self.channel_storage)
 
     def _SOVFromLeaf(self, node, leafs, count=0,
                         maxspace_freq=500., pprint=False):

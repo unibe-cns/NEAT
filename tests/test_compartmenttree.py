@@ -311,7 +311,7 @@ class TestCompartmentTree():
         self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
         self.sov_tree.calcSOVEquations(maxspace_freq=100.)
 
-    def fitChannels(self):
+    def testChannelFit(self):
         self.loadBall()
         locs = [(1, 0.5)]
         e_eqs = [-75., -55., -35., -15.]
@@ -372,12 +372,15 @@ class TestCompartmentTree():
 
         # passive fit
         ctree.computeGMC(z_mat_pas)
-        # # get SOV constants for capacitance fit
-        # alphas, phimat, importance = self.sov_tree.getImportantModes(locarg=locs,
-        #                                     sort_type='importance', eps=1e-12,
-        #                                     return_importance=True)
-        # # fit the capacitances from SOV time-scales
-        # ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
+        # get SOV constants for capacitance fit
+        sov_tree = greens_tree_pas.__copy__(new_tree=SOVTree())
+        sov_tree.setCompTree()
+        sov_tree.calcSOVEquations()
+        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
+                                            sort_type='importance', eps=1e-12,
+                                            return_importance=True)
+        # fit the capacitances from SOV time-scales
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
 
         ctree1 = copy.deepcopy(ctree)
         ctree2 = copy.deepcopy(ctree)
@@ -434,8 +437,83 @@ class TestCompartmentTree():
         assert np.allclose(conds, cconds3)
         assert np.allclose(conds, cconds4)
 
-    def testChannelFit(self):
-        self.fitChannels()
+        # rename for further testing
+        ctree = ctree1
+        # frequency array
+        ft = ke.FourrierTools(np.linspace(0.,50.,100))
+        freqs = ft.s
+        # compute impedance matrix
+        v_h = -42.
+        # original
+        self.greens_tree.setEEq(v_h)
+        self.greens_tree.setCompTree()
+        self.greens_tree.setImpedance(freqs)
+        z_mat_orig = self.greens_tree.calcImpedanceMatrix([(1.,.5)])
+        # potassium
+        greens_tree_k.setEEq(v_h)
+        greens_tree_k.setCompTree()
+        greens_tree_k.setImpedance(freqs)
+        z_mat_k = greens_tree_k.calcImpedanceMatrix([(1,.5)])
+        # sodium
+        greens_tree_na.removeExpansionPoints()
+        greens_tree_na.setEEq(v_h)
+        greens_tree_na.setCompTree()
+        greens_tree_na.setImpedance(freqs)
+        z_mat_na = greens_tree_na.calcImpedanceMatrix([(1,.5)])
+        # passive
+        greens_tree_pas.setCompTree()
+        greens_tree_pas.setImpedance(freqs)
+        z_mat_pas = greens_tree_pas.calcImpedanceMatrix([(1,.5)])
+
+        # reduced impedance matrices
+        ctree.removeExpansionPoints()
+        ctree.setEEq(v_h)
+        z_mat_fit = ctree.calcImpedanceMatrix(freqs=freqs)
+        z_mat_fit_k = ctree.calcImpedanceMatrix(channel_names=['L', 'Kv3_1'], freqs=freqs)
+        z_mat_fit_na = ctree.calcImpedanceMatrix(channel_names=['L', 'Na_Ta'], freqs=freqs)
+        z_mat_fit_pas = ctree.calcImpedanceMatrix(channel_names=['L'], freqs=freqs)
+
+        assert np.allclose(z_mat_orig, z_mat_fit)
+        assert np.allclose(z_mat_k, z_mat_fit_k)
+        assert np.allclose(z_mat_na, z_mat_fit_na)
+        assert np.allclose(z_mat_pas, z_mat_fit_pas)
+
+        # test total current, conductance
+        sv = svs[-1]
+        p_open = sv[0,0]**3 * sv[0,1]
+        # with p_open given
+        g1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
+        i1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
+        # with expansion point given
+        ctree.setExpansionPoints({'Na_Ta': sv})
+        g2 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        i2 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        # with e_eq given
+        g3 = ctree[0].getGTot(ctree.channel_storage, v=e_eqs[-1], channel_names=['L', 'Na_Ta'])
+        i3 = ctree[0].getGTot(ctree.channel_storage, v=e_eqs[-1], channel_names=['L', 'Na_Ta'])
+        # with e_eq stored
+        ctree.setEEq(e_eqs[-1])
+        g4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        i4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        # check if correct
+        assert np.abs(g1 - g2) < 1e-10
+        assert np.abs(g1 - g3) < 1e-10
+        assert np.abs(g1 - g4) < 1e-10
+        assert np.abs(i1 - i2) < 1e-10
+        assert np.abs(i1 - i3) < 1e-10
+        assert np.abs(i1 - i4) < 1e-10
+        # compare current, conductance
+        g_ = ctree[0].getGTot(ctree.channel_storage, channel_names=['Na_Ta'])
+        i_ = ctree[0].getITot(ctree.channel_storage, channel_names=['Na_Ta'])
+        assert np.abs(g_ * (e_eqs[-1] - ctree[0].currents['Na_Ta'][1]) - i_) < 1e-10
+
+        # test leak fitting
+        self.greens_tree.setEEq(-75.)
+        self.greens_tree.setCompTree()
+        ctree.setEEq(-75.)
+        ctree.removeExpansionPoints()
+        ctree.fitEL()
+        assert np.abs(ctree[0].currents['L'][1] - self.greens_tree[1].currents['L'][1]) < 1e-10
 
 
 class TestCompartmentTreePlotting():

@@ -132,61 +132,6 @@ class CompartmentNode(SNode):
             warnings.warn('These parameters do not match any NEAT concentration ' + \
                           'mechanism, no concentration mechanism has been added', UserWarning)
 
-    # def getCurrent(self, channel_name, channel_storage=None):
-    #     '''
-    #     Returns an ``::class::neat.channels.ionchannels.IonChannel`` object. If
-    #     `channel_storage` is given,
-
-    #     Parameters
-    #     ----------
-    #     channel_name: string
-    #         the name of the ion channel
-    #     channel_storage: dict of ionchannels (optional)
-    #         keys are the names of the ion channels, and values the channel
-    #         instances
-    #     '''
-    #     try:
-    #         return channel_storage[channel_name]
-    #     except (KeyError, TypeError):
-    #         return eval('channelcollection.' + channel_name + '()')
-
-    # def setExpansionPoint(self, channel_name, statevar='asymptotic', channel_storage=None):
-    #     '''
-    #     Set the choice for the state variables of the ion channel around which
-    #     to linearize.
-
-    #     Note that when adding an ion channel to the node, the
-    #     default expansion point setting is to linearize around the asymptotic values
-    #     for the state variables at the equilibrium potential store in `self.e_eq`.
-    #     Hence, this function only needs to be called to change that setting.
-
-    #     Parameters
-    #     ----------
-    #     channel_name: string
-    #         the name of the ion channel
-    #     statevar: `np.ndarray`, `'max'` or `'asymptotic'` (default)
-    #         If `np.ndarray`, should be of the same shape as the ion channels'
-    #         state variables array, if `'max'`, the point at which the
-    #         linearized channel current is maximal for the given equilibirum potential
-    #         `self.e_eq` is used. If `'asymptotic'`, linearized around the asymptotic values
-    #         for the state variables at the equilibrium potential
-    #     channel_storage: dict of ion channels (optional)
-    #         The ion channels that have been initialized already. If not
-    #         provided, a new channel is initialized
-
-    #     Raises
-    #     ------
-    #     KeyError: if `channel_name` is not in `self.currents`
-    #     '''
-    #     if isinstance(statevar, str):
-    #         if statevar == 'asymptotic':
-    #             statevar = None
-    #         elif statevar == 'max':
-    #             channel = self.getCurrent(channel_name, channel_storage=channel_storage)
-    #             statevar = channel.findMaxCurrentVGiven(self.e_eq, self.freqs,
-    #                                                     self.currents[channel_name][1])
-    #     self.expansion_points[channel_name] = statevar
-
     def setExpansionPoint(self, channel_name, statevar):
         '''
         Set the choice for the state variables of the ion channel around which
@@ -339,9 +284,9 @@ class CompartmentNode(SNode):
             if channel_name != 'L':
                 g, e = self.currents[channel_name]
                 # create the ionchannel object
-                channel = channel_storage[pchannel_name]
+                channel = channel_storage[channel_name]
                 # check if needs to be computed around expansion point
-                sv = self.expansion_points[channel_name]
+                sv = self.getExpansionPoint(channel_name)
                 # open probability
                 if p_open_channels is None:
                     p_o = channel.computePOpen(v, statevars=sv)
@@ -388,79 +333,66 @@ class CompartmentNode(SNode):
                     # create the ionchannel object
                     channel = channel_storage[channel_name]
                     # check if needs to be computed around expansion point
-                    sv = self.expansion_points[channel_name]
+                    sv = self.getExpansionPoint(channel_name)
                     i_tot += g * channel.computePOpen(v, statevars=sv) * (v - e)
                 else:
                     i_tot += g * p_open_channels[channel_name] * (v - e)
 
         return i_tot
 
-    # def getDrive(self, channel_name, v=None, channel_storage=None):
-    #     v = self.e_eq if v is None else v
-    #     _, e = self.currents[channel_name]
-    #     # create the ionchannel object
-    #     channel = self.getCurrent(channel_name, channel_storage=channel_storage)
-    #     sv = self.expansion_points[channel_name]
-    #     return channel.computePOpen(v, statevars=sv) * (v - e)
+    def getDrive(self, channel_name, v=None, channel_storage=None):
+        v = self.e_eq if v is None else v
+        _, e = self.currents[channel_name]
+        # create the ionchannel object
+        channel = self.getCurrent(channel_name, channel_storage=channel_storage)
+        sv = self.expansion_points[channel_name]
+        return channel.computePOpen(v, statevars=sv) * (v - e)
 
-    # def getDynamicDrive(self, channel_name, p_open, v):
-    #     assert p_open.shape == v.shape
-    #     _, e = self.currents[channel_name]
-    #     return p_open * (v - e)
+    def getDynamicDrive(self, channel_name, p_open, v):
+        assert p_open.shape == v.shape
+        _, e = self.currents[channel_name]
+        return p_open * (v - e)
 
-    # def getDynamicDrive_(self, channel_name, v, dt, channel_storage=None):
-    #     # assert p_open.shape == v.shape
-    #     _, e = self.currents[channel_name]
-    #     if channel_storage is not None:
-    #         channel = channel_storage[channel_name]
-    #     else:
-    #         channel = eval('channelcollection.' + channel_name + '()')
-    #     # storage
-    #     p_open = np.zeros_like(v)
-    #     # initialize
-    #     sv_inf_prev = channel.computeVarInf(v[0])
-    #     tau_prev = channel.computeTauInf(v[0])
-    #     sv = sv_inf_prev
-    #     p_open[0] = channel.computePOpen(v[0], statevars=sv)
-    #     for tt in range(1,len(v)):
-    #         sv_inf = channel.computeVarInf(v[tt])
-    #         tau = channel.computeTauInf(v[tt])
-    #         # sv_inf_aux = (sv_inf + sv_inf_prev) / 2.
-    #         f_aux  = -2. / (tau + tau_prev)
-    #         h_prev = sv_inf_prev / tau_prev
-    #         h_now  = sv_inf / tau
-    #         # sv[:,:,tt] = (sv[:,:,tt-1] + dt * sv_inf_aux / tau_aux) / (1. + dt / tau_aux)
-    #         p0_aux = np.exp(f_aux * dt)
-    #         p1_aux = (1. - p0_aux) / (f_aux**2 * dt)
-    #         p2_aux = p0_aux / f_aux + p1_aux
-    #         p3_aux = -1. / f_aux - p1_aux
-    #         # next step sv
-    #         sv = p0_aux * sv + p2_aux * h_prev + p3_aux * h_now
-    #         # store for next step
-    #         sv_inf_prev = sv_inf
-    #         tau_prev = tau
-    #         # store open probability
-    #         p_open[tt] = channel.computePOpen(v[tt], statevars=sv)
+    def getDynamicDrive_(self, channel_name, v, dt, channel_storage=None):
+        # assert p_open.shape == v.shape
+        _, e = self.currents[channel_name]
+        if channel_storage is not None:
+            channel = channel_storage[channel_name]
+        else:
+            channel = eval('channelcollection.' + channel_name + '()')
+        # storage
+        p_open = np.zeros_like(v)
+        # initialize
+        sv_inf_prev = channel.computeVarInf(v[0])
+        tau_prev = channel.computeTauInf(v[0])
+        sv = sv_inf_prev
+        p_open[0] = channel.computePOpen(v[0], statevars=sv)
+        for tt in range(1,len(v)):
+            sv_inf = channel.computeVarInf(v[tt])
+            tau = channel.computeTauInf(v[tt])
+            # sv_inf_aux = (sv_inf + sv_inf_prev) / 2.
+            f_aux  = -2. / (tau + tau_prev)
+            h_prev = sv_inf_prev / tau_prev
+            h_now  = sv_inf / tau
+            # sv[:,:,tt] = (sv[:,:,tt-1] + dt * sv_inf_aux / tau_aux) / (1. + dt / tau_aux)
+            p0_aux = np.exp(f_aux * dt)
+            p1_aux = (1. - p0_aux) / (f_aux**2 * dt)
+            p2_aux = p0_aux / f_aux + p1_aux
+            p3_aux = -1. / f_aux - p1_aux
+            # next step sv
+            sv = p0_aux * sv + p2_aux * h_prev + p3_aux * h_now
+            # store for next step
+            sv_inf_prev = sv_inf
+            tau_prev = tau
+            # store open probability
+            p_open[tt] = channel.computePOpen(v[tt], statevars=sv)
 
-    #     return p_open * (v - e)
+        return p_open * (v - e)
 
-    # def getDynamicI(self, channel_name, p_open, v):
-    #     assert p_open.shape == v.shape
-    #     g, e = self.currents[channel_name]
-    #     return g * p_open * (v - e)
-
-    # def fitEL(self, channel_storage):
-    #     i_eq = 0.
-    #     for channel_name in set(self.currents.keys()) - set('L'):
-    #         g, e = self.currents[channel_name]
-    #         # create the ionchannel object
-    #         channel = channel_storage[channel_name]
-    #         # compute channel conductance and current
-    #         p_open = channel.computePOpen(self.e_eq)
-    #         i_chan = g * p_open * (e - self.e_eq)
-    #         i_eq += i_chan
-    #     e_l = self.e_eq - i_eq / self.currents['L'][0]
-    #     self.currents['L'][1] = e_l
+    def getDynamicI(self, channel_name, p_open, v):
+        assert p_open.shape == v.shape
+        g, e = self.currents[channel_name]
+        return g * p_open * (v - e)
 
 
 class CompartmentTree(STree):
@@ -538,31 +470,28 @@ class CompartmentTree(STree):
         for node in self:
             node.expansion_points = {}
 
-    def fitEL(self, p_open_channels={}):
+    def fitEL(self):
         '''
-        Set the leak reversal potential to obtain the desired equilibrium
-        potentials
+        Fit the leak reversal potential to obtain the stored equilibirum potentials
+        as resting membrane potential
         '''
-        for chan, p_o in p_open_channels.items():
-            p_open_channels[chan] = self._permuteToTree(p_o)
         e_l_0 = self.getEEq(indexing='tree')
         # compute the solutions
-        fun = self._fun(e_l_0, p_open_channels=p_open_channels)
+        fun = self._fun(e_l_0)
         jac = self._jac(e_l_0)
         e_l = np.linalg.solve(jac, -fun + np.dot(jac, e_l_0))
         # set the leak reversals
         for ii, node in enumerate(self):
             node.currents['L'][1] = e_l[ii]
 
-    def _fun(self, e_l, p_open_channels={}):
+    def _fun(self, e_l):
         # set the leak reversal potentials
         for ii, node in enumerate(self):
             node.currents['L'][1] = e_l[ii]
         # compute the function values (currents)
         fun_vals = np.zeros(len(self))
         for ii, node in enumerate(self):
-            p_o_c = {chan: p_o[ii] for chan, p_o in p_open_channels.items()}
-            fun_vals[ii] += node.getITot(p_open_channels=p_o_c)
+            fun_vals[ii] += node.getITot(self.channel_storage)
             # add the parent node coupling term
             if node.parent_node is not None:
                 fun_vals[ii] += node.g_c * (node.e_eq - node.parent_node.e_eq)
@@ -644,6 +573,32 @@ class CompartmentTree(STree):
 
     def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs',
                                 use_conc=False):
+        '''
+        Constructs the impedance matrix of the model for each frequency provided
+        in `freqs`. This matrix is evaluated at the equilibrium potentials
+        stored in each node
+
+        Parameters
+        ----------
+            freqs: np.array (dtype = complex) or float
+                Frequencies at which the matrix is evaluated [Hz]
+            channel_names: `None` (default) or `list` of `str`
+                The channels to be included in the matrix. If `None`, all
+                channels present on the tree are included in the calculation
+            use_conc: `bool`
+                wheter or not to use the concentration dynamics
+            indexing: 'tree' or 'locs'
+                Whether the indexing order of the matrix corresponds to the tree
+                nodes (order in which they occur in the iteration) or to the
+                locations on which the reduced model is based
+
+        Returns
+        -------
+            `np.ndarra` (``ndim = ``3, ``dtype = complex``)
+                The first dimension corresponds to the
+                frequency, the second and third dimension contain the impedance
+                matrix for that frequency
+        '''
         return np.linalg.inv(self.calcSystemMatrix(freqs=freqs,
                              channel_names=channel_names, indexing=indexing,
                              use_conc=use_conc))
@@ -654,8 +609,8 @@ class CompartmentTree(STree):
 
         Returns
         -------
-            np.ndarray (dtype = float, ndim = 2)
-                the conductance matrix
+        `np.ndarray` (``dtype = float``, ``ndim = 2``)
+            the conductance matrix
         '''
         g_mat = np.zeros((len(self), len(self)))
         for node in self:
@@ -684,7 +639,7 @@ class CompartmentTree(STree):
 
         Parameters
         ----------
-            freqs: np.array (dtype = complex) or float
+            freqs: np.array (dtype = complex) or float (default ``0.``)
                 Frequencies at which the matrix is evaluated [Hz]
             channel_names: `None` (default) or `list` of `str`
                 The channels to be included in the matrix. If `None`, all
@@ -700,7 +655,7 @@ class CompartmentTree(STree):
 
         Returns
         -------
-            np.ndarray (ndim = 3, dtype = complex)
+            `np.ndarray` (``ndim = 3, dtype = complex``)
                 The first dimension corresponds to the
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
