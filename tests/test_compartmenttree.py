@@ -4,8 +4,10 @@ import matplotlib.pyplot as pl
 import pytest
 import random
 import copy
+
 from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
+from neat.channels import channelcollection
 
 
 class TestCompartmentTree():
@@ -21,7 +23,7 @@ class TestCompartmentTree():
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
         # do SOV calculation
         self.tree.calcSOVEquations()
@@ -288,174 +290,152 @@ class TestCompartmentTree():
         assert np.allclose(np.array([n.ca / n.currents['L'][0] for n in self.ctree]),
                            np.ones(len(self.ctree)) * np.max(1e-3/np.abs(alphas)))
 
-    def load(self, morph_n='ball_and_stick.swc', channel=None):
-        self.greens_tree = GreensTree(file_n='test_morphologies/' + morph_n)
-        for node in self.greens_tree:
-            node.setPhysiology(1.,      # Cm [uF/cm^2]
-                               100./1e6, # Ra [MOhm*cm]
-                              )
-            node.addCurrent('L',  # leak current
-                            100., # g_max [uS/cm^2]
-                            -75., # e_rev [mV]
-                           )
-        self.greens_tree[1].addCurrent('L',      0.0000344 *1e6,   e_rev=-90., channel_storage=self.greens_tree.channel_storage)
-        self.greens_tree.addCurrent('L',       0.0000447*1e6, e_rev=-90., node_arg='apical')
-        self.greens_tree_pas = copy.deepcopy(self.greens_tree)
-        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
-        # soma ion channels [uS/cm^2]
-        if channel == 'Na_Ta':
-            self.greens_tree[1].addCurrent('Na_Ta',  1.71      *1e6,   e_rev=50.,  channel_storage=self.greens_tree.channel_storage)
-            self.greens_tree.addCurrent('Na_Ta',   0.0211   *1e6, e_rev=50.,  node_arg='apical')
-            # self.greens_tree[1].addCurrent('Na_Ta',  0.      *1e6,   e_rev=50.,  channel_storage=self.greens_tree.channel_storage)
-            # self.greens_tree.addCurrent('Na_Ta',   0.0   *1e6, e_rev=50.,  node_arg='apical')
-        elif channel == 'Ca_LVA':
-            self.greens_tree[1].addCurrent('Ca_LVA', 0.00432   *1e6,   e_rev=50.,  channel_storage=self.greens_tree.channel_storage)
-            self.greens_tree.addCurrent('Ca_LVA',  lambda x: 0.0198*1e6   if (x>685. and x<885.) else 0.0198*1e-2*1e6,   e_rev=50.,  node_arg='apical')
-        elif channel == 'TestChannel2':
-            self.greens_tree[1].addCurrent('TestChannel2', 0.01*1e6,   e_rev=-23.,  channel_storage=self.greens_tree.channel_storage)
-            self.greens_tree.addCurrent('TestChannel2',  0.001*1e6,   e_rev=-23.,  node_arg='apical')
+    def loadBall(self):
+        self.greens_tree = GreensTree(file_n='test_morphologies/ball.swc')
+        # capacitance and axial resistance
+        self.greens_tree.setPhysiology(0.8, 100./1e6)
+        self.greens_tree.setLeakCurrent(100., -75.)
+        # ion channels
+        k_chan = channelcollection.Kv3_1()
+        self.greens_tree.addCurrent(k_chan, 0.766*1e6, -85.)
+        na_chan = channelcollection.Na_Ta()
+        self.greens_tree.addCurrent(na_chan, 1.71*1e6, 50.)
+        # fit leak current
+        self.greens_tree.fitLeakCurrent(-75., 10.)
+        # set computational tree
         self.greens_tree.setCompTree()
-        self.greens_tree.treetype = 'computational'
-        self.greens_tree_pas.setCompTree()
-        self.sov_tree.setCompTree()
         # set the impedances
-        self.freqs = np.array([0.,1.,10.,100.,1000]) * 1j
-        # self.freqs = np.array([0.]) * 1j
+        self.freqs = np.array([0.])
         self.greens_tree.setImpedance(self.freqs)
-        # compute SOV factorisation
-        self.sov_tree.calcSOVEquations(pprint=True)
+        # create sov tree
+        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree.calcSOVEquations(maxspace_freq=100.)
 
-    def loadSOV(self):
-        self.sov_tree = self.greens_tree_pas.__copy__(new_tree=SOVTree())
-        # set the computational tree
-        sov_tree.setCompTree(eps=1.)
-        # compute SOV factorisation
-        sov_tree.calcSOVEquations(pprint=True)
-
-    def testGChanFitSteadyState(self, n_loc=3, morph_name='ball_and_stick_long.swc'):
-        t_max, dt = 500., 0.1
-        channel_name = 'Ca_LVA'
-        self.load(morph_n=morph_name, channel=channel_name)
-        # define locations
-        # locs = [(1.,0.5)]
-        xvals = np.linspace(0., 1., n_loc+1)[1:]
-        locs = [(1, 0.5)] + [(4, x) for x in xvals]
-        self.greens_tree.storeLocs(locs, name='locs')
-        # input current amplitudes
-        # levels = [0.05, 0.1]
-        levels = [0.05, 0.1, 0.3]
-        # levels = [0.05]
-        from neatneuron import neuronmodel
-        i_in = np.zeros((len(locs),len(locs)*len(levels)))
-        v_end = np.zeros((len(locs),len(locs)*len(levels)))
-        p_open = np.zeros((len(locs),len(locs)*len(levels)))
-        for ii, loc in enumerate(locs):
-            for jj, i_amp in enumerate(levels):
-                i_in[ii, len(levels)*ii+jj] = i_amp
-                # temporary, should be replaced by native neat function
-                sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-                sim_tree.initModel(t_calibrate=500., factor_lambda=10.)
-                sim_tree.addIClamp(loc, i_amp, 0., 500.)
-                sim_tree.storeLocs(locs, name='rec locs')
-                # run the simulation
-                res = sim_tree.run(500., record_from_channels=True, record_from_iclamps=True)
-                sim_tree.deleteModel()
-                # store data for fit
-                v_end[:,len(levels)*ii+jj] = res['v_m'][:,-2]
-                p_open[:,len(levels)*ii+jj] = res['chan'][channel_name]['p_open'][:,-2]
-
-        # print p_open
-
-        # print 'i_clamp amplitude =', res['i_clamp'][:,-1]
-
-        # derivative is zero for steady state
-        dv_end = np.zeros_like(v_end)
-
-        # do fit the passive model
-        self.load(morph_n=morph_name, channel=channel_name)
-        z_mat_pas = self.greens_tree.calcImpedanceMatrix(locs)
+    def fitChannels(self):
+        self.loadBall()
+        locs = [(1, 0.5)]
+        e_eqs = [-75., -55., -35., -15.]
+        # create compartment tree
         ctree = self.greens_tree.createCompartmentTree(locs)
-        ctree.computeGMC(z_mat_pas[0,:,:], channel_names=['L'])
-        # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
+        ctree.addCurrent(channelcollection.Na_Ta(), 50.)
+        ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
-        # compute c
-        alphas, phimat = self.sov_tree.getImportantModes(locarg=locs, sort_type='importance', eps=1e-9)
-        n_mode = len(locs)
-        alphas = alphas[:n_mode]
-        phimat = phimat[:n_mode, :]
-        importance = self.sovtree.getModeImportance(sov_data=(alphas, phimat), importance_type='simple')
-        ctree.computeC(-alphas*1e3, phimat, weight=importance)
-        # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
+        # create tree with only leak
+        greens_tree_pas = self.greens_tree.__copy__()
+        greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
+        greens_tree_pas.setCompTree()
+        greens_tree_pas.setImpedance(self.freqs)
+        # compute the passive impedance matrix
+        z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
 
-        # do the impedance matrix fit for the channel
-        ctree_z = copy.deepcopy(ctree)
-        ctree_z.addCurrent(channel_name)
-        self.load(morph_n=morph_name, channel=channel_name)
-        es = np.array([-75., -55., -35., -5.])
-        z_mats = []
-        for e in es:
-            for node in self.greens_tree: node.setEEq(e)
+        # create tree with only potassium
+        greens_tree_k = self.greens_tree.__copy__()
+        greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
+                                               if key != 'Na_Ta'}
+        # compute potassium impedance matrices
+        z_mats_k = []
+        for e_eq in e_eqs:
+            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setCompTree()
+            greens_tree_k.setImpedance(self.freqs)
+            z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
+
+        # create tree with only sodium
+        greens_tree_na = self.greens_tree.__copy__()
+        greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
+                                               if key != 'Kv3_1'}
+        # create state variable expansion points
+        svs = []; e_eqs_ = []
+        na_chan = greens_tree_na.channel_storage['Na_Ta']
+        for e_eq1 in e_eqs:
+            e_eqs_.append(e_eq1)
+            sv1 = na_chan.computeVarInf(e_eq1)
+            for e_eq2 in e_eqs:
+                sv2 = na_chan.computeVarInf(e_eq2)
+                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+        # compute sodium impedance matrices
+        z_mats_na = []
+        for ii, sv in enumerate(svs):
+            greens_tree_na.setEEq(e_eqs[ii%len(e_eqs)])
+            greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
+            greens_tree_na.setCompTree()
+            greens_tree_na.setImpedance(self.freqs)
+            z_mats_na.append(greens_tree_na.calcImpedanceMatrix(locs))
+
+        # compute combined impedance matrices
+        z_mats_comb = []
+        for e_eq in e_eqs:
+            self.greens_tree.setEEq(e_eq)
+            self.greens_tree.setCompTree()
             self.greens_tree.setImpedance(self.freqs)
-            z_mats.append(self.greens_tree.calcImpedanceMatrix(locs))
-        ctree_z.computeGM(z_mats, e_eqs=es, freqs=self.freqs, channel_names=[channel_name], other_channel_names=['L'])
-        # create a biophysical simulation model
-        sim_tree_biophys = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree_biophys.initModel(t_calibrate=500., factor_lambda=10.)
-        sim_tree_biophys.storeLocs(locs, 'rec locs')
-        res_biophys = sim_tree_biophys.run(10.)
-        sim_tree_biophys.deleteModel()
-        v_eq = res_biophys['v_m'][:,-1]
-        # fit the equilibirum potentials
-        ctree_z.setEEq(v_eq)
-        ctree_z.fitEL()
+            z_mats_comb.append(self.greens_tree.calcImpedanceMatrix(locs))
 
-        # do the voltage fit for the channel
-        for node in ctree: node.currents['L'][1] = -90.
-        ctree.addCurrent(channel_name)
-        ctree.computeGChan(dv_end, v_end, i_in, p_open_channels={channel_name: p_open})
+        # passive fit
+        ctree.computeGMC(z_mat_pas)
+        # # get SOV constants for capacitance fit
+        # alphas, phimat, importance = self.sov_tree.getImportantModes(locarg=locs,
+        #                                     sort_type='importance', eps=1e-12,
+        #                                     return_importance=True)
+        # # fit the capacitances from SOV time-scales
+        # ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
 
-        print('\n>>> currents old method:')
-        for node in ctree_z:
-            print(node.currents)
+        ctree1 = copy.deepcopy(ctree)
+        ctree2 = copy.deepcopy(ctree)
+        ctree3 = copy.deepcopy(ctree)
+        ctree4 = copy.deepcopy(ctree)
 
-        print('\n>>> currents new method:')
-        for node in ctree:
-            print(node.currents)
+        # fit paradigm 1 --> separate impedance matrices and separate fits
+        # potassium channel fit
+        for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
+            ctree1.computeGSingleChanFromImpedance('Kv3_1', z_mat_k, e_eq, self.freqs,
+                                                    other_channel_names=['L'])
+        ctree1.runFit()
+        # sodium channel fit
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree1.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, self.freqs,
+                                                    sv=sv, other_channel_names=['L'])
+        ctree1.runFit()
 
-        self.load(morph_n=morph_name, channel=channel_name)
-        sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        sim_tree.initModel(t_calibrate=500., factor_lambda=10.)
-        sim_tree.addIClamp(locs[-1], 0.1, 0., 500.)
-        sim_tree.storeLocs(locs, name='rec locs')
-        res = sim_tree.run(500.)
-        sim_tree.deleteModel()
+        # fit paradigm 2 --> separate impedance matrices, same fit
+        for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
+            ctree2.computeGSingleChanFromImpedance('Kv3_1', z_mat_k, e_eq, self.freqs,
+                            all_channel_names=['Kv3_1', 'Na_Ta'])
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree2.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, self.freqs, sv=sv,
+                            all_channel_names=['Kv3_1', 'Na_Ta'])
+        ctree2.runFit()
 
-        sim_tree_ = neuronmodel.createReducedModel(ctree)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], 0.1, 0., 500.)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res_ = sim_tree_.run(500.)
-        sim_tree_.deleteModel()
+        # fit paradigm 3 --> same impedance matrices
+        for z_mat_comb, e_eq in zip(z_mats_comb, e_eqs):
+            ctree3.computeGChanFromImpedance(['Kv3_1', 'Na_Ta'], z_mat_comb, e_eq, self.freqs)
+        ctree3.runFit()
 
-        sim_tree_ = neuronmodel.createReducedModel(ctree_z)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], 0.1, 0., 500.)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res__ = sim_tree_.run(500.)
-        sim_tree_.deleteModel()
+        # fit paradigm 4 --> fit incrementally
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree4.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, self.freqs, sv=sv)
+        ctree4.runFit()
+        for z_mat_comb, e_eq in zip(z_mats_comb, e_eqs):
+            ctree4.computeGSingleChanFromImpedance('Kv3_1', z_mat_comb, e_eq, self.freqs,
+                                other_channel_names=['Na_Ta', 'L'])
+        ctree4.runFit()
 
-        pl.figure('v')
-        pl.plot(res['t'], res['v_m'][0], 'b')
-        pl.plot(res['t'], res['v_m'][-1], 'r')
-        pl.plot(res_['t'], res_['v_m'][0], 'b--', lw=1.6)
-        pl.plot(res_['t'], res_['v_m'][-1], 'r--', lw=1.6)
-        pl.plot(res__['t'], res__['v_m'][0], 'b-.', lw=1.6)
-        pl.plot(res__['t'], res__['v_m'][-1], 'r-.', lw=1.6)
+        # test if correct
+        keys = ['L', 'Na_Ta', 'Kv3_1']
+        # soma surface (cm) for total conductance calculation
+        a_soma = 4. * np.pi * (self.greens_tree[1].R*1e-4)**2
+        conds = np.array([self.greens_tree[1].currents[key][0]*a_soma for key in keys])
+        # compartment models conductances
+        cconds1 = np.array([ctree1[0].currents[key][0] for key in keys])
+        cconds2 = np.array([ctree2[0].currents[key][0] for key in keys])
+        cconds3 = np.array([ctree3[0].currents[key][0] for key in keys])
+        cconds4 = np.array([ctree4[0].currents[key][0] for key in keys])
+        assert np.allclose(conds, cconds1)
+        assert np.allclose(conds, cconds2)
+        assert np.allclose(conds, cconds3)
+        assert np.allclose(conds, cconds4)
 
-        pl.show()
+    def testChannelFit(self):
+        self.fitChannels()
 
 
 class TestCompartmentTreePlotting():
@@ -555,9 +535,9 @@ if __name__ == '__main__':
     # tcomp.testReordering()
     # tcomp.testLocationMapping()
     # tcomp.testGSSFit()
-    tcomp.testCFit()
+    # tcomp.testCFit()
     # tcomp.testPasFunctionality()
-    # tcomp.testGChanFitSteadyState()
+    tcomp.testChannelFit()
 
     # tcomp.testGChanFitDynamic()
     # tcomp.testGChanFitDynamicComp()

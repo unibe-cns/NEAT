@@ -800,6 +800,7 @@ class MorphTree(STree):
 
         for node in nodes:
             if node.index not in compnode_indices:
+                print('!!!', node)
                 self.removeSingleNode(node)
             elif node.parent_node != None:
                 orig_node = self[node.index]
