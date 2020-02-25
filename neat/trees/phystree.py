@@ -365,7 +365,7 @@ class PhysTree(MorphTree):
             node.addConcMech(ion, params=params)
 
     @morphtree.originalTreetypeDecorator
-    def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., node_arg=None):
+    def fitLeakCurrent(self, e_eq_target_distr, tau_m_target_distr, node_arg=None):
         '''
         Fits the leak current to fix equilibrium potential and membrane time-
         scale.
@@ -374,16 +374,26 @@ class PhysTree(MorphTree):
 
         Parameters
         ----------
-            e_eq_target: float
-                The target reversal potential (mV). Defaults to -75 mV.
-            tau_m_target: float
-                The target membrane time-scale (ms). Defaults to 10 ms.
-            node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`.
-                Defaults to None
+        e_eq_target_distr: float, dict or :func:`float -> float`
+            The target reversal potential (mV). If float, the target reversal is
+            set to this value for all the nodes specified in `node_arg`. If it
+            is a function, the input must specify the distance from the soma (um)
+            and the output the target reversal at that distance. If it is a
+            dict, keys are the node indices and values the target reversals
+        tau_m_target_distr: float, dict or :func:`float -> float`
+            The target membrane time-scale (ms). If float, the target time-scale is
+            set to this value for all the nodes specified in `node_arg`. If it
+            is a function, the input must specify the distance from the soma (um)
+            and the output the target time-scale at that distance. If it is a
+            dict, keys are the node indices and values the target time-scales
+        node_arg:
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            Defaults to None
         '''
-        assert tau_m_target > 0.
         for node in self._convertNodeArgToNodes(node_arg):
+            e_eq_target = self._distr2Float(e_eq_target_distr, node, argname='`g_max_distr`')
+            tau_m_target = self._distr2Float(tau_m_target_distr, node, argname='`e_rev_distr`')
+            assert tau_m_target > 0.
             node.fitLeakCurrent(e_eq_target=e_eq_target, tau_m_target=tau_m_target,
                                 channel_storage=self.channel_storage)
 
