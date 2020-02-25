@@ -2791,8 +2791,6 @@ class MorphTree(STree):
 
     def __copy__(self, new_tree=None):
         '''
-        experimental, untested
-
         Fill the ``new_tree`` with it's corresponding nodes in the same
         structure as ``self``, and copies all node variables that both tree
         classes have in common
