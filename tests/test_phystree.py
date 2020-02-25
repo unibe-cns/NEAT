@@ -27,9 +27,9 @@ class TestPhysTree():
     def testLeakDistr(self):
         self.loadTree(reinitialize=1)
         with pytest.raises(AssertionError):
-            self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=-10.)
+            self.tree.fitLeakCurrent(-75., -10.)
         # test simple distribution
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         for node in self.tree:
             assert np.abs(node.c_m - 1.0) < 1e-9
             assert np.abs(node.currents['L'][0] - 1. / (10.*1e-3)) < 1e-9
@@ -159,7 +159,7 @@ class TestPhysTree():
         channel = channelcollection.TestChannel2()
         self.tree.addCurrent(channel, g_chan, e_chan)
         # fit the leak current
-        self.tree.fitLeakCurrent(e_eq_target=-30., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-30., 10.)
 
         # test if fit was correct
         for node in self.tree:
@@ -172,7 +172,7 @@ class TestPhysTree():
         # test if warning is raised for impossible to reach time scale
         with pytest.warns(UserWarning):
             tree = copy.deepcopy(self.tree)
-            tree.fitLeakCurrent(e_eq_target=-30., tau_m_target=100000.)
+            tree.fitLeakCurrent(-30., 100000.)
 
         # total membrane conductance
         g_pas = self.tree[1].currents['L'][0] + g_chan*p_open

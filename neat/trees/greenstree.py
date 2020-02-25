@@ -247,6 +247,10 @@ class GreensTree(PhysTree):
         else:
             return GreensNode(node_index, p3d)
 
+    def removeExpansionPoints(self):
+        for node in self:
+            node.expansion_points = {}
+
     @morphtree.computationalTreetypeDecorator
     def setImpedance(self, freqs, use_conc=False, pprint=False):
         '''
