@@ -58,7 +58,7 @@ class TestCNET():
         self.cnet.setSpikeTimes(0, [5.+self.dt])
 
     def createTree(self, reinitialize=1, v_eq=-75.):
-        '''
+        """
         Create simple NET structure
 
         2     3
@@ -69,7 +69,7 @@ class TestCNET():
            |
            0
            |
-        '''
+        """
         self.v_eq = v_eq
         loc_ind = np.array([0,1,2])
 
@@ -92,7 +92,7 @@ class TestCNET():
         self.cnet = netsim.NETSim(net_py, v_eq=self.v_eq)
 
     def createTree2(self, reinitialize=1, add_lin=True, v_eq=-75.):
-        '''
+        """
         Create simple NET structure
 
                 3     4
@@ -103,7 +103,7 @@ class TestCNET():
              |     |
              ---0---
                 |
-        '''
+        """
         self.v_eq = v_eq
         loc_ind = np.array([0,1,2])
 
@@ -133,7 +133,7 @@ class TestCNET():
                                   v_eq=self.v_eq)
 
     def createTree3(self, reinitialize=1, add_lin=True, v_eq=-75.):
-        '''
+        """
         Create simple NET structure
 
                          6
@@ -146,7 +146,7 @@ class TestCNET():
                    |     |
                    0------
                    |
-        '''
+        """
         self.v_eq = v_eq
 
         # kernel constants

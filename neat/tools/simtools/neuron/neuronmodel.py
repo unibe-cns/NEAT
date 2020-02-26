@@ -115,14 +115,14 @@ class NeuronSimTree(PhysTree):
         self.indstart = int(t_calibrate / dt)
 
     def createCorrespondingNode(self, node_index, p3d=None):
-        '''
+        """
         Creates a node with the given index corresponding to the tree class.
 
         Parameters
         ----------
             node_index: int
                 index of the new node
-        '''
+        """
         return NeuronSimNode(node_index, p3d=p3d)
 
     def initModel(self, dt=0.025, t_calibrate=0., v_eq=-75., factor_lambda=1.,
@@ -575,14 +575,14 @@ class NeuronCompartmentTree(NeuronSimTree):
         return super(NeuronCompartmentTree, self)._gatherNodes(node, node_list=node_list, skip_inds=skip_inds)
 
     def createCorrespondingNode(self, node_index):
-        '''
+        """
         Creates a node with the given index corresponding to the tree class.
 
         Parameters
         ----------
             node_index: int
                 index of the new node
-        '''
+        """
         return NeuronCompartmentNode(node_index)
 
     def _createNeuronTree(self, pprint):

@@ -1,11 +1,11 @@
-'''
+"""
 Module for finding kernels and fitting them with sums of exponentials.
 
 Uses the Vector Fitting algorithm (Gustavsen, 1999) and Prony method.
 
 Author: Willem Wybo
 Date: 13/05/2016
-'''
+"""
 
 
 import numpy as np
@@ -47,7 +47,7 @@ class ExpFitter(Fitter):
             return np.exp(x[:,None]*a[:,None].T).dot(c[:,None]).real
 
     def PronyExpFit(self, deg, x, y):
-        '''
+        """
         Construct a sum of exponentials fit to a given time-sequence y by
         using prony's method
 
@@ -60,7 +60,7 @@ class ExpFitter(Fitter):
             [a]: numpy array, exponential coefficient
             [c]: numpy array, exponentail magnitudes
             [rms]: float, root mean square error of the data
-        '''
+        """
         # deg += 1
         # stepsize
         h = x[1] - x[0]
@@ -148,7 +148,7 @@ class ExpFitter(Fitter):
         return alphas, gammas, rms
 
     def reduceSeries(self, a, c, x, y, rtol=1e-2):
-        '''
+        """
         Reduces the number of exponential terms in a series, till a given tolerance
         is reached
 
@@ -162,7 +162,7 @@ class ExpFitter(Fitter):
             [alpha]: exponential coefficients
             [gamma]: magnitudes
             [rms]: float, root mean square error
-        '''
+        """
         k = 1; rms = 2*rtol
 
         while rms > rtol and k <= len(a):
@@ -374,9 +374,9 @@ class fExpFitter(Fitter):
         return alphanew, c2dnew, pairs
 
     def reduceSeries(self, s, y, a, c, pairs=None, rtol=1e-2, pprint=True):
-        '''
+        """
         reduce the series of exponentials after the fitting
-        '''
+        """
         k = 1; rms = 1.
 
         # ensure stability of approximation
@@ -462,9 +462,9 @@ class fExpFitter(Fitter):
         return trialpoles, pairs
 
     def _run_fit(self, s, y, trialpoles, pairs, rtol, maxiter, constrained, zerostart, pole_flip=True, pprint=True):
-        '''
+        """
         performs iterations of the actual fitting process
-        '''
+        """
         k = 0; rms = rtol+1.
         l = 0; m = 0
 
@@ -627,9 +627,9 @@ class fExpFitter(Fitter):
         return np.array(anew), np.array(pairsnew)
 
     def reduceNumExp(self, s, y, a, c, pairs, lim=0.1, pprint=True, pplot=True):
-        '''
+        """
         pools the short timescale exponentials
-        '''
+        """
         # find inds of exponentials that have to be taken together
         inds = np.where(np.abs(a.real) > (1e3 / lim))[0]
         # the other indices stay the same
@@ -795,7 +795,7 @@ class fExpFitter(Fitter):
 
     def fitFExp(self, s, y, deg=20, rtol=1e-2, maxiter=5, lim=None, realpoles=True, initpoles='lin',
                 zerostart=False, constrained=True, reduce_numexp=False, return_real=False, lower_limit=None):
-        '''
+        """
         Fits a function in fourrierspace by a series of fourrier transformed exponentials.
 
         input:
@@ -825,7 +825,7 @@ class fExpFitter(Fitter):
             [pairs]: boolean array that indicates True at every index where a complex
                 conjugate pair occurs
             [rms]: float, root mean square error
-        '''
+        """
         trialpoles, pairs = self._find_start_nodes(s, deg, realpoles, initpoles)
 
         if lim != None:
@@ -919,7 +919,7 @@ class fExpFitter(Fitter):
 
     def fitFExp_vector(self, s, ys, deg=20, rtol=1e-2, maxiter=5, extra_startpoles=[], extra_startpoles_pairs=[],
                         realpoles=True, initpoles='lin', reduce_series=False):
-        '''
+        """
         Fit multiple data-arrays in Fourrier-domain simultaneously with a shared set of nodes
 
         input:
@@ -946,7 +946,7 @@ class fExpFitter(Fitter):
             [pairs]: boolean numpy array, indicates where a pair of complex conjugate
                 exponentials occurs
             [rms]: float, aggregated root mean square error
-        '''
+        """
         trialpoles, pairs = self._find_start_nodes(s, deg, realpoles, initpoles)
         if len(extra_startpoles) > 0:
             trialpoles = np.concatenate((trialpoles, extra_startpoles))
@@ -980,7 +980,7 @@ def create_logspace_freqarray(fmax=7, base=10, num=200):
 
 class FourrierTools(object):
     def __init__(self, tarr, fmax=7, base=10, num=200):
-        '''
+        """
         Performs an accurate Fourrier transform on functions
         evaluated at a given array of temporal grid points
 
@@ -994,7 +994,7 @@ class FourrierTools(object):
                 the logspace
             [num]: int, even, the number of points. the eventual number of
                 points in frequency space is (2+1/2)*num
-        '''
+        """
         assert num % 2 == 0
         # create the frequency points at which to evaluate the transform
         self.s = create_logspace_freqarray(fmax=fmax, base=base, num=num)
@@ -1049,7 +1049,7 @@ class FourrierTools(object):
         self.ic = ic / (2.*np.pi)
 
     def __call__(self, arr):
-        '''
+        """
         Evaluate the Fourrier transform of [arr]
 
         input:
@@ -1059,7 +1059,7 @@ class FourrierTools(object):
             [s]: numpy 1d array, the frequency points at which the Fourrier
                 transform is evaluated (in Hz)
             [farr]: numpy 1d array, the Fourrier transform of [arr]
-        '''
+        """
         farr = np.dot(self.c, arr)
         return self.s, farr
 
@@ -1073,7 +1073,7 @@ class FourrierTools(object):
 
 class expExtractor(object):
     def __call__(self, N=1, recalc=False, atol=5e-2, pprint=True):
-        '''
+        """
         Fit a partial fraction decomposition to the obtained kernel in the frequency domain
 
         input:
@@ -1087,7 +1087,7 @@ class expExtractor(object):
             kfit (dict): {'a': array of the exponental factors (1/tau), 'c': array of the
                 coefficients, 'p': idicators whether or not a given exponential is part
                 of a complex conjugate pair}
-        '''
+        """
         if N not in self.kfit or recalc:
             FEF = fExpFitter()
             ak, ck, pk, rms = FEF.fitFExp(self.s_f, self.k_f, rtol=1e-2, deg=N, maxiter=20,
@@ -1186,7 +1186,7 @@ class simpleExpExtractor(expExtractor):
 
 
 class kernelExtractor(expExtractor):
-    '''
+    """
     This class computes the rescale kernel between the
     synapse in the dendrite and the synapse in the soma.
 
@@ -1210,7 +1210,7 @@ class kernelExtractor(expExtractor):
         vdend_f: fourier transform of vdend_
         vdend_f: fourier transform of vdend_
         k_f: kernel in the frequency domain
-    '''
+    """
     def __init__(self, vdend, vsoma, vbase, time):
         # time step
         dt = time[1] - time[0]
