@@ -5,12 +5,13 @@ import neuron
 from neuron import h
 
 import pytest
-
 import itertools
+
 from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
-import neat.tools.kernelextraction as ke
 from neat import NeuronSimTree, createReducedModel
+import neat.tools.kernelextraction as ke
+from neat.channels import channelcollection
 
 
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
@@ -37,7 +38,7 @@ class TestNeuron():
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
+        self.greenstree.fitLeakCurrent(v_eq, 10.)
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
@@ -62,10 +63,11 @@ class TestNeuron():
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
         print('>>> loading T-tree <<<')
+        h_chan = channelcollection.h()
         fname = 'test_morphologies/Tsovtree.swc'
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.addCurrent('h', 50., -43.)
-        self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
+        self.greenstree.addCurrent(h_chan, 50., -43.)
+        self.greenstree.fitLeakCurrent(v_eq, 10.)
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
@@ -90,10 +92,11 @@ class TestNeuron():
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
         print('>>> loading T-tree <<<')
+        test_chan = channelcollection.TestChannel2()
         fname = 'test_morphologies/Tsovtree.swc'
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.addCurrent('TestChannel2', 50., -23.)
-        self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
+        self.greenstree.addCurrent(test_chan, 50., -23.)
+        self.greenstree.fitLeakCurrent(v_eq, 10.)
         for node in self.greenstree:
             print(node)
         self.greenstree.setCompTree()
@@ -120,10 +123,11 @@ class TestNeuron():
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
         print('>>> loading T-tree <<<')
+        test_chan = channelcollection.TestChannel2()
         fname = 'test_morphologies/Tsovtree.swc'
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree[1].addCurrent('TestChannel2', 50., e_rev=23.)
-        self.greenstree.fitLeakCurrent(e_eq_target=v_eq, tau_m_target=10.)
+        self.greenstree.addCurrent(test_chan, 50., 23., node_arg=[self.greenstree[1]])
+        self.greenstree.fitLeakCurrent(v_eq, 10.)
         # for node in self.greenstree:
         #     print node.getGTot(channel_storage=self.greenstree.channel_storage)
         #     print node.currents

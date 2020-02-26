@@ -4,9 +4,59 @@ import pytest
 
 from neat import netsim
 from neat import NETNode, NET, Kernel
+from neat import GreensTree, NeuronSimTree, SOVTree
+
+from neat.channels import channelcollection
 
 
 class TestCNET():
+    def createPointNeurons(self, v_eq=-75.):
+        self.v_eq = v_eq
+        self.dt = .025
+        gh, eh = 50., -43.
+        h_chan = channelcollection.h()
+
+        self.greens_tree = GreensTree(file_n='test_morphologies/ball.swc')
+        self.greens_tree.setPhysiology(1., 100./1e6)
+        self.greens_tree.addCurrent(h_chan, gh, eh)
+        self.greens_tree.fitLeakCurrent(v_eq, 10.)
+        self.greens_tree.setEEq(v_eq)
+        self.greens_tree_pas = self.greens_tree.__copy__(new_tree=GreensTree())
+        self.greens_tree_pas.asPassiveMembrane()
+        self.sim_tree = self.greens_tree.__copy__(new_tree=NeuronSimTree())
+        # set the impedances
+        self.greens_tree_pas.setCompTree()
+        self.freqs = np.array([0.])
+        self.greens_tree_pas.setImpedance(self.freqs)
+        # create sov tree
+        self.sov_tree = self.greens_tree_pas.__copy__(new_tree=SOVTree())
+        self.sov_tree.calcSOVEquations(maxspace_freq=50.)
+
+        z_inp = self.greens_tree_pas.calcZF((1,.5), (1,.5))[0]
+        alphas, gammas = self.sov_tree.getSOVMatrices(locarg=[(1.,.5)])
+        # create NET
+        node_0 = NETNode(0, [0], [0], z_kernel=(alphas, gammas[:,0]**2))
+        net_py = NET()
+        net_py.setRoot(node_0)
+        # check if correct
+        assert np.abs(gammas[0,0]**2/np.abs(alphas[0]) - z_inp) < 1e-10
+        assert np.abs(node_0.z_bar - z_inp) < 1e-10
+
+        # to initialize neuron tree
+        self.sim_tree.initModel(dt=self.dt)
+        # add ion channel to NET simulator
+        a_soma = 4. *  np.pi * (self.sim_tree[1].R*1e-4)**2
+        self.cnet = netsim.NETSim(net_py, v_eq=self.v_eq)
+        self.cnet.addChannel('h', 0, gh*a_soma, e_rev=eh)
+
+        # add the synapse
+        # to neuron tree
+        self.sim_tree.addDoubleExpSynapse((1,.5), .2, 3., 0.)
+        self.sim_tree.setSpikeTrain(0, 0.001, [5.])
+        # to net sim
+        self.cnet.addSynapse(0, {'tau_r': .2, 'tau_d': 3., 'e_r': 0.}, g_max=0.001)
+        self.cnet.setSpikeTimes(0, [5.+self.dt])
+
     def createTree(self, reinitialize=1, v_eq=-75.):
         """
         Create simple NET structure
@@ -22,46 +72,6 @@ class TestCNET():
         """
         self.v_eq = v_eq
         loc_ind = np.array([0,1,2])
-
-        # import btstructs
-        # import morphologyReader as morphR
-        # net_py = btstructs.STree()
-        # # node 0
-        # alphas = -1. / np.array([.5, 8.])
-        # gammas = np.array([-1.,1.])
-        # self.z_0 = - np.sum(gammas / alphas)
-        # node_0 = btstructs.SNode(0)
-        # node_0.set_content({'layerdata': morphR.layerData(loc_ind, alphas, gammas)})
-        # dat = node_0.get_content()['layerdata']
-        # dat.set_ninds(np.array([]))
-        # net_py.set_root(node_0)
-        # # node 1
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_1 = - np.sum(gammas / alphas)
-        # node_1 = btstructs.SNode(1)
-        # node_1.set_content({'layerdata': morphR.layerData(loc_ind, alphas, gammas)})
-        # dat = node_1.get_content()['layerdata']
-        # dat.set_ninds(np.array([0]))
-        # net_py.add_node_with_parent(node_1, node_0)
-        # # node 2
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_2 = - np.sum(gammas / alphas)
-        # node_2 = btstructs.SNode(2)
-        # node_2.set_content({'layerdata': morphR.layerData(loc_ind[1:2], alphas, gammas)})
-        # dat = node_2.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[1]]))
-        # net_py.add_node_with_parent(node_2, node_1)
-        # # node 3
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # node_3 = btstructs.SNode(3)
-        # self.z_3 = - np.sum(gammas / alphas)
-        # node_3.set_content({'layerdata': morphR.layerData(loc_ind[2:], alphas, gammas)})
-        # dat = node_3.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[2]]))
-        # net_py.add_node_with_parent(node_3, node_1)
 
         # kernel constants
         alphas = 1. / np.array([.5, 8.]); gammas = np.array([-1.,1.])
@@ -96,63 +106,6 @@ class TestCNET():
         """
         self.v_eq = v_eq
         loc_ind = np.array([0,1,2])
-
-        # import btstructs
-        # import morphologyReader as morphR
-        # net_py = btstructs.STree()
-        # # node 0
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_0 = - np.sum(gammas / alphas)
-        # node_0 = btstructs.SNode(0)
-        # node_0.set_content({'layerdata': morphR.layerData(loc_ind, alphas, gammas)})
-        # dat = node_0.get_content()['layerdata']
-        # dat.set_ninds(np.array([]))
-        # net_py.set_root(node_0)
-        # # node 1
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_1 = - np.sum(gammas / alphas)
-        # node_1 = btstructs.SNode(1)
-        # node_1.set_content({'layerdata': morphR.layerData(loc_ind[0:1], alphas, gammas)})
-        # dat = node_1.get_content()['layerdata']
-        # dat.set_ninds(np.array([0]))
-        # net_py.add_node_with_parent(node_1, node_0)
-        # # node 2
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_2 = - np.sum(gammas / alphas)
-        # node_2 = btstructs.SNode(2)
-        # node_2.set_content({'layerdata': morphR.layerData(loc_ind[1:], alphas, gammas)})
-        # dat = node_2.get_content()['layerdata']
-        # dat.set_ninds(np.array([]))
-        # net_py.add_node_with_parent(node_2, node_0)
-        # # node 3
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_3 = - np.sum(gammas / alphas)
-        # node_3 = btstructs.SNode(3)
-        # node_3.set_content({'layerdata': morphR.layerData(loc_ind[1:2], alphas, gammas)})
-        # dat = node_3.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[1]]))
-        # net_py.add_node_with_parent(node_3, node_2)
-        # # node 4
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # node_4 = btstructs.SNode(4)
-        # self.z_4 = - np.sum(gammas / alphas)
-        # node_4.set_content({'layerdata': morphR.layerData(loc_ind[2:], alphas, gammas)})
-        # dat = node_4.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[2]]))
-        # net_py.add_node_with_parent(node_4, node_2)
-        # # linear terms
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # lin3 = morphR.linearLayerData([1], alphas, gammas)
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # lin4 = morphR.linearLayerData([2], alphas, gammas)
-        # self.lin_terms = [lin3, lin4] if add_lin else []
 
         # kernel constants
         alphas = 1. / np.array([1.]); gammas = np.array([1.])
@@ -195,85 +148,6 @@ class TestCNET():
                    |
         """
         self.v_eq = v_eq
-        # loc_ind = np.array([0,1,2,3])
-
-        # import btstructs
-        # import morphologyReader as morphR
-        # net_py = btstructs.STree()
-        # # node 0
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_0 = - np.sum(gammas / alphas)
-        # node_0 = btstructs.SNode(0)
-        # node_0.set_content({'layerdata': morphR.layerData(loc_ind, alphas, gammas)})
-        # dat = node_0.get_content()['layerdata']
-        # dat.set_ninds(np.array([]))
-        # net_py.set_root(node_0)
-        # # node 1
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_1 = - np.sum(gammas / alphas)
-        # node_1 = btstructs.SNode(1)
-        # node_1.set_content({'layerdata': morphR.layerData(loc_ind[0:3], alphas, gammas)})
-        # dat = node_1.get_content()['layerdata']
-        # dat.set_ninds(np.array([]))
-        # net_py.add_node_with_parent(node_1, node_0)
-        # # node 2
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_2 = - np.sum(gammas / alphas)
-        # node_2 = btstructs.SNode(2)
-        # node_2.set_content({'layerdata': morphR.layerData(loc_ind[0:1], alphas, gammas)})
-        # dat = node_2.get_content()['layerdata']
-        # dat.set_ninds(np.array([0]))
-        # net_py.add_node_with_parent(node_2, node_1)
-        # # node 3
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # self.z_3 = - np.sum(gammas / alphas)
-        # node_3 = btstructs.SNode(3)
-        # node_3.set_content({'layerdata': morphR.layerData(loc_ind[1:3], alphas, gammas)})
-        # dat = node_3.get_content()['layerdata']
-        # dat.set_ninds(np.array([]))
-        # net_py.add_node_with_parent(node_3, node_1)
-        # # node 4
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # node_4 = btstructs.SNode(4)
-        # self.z_4 = - np.sum(gammas / alphas)
-        # node_4.set_content({'layerdata': morphR.layerData(loc_ind[1:2], alphas, gammas)})
-        # dat = node_4.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[1]]))
-        # net_py.add_node_with_parent(node_4, node_3)
-        # # node 5
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # node_5 = btstructs.SNode(5)
-        # self.z_5 = - np.sum(gammas / alphas)
-        # node_5.set_content({'layerdata': morphR.layerData(loc_ind[2:3], alphas, gammas)})
-        # dat = node_5.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[2]]))
-        # net_py.add_node_with_parent(node_5, node_3)
-        # # node 5
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # node_6 = btstructs.SNode(6)
-        # self.z_6 = - np.sum(gammas / alphas)
-        # node_6.set_content({'layerdata': morphR.layerData(loc_ind[3:4], alphas, gammas)})
-        # dat = node_6.get_content()['layerdata']
-        # dat.set_ninds(np.array([loc_ind[3]]))
-        # net_py.add_node_with_parent(node_6, node_0)
-        # # linear terms
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # lin3 = morphR.linearLayerData([1], alphas, gammas)
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # lin4 = morphR.linearLayerData([2], alphas, gammas)
-        # alphas = -1. / np.array([1.])
-        # gammas = np.array([1.])
-        # lin5 = morphR.linearLayerData([3], alphas, gammas)
-        # self.lin_terms = [lin3, lin4, lin5] if add_lin else []
 
         # kernel constants
         alphas = 1. / np.array([1.]); gammas = np.array([1.])
@@ -638,11 +512,20 @@ class TestCNET():
         # test
         assert np.allclose(v_sol, v_node)
 
+    def testChannel(self):
+        self.createPointNeurons()
+        # simulate neuron and NET model
+        res_neuron = self.sim_tree.run(100)
+        res_net = self.cnet.runSim(100., self.dt)
+        # test if traces equal
+        assert np.allclose(res_neuron['v_m'][0,:-1], res_net['v_loc'][0,:], atol=.1)
+
 
 if __name__ == '__main__':
     tst = TestCNET()
     # tst.testIOFunctions()
     # tst.testSolver()
     # tst.testIntegration()
-    tst.testInversion()
+    # tst.testInversion()
+    tst.testChannel()
 

@@ -444,8 +444,8 @@ class CompartmentFitter(object):
         z_mat = fit_tree.calcImpedanceMatrix(locs)
 
         # compute the fit matrices
-        m_f, v_t = self.ctree.computeGSingleChanFromImpedance(z_mat, e_h, freqs,
-                        sv=sv_h, channel_name=c_name, other_channel_names=['L'],
+        m_f, v_t = self.ctree.computeGSingleChanFromImpedance(c_name, z_mat, e_h, freqs,
+                        sv=sv_h, other_channel_names=['L'],
                         all_channel_names=self.channel_names, action='return')
         # compute open probability to weigh fit matrices
         channel = self.tree.channel_storage[c_name]
@@ -526,15 +526,6 @@ class CompartmentFitter(object):
         # fit the coupling+leak conductances to steady state impedance matrix
         self.ctree.computeGMC(z_mat, channel_names=['L'])
 
-        # # refit leak conductances
-        # fit_tree = self.createTreeGF([])
-        # # set the impedances in the tree
-        # fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
-        # # compute the steady state impedance matrix
-        # z_mat = fit_tree.calcImpedanceMatrix(locs)
-
-        # self.ctree.computeGSingleChanFromImpedance(z_mat, v_eqs_fit, self.freqs,
-        #                 channel_name='L', other_channel_names=[], action='fit')
         # print passive impedance matrices
         if pprint:
             z_mat_fit = self.ctree.calcImpedanceMatrix(channel_names=['L'])
@@ -571,7 +562,7 @@ class CompartmentFitter(object):
         # compute the steady state impedance matrix
         z_mat = fit_tree.calcImpedanceMatrix(locs)
         # fit the conductances to steady state impedance matrix
-        self.ctree.computeGSingleChanFromImpedance(z_mat, -75., self.freqs, channel_name='L',
+        self.ctree.computeGSingleChanFromImpedance('L', z_mat, -75., self.freqs,
                                                    other_channel_names=[],
                                                    action='fit')
         # print passive impedance matrices

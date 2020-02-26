@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 
 import pytest
-from neat import SOVTree, SOVNode, Kernel
+from neat import SOVTree, SOVNode, Kernel, GreensTree
 import neat.tools.kernelextraction as ke
 
 
@@ -19,7 +19,7 @@ class TestSOVTree():
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
 
     def loadValidationTree(self):
@@ -31,7 +31,7 @@ class TestSOVTree():
         print('>>> loading validation tree <<<')
         fname = 'test_morphologies/sovvalidationtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
 
     def testSOVCalculation(self):
@@ -111,26 +111,37 @@ class TestSOVTree():
         assert np.allclose(z_mat_ft[:ft.ind_0s,:,:].imag, \
                           -z_mat_ft[ft.ind_0s+1:,:,:][::-1,:,:].imag) # check imaginary part odd
 
+    def loadBall(self):
+        """
+        Load point neuron model
+        """
+        print('>>> loading validation tree <<<')
+        fname = 'test_morphologies/ball.swc'
+        self.btree = SOVTree(fname, types=[1,3,4])
+        self.btree.fitLeakCurrent(-75., 10.)
+        self.btree.setCompTree()
 
+    def testSingleCompartment(self):
+        self.loadBall()
+        # for validation
+        greenstree = self.btree.__copy__(new_tree=GreensTree())
+        greenstree.setCompTree()
+        greenstree.setImpedance(np.array([0.]))
+        z_inp = greenstree.calcImpedanceMatrix([(1.,0.5)])
 
-        # import matplotlib.pyplot as pl
-        # pl.plot(ft.s.imag, z_mat_ft[:,2,4].real, 'b')
-        # pl.plot(ft.s.imag, z_mat_ft[:,2,4].imag, 'r')
-        # pl.show()
+        self.btree.calcSOVEquations(maxspace_freq=500)
+        alphas, gammas = self.btree.getSOVMatrices(locarg=[(1.,.5)])
+        z_inp_sov = self.btree.calcImpedanceMatrix(locarg=[(1.,.5)])
 
+        assert alphas.shape[0] == 1
+        assert gammas.shape == (1,1)
+        assert np.abs(1./np.abs(alphas[0]) - 10.) < 1e-10
 
-        # self.tree.distributeLocsUniform(dx=4., name='NET_eval')
-        # print [str(loc) for loc in self.tree.getLocs(name='NET_eval')]
-        # z_m = self.tree.calcImpedanceMatrix(name='NET_eval', eps=1e-10)
-        # pl.imshow(z_m, origin='lower', interpolation='none')
-        # alphas, gammas = self.tree.getSOVMatrices(self.tree.getLocs(name='NET_eval'))
-        # for kk in range(5):
-        #     print 'tau_' + str(kk) + ' =', -1./alphas[kk].real
-        #     pl.plot(range(gammas.shape[1]), gammas[kk,:])
-        # pl.show()
+        g_m = self.btree[1].getGTot(self.btree.channel_storage)
+        g_s = g_m  * 4.*np.pi*(self.btree[1].R*1e-4)**2
 
-        # import morphologyReader as morphR
-
+        assert np.abs(gammas[0,0]**2/np.abs(alphas[0]) - 1./g_s) < 1e-10
+        assert np.abs(z_inp_sov - 1./g_s) < 1e-10
 
     def testNETDerivation(self):
         # initialize
@@ -157,4 +168,5 @@ class TestSOVTree():
 if __name__ == '__main__':
     tsov = TestSOVTree()
     # tsov.testSOVCalculation()
-    tsov.testNETDerivation()
+    tsov.testSingleCompartment()
+    # tsov.testNETDerivation()

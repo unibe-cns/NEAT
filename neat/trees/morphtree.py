@@ -291,7 +291,7 @@ class MorphNode(SNode):
         self.R = R
         self.swc_type = swc_type
         # auxiliary variable
-        self.used_in_comptree = False
+        self.used_in_comp_tree = False
 
     def setLength(self, L):
         """
@@ -746,7 +746,34 @@ class MorphTree(STree):
         else:
             return 2
 
-    def setCompTree(self, compnodes=[], set_as_primary_tree=0):
+    def _evaluateCompCriteria(self, node, eps=1e-8, rbool=False):
+        """
+        Return ``True`` if relative difference between node radius and parent
+        node raidus is larger than margin ``eps``, or if the node is the root
+        or bifurcation node.
+
+        Parameters
+        ----------
+        node: ::class::`MorphNode`
+            node that is compared to parent node
+        eps: float (optional, default ``1e-8``)
+            the margin
+
+        return
+        ------
+        bool
+        """
+        if not rbool:
+            rbool = node.parent_node == None
+        if not rbool:
+            rbool = len(node.getChildNodes()) != 1
+        if not rbool:
+            cnode = node.child_nodes[0]
+            rbool = np.abs(node.R - cnode.R) > eps * np.max([node.R, cnode.R])
+
+        return rbool
+
+    def setCompTree(self, compnodes=None, set_as_primary_tree=False, eps=1e-8):
         """
         Sets the nodes that contain computational parameters. This are a priori
         either bifurcations, leafs, the root or nodes where the neurons'
@@ -754,37 +781,41 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            compnodes: list of :class:`MorphNode`
+            compnodes: list of ::class::`MorphNode`
                 list of nodes that should be retained in the computational tree.
                 Note that specifying bifurcations, leafs or the root is
                 superfluous, since they are part of the computational tree by
                 default.
-            set_as_primary_tree: bool
+            set_as_primary_tree: bool (default ``False``)
                 if True, sets the computational tree as the primary tree
+            eps: float (default ``1e-8``)
+                relative margin for parameter change
         """
-        self.removeComptree()
+        self.removeCompTree()
+        if compnodes is None:
+            compnodes = []
+        compnodes += [node for node in self if self._evaluateCompCriteria(node, eps=eps)]
         compnode_indices = [node.index for node in compnodes]
         nodes = copy.deepcopy(self.nodes)
+
         for node in nodes:
-            if len(node.getChildNodes()) == 1 \
-                      and node.parent_node != None \
-                      and node.index not in compnode_indices:
+            if node.index not in compnode_indices:
+                print('!!!', node)
                 self.removeSingleNode(node)
             elif node.parent_node != None:
                 orig_node = self[node.index]
-                # orig_bnode, _ = self.upBifurcationNode(orig_node)
                 orig_bnode = node.parent_node
                 L, R = self.pathLength({'node': orig_bnode.index, 'x': 1.},
                                         {'node': orig_node.index, 'x': 1.},
                                         compute_radius=1)
                 node.setLength(L)
                 node.setRadius(R)
-                node.used_in_comptree = True
-                orig_node.used_in_comptree = True
+                node.used_in_comp_tree = True
+                orig_node.used_in_comp_tree = True
             else:
                 orig_node = self[node.index]
-                node.used_in_comptree = True
-                orig_node.used_in_comptree = True
+                node.used_in_comp_tree = True
+                orig_node.used_in_comp_tree = True
 
         self._computational_root = \
                     next(node for node in nodes if node.index == 1)
@@ -818,7 +849,7 @@ class MorphTree(STree):
         -------
             :class:`MorphNode` instance
         """
-        if not node.used_in_comptree:
+        if not node.used_in_comp_tree:
             node = self._findCompnodeUp(node.parent_node)
         return node
 
@@ -842,11 +873,11 @@ class MorphTree(STree):
         -------
             :class:`MorphNode` instance
         """
-        if not node.used_in_comptree:
+        if not node.used_in_comp_tree:
             node = self._findCompnodeDown(node.child_nodes[0])
         return node
 
-    def removeComptree(self):
+    def removeCompTree(self):
         """
         Removes the computational tree
         """
@@ -861,7 +892,7 @@ class MorphTree(STree):
             pass
         self.treetype = 'original'
         for node in self:
-            node.used_in_comptree = False
+            node.used_in_comp_tree = False
 
     def _convertLocArgToLocs(self, locarg):
         """
@@ -1981,8 +2012,6 @@ class MorphTree(STree):
         if name != 'No': self.storeLocs(locs_, name=name)
         return locs_
 
-
-
     def makeXAxis(self, dx=10., node_arg=None, loc_arg=None):
         """
         Create a set of locs suitable for serving as the x-axis for 1D plotting.
@@ -2763,8 +2792,6 @@ class MorphTree(STree):
 
     def __copy__(self, new_tree=None):
         """
-        experimental, untested
-
         Fill the ``new_tree`` with it's corresponding nodes in the same
         structure as ``self``, and copies all node variables that both tree
         classes have in common

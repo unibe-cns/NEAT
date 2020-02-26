@@ -20,7 +20,7 @@ class TestGreensTree():
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = GreensTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
 
     def loadValidationTree(self):
@@ -32,7 +32,7 @@ class TestGreensTree():
         print('>>> loading validation tree <<<')
         fname = 'test_morphologies/sovvalidationtree.swc'
         self.tree = GreensTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
 
     def loadSOVTTree(self):
@@ -47,7 +47,7 @@ class TestGreensTree():
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.sovtree = SOVTree(fname, types=[1,3,4])
-        self.sovtree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.sovtree.fitLeakCurrent(-75., 10.)
         self.sovtree.setCompTree()
         self.sovtree.calcSOVEquations()
 
@@ -60,7 +60,7 @@ class TestGreensTree():
         print('>>> loading validation tree <<<')
         fname = 'test_morphologies/sovvalidationtree.swc'
         self.sovtree = SOVTree(fname, types=[1,3,4])
-        self.sovtree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.sovtree.fitLeakCurrent(-75., 10.)
         self.sovtree.setCompTree()
         self.sovtree.calcSOVEquations()
 
