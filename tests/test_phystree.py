@@ -8,14 +8,14 @@ from neat import PhysTree, PhysNode
 
 class TestPhysTree():
     def loadTree(self, reinitialize=0):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         if not hasattr(self, 'tree') or reinitialize:
             print('>>> loading T-tree <<<')
             fname = 'test_morphologies/Ttree.swc'

@@ -21,9 +21,9 @@ E_REV_DICT = {
 
 
 class TestChannel(IonChannel):
-    '''
+    """
     Simple channel to test basic functionality
-    '''
+    """
     def __init__(self):
         # always include this line, to define a sympy voltage symbol
         self.sp_v = sp.symbols('v')
@@ -44,9 +44,9 @@ class TestChannel(IonChannel):
 
 
 class TestChannel2(IonChannel):
-    '''
+    """
     Simple channel to test basic functionality
-    '''
+    """
     def __init__(self):
         # always include this line, to define a sympy voltage symbol
         self.sp_v = sp.symbols('v')
@@ -68,11 +68,11 @@ class TestChannel2(IonChannel):
 
 class Na_Ta(IonChannel):
     def __init__(self):
-        '''
+        """
         (Colbert and Pan, 2002)
 
         Used in (Hay, 2011)
-        '''
+        """
         self.ion = 'na'
         self.concentrations = []
         # always include this line, to define a sympy voltage symbol
@@ -96,11 +96,11 @@ class Na_Ta(IonChannel):
 
 class Kv3_1(IonChannel):
     def __init__(self):
-        '''
+        """
         Shaw-related potassium channel (Rettig et al., 1992)
 
         Used in (Hay et al., 2011)
-        '''
+        """
         self.ion = 'k'
         self.concentrations = []
         # always include this line, to define a sympy voltage symbol
@@ -118,9 +118,9 @@ class Kv3_1(IonChannel):
 
 class h(IonChannel):
     def __init__(self, ratio=0.2):
-        '''
+        """
         Hcn channel from (Bal and Oertel, 2000)
-        '''
+        """
         self.ion = ''
         self.concentrations = []
         self.ratio = ratio

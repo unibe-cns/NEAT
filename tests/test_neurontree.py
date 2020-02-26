@@ -20,14 +20,14 @@ colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
 
 class TestNeuron():
     def loadTTreePassive(self):
-        '''
+        """
         Load the T-tree morphology in memory with passive conductance
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         v_eq = -75.
         self.dt = 0.025
         self.tmax = 100.
@@ -47,14 +47,14 @@ class TestNeuron():
         self.neurontree.treetype = 'computational'
 
     def loadTTreeActive(self):
-        '''
+        """
         Load the T-tree morphology in memory with h-current
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         v_eq = -75.
         self.dt = 0.1
         self.tmax = 100.
@@ -75,14 +75,14 @@ class TestNeuron():
         self.neurontree.treetype = 'computational'
 
     def loadTTreeTestChannel(self):
-        '''
+        """
         Load the T-tree morphology in memory with h-current
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         v_eq = -75.
         self.dt = 0.025
         self.tmax = 100.
@@ -105,14 +105,14 @@ class TestNeuron():
         self.neurontree.treetype = 'computational'
 
     def loadTTreeTestChannelSoma(self):
-        '''
+        """
         Load the T-tree morphology in memory with h-current
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         v_eq = -75.
         self.dt = 0.025
         self.tmax = 100.

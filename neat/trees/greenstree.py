@@ -28,7 +28,7 @@ class GreensNode(PhysNode):
         self.L_ = self.L * 1e-4 # convert to cm
 
     def addCurrent(self, channel_name, g_max, e_rev=None, channel_storage=None):
-        '''
+        """
         Add an ion channel current at this node. ('L' as `channel_name`
         signifies the leak current)
 
@@ -44,13 +44,13 @@ class GreensNode(PhysNode):
         channel_storage: dict of ``::class::neat.channels.ionchannels.IonChannel`` (optional)
             if given, the ``::class::IonChannel`` instance is added to this
             dictionary
-        '''
+        """
         super(GreensNode, self).addCurrent(channel_name, g_max, e_rev=e_rev,
                                            channel_storage=channel_storage)
         self.expansion_points[channel_name] = None
 
     def setExpansionPoint(self, channel_name, statevar='asymptotic', channel_storage=None):
-        '''
+        """
         Set the choice for the state variables of the ion channel around which
         to linearize.
 
@@ -76,7 +76,7 @@ class GreensNode(PhysNode):
         Raises
         ------
         KeyError: if `channel_name` is not in `self.currents`
-        '''
+        """
         if isinstance(statevar, str):
             if statevar == 'asymptotic' or statevar == None:
                 statevar = None
@@ -87,7 +87,7 @@ class GreensNode(PhysNode):
         self.expansion_points[channel_name] = statevar
 
     def calcMembraneImpedance(self, freqs, use_conc=False, channel_storage=None):
-        '''
+        """
         Compute the impedance of the membrane at the node
 
         Parameters
@@ -105,7 +105,7 @@ class GreensNode(PhysNode):
         -------
         `np.ndarray` (``dtype=complex``, ``ndim=1``)
             The membrane impedance
-        '''
+        """
         if use_conc:
             g_m_ions = {conc: np.zeros_like(freqs) for conc in list(self.concmechs.keys())}
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
@@ -152,9 +152,9 @@ class GreensNode(PhysNode):
         self.z_c = self.z_a / self.gamma
 
     def setImpedanceDistal(self):
-        '''
+        """
         Set the boundary condition at the distal end of the segment
-        '''
+        """
         if len(self.child_nodes) == 0:
             self.z_distal = np.infty*np.ones(len(self.z_m)) if self.g_shunt < 1e-10 else \
                             1. / self.g_shunt
@@ -164,9 +164,9 @@ class GreensNode(PhysNode):
                                   self.g_shunt)
 
     def setImpedanceProximal(self):
-        '''
+        """
         Set the boundary condition at the proximal end of the segment
-        '''
+        """
         # child nodes of parent node without the current node
         sister_nodes = copy.copy(self.parent_node.child_nodes[:])
         sister_nodes.remove(self)
@@ -249,7 +249,7 @@ class SomaGreensNode(GreensNode):
 
 
 class GreensTree(PhysTree):
-    '''
+    """
     Class that computes the Green's function in the Fourrier domain of a given
     neuronal morphology (Koch, 1985). This three defines a special
     :class:`SomaGreensNode` as a derived class from :class:`GreensNode` as some
@@ -259,20 +259,20 @@ class GreensTree(PhysTree):
     The calculation proceeds on the computational tree (see docstring of
     :class:`MorphNode`). Thus it makes no sense to look for Green's function
     related quantities in the original tree.
-    '''
+    """
     def __init__(self, file_n=None, types=[1,3,4]):
         super(GreensTree, self).__init__(file_n=file_n, types=types)
         self.freqs = None
 
     def createCorrespondingNode(self, node_index, p3d=None):
-        '''
+        """
         Creates a node with the given index corresponding to the tree class.
 
         Parameters
         ----------
         node_index: `int`
             index of the new node
-        '''
+        """
         if node_index == 1:
             return SomaGreensNode(node_index, p3d)
         else:
@@ -280,7 +280,7 @@ class GreensTree(PhysTree):
 
     @morphtree.computationalTreetypeDecorator
     def setImpedance(self, freqs, use_conc=False, pprint=False):
-        '''
+        """
         Set the boundary impedances for each node in the tree
 
         Parameters
@@ -292,7 +292,7 @@ class GreensTree(PhysTree):
         pprint: bool (default ``False``)
             whether or not to print info on the progression of the algorithm
 
-        '''
+        """
         self.freqs = freqs
         # set the node specific impedances
         for node in self:
@@ -333,7 +333,7 @@ class GreensTree(PhysTree):
 
     @morphtree.computationalTreetypeDecorator
     def calcZF(self, loc1, loc2):
-        '''
+        """
         Computes the transfer impedance between two locations for all frequencies
         in `self.freqs`.
 
@@ -346,7 +346,7 @@ class GreensTree(PhysTree):
         -------
         nd.ndarray (dtype = complex, ndim = 1)
             The transfer impedance as a function of frequency
-        '''
+        """
         # cast to morphlocs
         loc1 = MorphLoc(loc1, self)
         loc2 = MorphLoc(loc2, self)
@@ -382,7 +382,7 @@ class GreensTree(PhysTree):
 
     @morphtree.computationalTreetypeDecorator
     def calcImpedanceMatrix(self, locarg, explicit_method=True):
-        '''
+        """
         Computes the impedance matrix of a given set of locations for each
         frequency stored in `self.freqs`.
 
@@ -399,7 +399,7 @@ class GreensTree(PhysTree):
             the impedance matrix, first dimension corresponds to the
             frequency, second and third dimensions contain the impedance
             matrix at that frequency
-        '''
+        """
         if isinstance(locarg, list):
             locs = [MorphLoc(loc, self) for loc in locarg]
         elif isinstance(locarg, str):

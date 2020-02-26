@@ -8,14 +8,14 @@ import neat.tools.kernelextraction as ke
 
 class TestSOVTree():
     def loadTTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
@@ -23,11 +23,11 @@ class TestSOVTree():
         self.tree.setCompTree()
 
     def loadValidationTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
         5---1---4
-        '''
+        """
         print('>>> loading validation tree <<<')
         fname = 'test_morphologies/sovvalidationtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])

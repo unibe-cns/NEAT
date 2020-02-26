@@ -8,7 +8,7 @@ from neat import MorphTree, MorphNode, MorphLoc
 
 class TestMorphTree():
     def loadTree(self, reinitialize=0):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
@@ -23,7 +23,7 @@ class TestMorphTree():
                 |
                 1
 
-        '''
+        """
         if not hasattr(self, 'tree') or reinitialize:
             print('>>> loading T-tree <<<')
             fname = 'test_morphologies/Ttree.swc'

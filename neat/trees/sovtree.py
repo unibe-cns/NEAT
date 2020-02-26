@@ -149,7 +149,7 @@ class SOVNode(PhysNode):
         self.poles = np.concatenate((p1, poles)).real; self.pmultiplicities = np.concatenate((pm1, pmultiplicities)).real
 
 class SomaSOVNode(SOVNode):
-    '''
+    """
     Subclass of SOVNode to threat the special case of the soma
 
     The following member functions are not supposed to work properly,
@@ -158,7 +158,7 @@ class SomaSOVNode(SOVNode):
         :function:`setMuVals`
         :function:`setQVals`
         :function:`_findLocalPoles`
-    '''
+    """
     def __init__(self, index, p3d=None):
         super(SOVNode, self).__init__(index, p3d)
 
@@ -242,7 +242,7 @@ class SomaSOVNode(SOVNode):
 
 
 class SOVTree(PhysTree):
-    '''
+    """
     Class that computes the separation of variables time scales and spatial
     mode functions for a given morphology and electrical parameter set. Employs
     the algorithm by (Major, 1994). This three defines a special
@@ -252,19 +252,19 @@ class SOVTree(PhysTree):
     The SOV calculation proceeds on the computational tree (see docstring of
     :class:`MorphNode`). Thus it makes no sense to look for sov quantities in the
     original tree.
-    '''
+    """
     def __init__(self, file_n=None, types=[1,3,4]):
         super(SOVTree, self).__init__(file_n=file_n, types=types)
 
     def createCorrespondingNode(self, node_index, p3d=None):
-        '''
+        """
         Creates a node with the given index corresponding to the tree class.
 
         Parameters
         ----------
             node_index: int
                 index of the new node
-        '''
+        """
         if node_index == 1:
             return SomaSOVNode(node_index, p3d=p3d)
         else:
@@ -272,7 +272,7 @@ class SOVTree(PhysTree):
 
     @morphtree.computationalTreetypeDecorator
     def getSOVMatrices(self, locarg):
-        '''
+        """
         returns the alphas, the reciprocals of the mode time scales [1/ms]
         as well as the spatial functions evaluated at ``locs``
 
@@ -289,7 +289,7 @@ class SOVTree(PhysTree):
                 the spatial function associated with each mode, evaluated at
                 each locations. Dimension 0 is number of modes and dimension 1
                 number of locations
-        '''
+        """
         locs = self._parseLocArg(locarg)
         # set up the matrices
         zeros      = self.root.zeros
@@ -319,7 +319,7 @@ class SOVTree(PhysTree):
 
     @morphtree.computationalTreetypeDecorator
     def calcSOVEquations(self, maxspace_freq=500., pprint=False):
-        '''
+        """
         Calculate the timescales and spatial functions of the separation of
         variables approach, using the algorithm by (Major, 1994).
 
@@ -332,7 +332,7 @@ class SOVTree(PhysTree):
             maxspace_freq: float (default is 500)
                 roughly corresponds to the maximal spatial frequency of the
                 smallest time-scale mode
-        '''
+        """
 
         self.tau_0 = np.pi#1.
         for node in self: node.setSOV(tau_0=self.tau_0, channel_storage=self.channel_storage)
@@ -377,7 +377,7 @@ class SOVTree(PhysTree):
 
     def getModeImportance(self, locarg=None, sov_data=None,
                                 importance_type='simple'):
-        '''
+        """
         Gives the overal importance of the SOV modes for a certain set of
         locations
 
@@ -402,7 +402,7 @@ class SOVTree(PhysTree):
             np.ndarray (ndim = 1)
                 the importances associated with each mode for the provided set
                 of locations
-        '''
+        """
         if locarg is not None:
             locs = self._parseLocArg(locarg)
             alphas, gammas = self.getSOVMatrices(locs)
@@ -431,7 +431,7 @@ class SOVTree(PhysTree):
     def getImportantModes(self, locarg=None, sov_data=None,
                                 eps=1e-4, sort_type='timescale',
                                 return_importance=False):
-        '''
+        """
 
         Parameters
         ----------
@@ -460,7 +460,7 @@ class SOVTree(PhysTree):
                 the spatial function associated with each mode, evaluated at
                 each locations. Dimension 0 is number of modes and dimension 1
                 number of locations
-        '''
+        """
         if locarg is not None:
             locs = self._parseLocArg(locarg)
             alphas, gammas = self.getSOVMatrices(locs)
@@ -487,7 +487,7 @@ class SOVTree(PhysTree):
 
     def calcImpedanceMatrix(self, locarg=None, sov_data=None, name=None,
                                   eps=1e-4, mem_limit=500, freqs=None):
-        '''
+        """
         Compute the impedance matrix for a set of locations
 
         Parameters
@@ -518,7 +518,7 @@ class SOVTree(PhysTree):
                 the impedance matrix, steady state if `freqs` is ``None``, the
                 frequency dependent impedance matrix if `freqs` is given, with
                 the frequency dependence at the first dimension
-        '''
+        """
         if locarg is not None:
             locs = self._parseLocArg(locarg)
             alphas, gammas = self.getSOVMatrices(locs)
@@ -556,7 +556,7 @@ class SOVTree(PhysTree):
                         use_hist=False, add_lin_terms=True,
                         improve_input_impedance=False,
                         pprint=False):
-        '''
+        """
         Construct a Neural Evaluation Tree (NET) for this cell
 
         Parameters
@@ -577,7 +577,7 @@ class SOVTree(PhysTree):
 
         Returns
             :class:`NETree`
-        '''
+        """
         # create a set of location at which to evaluate the impedance matrix
         self.distributeLocsUniform(dx=dx, name='net eval')
         # compute the z_mat matrix
@@ -887,7 +887,7 @@ class SOVTree(PhysTree):
         net.setNewLocInds()
 
     def computeLinTerms(self, net, sov_data=None, eps=1e-4):
-        '''
+        """
         Construct linear terms for `net' so that transfer impedance to soma is
         exactly matched
 
@@ -908,7 +908,7 @@ class SOVTree(PhysTree):
         lin_terms: dict of {int: :class:`Kernel`}
             the kernels associated with linear terms of the NET, keys are
             indices of their corresponding location stored inder 'net eval'
-        '''
+        """
         if sov_data != None:
             alphas = sov_data[0]
             gammas = sov_data[1]

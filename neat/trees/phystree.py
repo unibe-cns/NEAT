@@ -29,7 +29,7 @@ class PhysNode(MorphNode):
         self.e_eq = e_eq
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
-        '''
+        """
         Set the physiological parameters of the current
 
         Parameters
@@ -40,13 +40,13 @@ class PhysNode(MorphNode):
             the axial current (MOhm*cm)
         g_shunt: float
             A point-like shunt, located at x=1 on the node. Defaults to 0.
-        '''
+        """
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt
 
     def addCurrent(self, channel_name, g_max, e_rev=None, channel_storage=None):
-        '''
+        """
         Add an ion channel current at this node. ('L' as `channel_name`
         signifies the leak current)
 
@@ -58,7 +58,7 @@ class PhysNode(MorphNode):
             the conductance of the current (uS/cm^2)
         e_rev: float
             the reversal potential of the current (mV)
-        '''
+        """
         if e_rev is None:
             e_rev = channelcollection.E_REV_DICT[channel_name]
         self.currents[channel_name] = (g_max, e_rev)
@@ -69,7 +69,7 @@ class PhysNode(MorphNode):
                 eval('channelcollection.' + channel_name + '()')
 
     def addConcMech(self, ion, params={}):
-        '''
+        """
         Add a concentration mechanism at this node.
 
         Parameters
@@ -78,7 +78,7 @@ class PhysNode(MorphNode):
             the ion the mechanism is for
         params: dict
             parameters for the concentration mechanism (only used for NEURON model)
-        '''
+        """
         if set(params.keys()) == {'gamma', 'tau'}:
             self.concmechs[ion] = concmechs.ExpConcMech(ion,
                                         params['tau'], params['gamma'])
@@ -87,7 +87,7 @@ class PhysNode(MorphNode):
                           'mechanism, no concentration mechanism has been added', UserWarning)
 
     def getCurrent(self, channel_name, channel_storage=None):
-        '''
+        """
         Returns an ``::class::neat.channels.ionchannels.IonChannel`` object. If
         `channel_storage` is given,
 
@@ -98,7 +98,7 @@ class PhysNode(MorphNode):
         channel_storage: dict of ionchannels (optional)
             keys are the names of the ion channels, and values the channel
             instances
-        '''
+        """
         if channel_storage is not None:
             try:
                 return channel_storage[channel_name]
@@ -110,14 +110,14 @@ class PhysNode(MorphNode):
             return eval('channelcollection.' + channel_name + '()')
 
     def setEEq(self, e_eq):
-        '''
+        """
         Set the equilibrium potential at the node.
 
         Parameters
         ----------
         e_eq: float
             the equilibrium potential (mV)
-        '''
+        """
         self.e_eq = e_eq
 
     def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., channel_storage=None):
@@ -145,7 +145,7 @@ class PhysNode(MorphNode):
         self.e_eq = e_eq_target
 
     def getGTot(self, v=None, channel_storage=None):
-        '''
+        """
         Get the total conductance of the membrane at a steady state given voltage,
         if nothing is given, the equilibrium potential is used to compute membrane
         conductance.
@@ -159,7 +159,7 @@ class PhysNode(MorphNode):
         -------
             float
                 the total conductance of the membrane (uS / cm^2)
-        '''
+        """
         v = self.e_eq if v is None else v
         g_tot = self.currents['L'][0]
         for channel_name in set(self.currents.keys()) - set('L'):
@@ -207,19 +207,19 @@ class PhysTree(MorphTree):
 
     def createCorrespondingNode(self, node_index, p3d=None,
                                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
-        '''
+        """
         Creates a node with the given index corresponding to the tree class.
 
         Parameters
         ----------
             node_index: int
                 index of the new node
-        '''
+        """
         return PhysNode(node_index, p3d=p3d)
 
     @morphtree.originalTreetypeDecorator
     def asPassiveMembrane(self, node_arg=None):
-        '''
+        """
         Makes the membrane act as a passive membrane (for the nodes in
         ``node_arg``), channels are assumed to add a conductance of
         g_max * p_open to the membrane conductance, where p_open for each node
@@ -231,13 +231,13 @@ class PhysTree(MorphTree):
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None. The nodes for which the membrane is set to
                 passive
-        '''
+        """
         for node in self._convertNodeArgToNodes(node_arg):
             node.asPassiveMembrane(channel_storage=self.channel_storage)
 
     @morphtree.originalTreetypeDecorator
     def setEEq(self, e_eq):
-        '''
+        """
         Set the equilibrium potentials throughout the tree. Can be iterable,
         than the `len(e_eq)` is assumed to be the same as `len(self)`
 
@@ -245,14 +245,14 @@ class PhysTree(MorphTree):
         ----------
         e_eq: float or iterable of floats
             The equilibrium potentials
-        '''
+        """
         if not hasattr(e_eq, '__iter__'):
             e_eq = e_eq * np.ones(len(self))
         for e, node in zip(e_eq, self): node.setEEq(e)
 
     @morphtree.originalTreetypeDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
-        '''
+        """
         Set specifice membrane capacitance, axial resistance and (optionally)
         static point-like shunt conductances in the tree
 
@@ -269,7 +269,7 @@ class PhysTree(MorphTree):
         node_arg: optional
             see documentation of :func:`MorphTree._convertNodeArgToNodes`.
             Defaults to None
-        '''
+        """
         for node in self._convertNodeArgToNodes(node_arg):
             # get the membrane capacitance
             if isinstance(c_m_distr, float):
@@ -311,7 +311,7 @@ class PhysTree(MorphTree):
 
     @morphtree.originalTreetypeDecorator
     def addCurrent(self, channel_name, g_max_distr, e_rev=None, node_arg=None):
-        '''
+        """
         Adds a channel to the morphology.
 
         Parameters
@@ -328,7 +328,7 @@ class PhysTree(MorphTree):
             node_arg: optional
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None
-        '''
+        """
         # add the ion channel to the nodes
         for node in self._convertNodeArgToNodes(node_arg):
             # get the ion channel conductance
@@ -347,7 +347,7 @@ class PhysTree(MorphTree):
 
     @morphtree.originalTreetypeDecorator
     def getChannelsInTree(self, store=False):
-        '''
+        """
         Returns list of strings of all channel names in the tree
 
         Parameters
@@ -360,7 +360,7 @@ class PhysTree(MorphTree):
         -------
         list of string
             the channel names
-        '''
+        """
         channel_names = list(set([c_name for node in self for c_name in node.currents if c_name != 'L']))
         if store:
             for c_name in channel_names:
@@ -369,7 +369,7 @@ class PhysTree(MorphTree):
 
     @morphtree.originalTreetypeDecorator
     def addConcMech(self, ion, params={}, node_arg=None):
-        '''
+        """
         Add a concentration mechanism to the tree
 
         Parameters
@@ -381,12 +381,12 @@ class PhysTree(MorphTree):
         node_arg:
             see documentation of :func:`MorphTree._convertNodeArgToNodes`.
             Defaults to None
-        '''
+        """
         for node in self._convertNodeArgToNodes(node_arg):
             node.addConcMech(ion, params=params)
 
     def fitLeakCurrent(self, e_eq_target=-75., tau_m_target=10., node_arg=None):
-        '''
+        """
         Fits the leak current to fix equilibrium potential and membrane time-
         scale.
 
@@ -399,7 +399,7 @@ class PhysTree(MorphTree):
             node_arg:
                 see documentation of :func:`MorphTree._convertNodeArgToNodes`.
                 Defaults to None
-        '''
+        """
         assert tau_m_target > 0.
         for node in self._convertNodeArgToNodes(node_arg):
             node.fitLeakCurrent(e_eq_target=e_eq_target, tau_m_target=tau_m_target,

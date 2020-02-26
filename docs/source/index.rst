@@ -10,7 +10,9 @@ Welcome to NEAT (NEural Analysis Toolkit)'s documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   neat.channels.rst
+   neat.tools.rst
+   neat.trees.rst
 
 Indices and tables
 ==================

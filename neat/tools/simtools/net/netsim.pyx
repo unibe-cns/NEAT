@@ -155,21 +155,21 @@ cdef class NETSim:
                                     &alphas[0,0], &gammas[0,0], alphas.shape[0])
 
     def setVNodeFromVNode(self, v_node):
-        '''
+        """
         Set the node voltage
 
         Parameters
         ----------
         v_loc : ndarray (`ndim` = 1, `size` = ``n_node``)
             node voltage
-        '''
+        """
         if v_node.shape[0] != self.n_node:
             raise ValueError('Input has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_node
         self.net_ptr.setVNodeFromVNode(&vc_arr[0], vc_arr.shape[0])
 
     def setVNodeFromVLoc(self, v_loc):
-        '''
+        """
         Set the node voltage starting from the location voltage array. This
         transformation is not unique. The implementation chosen here is so that
         nodes which integrate new locations receive all of that locations
@@ -179,57 +179,57 @@ cdef class NETSim:
         ----------
         v_loc : ndarray (`ndim` = 1, `size` = ``n_loc``)
             location voltage
-        '''
+        """
         if v_loc.shape[0] != self.n_loc:
             raise ValueError('Input has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_loc
         self.net_ptr.setVNodeFromVLoc(&vc_arr[0], vc_arr.shape[0])
 
     def getVLoc(self):
-        '''
+        """
         Returns the location voltages
 
         Returns
         -------
         numpy.ndarray (`ndim` = 1, `size` = ``n_loc``)
-        '''
+        """
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = np.zeros((self.n_loc,), dtype=float)
         self.net_ptr.addVLocToArr(&vc_arr[0], vc_arr.shape[0])
         return vc_arr
 
     def addVLocToArr(self, v_arr):
-        '''
+        """
         Add the location voltages to the input array
 
         Parameters
         ----------
         v_arr : ndarray (`ndim` = 1, `size` = ``n_loc``)
-        '''
+        """
         if v_arr.shape[0] != self.n_loc:
             raise ValueError('Input has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
         self.net_ptr.addVLocToArr(&vc_arr[0], vc_arr.shape[0])
 
     def getVNode(self):
-        '''
+        """
         Returns the NET node voltages
 
         Returns
         -------
         numpy.ndarray (`ndim` = 1, `size` = ``n_node``)
-        '''
+        """
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = np.zeros((self.n_node,), dtype=float)
         self.net_ptr.addVNodeToArr(&vc_arr[0], vc_arr.shape[0])
         return vc_arr
 
     def addVNodeToArr(self, v_arr):
-        '''
+        """
         Add the NET node voltages to the input array
 
         Parameters
         ----------
         v_arr : ndarray (`ndim` = 1, `size` = ``n_node``)
-        '''
+        """
         if v_arr.shape[0] != self.n_node:
             raise ValueError('Input array has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
@@ -237,7 +237,7 @@ cdef class NETSim:
 
     def addChannel(self, channel_name, loc_index, g_max, e_rev=None,
                          instantaneous=False, v_const={}):
-        '''
+        """
         Add an ion channel to the NET model
 
         Parameters
@@ -259,7 +259,7 @@ cdef class NETSim:
             the Newton iteration. If the voltage value exceeds 1000 mV or is not
             provided, state variable activations are computed based on actual
             voltage during Newton iteration
-        '''
+        """
         if e_rev is None: e_rev = channelcollection.E_REV_DICT[channel_name]
         cdef string cname = channel_name.encode('UTF-8')
         # voltage values
@@ -273,7 +273,7 @@ cdef class NETSim:
                                              instantaneous, &vs_arr[0], vs_arr.shape[0])
 
     def addSynapse(self, loc_index, synarg, g_max=0.001, nmda_ratio=1.6):
-        '''
+        """
         Add a synapse to the NET model
 
         Parameters
@@ -286,7 +286,7 @@ cdef class NETSim:
             for `dict`, contains either three entries ('e_r' (reversal potential),
                 'tau_r' (rise time), 'tau_d' (decay time)) or two entries ('e_r'
                 (reversal potential), 'tau' (decay time))
-        '''
+        """
         cdef np.ndarray[np.double_t, ndim=1] tau_arr
         if loc_index < 0 or loc_index >= self.n_loc:
             raise IndexError('`loc_index` out of range')
@@ -373,7 +373,7 @@ cdef class NETSim:
                                                self.syn_map[index]['syn_index_at_loc'])
 
     def removeSynapseFromLoc(self, loc_index, syn_index):
-        '''
+        """
         Remove synapse at location ``loc_index``, and at position ``syn_index`` in
         the synapse array of that location
 
@@ -383,19 +383,19 @@ cdef class NETSim:
             index of the synapse location
         syn_index : int
             index of the synapse
-        '''
+        """
         index = self._getSynListIndex(loc_index, syn_index)
         self.removeSynapse(index)
 
     def removeSynapse(self, index):
-        '''
+        """
         Remove synapse at position ``index`` in synapse stack
 
         Parameters
         ----------
         index : int
             index of the synapse
-        '''
+        """
         if not isinstance(index, int):
             raise ValueError('Expected int')
         elif index < 0 or index > len(self.syn_map_py):
@@ -409,7 +409,7 @@ cdef class NETSim:
         del self.spike_times_py[index]
 
     def _constructInput(self, v_arr, g_syn):
-        '''
+        """
         constructs the NET solver input for the given conductance and voltage
 
         Parameters
@@ -419,7 +419,7 @@ cdef class NETSim:
             conductances at the corresponding location
         v_arr : np.ndarray (`ndim` = 1)
             the location voltage
-        '''
+        """
         if v_arr.shape[0] != self.n_loc:
             raise ValueError('`v_arr` has incorrect size')
         if len(g_syn) != self.n_loc:
@@ -437,7 +437,7 @@ cdef class NETSim:
             self.net_ptr.constructInputChan1Loc(ii, v_a)
 
     def recastInput(self, g_syn):
-        '''
+        """
         executes the Newton iteration to find the steady state location voltage
 
         Parameters
@@ -452,7 +452,7 @@ cdef class NETSim:
         -------
         list of np.ndarray (`ndim`=1)
 
-        '''
+        """
         # recast input in other form
         if not hasattr(g_syn[0], '__iter__'):
             g_syn_ = g_syn
@@ -489,7 +489,7 @@ cdef class NETSim:
                            v_eps=.1, n_max=100,
                            v_0=None, v_alt=None,
                            n_iter=0):
-        '''
+        """
         executes the Newton iteration to find the steady state location voltage
 
         Parameters
@@ -515,7 +515,7 @@ cdef class NETSim:
         -------
         np.ndarray (`ndim` = 1)
             the location voltage
-        '''
+        """
         # check if NET simulator is in correct integration mode
         if self.mode != 0:
             self.initialize(mode=0)
@@ -551,7 +551,7 @@ cdef class NETSim:
         return v_new
 
     def setSpikeTimesFromLoc(self, loc_index, syn_index, spike_times):
-        '''
+        """
         Set spike times for a synapse indexed by it's location ``loc_index`` and
         position ``syn_index`` at that location
 
@@ -563,12 +563,12 @@ cdef class NETSim:
             index of the synapse
         spike_times : iterable
             iterable collection of spike times. Needs to be ordered
-        '''
+        """
         index = self._getSynListIndex(loc_index, syn_index)
         self.setSpikeTimes(index, spike_times)
 
     def setSpikeTimes(self, index, spike_times):
-        '''
+        """
         Set spike times for a synapse indexed by it's position in the synapse
         stack
 
@@ -579,7 +579,7 @@ cdef class NETSim:
         spike_times : iterable
             iterable collection of spike times. Needs to be ordered. Can be
             empty.
-        '''
+        """
         if not isinstance(index, int):
             raise ValueError('Expected int')
         elif index < 0 or index > len(self.syn_map_py):
@@ -588,7 +588,7 @@ cdef class NETSim:
 
     def runSim(self, double tmax, double dt, int step_skip=1,
                     bool rec_v_node=False, list rec_g_syn_inds=[], bool pprint=False):
-        '''
+        """
         Run the simulation using the CNET.
 
         Parameters
@@ -622,7 +622,7 @@ cdef class NETSim:
             'g_syn' : np.ndarray (ndim = 2, only if ``rec_g_syn_inds`` is not empty)
                 the synaptic conductances, dim 1 corresponds to indices in
                 ``rec_g_syn_inds`` and dim 2 is the simulation time
-        '''
+        """
         if dt < 0: raise ValueError('time step has to be positive')
         if tmax < dt: raise ValueError('maximum time be larger than time step')
         cdef int k_max = int(tmax / dt)

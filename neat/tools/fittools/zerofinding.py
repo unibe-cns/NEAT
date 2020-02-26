@@ -49,7 +49,7 @@ class monicPolynomial(npol.Polynomial):
 
 
 def pf_is_left_vec(p1, p2, point):
-    '''
+    """
     Tests if a point is Left|On|Right of the i'th trough the points 
     in p1[i,:] and p2[i,:], for all i.
 
@@ -65,12 +65,12 @@ def pf_is_left_vec(p1, p2, point):
             >0 for point left of the line through p1[i,:] and p2[i,:]
             =0 for point on the line
             <0 for point right of the line
-    '''
+    """
     return (p2[:,0]-p1[:,0]) * (point[1]-p1[:,1]) - (point[0]-p1[:,0]) * (p2[:,1]-p1[:,1])
 
 
 def pf_winding_number(point, poly):
-    '''
+    """
     Winding number test for a point in a polygon.
     (Franklin, 2000), adapted from Maciej Kalisiak <mac@dgp.toronto.edu>
 
@@ -82,7 +82,7 @@ def pf_winding_number(point, poly):
     
     Output: 
         wn: int, the winding number (=0 only if point is outside the polygon)
-    '''
+    """
     wn = 0
     # up intersections
     ind = np.where( np.logical_and( poly[:-1,1] <= point[1], poly[1:,1] > point[1] ) )[0]
@@ -128,7 +128,7 @@ class contour(object):
         self.minimag = minimag; self.maximag = maximag
 
     def construct_polygon(self):
-        ''' construct polygon from curves '''
+        """ construct polygon from curves """
         if 'polygon' not in self.__dict__:
             if self.make_arrays:
                 polygon = np.concatenate(self.curve_arrs)
@@ -250,10 +250,10 @@ class poleFinder:
             self.zeros = np.array([])
 
     def add_secondary_contour(self, contour):
-        '''
+        """
         assumed to entirely inside or entirely outside the main contour, 
         and non-overlapping with the other inner contours
-        '''
+        """
         if self.make_arrays:
             contour.construct_arrays()
             contour.store_fun_vals(lambda x: self.dfun(x)/self.fun(x))
@@ -304,7 +304,7 @@ class poleFinder:
         return G, G1
 
     def contour_integral(self, fun=None, contour=None, compute_maxpsum=False):
-        '''
+        """
         Computes the contour integral over the contour formed by self.curves
 
         Input:
@@ -317,7 +317,7 @@ class poleFinder:
         Output:
             - psum: complex, the integral value
             - maxpsum: float, the maximum partial sum
-        '''
+        """
         if self.make_arrays:
             if contour == None:
                 contour = self.contour
@@ -365,9 +365,9 @@ class poleFinder:
             return psum
 
     def points_within_contour(self, points):
-        '''
+        """
         check if all points in points lie within the contour
-        '''
+        """
         for point in points:
             if point.real < self.contour.minreal or point.real > self.contour.maxreal:
                 return False
@@ -384,10 +384,10 @@ class poleFinder:
         return True
 
     def test_contour(self, eps=1e-5, pprint=False):
-        '''
+        """
         Test if the contour integration on this contour is inaccurate (i.e. deviates
         from n for n in Z by more than eps). 
-        '''
+        """
         pol_unity = monicPolynomial([])
         p_unity = pol_unity.f_polynomial()
         residue = self.inner_prod(p_unity, p_unity)
@@ -399,11 +399,11 @@ class poleFinder:
         return accuracy < eps
 
     def find_zeros(self, pprint=False):
-        '''
+        """
         Find the zeros and poles of a complex function (C->C) inside a closed curve.
 
         input:
-        '''
+        """
         # total multiplicity of zeros (number of zeros * order)
         pol_unity = monicPolynomial([])
         p_unity = pol_unity.f_polynomial()
@@ -491,10 +491,10 @@ class poleFinder:
         return zeros[inds_], (n-len(np.where(nu == 0)[0]), nu[inds_], sane)
 
     def find_real_zeros_recursively(self, realtol=1e-4, minradius=1., depth=0, maxdepth=10, contourparams_orig=None, pprint=False):
-        '''
+        """
         Searches for the zeros of a real function by using circular contours with a center on the real axis.
         If the starting contour is not accurate enough, it is split up in two equal parts.
-        '''
+        """
         # check if contour is circular and has real center
         assert isinstance(self.contour, circularContour)
         assert np.abs(self.contour.center.imag) < 1e-10*self.contour.radius
@@ -547,7 +547,7 @@ class poleFinder:
         return zeros
 
     def find_zeros_and_poles_(self, eps_reg=1e-15, eps_stop=1e-10, P_estimate=0, pprint=False):
-        '''
+        """
         Find the zeros and poles of a complex function (C->C) inside a closed curve.
 
         input:
@@ -560,7 +560,7 @@ class poleFinder:
             -t_params: list of arrays, the parametrizations of the contours
 
         !!! Hard to get stopping right !!!
-        '''
+        """
         # total multiplicity of zeros (number of zeros * order)
         pol_unity = monicPolynomial([])
         p_unity = pol_unity.f_polynomial()
@@ -697,10 +697,10 @@ class poleFinder:
 
 
 def find_zeros_on_segment(zeros, zmultiplicities, xmin, xmax, fun, dfun, poles, pmultiplicities, xtree='', pprint=False):
-    '''
+    """
     Auxiliary recursive function to find the zeros on a segment with sufficient accuracy. Decrease the contour radius 
     untill sufficient accuracy is reached
-    '''
+    """
     cc = circularContour(radius=(xmax-xmin)/2., center=(xmax+xmin)/2.+0j, N_eval=1e2)
     PF = poleFinder(fun=fun, dfun=dfun, global_poles={'poles': poles, 'pmultiplicities': pmultiplicities},
                             make_arrays=True, use_known_zeros=False, contour=cc)
