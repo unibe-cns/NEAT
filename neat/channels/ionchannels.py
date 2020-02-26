@@ -159,6 +159,14 @@ class IonChannel(object):
         # set the coefficients for the linear expansion
         self.setLambdaFuncs()
 
+    def __getstate__(self):
+        self.unsetLambdaFuncs()
+        return self.__dict__
+
+    def __setstate__(self, s):
+        self.__dict__ = s
+        self.setLambdaFuncs()
+
     def setLambdaFuncs(self):
         # construct lambda function for state variables
         self.f_statevar = self.lambdifyFStatevar()
@@ -180,6 +188,14 @@ class IonChannel(object):
         # print self.p_open
         # print sol
         self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
+
+    def unsetLambdaFuncs(self):
+        del self.f_statevar
+        del self.f_varinf
+        del self.f_tauinf
+        del self.f_p_open
+        del self.dp_dx, self.df_dv, self.df_dx, self.df_dc
+        del self.f_s00
 
     def _substituteConc(self, expr):
         for sp_c, ion in zip(self.sp_c, self.concentrations):
