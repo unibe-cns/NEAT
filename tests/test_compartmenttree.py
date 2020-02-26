@@ -4,8 +4,10 @@ import matplotlib.pyplot as pl
 import pytest
 import random
 import copy
+
 from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
+from neat.channels import channelcollection
 
 
 class TestCompartmentTree():
@@ -21,7 +23,7 @@ class TestCompartmentTree():
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
         # do SOV calculation
         self.tree.calcSOVEquations()
@@ -107,14 +109,13 @@ class TestCompartmentTree():
         assert np.allclose(z_fit_bifur, z_mat_bifur, atol=0.5)
         assert not np.allclose(z_fit_dist_nobifur, z_mat_dist_nobifur, atol=0.5)
         assert np.allclose(z_fit_dist_bifur, z_mat_dist_bifur, atol=0.5)
-        # TODO: test with capacitances
 
     def testReordering(self):
         self.loadTTree()
         # test reordering
         locs_dist_badorder = [(1., 0.5), (8., 0.5), (4, 1.0)]
         self.tree.storeLocs(locs_dist_badorder, 'badorder')
-        z_mat_badorder = self.tree.calcImpedanceMatrix(name='badorder')
+        z_mat_badorder = self.tree.calcImpedanceMatrix(locarg='badorder')
         ctree_badorder = self.tree.createCompartmentTree('badorder')
         # check if location indices are assigned correctly
         assert [node.loc_ind for node in ctree_badorder] == [0, 2, 1]
@@ -132,18 +133,15 @@ class TestCompartmentTree():
 
     def loadBallAndStick(self):
         self.greens_tree = GreensTree(file_n='test_morphologies/ball_and_stick.swc')
-        for node in self.greens_tree:
-            node.setPhysiology(0.8,      # Cm [uF/cm^2]
-                               100./1e6, # Ra [MOhm*cm]
-                              )
-            node.addCurrent('L',  # leak current
-                            100., # g_max [uS/cm^2]
-                            -75., # e_rev [mV]
-                           )
+        self.greens_tree.setPhysiology(0.8, 100./1e6)
+        self.greens_tree.setLeakCurrent(100., -75.)
         self.greens_tree.setCompTree()
         # set the impedances
-        self.freqs = np.array([0.,1.,10.,100.,1000]) * 1j
+        self.freqs = np.array([0.]) * 1j
         self.greens_tree.setImpedance(self.freqs)
+        # create sov tree
+        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree.calcSOVEquations(maxspace_freq=50.)
 
     def testLocationMapping(self, n_loc=20):
         self.loadBallAndStick()
@@ -166,7 +164,7 @@ class TestCompartmentTree():
         assert np.allclose(locinds_1[1:], locinds_2[1:][::-1])
         assert np.allclose(locinds_1[:-1], locinds_3[1:])
 
-    def testGCFit(self, n_loc=20):
+    def testGSSFit(self, n_loc=20):
         self.loadBallAndStick()
         # define locations
         xvals = np.linspace(0., 1., n_loc+1)[1:]
@@ -175,25 +173,20 @@ class TestCompartmentTree():
         locs_3 = [(4, x) for x in xvals] + [(1, 0.5)]
         locs_4 = random.sample(locs_1, k=len(locs_1))
         # calculate impedance matrices
-        z_mat_1 = self.greens_tree.calcImpedanceMatrix(locs_1)
-        z_mat_2 = self.greens_tree.calcImpedanceMatrix(locs_2)
-        z_mat_3 = self.greens_tree.calcImpedanceMatrix(locs_3)
-        z_mat_4 = self.greens_tree.calcImpedanceMatrix(locs_4)
+        z_mat_1 = self.greens_tree.calcImpedanceMatrix(locs_1)[0].real
+        z_mat_2 = self.greens_tree.calcImpedanceMatrix(locs_2)[0].real
+        z_mat_3 = self.greens_tree.calcImpedanceMatrix(locs_3)[0].real
+        z_mat_4 = self.greens_tree.calcImpedanceMatrix(locs_4)[0].real
         # create compartment trees
         ctree_1 = self.greens_tree.createCompartmentTree(locs_1)
         ctree_2 = self.greens_tree.createCompartmentTree(locs_2)
         ctree_3 = self.greens_tree.createCompartmentTree(locs_3)
         ctree_4 = self.greens_tree.createCompartmentTree(locs_4)
         # fit g_m and g_c
-        ctree_1.computeGMC(z_mat_1[0,:,:], channel_names=['L'])
-        ctree_2.computeGMC(z_mat_2[0,:,:], channel_names=['L'])
-        ctree_3.computeGMC(z_mat_3[0,:,:], channel_names=['L'])
-        ctree_4.computeGMC(z_mat_4[0,:,:], channel_names=['L'])
-        # fit c_m
-        ctree_1.computeC(self.freqs, z_mat_1)
-        ctree_2.computeC(self.freqs, z_mat_2)
-        ctree_3.computeC(self.freqs, z_mat_3)
-        ctree_4.computeC(self.freqs, z_mat_4)
+        ctree_1.computeGMC(z_mat_1, channel_names=['L'])
+        ctree_2.computeGMC(z_mat_2, channel_names=['L'])
+        ctree_3.computeGMC(z_mat_3, channel_names=['L'])
+        ctree_4.computeGMC(z_mat_4, channel_names=['L'])
         # compare both models
         assert str(ctree_1) == str(ctree_2)
         assert str(ctree_1) == str(ctree_3)
@@ -203,629 +196,324 @@ class TestCompartmentTree():
         z_fit_2 = ctree_2.calcImpedanceMatrix(self.freqs)
         z_fit_3 = ctree_3.calcImpedanceMatrix(self.freqs)
         z_fit_4 = ctree_4.calcImpedanceMatrix(self.freqs)
-        assert np.allclose(z_fit_1, z_mat_1, atol=0.1)
-        assert np.allclose(z_fit_2, z_mat_2, atol=0.1)
-        assert np.allclose(z_fit_3, z_mat_3, atol=0.1)
-        assert np.allclose(z_fit_4, z_mat_4, atol=0.1)
-        assert np.allclose(z_fit_1, ctree_2.calcImpedanceMatrix(self.freqs, indexing='tree'))
-        assert np.allclose(z_fit_1, ctree_3.calcImpedanceMatrix(self.freqs, indexing='tree'))
-        assert np.allclose(z_fit_1, ctree_4.calcImpedanceMatrix(self.freqs, indexing='tree'))
+        assert np.allclose(z_fit_1, z_mat_1, atol=1e-8)
+        assert np.allclose(z_fit_2, z_mat_2, atol=1e-8)
+        assert np.allclose(z_fit_3, z_mat_3, atol=1e-8)
+        assert np.allclose(z_fit_4, z_mat_4, atol=1e-8)
+        assert np.allclose(z_fit_1, ctree_2.calcImpedanceMatrix(indexing='tree'))
+        assert np.allclose(z_fit_1, ctree_3.calcImpedanceMatrix(indexing='tree'))
+        assert np.allclose(z_fit_1, ctree_4.calcImpedanceMatrix(indexing='tree'))
 
-    def load(self, morph_n='ball_and_stick.swc', channel=None):
-        self.greens_tree = GreensTree(file_n='test_morphologies/' + morph_n)
-        for node in self.greens_tree:
-            node.setPhysiology(1.,      # Cm [uF/cm^2]
-                               100./1e6, # Ra [MOhm*cm]
-                              )
-            node.addCurrent('L',  # leak current
-                            100., # g_max [uS/cm^2]
-                            -75., # e_rev [mV]
-                           )
-        self.greens_tree[1].addCurrent('L',      0.0000344 *1e6,   e_rev=-90., channel_storage=self.greens_tree.channel_storage)
-        self.greens_tree.addCurrent('L',       0.0000447*1e6, e_rev=-90., node_arg='apical')
-        self.greens_tree_pas = copy.deepcopy(self.greens_tree)
-        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
-        # soma ion channels [uS/cm^2]
-        if channel == 'Na_Ta':
-            self.greens_tree[1].addCurrent('Na_Ta',  1.71      *1e6,   e_rev=50.,  channel_storage=self.greens_tree.channel_storage)
-            self.greens_tree.addCurrent('Na_Ta',   0.0211   *1e6, e_rev=50.,  node_arg='apical')
-            # self.greens_tree[1].addCurrent('Na_Ta',  0.      *1e6,   e_rev=50.,  channel_storage=self.greens_tree.channel_storage)
-            # self.greens_tree.addCurrent('Na_Ta',   0.0   *1e6, e_rev=50.,  node_arg='apical')
-        elif channel == 'Ca_LVA':
-            self.greens_tree[1].addCurrent('Ca_LVA', 0.00432   *1e6,   e_rev=50.,  channel_storage=self.greens_tree.channel_storage)
-            self.greens_tree.addCurrent('Ca_LVA',  lambda x: 0.0198*1e6   if (x>685. and x<885.) else 0.0198*1e-2*1e6,   e_rev=50.,  node_arg='apical')
-        elif channel == 'TestChannel2':
-            self.greens_tree[1].addCurrent('TestChannel2', 0.01*1e6,   e_rev=-23.,  channel_storage=self.greens_tree.channel_storage)
-            self.greens_tree.addCurrent('TestChannel2',  0.001*1e6,   e_rev=-23.,  node_arg='apical')
+    def testCFit(self, n_loc=20):
+        self.loadBallAndStick()
+        # define locations
+        xvals = np.linspace(0., 1., n_loc+1)[1:]
+        locs = [(1, 0.5)] + [(4, x) for x in xvals]
+        # create compartment tree
+        ctree = self.greens_tree.createCompartmentTree(locs)
+        # steady state fit
+        z_mat = self.greens_tree.calcImpedanceMatrix(locs)[0].real
+        ctree.computeGMC(z_mat)
+        # get SOV constants for capacitance fit
+        alphas, phimat, importance = self.sov_tree.getImportantModes(locarg=locs,
+                                            sort_type='importance', eps=1e-12,
+                                            return_importance=True)
+        # fit the capacitances from SOV time-scales
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
+        # check if equal to membrane time scale
+        nds = [self.greens_tree[loc[0]] for loc in locs]
+        taus_orig = np.array([n.c_m / n.currents['L'][0] for n in nds])
+        taus_fit = np.array([n.ca / n.currents['L'][0] for n in ctree])
+        assert np.allclose(taus_orig, taus_fit)
+
+        # fit capacitances with experimental vector fit
+        for n in ctree: n.ca = 1.
+        self.greens_tree.setImpedance(freqs=ke.create_logspace_freqarray())
+        z_mat = self.greens_tree.calcImpedanceMatrix(locs)
+        # run the vector fit
+        ctree.computeCVF(self.greens_tree.freqs, z_mat)
+        taus_fit2 = np.array([n.ca / n.currents['L'][0] for n in ctree])
+        assert np.allclose(taus_orig, taus_fit2, atol=.3)
+
+    def fitBallAndStick(self, n_loc=20):
+        self.loadBallAndStick()
+        # define locations
+        xvals = np.linspace(0., 1., n_loc+1)[1:]
+        np.random.shuffle(xvals)
+        locs = [(1, 0.5)] + [(4, x) for x in xvals]
+        # create compartment tree
+        ctree = self.greens_tree.createCompartmentTree(locs)
+        # steady state fit
+        z_mat = self.greens_tree.calcImpedanceMatrix(locs)[0].real
+        ctree.computeGMC(z_mat)
+        # get SOV constants for capacitance fit
+        alphas, phimat, importance = self.sov_tree.getImportantModes(locarg=locs,
+                                            sort_type='importance', eps=1e-12,
+                                            return_importance=True)
+        # fit the capacitances from SOV time-scales
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
+        self.ctree = ctree
+
+    def testPasFunctionality(self, n_loc=10):
+        self.fitBallAndStick(n_loc=n_loc)
+
+        # test equilibrium potential setting
+        e_eq = -75. + np.random.randint(10, size=n_loc+1)
+        # with tree indexing
+        self.ctree.setEEq(e_eq, indexing='tree')
+        assert np.allclose(e_eq, np.array([n.e_eq for n in self.ctree]))
+        assert np.allclose(e_eq, self.ctree.getEEq(indexing='tree'))
+        assert not np.allclose(e_eq, self.ctree.getEEq(indexing='locs'))
+        # with loc indexing
+        self.ctree.setEEq(e_eq, indexing='locs')
+        assert not np.allclose(e_eq, np.array([n.e_eq for n in self.ctree]))
+        assert not np.allclose(e_eq, self.ctree.getEEq(indexing='tree'))
+        assert np.allclose(e_eq, self.ctree.getEEq(indexing='locs'))
+
+        # conductance matrices
+        gm1 = self.ctree.calcConductanceMatrix(indexing='locs')
+        gm2 = self.ctree.calcSystemMatrix(indexing='locs', channel_names=['L'], with_ca=True, use_conc=False)
+        gm3 = self.ctree.calcSystemMatrix(indexing='locs', channel_names=['L'], with_ca=False, use_conc=False)
+        gm4 = self.ctree.calcSystemMatrix(indexing='locs', channel_names=['L'], with_ca=False, use_conc=True)
+        gm5 = self.ctree.calcSystemMatrix(indexing='locs', with_ca=False, use_conc=True)
+        gm6 = self.ctree.calcSystemMatrix(indexing='tree', with_ca=False, use_conc=True)
+        assert np.allclose(gm1, gm2)
+        assert np.allclose(gm1, gm3)
+        assert np.allclose(gm1, gm4)
+        assert np.allclose(gm1, gm5)
+        assert not np.allclose(gm1, gm6)
+
+        # eigenvalues
+        alphas, phimat, phimat_inv = self.ctree.calcEigenvalues()
+        ca_vec = np.array([1./node.ca for node in self.ctree]) * 1e-3
+        assert np.allclose(np.dot(phimat, phimat_inv), np.diag(ca_vec))
+        assert np.allclose(np.array([n.ca / n.currents['L'][0] for n in self.ctree]),
+                           np.ones(len(self.ctree)) * np.max(1e-3/np.abs(alphas)))
+
+    def loadBall(self):
+        self.greens_tree = GreensTree(file_n='test_morphologies/ball.swc')
+        # capacitance and axial resistance
+        self.greens_tree.setPhysiology(0.8, 100./1e6)
+        # ion channels
+        k_chan = channelcollection.Kv3_1()
+        self.greens_tree.addCurrent(k_chan, 0.766*1e6, -85.)
+        na_chan = channelcollection.Na_Ta()
+        self.greens_tree.addCurrent(na_chan, 1.71*1e6, 50.)
+        # fit leak current
+        self.greens_tree.fitLeakCurrent(-75., 10.)
+        print(self.greens_tree)
+        # set computational tree
         self.greens_tree.setCompTree()
-        self.greens_tree.treetype = 'computational'
-        self.greens_tree_pas.setCompTree()
-        self.sov_tree.setCompTree()
         # set the impedances
-        self.freqs = np.array([0.,1.,10.,100.,1000]) * 1j
-        # self.freqs = np.array([0.]) * 1j
+        self.freqs = np.array([0.])
         self.greens_tree.setImpedance(self.freqs)
-        # compute SOV factorisation
-        self.sov_tree.calcSOVEquations(pprint=True)
+        # create sov tree
+        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree.calcSOVEquations(maxspace_freq=100.)
 
-    def loadSOV(self):
-        self.sov_tree = self.greens_tree_pas.__copy__(new_tree=SOVTree())
-        # set the computational tree
-        sov_tree.setCompTree(eps=1.)
-        # compute SOV factorisation
-        sov_tree.calcSOVEquations(pprint=True)
-
-    def testGChanFitSteadyState(self, n_loc=3, morph_name='ball_and_stick_long.swc'):
-        t_max, dt = 500., 0.1
-        channel_name = 'Ca_LVA'
-        self.load(morph_n=morph_name, channel=channel_name)
-        # define locations
-        # locs = [(1.,0.5)]
-        xvals = np.linspace(0., 1., n_loc+1)[1:]
-        locs = [(1, 0.5)] + [(4, x) for x in xvals]
-        self.greens_tree.storeLocs(locs, name='locs')
-        # input current amplitudes
-        # levels = [0.05, 0.1]
-        levels = [0.05, 0.1, 0.3]
-        # levels = [0.05]
-        from neatneuron import neuronmodel
-        i_in = np.zeros((len(locs),len(locs)*len(levels)))
-        v_end = np.zeros((len(locs),len(locs)*len(levels)))
-        p_open = np.zeros((len(locs),len(locs)*len(levels)))
-        for ii, loc in enumerate(locs):
-            for jj, i_amp in enumerate(levels):
-                i_in[ii, len(levels)*ii+jj] = i_amp
-                # temporary, should be replaced by native neat function
-                sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-                sim_tree.initModel(t_calibrate=500., factor_lambda=10.)
-                sim_tree.addIClamp(loc, i_amp, 0., 500.)
-                sim_tree.storeLocs(locs, name='rec locs')
-                # run the simulation
-                res = sim_tree.run(500., record_from_channels=True, record_from_iclamps=True)
-                sim_tree.deleteModel()
-                # store data for fit
-                v_end[:,len(levels)*ii+jj] = res['v_m'][:,-2]
-                p_open[:,len(levels)*ii+jj] = res['chan'][channel_name]['p_open'][:,-2]
-
-        # print p_open
-
-        # print 'i_clamp amplitude =', res['i_clamp'][:,-1]
-
-        # derivative is zero for steady state
-        dv_end = np.zeros_like(v_end)
-
-        # do fit the passive model
-        self.load(morph_n=morph_name, channel=channel_name)
-        z_mat_pas = self.greens_tree.calcImpedanceMatrix(locs)
-        ctree = self.greens_tree.createCompartmentTree(locs)
-        ctree.computeGMC(z_mat_pas[0,:,:], channel_names=['L'])
-        # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
-
-        # compute c
-        alphas, phimat = self.sov_tree.getImportantModes(locarg=locs, sort_type='importance', eps=1e-9)
-        n_mode = len(locs)
-        alphas = alphas[:n_mode]
-        phimat = phimat[:n_mode, :]
-        importance = self.sovtree.getModeImportance(sov_data=(alphas, phimat), importance_type='simple')
-        ctree.computeC(-alphas*1e3, phimat, weight=importance)
-        # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
-
-        # do the impedance matrix fit for the channel
-        ctree_z = copy.deepcopy(ctree)
-        ctree_z.addCurrent(channel_name)
-        self.load(morph_n=morph_name, channel=channel_name)
-        es = np.array([-75., -55., -35., -5.])
-        z_mats = []
-        for e in es:
-            for node in self.greens_tree: node.setEEq(e)
-            self.greens_tree.setImpedance(self.freqs)
-            z_mats.append(self.greens_tree.calcImpedanceMatrix(locs))
-        ctree_z.computeGM(z_mats, e_eqs=es, freqs=self.freqs, channel_names=[channel_name], other_channel_names=['L'])
-        # create a biophysical simulation model
-        sim_tree_biophys = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree_biophys.initModel(t_calibrate=500., factor_lambda=10.)
-        sim_tree_biophys.storeLocs(locs, 'rec locs')
-        res_biophys = sim_tree_biophys.run(10.)
-        sim_tree_biophys.deleteModel()
-        v_eq = res_biophys['v_m'][:,-1]
-        # fit the equilibirum potentials
-        ctree_z.setEEq(v_eq)
-        ctree_z.fitEL()
-
-        # do the voltage fit for the channel
-        for node in ctree: node.currents['L'][1] = -90.
-        ctree.addCurrent(channel_name)
-        ctree.computeGChan(dv_end, v_end, i_in, p_open_channels={channel_name: p_open})
-
-        print('\n>>> currents old method:')
-        for node in ctree_z:
-            print(node.currents)
-
-        print('\n>>> currents new method:')
-        for node in ctree:
-            print(node.currents)
-
-        self.load(morph_n=morph_name, channel=channel_name)
-        sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        sim_tree.initModel(t_calibrate=500., factor_lambda=10.)
-        sim_tree.addIClamp(locs[-1], 0.1, 0., 500.)
-        sim_tree.storeLocs(locs, name='rec locs')
-        res = sim_tree.run(500.)
-        sim_tree.deleteModel()
-
-        sim_tree_ = neuronmodel.createReducedModel(ctree)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], 0.1, 0., 500.)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res_ = sim_tree_.run(500.)
-        sim_tree_.deleteModel()
-
-        sim_tree_ = neuronmodel.createReducedModel(ctree_z)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], 0.1, 0., 500.)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res__ = sim_tree_.run(500.)
-        sim_tree_.deleteModel()
-
-        pl.figure('v')
-        pl.plot(res['t'], res['v_m'][0], 'b')
-        pl.plot(res['t'], res['v_m'][-1], 'r')
-        pl.plot(res_['t'], res_['v_m'][0], 'b--', lw=1.6)
-        pl.plot(res_['t'], res_['v_m'][-1], 'r--', lw=1.6)
-        pl.plot(res__['t'], res__['v_m'][0], 'b-.', lw=1.6)
-        pl.plot(res__['t'], res__['v_m'][-1], 'r-.', lw=1.6)
-
-        pl.show()
-
-
-    def simulateModel(self, v0, ca, gl, el, channel_name, gchan, echan, iin, dt=0.025):
-        from neat.channels import channelcollection
-        channel = eval('channelcollection.' + channel_name + '()')
-        v_res, ic_res, il_res, ichan_res = np.zeros_like(iin), np.zeros_like(iin), np.zeros_like(iin), np.zeros_like(iin)
-        sv_res = np.zeros((channel.statevars.shape[0], channel.statevars.shape[1], iin.shape[0]))
-        t_res = dt * np.arange(len(iin))
-
-        vv, vv_prev = v0, v0
-        sv = channel.computeVarInf(v0)
-        for kk, tt in enumerate(t_res):
-            sv += dt * (channel.computeVarInf(vv) - sv) / channel.computeTauInf(vv)
-            # compute currents
-            ichan_res[kk] = gchan * channel.computePOpen(vv, statevars=sv) * (echan - vv)
-            il_res[kk] = gl * (el - vv)
-            # compute next voltage
-            vv_aux = vv
-            vv += dt / (ca*1e3) * (iin[kk] + ichan_res[kk] + il_res[kk])
-            v_res[kk] = vv
-            # store capacitive current
-            ic_res[kk] = -ca*1e3 * (vv - vv_prev) / (2*dt)
-            # ic_res[kk] = -ca*1e3 * (vv - vv_aux) / (dt)
-            # update vv_prev
-            vv_prev = vv_aux
-
-        return t_res, v_res, ic_res, il_res, ichan_res
-
-
-    def testGChanFitDynamic(self, n_loc=3, morph_name='ball_and_stick_long.swc'):
-        from neatneuron import neuronmodel
-        t_max, dt = 200., 0.025
-        channel_name = 'Na_Ta'
-        # self.load(morph_n=morph_name, channel=channel_name)
-        # define locations
-        # locs = [(1.,0.5)]
-        xvals = np.linspace(0., 1., n_loc+1)[1:]
-        locs = [(1, 0.5)] + [(4, x) for x in xvals]
-        # locs = [(1, 0.5)] + [(4, .25), (4,.5), (4,.75)]
-        # locs = [(1, 0.5)] + [(4, .5)]
-
-        # do fit the passive model
-        self.load(morph_n=morph_name, channel=None)
-        z_mat_pas = self.greens_tree.calcImpedanceMatrix(locs)
-        ctree = self.greens_tree.createCompartmentTree(locs)
-        ctree.computeGMC(z_mat_pas[0,:,:], channel_names=['L'])
-        # ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
-        # compute c
-        alphas, phimat = self.sov_tree.getImportantModes(locarg=locs, sort_type='importance', eps=1e-9)
-        n_mode = len(locs)
-        alphas = alphas[:n_mode]
-        phimat = phimat[:n_mode, :]
-        importance = self.sov_tree.getModeImportance(sov_data=(alphas, phimat), importance_type='simple')
-        ctree.computeC(-alphas*1e3, phimat, weight=importance)
-
-
-        # set e_eq
-        # create a biophysical simulation model
-        sim_tree_biophys = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree_biophys.initModel(dt=0.1, factor_lambda=10.)
-        sim_tree_biophys.storeLocs(locs, 'rec locs')
-        res_biophys = sim_tree_biophys.run(500.)
-        sim_tree_biophys.deleteModel()
-        e_eqs = np.array([v_m[-1] for v_m in res_biophys['v_m']])
-        ctree.setEEq(e_eqs)
-        print(e_eqs)
-
-        print('\n>>> passive model:')
-        print(ctree)
-
-        # load active model
-        self.load(morph_n=morph_name, channel=channel_name)
-        self.greens_tree.storeLocs(locs, name='locs')
-
-        # new form fit
-        ctree_c2 = copy.deepcopy(ctree)
-        for node in ctree_c2: node.currents['L'][1] = -90.
-        ctree_c2.addCurrent(channel_name)
-
-        # input current amplitudes
-        # levels = [0.05, 0.1]
-        if channel_name == 'Ca_LVA':
-            # levels = [0.05, 0.1]
-            levels = [0.1, 0.3]
-        elif channel_name == 'Na_Ta':
-            # levels = [0.001, 0.05]
-            levels = [0.05, 0.1]
-        else:
-            levels = [0.1, 0.3]
-        # levels = [0.05, 0.1, 0.3]
-        # levels = [0.01, 0.05]
-        t_start, t_dur = 10., 100.
-        # levels = [0.05]
-        reslist = []
-        reslist_pas = []
-        for ii, loc in enumerate(locs):
-            for jj, i_amp in enumerate(levels):
-                sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-                sim_tree.initModel(dt=dt, t_calibrate=500., factor_lambda=10.)
-                sim_tree.addIClamp(loc, i_amp, t_start, t_dur)
-                sim_tree.storeLocs(locs, name='rec locs')
-                # run the simulation
-                res = sim_tree.run(t_max, record_from_iclamps=True, record_from_channels=True, record_v_deriv=True)
-                sim_tree.deleteModel()
-                # rearrange i_clamp data for fit
-                i_mat = np.zeros_like(res['v_m'])
-                i_mat[ii,:] = res['i_clamp'][0,:]
-                res['i_in'] = i_mat
-                # store data for fit
-                reslist.append(res)
-
-                # passive treee
-                sim_tree_pas = self.greens_tree_pas.__copy__(new_tree=neuronmodel.NeuronSimTree())
-                sim_tree_pas.initModel(dt=dt, t_calibrate=500., factor_lambda=10.)
-                sim_tree_pas.addIClamp(loc, i_amp, t_start, t_dur)
-                sim_tree_pas.storeLocs(locs, name='rec locs')
-                # run the simulation
-                res_pas = sim_tree_pas.run(t_max, record_from_iclamps=True, record_from_channels=True, record_v_deriv=True)
-                sim_tree_pas.deleteModel()
-                # store data for fit
-                reslist_pas.append(res_pas)
-
-                # storef fit matrices conv method
-                ctree_c2.computeGChanFromTraceConv(dt, res['v_m'], -i_mat, p_open_channels={channel_name: res['chan'][channel_name]['p_open']}, weight=10.)#, v_pas=res_pas['v_m']+90.)
-        # run fit conv method
-        ctree_c2.runFit()
-
-        # matrices for fit
-        v_mat = np.concatenate([res['v_m'] for res in reslist], axis=1)
-        dv_mat = np.concatenate([res['dv_dt'] for res in reslist], axis=1)
-        i_mat = np.concatenate([-res['i_in'] for res in reslist], axis=1)
-        p_o_mat = np.concatenate([res['chan'][channel_name]['p_open'] for res in reslist], axis=1)
-
-        print(list(res['chan'].keys()))
-
-        import matplotlib.pyplot as pl
-        pl.figure('traces', figsize=(10,5))
-        ax = pl.subplot(121)
-        ax.set_title('p_open')
-        ax.plot(res['t'], res['chan'][channel_name]['p_open'][0], 'b')
-        ax.plot(res['t'], res['chan'][channel_name]['m'][0]**3 * res['chan'][channel_name]['h'][0], 'r--')
-        print('p_o end = ', res['chan'][channel_name]['p_open'][0][-1])
-        print('p_o max = ', np.max(res['chan'][channel_name]['p_open'][0]))
-
-        ax = pl.subplot(122)
-        ax.set_title('v_fit')
-        for ii, v_m in enumerate(v_mat):
-            ax.plot(np.arange(v_mat.shape[1]), v_m, label=str(locs[ii]))
-
-        # do the impedance matrix fit for the channel
-        ctree_z = copy.deepcopy(ctree)
-        ctree_z.addCurrent(channel_name)
-        self.load(morph_n=morph_name, channel=channel_name)
-        es = np.array([-75., -55., -35., -5.])
-        z_mats = []
-        for e in es:
-            for node in self.greens_tree: node.setEEq(e)
-            self.greens_tree.setImpedance(self.freqs)
-            z_mats.append(self.greens_tree.calcImpedanceMatrix(locs))
-        ctree_z.computeGM(z_mats, e_eqs=es, freqs=self.freqs, channel_names=[channel_name], other_channel_names=['L'])
-        # create a biophysical simulation model
-        sim_tree_biophys = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree_biophys.initModel(t_calibrate=500., factor_lambda=10.)
-        sim_tree_biophys.storeLocs(locs, 'rec locs')
-        res_biophys = sim_tree_biophys.run(10.)
-        sim_tree_biophys.deleteModel()
-        v_eq = res_biophys['v_m'][:,-1]
-        # fit the equilibirum potentials
-        ctree_z.setEEq(v_eq)
-        ctree_z.fitEL()
-
-        ctree_combined = copy.deepcopy(ctree)
-        for node in ctree_combined: node.currents['L'][1] = -90.
-        ctree_combined.addCurrent(channel_name)
-        ctree_combined.computeGMCombined(dv_mat, v_mat, i_mat,
-                                 z_mats,
-                                 p_open_channels={channel_name: p_o_mat},
-                                 e_eqs=es, freqs=self.freqs,
-                                 weight_fit1=1., weight_fit2=10.)
-        # fit the equilibirum potentials
-        ctree_combined.setEEq(v_eq)
-        ctree_combined.fitEL()
-
-        # # new form fit
-        # ctree_c2 = copy.deepcopy(ctree)
-        # for node in ctree_c2: node.currents['L'][1] = -90.
-        # ctree_c2.addCurrent(channel_name)
-        # # # add the z_mats
-        # # for z_mat, e_eq in zip(z_mats, es):
-        # #     ctree_c2.computeGChanFromImpedance(z_mat, e_eq, self.freqs,
-        # #                         channel_names=[channel_name], weight=1.)
-        # # ctree_c2.computeGChanFromTrace(dv_mat, v_mat, i_mat, p_open_channels={channel_name: p_o_mat}, weight=10.)
-        # ctree_c2.computeGChanFromTraceConv(dt, v_mat, i_mat, p_open_channels={channel_name: p_o_mat}, weight=10.)
-        # ctree_c2.runFit()
-
-        # do the voltage fit for the channel
-        for node in ctree: node.currents['L'][1] = -90.
-        ctree.addCurrent(channel_name)
-        ctree.computeGChanFromTrace(dv_mat, v_mat, i_mat, p_open_channels={channel_name: p_o_mat}, action='fit')
-
-        print('\n>>> currents original:')
-        for node in self.greens_tree:
-            print(node.currents)
-
-        print('\n>>> currents old method:')
-        for node in ctree_z:
-            print(node.currents)
-
-        print('\n>>> currents trace method currents (deriv):')
-        for node in ctree:
-            print(node.currents)
-
-        print('\n>>> currents trace method voltage (conv)')
-        for node in ctree_c2:
-            print(node.currents)
-
-
-        # print '\n>>> currents combined method:'
-        # for node in ctree_combined:
-        #     print node.currents
-
-        self.load(morph_n=morph_name, channel=channel_name)
-        sim_tree = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        sim_tree.initModel(dt=dt, t_calibrate=500., factor_lambda=10.)
-        sim_tree.addIClamp(locs[-1], levels[-1], t_start, t_dur)
-        sim_tree.storeLocs(locs, name='rec locs')
-        res = sim_tree.run(t_max)
-        sim_tree.deleteModel()
-
-        sim_tree_ = neuronmodel.createReducedModel(ctree_c2)
-        locs_ = ctree_c2.getEquivalentLocs()
-        sim_tree_.initModel(dt=dt, t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], levels[-1], t_start, t_dur)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res_ = sim_tree_.run(t_max)
-        sim_tree_.deleteModel()
-
-        sim_tree_ = neuronmodel.createReducedModel(ctree_z)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(dt=dt, t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], levels[-1], t_start, t_dur)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res_z = sim_tree_.run(t_max)
-        sim_tree_.deleteModel()
-
-        sim_tree_ = neuronmodel.createReducedModel(ctree_combined)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(dt=dt, t_calibrate=500.)
-        sim_tree_.addIClamp(locs_[-1], levels[-1], t_start, t_dur)
-        sim_tree_.storeLocs(locs_, name='rec locs')
-        res_c = sim_tree_.run(t_max)
-        sim_tree_.deleteModel()
-
-
-        import matplotlib.pyplot as pl
-        pl.figure('v')
-        pl.plot(res['t'], res['v_m'][0], c='DarkGrey')
-        pl.plot(res['t'], res['v_m'][-1], c='DarkGrey')
-        pl.plot(res_['t'], res_['v_m'][0], '--', lw=2, c='Teal', label='conv trace fit')
-        pl.plot(res_['t'], res_['v_m'][-1], '--', lw=2, c='DarkOrange')
-        pl.plot(res_z['t'], res_z['v_m'][0], 'b-.', lw=2, label='impedance fit')
-        pl.plot(res_z['t'], res_z['v_m'][-1], 'r-.', lw=2)
-        pl.plot(res_c['t'], res_c['v_m'][0], 'c:', lw=2, label='combined fit')
-        pl.plot(res_c['t'], res_c['v_m'][-1], 'y:', lw=2)
-        pl.legend(loc=0)
-
-        pl.show()
-
-
-    def testGChanFitDynamicComp(self, n_loc=1, morph_name='point_neuron.swc'):
-        from neat.channels import channelcollection
-        t_max, dt = 200., 0.001
-        channel_name = 'Na_Ta'
-        e_rev = channelcollection.E_REV_DICT[channel_name]
-        self.load(morph_n=morph_name)
-        # define locations
-        # locs = [(1.,0.5)]
-        # xvals = np.linspace(0., 1., n_loc+1)[1:]
-        # locs = [(1, 0.5)] + [(4, x) for x in xvals]
-        # locs = [(1, 0.5)] + [(4, .5)]
+    def testChannelFit(self):
+        self.loadBall()
         locs = [(1, 0.5)]
-        self.greens_tree.storeLocs(locs, name='locs')
-
-        # do fit the passive model
-        self.load(morph_n=morph_name, channel=None)
-        z_mat_pas = self.greens_tree.calcImpedanceMatrix(locs)
+        e_eqs = [-75., -55., -35., -15.]
+        # create compartment tree
         ctree = self.greens_tree.createCompartmentTree(locs)
-        ctree.computeGMC(z_mat_pas[0,:,:], channel_names=['L'])
-        ctree.computeC(self.freqs, z_mat_pas, channel_names=['L'])
-        for node in ctree: node.currents['L'][1] = -90.
+        ctree.addCurrent(channelcollection.Na_Ta(), 50.)
+        ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
-        # add the channel
-        for node in ctree:
-            g_l = node.currents['L'][0]
-            node.addCurrent(channel_name, e_rev=e_rev, channel_storage=ctree.channel_storage)
-            node.currents[channel_name][0] = 4.0*np.pi*(self.greens_tree[1].R*1e-4)**2 * 1.71*1e6 # sodium conducance
-            # node.currents[channel_name][0] = 4.0*np.pi*(self.greens_tree[1].R*1e-4)**2 * 0.*1e6 # sodium conducance
+        # create tree with only leak
+        greens_tree_pas = self.greens_tree.__copy__()
+        greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
+        greens_tree_pas.setCompTree()
+        greens_tree_pas.setImpedance(self.freqs)
+        # compute the passive impedance matrix
+        z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
 
-        print('\n>>> model:')
-        print(ctree)
-        print('>>> currents:')
-        for node in ctree:
-            print(node.currents)
+        # create tree with only potassium
+        greens_tree_k = self.greens_tree.__copy__()
+        greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
+                                               if key != 'Na_Ta'}
+        # compute potassium impedance matrices
+        z_mats_k = []
+        for e_eq in e_eqs:
+            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setCompTree()
+            greens_tree_k.setImpedance(self.freqs)
+            z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
-        # locs_comp = [(0,0.5), (1,0.5)]
-        locs_comp = [(0,0.5)]
+        # create tree with only sodium
+        greens_tree_na = self.greens_tree.__copy__()
+        greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
+                                               if key != 'Kv3_1'}
+        # create state variable expansion points
+        svs = []; e_eqs_ = []
+        na_chan = greens_tree_na.channel_storage['Na_Ta']
+        for e_eq1 in e_eqs:
+            e_eqs_.append(e_eq1)
+            sv1 = na_chan.computeVarInf(e_eq1)
+            for e_eq2 in e_eqs:
+                sv2 = na_chan.computeVarInf(e_eq2)
+                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+        # compute sodium impedance matrices
+        z_mats_na = []
+        for ii, sv in enumerate(svs):
+            greens_tree_na.setEEq(e_eqs[ii%len(e_eqs)])
+            greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
+            greens_tree_na.setCompTree()
+            greens_tree_na.setImpedance(self.freqs)
+            z_mats_na.append(greens_tree_na.calcImpedanceMatrix(locs))
 
-        v_test, ic_test, il_test, ichan_test, iin_test = [], [], [], [], []
+        # compute combined impedance matrices
+        z_mats_comb = []
+        for e_eq in e_eqs:
+            self.greens_tree.setEEq(e_eq)
+            self.greens_tree.setCompTree()
+            self.greens_tree.setImpedance(self.freqs)
+            z_mats_comb.append(self.greens_tree.calcImpedanceMatrix(locs))
 
-        # input current amplitudes
-        # levels = [0.05, 0.1]
-        # levels = [0.05, 0.1, 0.3]
-        levels = [0.01, 0.05]
-        t_start, t_dur = 10., 100.
-        # levels = [0.05]
-        from neatneuron import neuronmodel
-        reslist = []
-        for ii, loc in enumerate(locs_comp ):
-            for jj, i_amp in enumerate(levels):
-                # temporary, should be replaced by native neat function
-                sim_tree = neuronmodel.createReducedModel(ctree)
-                sim_tree.initModel(dt=dt, t_calibrate=500.)
-                print(sim_tree)
-                print('capacitance:', sim_tree.sections[0](0.5).cm * sim_tree.sections[0](0.5).area())
-                sim_tree.addIClamp(loc, i_amp, t_start, t_dur)
-                sim_tree.storeLocs(locs_comp, name='rec locs')
-                # run the simulation
-                res = sim_tree.run(t_max, record_from_iclamps=True, record_from_channels=True, record_v_deriv=True)
-                sim_tree.deleteModel()
-                # rearrange i_clamp data for fit
-                i_mat = np.zeros_like(res['v_m'])
-                i_mat[ii,:] = res['i_clamp'][0,:]
-                res['i_in'] = i_mat
-                # store data for fit
-                reslist.append(res)
+        # passive fit
+        ctree.computeGMC(z_mat_pas)
+        # get SOV constants for capacitance fit
+        sov_tree = greens_tree_pas.__copy__(new_tree=SOVTree())
+        sov_tree.setCompTree()
+        sov_tree.calcSOVEquations()
+        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
+                                            sort_type='importance', eps=1e-12,
+                                            return_importance=True)
+        # fit the capacitances from SOV time-scales
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
 
-                # simulate the python model
-                v0 = res['v_m'][0,0]
-                ca = ctree[0].ca
-                gl, el = ctree[0].currents['L']
-                gchan, echan = ctree[0].currents[channel_name]
-                iin = -i_mat[ii,:]
-                t_res, v_res, ic_res, il_res, ichan_res = self.simulateModel(v0, ca, gl, el, channel_name, gchan, echan, iin, dt=dt)
-                iin_test.append(iin)
-                v_test.append(v_res)
-                ic_test.append(ic_res)
-                il_test.append(il_res)
-                ichan_test.append(ichan_res)
+        ctree1 = copy.deepcopy(ctree)
+        ctree2 = copy.deepcopy(ctree)
+        ctree3 = copy.deepcopy(ctree)
+        ctree4 = copy.deepcopy(ctree)
 
-        # as arrays
-        iin_test = np.concatenate([i_r for i_r in iin_test])
-        v_test = np.concatenate([v_r for v_r in v_test])
-        ic_test = np.concatenate([ic_r for ic_r in ic_test])
-        il_test = np.concatenate([il_r for il_r in il_test])
-        ichan_test = np.concatenate([ichan_r for ichan_r in ichan_test])
-        test_res = {'t': np.arange(len(v_test)), 'v': v_test, 'ic': ic_test, 'il': il_test, 'ichan': ichan_test, 'iin': iin_test}
+        # fit paradigm 1 --> separate impedance matrices and separate fits
+        # potassium channel fit
+        for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
+            ctree1.computeGSingleChanFromImpedance('Kv3_1', z_mat_k, e_eq, self.freqs,
+                                                    other_channel_names=['L'])
+        ctree1.runFit()
+        # sodium channel fit
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree1.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, self.freqs,
+                                                    sv=sv, other_channel_names=['L'])
+        ctree1.runFit()
 
+        # fit paradigm 2 --> separate impedance matrices, same fit
+        for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
+            ctree2.computeGSingleChanFromImpedance('Kv3_1', z_mat_k, e_eq, self.freqs,
+                            all_channel_names=['Kv3_1', 'Na_Ta'])
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree2.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, self.freqs, sv=sv,
+                            all_channel_names=['Kv3_1', 'Na_Ta'])
+        ctree2.runFit()
 
-        # matrices for fit
-        v_mat = np.concatenate([res['v_m'] for res in reslist], axis=1)
-        dv_mat = np.concatenate([res['dv_dt'] for res in reslist], axis=1)
-        i_mat = np.concatenate([-res['i_in'] for res in reslist], axis=1)
-        p_o_mat = np.concatenate([res['chan'][channel_name]['p_open'] for res in reslist], axis=1)
+        # fit paradigm 3 --> same impedance matrices
+        for z_mat_comb, e_eq in zip(z_mats_comb, e_eqs):
+            ctree3.computeGChanFromImpedance(['Kv3_1', 'Na_Ta'], z_mat_comb, e_eq, self.freqs)
+        ctree3.runFit()
 
+        # fit paradigm 4 --> fit incrementally
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree4.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, self.freqs, sv=sv)
+        ctree4.runFit()
+        for z_mat_comb, e_eq in zip(z_mats_comb, e_eqs):
+            ctree4.computeGSingleChanFromImpedance('Kv3_1', z_mat_comb, e_eq, self.freqs,
+                                other_channel_names=['Na_Ta', 'L'])
+        ctree4.runFit()
 
-        import matplotlib.pyplot as pl
-        pl.figure('traces', figsize=(10,5))
-        ax = pl.subplot(121)
-        ax.set_title('p_open')
-        ax.plot(res['t'], res['chan'][channel_name]['p_open'][0], 'b')
-        ax.plot(res['t'], res['chan'][channel_name]['m'][0]**3 * res['chan'][channel_name]['h'][0], 'r--')
+        # test if correct
+        keys = ['L', 'Na_Ta', 'Kv3_1']
+        # soma surface (cm) for total conductance calculation
+        a_soma = 4. * np.pi * (self.greens_tree[1].R*1e-4)**2
+        conds = np.array([self.greens_tree[1].currents[key][0]*a_soma for key in keys])
+        # compartment models conductances
+        cconds1 = np.array([ctree1[0].currents[key][0] for key in keys])
+        cconds2 = np.array([ctree2[0].currents[key][0] for key in keys])
+        cconds3 = np.array([ctree3[0].currents[key][0] for key in keys])
+        cconds4 = np.array([ctree4[0].currents[key][0] for key in keys])
+        assert np.allclose(conds, cconds1)
+        assert np.allclose(conds, cconds2)
+        assert np.allclose(conds, cconds3)
+        assert np.allclose(conds, cconds4)
 
-        ax = pl.subplot(122)
-        for ii, v_m in enumerate(v_mat):
-            ax.plot(np.arange(v_mat.shape[1]), v_m, label=str(locs[ii]))
-        ax.plot(np.arange(len(v_test)), v_test, 'r--')
-        ax.set_ylim((-100., 50.))
+        # rename for further testing
+        ctree = ctree1
+        # frequency array
+        ft = ke.FourrierTools(np.linspace(0.,50.,100))
+        freqs = ft.s
+        # compute impedance matrix
+        v_h = -42.
+        # original
+        self.greens_tree.setEEq(v_h)
+        self.greens_tree.setCompTree()
+        self.greens_tree.setImpedance(freqs)
+        z_mat_orig = self.greens_tree.calcImpedanceMatrix([(1.,.5)])
+        # potassium
+        greens_tree_k.setEEq(v_h)
+        greens_tree_k.setCompTree()
+        greens_tree_k.setImpedance(freqs)
+        z_mat_k = greens_tree_k.calcImpedanceMatrix([(1,.5)])
+        # sodium
+        greens_tree_na.removeExpansionPoints()
+        greens_tree_na.setEEq(v_h)
+        greens_tree_na.setCompTree()
+        greens_tree_na.setImpedance(freqs)
+        z_mat_na = greens_tree_na.calcImpedanceMatrix([(1,.5)])
+        # passive
+        greens_tree_pas.setCompTree()
+        greens_tree_pas.setImpedance(freqs)
+        z_mat_pas = greens_tree_pas.calcImpedanceMatrix([(1,.5)])
 
+        # reduced impedance matrices
+        ctree.removeExpansionPoints()
+        ctree.setEEq(v_h)
+        z_mat_fit = ctree.calcImpedanceMatrix(freqs=freqs)
+        z_mat_fit_k = ctree.calcImpedanceMatrix(channel_names=['L', 'Kv3_1'], freqs=freqs)
+        z_mat_fit_na = ctree.calcImpedanceMatrix(channel_names=['L', 'Na_Ta'], freqs=freqs)
+        z_mat_fit_pas = ctree.calcImpedanceMatrix(channel_names=['L'], freqs=freqs)
 
-        # # do the impedance matrix fit for the channel
-        # ctree_z = copy.deepcopy(ctree)
-        # ctree_z.addCurrent(channel_name)
-        # self.load(morph_n=morph_name, channel=channel_name)
-        # es = np.array([-75., -55., -35., -5.])
-        # z_mats = []
-        # for e in es:
-        #     for node in self.greens_tree: node.setEEq(e)
-        #     self.greens_tree.setImpedance(self.freqs)
-        #     z_mats.append(self.greens_tree.calcImpedanceMatrix(locs))
-        # ctree_z.computeGM(z_mats, e_eqs=es, freqs=self.freqs, channel_names=[channel_name], other_channel_names=['L'])
-        # # create a biophysical simulation model
-        # sim_tree_biophys = self.greens_tree.__copy__(new_tree=neuronmodel.NeuronSimTree())
-        # # compute equilibrium potentials
-        # sim_tree_biophys.initModel(t_calibrate=500., factor_lambda=10.)
-        # sim_tree_biophys.storeLocs(locs, 'rec locs')
-        # res_biophys = sim_tree_biophys.run(10.)
-        # sim_tree_biophys.deleteModel()
-        # v_eq = res_biophys['v_m'][:,-1]
-        # # fit the equilibirum potentials
-        # ctree_z.setEEq(v_eq)
-        # ctree_z.fitEL()
+        assert np.allclose(z_mat_orig, z_mat_fit)
+        assert np.allclose(z_mat_k, z_mat_fit_k)
+        assert np.allclose(z_mat_na, z_mat_fit_na)
+        assert np.allclose(z_mat_pas, z_mat_fit_pas)
 
-        # do the voltage fit for the channel
-        ctree_ = copy.deepcopy(ctree)
-        ctree_.addCurrent(channel_name)
-        ctree_.computeGChan(dv_mat, v_mat, i_mat, p_open_channels={channel_name: p_o_mat}, test=test_res)
+        # test total current, conductance
+        sv = svs[-1]
+        p_open = sv[0,0]**3 * sv[0,1]
+        # with p_open given
+        g1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
+        i1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
+        # with expansion point given
+        ctree.setExpansionPoints({'Na_Ta': sv})
+        g2 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        i2 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        # with e_eq given
+        g3 = ctree[0].getGTot(ctree.channel_storage, v=e_eqs[-1], channel_names=['L', 'Na_Ta'])
+        i3 = ctree[0].getGTot(ctree.channel_storage, v=e_eqs[-1], channel_names=['L', 'Na_Ta'])
+        # with e_eq stored
+        ctree.setEEq(e_eqs[-1])
+        g4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        i4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
+        # check if correct
+        assert np.abs(g1 - g2) < 1e-10
+        assert np.abs(g1 - g3) < 1e-10
+        assert np.abs(g1 - g4) < 1e-10
+        assert np.abs(i1 - i2) < 1e-10
+        assert np.abs(i1 - i3) < 1e-10
+        assert np.abs(i1 - i4) < 1e-10
+        # compare current, conductance
+        g_ = ctree[0].getGTot(ctree.channel_storage, channel_names=['Na_Ta'])
+        i_ = ctree[0].getITot(ctree.channel_storage, channel_names=['Na_Ta'])
+        assert np.abs(g_ * (e_eqs[-1] - ctree[0].currents['Na_Ta'][1]) - i_) < 1e-10
 
-        print('\n>>> model fit:')
-        print(ctree_)
-
-        # print '\n>>> currents original:'
-        # for node in self.greens_tree:
-        #     print node.currents
-
-        # print '\n>>> currents old method:'
-        # for node in ctree_z:
-        #     print node.currents
-
-        # print '\n>>> currents new method:'
-        # for node in ctree:
-        #     print node.currents
-
-        sim_tree = neuronmodel.createReducedModel(ctree)
-        sim_tree.initModel(dt=dt, t_calibrate=500., factor_lambda=10.)
-        sim_tree.addIClamp(locs_comp[-1], 0.3, t_start, t_dur)
-        sim_tree.storeLocs(locs_comp, name='rec locs')
-        res = sim_tree.run(t_max)
-        sim_tree.deleteModel()
-
-        sim_tree_ = neuronmodel.createReducedModel(ctree_)
-        locs_ = ctree.getEquivalentLocs()
-        sim_tree_.initModel(dt=dt, t_calibrate=500.)
-        sim_tree_.addIClamp(locs_comp[-1], 0.3, t_start, t_dur)
-        sim_tree_.storeLocs(locs_comp, name='rec locs')
-        res_ = sim_tree_.run(t_max)
-        sim_tree_.deleteModel()
-
-        import matplotlib.pyplot as pl
-        pl.figure('v')
-        pl.plot(res['t'], res['v_m'][0], 'b')
-        pl.plot(res['t'], res['v_m'][-1], 'r')
-        pl.plot(res_['t'], res_['v_m'][0], 'b--', lw=1.6)
-        pl.plot(res_['t'], res_['v_m'][-1], 'r--', lw=1.6)
-
-        pl.show()
+        # test leak fitting
+        self.greens_tree.setEEq(-75.)
+        self.greens_tree.setCompTree()
+        ctree.setEEq(-75.)
+        ctree.removeExpansionPoints()
+        ctree.fitEL()
+        assert np.abs(ctree[0].currents['L'][1] - self.greens_tree[1].currents['L'][1]) < 1e-10
 
 
 class TestCompartmentTreePlotting():
@@ -919,17 +607,20 @@ class TestCompartmentTreePlotting():
 
 
 if __name__ == '__main__':
-    # tcomp = TestCompartmentTree()
-    # tcomp.testTreeDerivation()
+    tcomp = TestCompartmentTree()
+    # tcomp.testTreeDericvation()
     # tcomp.testFitting()
     # tcomp.testReordering()
     # tcomp.testLocationMapping()
-    # tcomp.testGChanFitSteadyState()
+    # tcomp.testGSSFit()
+    # tcomp.testCFit()
+    # tcomp.testPasFunctionality()
+    tcomp.testChannelFit()
 
     # tcomp.testGChanFitDynamic()
     # tcomp.testGChanFitDynamicComp()
 
-    tplot = TestCompartmentTreePlotting()
-    tplot.testPlot(pshow=True)
+    # tplot = TestCompartmentTreePlotting()
+    # tplot.testPlot(pshow=True)
 
 

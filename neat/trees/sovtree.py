@@ -291,13 +291,13 @@ class SOVTree(PhysTree):
                 number of locations
         '''
         locs = self._parseLocArg(locarg)
-        # set up the matrices
-        zeros      = self.root.zeros
-        prefactors = self.root.prefactors
-        alphas     = zeros**2 / (self.tau_0*1e3)
-        gammas     = np.zeros((len(alphas), len(locs)), dtype=complex)
-        # fill the matrix of prefactors
         if len(self) > 1:
+            # set up the matrices
+            zeros      = self.root.zeros
+            prefactors = self.root.prefactors
+            alphas     = zeros**2 / (self.tau_0*1e3)
+            gammas     = np.zeros((len(alphas), len(locs)), dtype=complex)
+            # fill the matrix of prefactors
             for ii, loc in enumerate(locs):
                 if loc['node'] == 1:
                     x = 0.
@@ -312,7 +312,7 @@ class SOVTree(PhysTree):
                    np.sqrt(prefactors*1e3)
         else:
             alphas = np.array([1e-3 / self.root.tau_m])
-            gammas = np.array([[1e-3 / self.root.c_s]])
+            gammas = np.array([[np.sqrt(alphas[0] / self.root.g_s)]])
 
         # return the matrices
         return alphas, gammas
@@ -345,7 +345,8 @@ class SOVTree(PhysTree):
             self._SOVFromRoot(self.root, zeros)
             # clean
             for node in self: node.counter = 0
-
+        else:
+            self[1].setSOV(tau_0=self.tau_0, channel_storage=self.channel_storage)
 
     def _SOVFromLeaf(self, node, leafs, count=0,
                         maxspace_freq=500., pprint=False):
