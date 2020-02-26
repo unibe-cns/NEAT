@@ -21,18 +21,20 @@ from ...tools.simtools.neuron import neuronmodel as neurm
 import dill
 from pathos.multiprocessing import ProcessingPool
 from pathos.threading import ThreadPool
+
 import warnings
+import copy
 
 
 def consecutive(inds):
-    '''
+    """
     split a list of ints into consecutive sublists
-    '''
+    """
     return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
 
 
 def getExpansionPoints(e_hs, channel, only_e_h=False):
-    '''
+    """
     Returns a list of expansion points around which to compute the impedance
     matrix given a set of holding potentials. If the channel has only one state
     variable, the returned expansion points are at the holding potentials, if
@@ -55,7 +57,7 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
         Each entry is a state variable expansion point
     e_hs: list of float
         The holding potentials corresponding to each entry in ``sv_hs``
-    '''
+    """
     e_hs = list(e_hs)
     if channel.statevars.size == 1 or only_e_h:
         sv_hs = [channel.computeVarInf(e_h) for e_h in e_hs]
@@ -82,7 +84,7 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
 
 
 def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
-        '''
+        """
         Set the dendrites to be passive compartments. Channel conductances at
         the resting potential are added to passive membrane conductance.
 
@@ -99,7 +101,7 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
         Returns
         -------
         :class:`neat.PhysTree()`
-        '''
+        """
         dt, t_max = .1, 1.
         # create a biophysical simulation model
         sim_tree = phys_tree.__copy__(new_tree=neurm.NeuronSimTree())
@@ -125,7 +127,7 @@ class FitTreeGF(GreensTree):
         self.setName('')
 
     def setExpansionPointsForFit(self, sv_h, e_h):
-        '''
+        """
         Set the holding potentials and expansion points for the fit
 
         Parameters
@@ -135,24 +137,24 @@ class FitTreeGF(GreensTree):
             the expansion point for each ion channel
         e_h: float
             the holding potential
-        '''
+        """
         for node in self:
             node.setEEq(e_h)
             for c_name, sv in sv_h.items():
                 node.setExpansionPoint(c_name, statevar=sv)
 
     def setName(self, name):
-        '''
+        """
         Set the name under which the tree will be stored
 
         Parameters
         ----------
         name: string
-        '''
+        """
         self.name = name
 
     def setImpedancesInTree(self, many_freqs=False, recompute=False, pprint=False):
-        '''
+        """
         Sets the impedances in the tree.
 
         Parameters
@@ -161,7 +163,7 @@ class FitTreeGF(GreensTree):
             Force the impedances to be recomputed
         pprint: bool (optional, default is ``False``)
             Print info
-        '''
+        """
         if many_freqs:
             freqs = ke.create_logspace_freqarray()
             suffix = 'allfreqs_'
@@ -262,13 +264,13 @@ class FitTreeSOV(SOVTree):
         self.setName('')
 
     def setName(self, name):
-        '''
+        """
         Set the name under which the tree will be stored
 
         Parameters
         ----------
         name: string
-        '''
+        """
         self.name = name
 
     def setSOVInTree(self, recompute=False, pprint=False, maxspace_freq=100.):
@@ -300,7 +302,7 @@ class FitTreeSOV(SOVTree):
 
 
 class CompartmentFitter(object):
-    '''
+    """
     Helper class to streamline fitting reduced compartmental models
 
     Attributes
@@ -315,7 +317,7 @@ class CompartmentFitter(object):
         The holding potentials for which quasi active expansions are computed
     freqs: np.array of float or complex (default is ``np.array([0.])``)
         The frequencies at which impedance matrices are evaluated
-    '''
+    """
 
     def __init__(self, phys_tree,
                        name='dont save', e_hs=np.array([-75., -55., -35., -15.]),
@@ -330,8 +332,8 @@ class CompartmentFitter(object):
         # name to store fit models
         self.name = name
 
-    def setReducedTree(self, loc_arg, extend_w_bifurc=True):
-        '''
+    def setCTree(self, loc_arg, extend_w_bifurc=True):
+        """
         Store an initial ::class::`neat.CompartmentTree`, providing a tree
         structure scaffold for the fit for a given set of locations. The
         locations are also stored on ``self.tree`` under the name 'fit locs'
@@ -345,7 +347,7 @@ class CompartmentFitter(object):
             To extend the compartment locations with all intermediate
             bifurcations (see documentation of
             :func:`MorphTree.extendWithBifurcationLocs`).
-        '''
+        """
         locs = self.tree._parseLocArg(loc_arg)
         if extend_w_bifurc:
             locs = self.tree.extendWithBifurcationLocs(locs)
@@ -357,13 +359,18 @@ class CompartmentFitter(object):
         # create the reduced compartment tree
         self.ctree = self.tree.createCompartmentTree(locs)
         # add currents to compartmental model
-        for c_name in self.channel_names:
-            self.ctree.addCurrent(c_name)
+        for c_name, channel in self.tree.channel_storage.items():
+            e_revs = []
+            for node in self.tree:
+                if c_name in node.currents:
+                    e_revs.append(node.currents[c_name][1])
+            # reversal potential is the same throughout the reduced model
+            self.ctree.addCurrent(copy.deepcopy(channel), np.mean(e_revs))
         # set the equilibirum potentials at fit locations
         self.setEEq()
 
     def createTreeGF(self, channel_names=[]):
-        '''
+        """
         Create a ::class::`FitTreeGF` copy of the old tree, but only with the
         channels in ``channel_names``. Leak 'L' is included in the tree by
         default.
@@ -378,7 +385,7 @@ class CompartmentFitter(object):
         -------
         ::class::`FitTreeGF()`
 
-        '''
+        """
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeGF())
         tree.channel_storage = {}
@@ -406,7 +413,7 @@ class CompartmentFitter(object):
 
     def evalChannel(self, channel_name,
                           recompute=False, pprint=False, parallel=True):
-        '''
+        """
         Evaluate the impedance matrix for the model restricted to a single ion
         channel type.
 
@@ -420,7 +427,11 @@ class CompartmentFitter(object):
             whether to print information
         parallel:  bool (optional, defaults to ``True``)
             whether the models are evaluated in parallel
-        '''
+
+        Return
+        ------
+        fit_mats
+        """
         locs = self.tree.getLocs('fit locs')
         # find the expansion point parameters for the channel
         channel = self.tree.channel_storage[channel_name]
@@ -452,9 +463,9 @@ class CompartmentFitter(object):
         return fit_mats
 
     def _calcFitMatrices(self, fit_tree, locs, recompute, pprint):
-        '''
+        """
         Compute the matrices needed to fit the channel
-        '''
+        """
         e_h = fit_tree.root.e_eq
         c_name = list(fit_tree.channel_storage.keys())[0]
         sv_h = fit_tree.root.expansion_points[c_name]
@@ -476,7 +487,7 @@ class CompartmentFitter(object):
         return m_f, v_t, w_f
 
     def fitChannels(self, recompute=False, pprint=False, parallel=True):
-        '''
+        """
         Fit the active ion channel parameters
 
         Parameters
@@ -487,7 +498,7 @@ class CompartmentFitter(object):
             whether to print information
         parallel:  bool (optional, defaults to ``True``)
             whether the models are evaluated in parallel
-        '''
+        """
         # create the fit matrices for each channel
         n_arg = len(self.channel_names)
         args_list = [self.channel_names,
@@ -511,7 +522,7 @@ class CompartmentFitter(object):
         self.ctree.runFit()
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
-        '''
+        """
         Fit the steady state passive model, consisting only of leak and coupling
         conductances, but ensure that the coupling conductances takes the passive
         opening of all channels into account
@@ -526,7 +537,7 @@ class CompartmentFitter(object):
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
 
-        '''
+        """
         # compute equilibirum potentials
         v_eqs_tree = self.getEEq('tree')
         v_eqs_fit = self.getEEq('fit')
@@ -563,7 +574,7 @@ class CompartmentFitter(object):
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
     def fitPassiveLeak(self, recompute=False, pprint=True):
-        '''
+        """
         Fit leak only.
 
         Parameters
@@ -572,7 +583,7 @@ class CompartmentFitter(object):
             whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
-        '''
+        """
         locs = self.tree.getLocs('fit locs')
         # compute the steady state impedance matrix
         fit_tree = self.createTreeGF([])
@@ -601,7 +612,7 @@ class CompartmentFitter(object):
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
     def createTreeSOV(self, use_all_channels=False, eps=1.):
-        '''
+        """
         Create a :class:`SOVTree` copy of the old tree
 
         Parameters
@@ -614,7 +625,7 @@ class CompartmentFitter(object):
         -------
         :class:`neat.PhysTree`
 
-        '''
+        """
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeSOV())
         if use_all_channels:
@@ -639,7 +650,7 @@ class CompartmentFitter(object):
     def fitCapacitance(self, inds=[0], check_fit=True, force_tau_m_fit=False,
                              use_all_channels=True,
                              recompute=False, pprint=False, pplot=False):
-        '''
+        """
         Fit the capacitances of the model to the largest SOV time scale
 
         Parameters
@@ -659,7 +670,7 @@ class CompartmentFitter(object):
             whether to print information
         pplot: bool (optional, defaults to ``False``)
             whether to plot the eigenmode timescales
-        '''
+        """
         locs = self.tree.getLocs('fit locs')
         # create an SOV tree
         sov_tree = self.createTreeSOV(use_all_channels=use_all_channels)
@@ -860,7 +871,7 @@ class CompartmentFitter(object):
         return np.array([v_m[-1] for v_m in res_biophys['v_m']])
 
     def setEEq(self, t_max=500., dt=0.1, factor_lambda=10.):
-        '''
+        """
         Set equilibrium potentials, measured from neuron simulation. Sets the
         `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
         equilibrium potentials at (the middle of) each node in the original
@@ -876,18 +887,18 @@ class CompartmentFitter(object):
             if int, signifies the number of segments per section. If float,
             multiplies the number of segments given by the lambda rule with this
             number
-        '''
+        """
         tree_locs = [MorphLoc((n.index, .5), self.tree) for n in self.tree]
         fit_locs = self.tree.getLocs('fit locs')
         # compute equilibrium potentials
         v_eqs = self.calcEEq(tree_locs + fit_locs,
                              t_max=t_max, dt=dt, factor_lambda=factor_lambda)
         # store the equilibrium potentials
-        self.v_eqs_tree = v_eqs[:len(tree_locs)]
+        self.v_eqs_tree = {n.index: v for n, v in zip(self.tree, v_eqs)}
         self.v_eqs_fit = v_eqs[len(tree_locs):]
 
     def getEEq(self, e_eqs_type, **kwargs):
-        '''
+        """
         Get equilibrium potentials. Specify
         `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
         equilibrium potentials at (the middle of) each node in the original
@@ -903,7 +914,7 @@ class CompartmentFitter(object):
         kwargs: When `v_eqs_tree` or `v_eqs_fit`, have not been set, calls
             ::func::`self.setEEq()` with these `kwargs`
 
-        '''
+        """
         if not hasattr(self, 'v_eqs_tree') or not hasattr(self, 'v_eqs_fit'):
             self.setEEq(**kwargs)
         if e_eqs_type == 'fit':
@@ -914,7 +925,7 @@ class CompartmentFitter(object):
             raise IOError('``e_eqs_type`` should be \'fit\' or \'tree\'')
 
     def fitEEq(self, **kwargs):
-        '''
+        """
         Fits the leak potentials of the reduced model to yield the same
         equilibrium potentials as the full model
 
@@ -922,7 +933,7 @@ class CompartmentFitter(object):
         ----------
         kwargs: When `v_eqs_tree` or `v_eqs_fit`, have not been set, calls
             ::func::`self.setEEq()` with these `kwargs`
-        '''
+        """
         # compute equilibirum potentials
         v_eqs = self.getEEq('fit', **kwargs)
         # fit the equilibirum potentials of the reduced model
@@ -931,7 +942,7 @@ class CompartmentFitter(object):
 
     def fitModel(self, loc_arg, alpha_inds=[0], use_allchans_for_passive=True,
                        recompute=False, pprint=False, parallel=True):
-        '''
+        """
         Runs the full fit for a set of locations (the location are automatically
         extended with the bifurcation locs)
 
@@ -955,7 +966,7 @@ class CompartmentFitter(object):
         -------
         :class:`neat.CompartmentTree`
             The reduced tree containing the fitted parameters
-        '''
+        """
         self.setFitLocs(loc_arg)
         # fit the passive steady state model
         self.fitPassive(recompute=recompute, pprint=pprint,
@@ -1010,7 +1021,7 @@ class CompartmentFitter(object):
 
     def fitSynRescale(self, c_locarg, s_locarg, comp_inds, g_syns, e_revs,
                             fit_impedance=False, channel_names=None, recompute=False):
-        '''
+        """
         Computes the rescaled conductances when synapses are moved to compartment
         locations, assuming a given average conductance for each synapse.
 
@@ -1043,7 +1054,7 @@ class CompartmentFitter(object):
         -------
         g_resc: numpy.array of floats
             The rescale values for the synaptic weights
-        '''
+        """
         # process input
         c_locs = self.tree._parseLocArg(c_locarg)
         s_locs = self.tree._parseLocArg(s_locarg)
@@ -1135,9 +1146,9 @@ class CompartmentFitter(object):
 
     def assignLocsToComps(self, c_locarg, s_locarg, fz=.8,
                                 channel_names=None, recompute=False):
-        '''
+        """
         assumes the root node is in `c_locarg`
-        '''
+        """
         if channel_names is None:
             channel_names = list(self.tree.channel_storage.keys())
 
