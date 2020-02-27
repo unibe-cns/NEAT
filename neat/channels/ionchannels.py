@@ -159,6 +159,30 @@ class IonChannel(object):
         # set the coefficients for the linear expansion
         self.setLambdaFuncs()
 
+    def __getstate__(self):
+
+        d = dict(self.__dict__)
+
+        # remove lambdified functions from dict as they can not be
+        # pickled
+        del d['f_statevar']
+        del d['f_varinf']
+        del d['f_tauinf']
+        del d['f_p_open']
+        del d['dp_dx'], d['df_dv'], d['df_dx'], d['df_dc']
+        # del d['f_s00']
+
+        return d
+
+
+    def __setstate__(self, s):
+
+        self.__dict__ = s
+
+        # since lambdified functions were not pickled we need to
+        # restore them
+        self.setLambdaFuncs()
+
     def setLambdaFuncs(self):
         # construct lambda function for state variables
         self.f_statevar = self.lambdifyFStatevar()

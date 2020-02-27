@@ -4,6 +4,9 @@ import sympy as sp
 from neat.channels import channelcollection
 from neat import IonChannel
 
+import pytest
+import pickle
+
 
 class TestChannels():
     def testBasic(self):
@@ -116,6 +119,7 @@ class TestNa(IonChannel):
         self.setLambdaFuncs()
 
     def testPOpen(self):
+        print('---')
         na = channelcollection.Na_Ta()
 
         p_o_1 = na.computePOpen(-35.)
@@ -129,6 +133,27 @@ class TestNa(IonChannel):
         l_s_2 = self.computeLinSum(-35., 0., 50.)
         assert np.allclose(l_s_1, l_s_2)
 
+
+def test_na():
+    tna = TestNa()
+    tna.testPOpen()
+    tna.testLinSum()
+
+
+def test_pickling():
+    print('!!!')
+
+    # pickle and restore
+    na_ta_channel = channelcollection.Na_Ta()
+    s = pickle.dumps(na_ta_channel)
+    new_na_ta_channel = pickle.loads(s)
+
+    # multiple pickles
+    s = pickle.dumps(na_ta_channel)
+    s = pickle.dumps(na_ta_channel)
+    new_na_ta_channel = pickle.loads(s)
+
+    assert True  # reaching this means we didn't encounter an error
 
 
 if __name__ == '__main__':
