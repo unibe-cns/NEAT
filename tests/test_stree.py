@@ -5,7 +5,7 @@ import pytest
 
 class TestSTree():
     def createTree(self, reinitialize=0):
-        '''
+        """
         Create a simple tree structure
 
          2     3
@@ -16,7 +16,7 @@ class TestSTree():
             |
             0
 
-        '''
+        """
         print('>>> creating tree <<<')
         # create the four nodes
         node0 = SNode(0)
@@ -32,7 +32,7 @@ class TestSTree():
         self.tree.addNodeWithParent(node3, node1)
 
     def createTree2(self, reinitialize=0):
-        '''
+        """
         Create a simple tree structure
 
           4     5     6
@@ -46,7 +46,7 @@ class TestSTree():
                 |
                 0
 
-        '''
+        """
         print('>>> creating tree <<<')
         # create the nodes
         node0 = SNode(0)

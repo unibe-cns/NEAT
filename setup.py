@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 NEAT (NEural Analysis Toolkit)
 
@@ -9,12 +9,10 @@ Author: W. Wybo
 from distutils.core import setup
 from distutils.extension import Extension
 
+import numpy
 from Cython.Distutils import build_ext
-from Cython.Build import cythonize
 
 from __version__ import version as pversion
-
-import numpy
 
 dependencies = ['numpy>=1.14.1',
                 'matplotlib>=2.1.2',
@@ -32,7 +30,6 @@ ext = Extension("netsim",
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
                 include_dirs=[numpy.get_include()])
-
 
 # setup(
 #     name='neat',

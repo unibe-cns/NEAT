@@ -6,13 +6,13 @@ import sklearn.isotonic as ski
 ## histogram segmentation ################################################
 class histogramSegmentator:
     def __init__(self, hist):
-        '''
+        """
         Class to segment a histogram as returned by the numpy histogram
         function. (Delon, 2005; 2007)
 
         input:
             [hist]: output of the numpy histogram function
-        '''
+        """
         self.hist = hist[0]
         self.xmap = hist[1]
         # basic quantities
@@ -24,7 +24,7 @@ class histogramSegmentator:
         self.r = self.hist / self.N
 
     def _pool_adjacent_violators(self, i0, i1, increasing=True):
-        '''
+        """
         Obtains an increasing or decreasing Grenander estimator of
         the histogram over the interval [i0,i1]
 
@@ -35,7 +35,7 @@ class histogramSegmentator:
 
         output:
             [r_grenander]: numpy array, obtained Grenander estimator
-        '''
+        """
         X = np.arange(len(self.r[i0:i1+1]))
         IR = ski.IsotonicRegression(increasing=increasing)
         IR.fit(X, self.r[i0:i1+1])
@@ -43,7 +43,7 @@ class histogramSegmentator:
         return r_grenander
 
     def test_unimodal_hypothesis(self, i0, i1, ip, eps=1., maximum=True):
-        '''
+        """
         Tests the unimodal hypothesis, i.e. increasing hypothesis in
         [i0,p] and decreasing hypothesis over [p,i1]
 
@@ -52,7 +52,7 @@ class histogramSegmentator:
 
         output:
             boolean, whether the hypothesis is valid or not
-        '''
+        """
         assert i0 <= ip and ip <= i1
         if maximum:
             # construct increasing Grenander estimator on [i0,ip]
@@ -73,7 +73,7 @@ class histogramSegmentator:
         return b_incr and b_decr
 
     def test_hypothesis(self, r, p, eps=1.):
-        '''
+        """
         Tests whether the hypothesis that the array of frequencies [r]
         is generated from an underlying probability distribution [p] is
         valid.
@@ -84,7 +84,7 @@ class histogramSegmentator:
 
         output:
             boolean, whether the hypothesis is true
-        '''
+        """
         assert len(r) == len(p)
         N = len(p)
         # compute values for all intervals
@@ -104,9 +104,9 @@ class histogramSegmentator:
         return not np.max(Hvec > eps*np.log(N*(N+1.)/2.)/self.N)
 
     def get_initial_partition(self):
-        '''
+        """
         Partitions the histogram by computing all the minima of the array
-        '''
+        """
         s_inds = [0] + sig.argrelmin(self.hist)[0].tolist() + [len(self.hist)-1]
         p_inds = sig.argrelmax(self.hist)[0].tolist()
         if self.hist[0] > self.hist[1]:
@@ -116,9 +116,9 @@ class histogramSegmentator:
         return s_inds, p_inds
 
     def find_unimodal_extremum(self, i0s, i1s, eps=1., maximum=True):
-        '''
+        """
         If there is a maximum (minimum) that obeys the unimodal hypothesis, returns it
-        '''
+        """
         ip = i0s + np.argmax(self.r[i0s:i1s+1])
         found = self.test_unimodal_hypothesis(i0s, i1s, ip, eps=eps, maximum=maximum)
         if found:
@@ -127,13 +127,13 @@ class histogramSegmentator:
             return None
 
     def partition_fine_to_coarse(self, fix_minima=False, eps=1., pprint=False):
-        '''
+        """
         Fine to coarse partitioning algorithm.
 
         output:
             [s_inds]: the minima of the partition
             [p_inds]: the maxima of the partition
-        '''
+        """
         # initial hypothesis
         s_inds, p_inds = self.get_initial_partition()
         # find the coarsest possible partition

@@ -1,6 +1,6 @@
-'''
+"""
 Writes C++ simulation code for the ionchannels
-'''
+"""
 
 import os
 

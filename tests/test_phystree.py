@@ -10,14 +10,14 @@ from neat.channels import channelcollection
 
 class TestPhysTree():
     def loadTree(self, reinitialize=0, segments=False):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         if not hasattr(self, 'tree') or reinitialize:
             print('>>> loading T-tree <<<')
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'

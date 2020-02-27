@@ -176,7 +176,7 @@ class NET(STree):
         return sroot.loc_inds
 
     def getLeafLocNode(self, loc_ind):
-        '''
+        """
         Get the node for which ``loc_ind`` is a new location
 
         Parameters
@@ -187,15 +187,15 @@ class NET(STree):
         Returns
         -------
         :obj:`NETNode`
-        '''
+        """
         for node in self:
             if loc_ind in node.newloc_inds:
                 return node
 
     def setNewLocInds(self):
-        '''
+        """
         Set the new location indices in a tree
-        '''
+        """
         for node in self:
             cloc_inds = set()
             for cnode in node.child_nodes:
@@ -203,7 +203,7 @@ class NET(STree):
             node.newloc_inds = list(set(node.loc_inds) - cloc_inds)
 
     def getReducedTree(self, loc_inds, indexing='NET eval'):
-        '''
+        """
         Construct a reduced tree where only the locations index by ``loc_inds''
         are retained
 
@@ -215,7 +215,7 @@ class NET(STree):
             if 'NET eval', indexing of ``NETNode.loc_inds`` will be taken to be the
             indices of locations for which the full NET is evaluated. Otherwise
             will be indices of the input ``loc_inds``
-        '''
+        """
         loc_inds_newtree = list({loc_ind for loc_ind in loc_inds \
                                          if loc_ind in self.root})
         if loc_inds_newtree:
@@ -269,7 +269,7 @@ class NET(STree):
     #                     self.addNodeWithParent
 
     def calcTotalImpedance(self, node):
-        '''
+        """
         Compute the total impedance associated with a node. I.e. the sum of all
         impedances on the path from node to root
 
@@ -281,11 +281,11 @@ class NET(STree):
         -------
         float
             total impedance
-        '''
+        """
         return np.sum([node_.z_bar for node_ in self.pathToRoot(node)])
 
     def calcTotalKernel(self, node):
-        '''
+        """
         Compute the total impedance kernel associated with a node. I.e. the sum
         of all impedance kernels on the path from node to root
 
@@ -296,7 +296,7 @@ class NET(STree):
         Returns
         -------
         :class:`Kernel`
-        '''
+        """
         z_k = copy.deepcopy(node.z_kernel)
         if node.parent_node is not None:
             for pn in self.pathToRoot(node.parent_node):
@@ -304,7 +304,7 @@ class NET(STree):
         return z_k
 
     def calcIZ(self, loc_inds):
-        '''
+        """
         compute I_Z between any pair of locations in ``loc_inds``
 
         Parameters
@@ -318,7 +318,7 @@ class NET(STree):
             Returns a float if the number of location indices is two, otherwise
             a dictionary with location pairs (smallest is listed first) as keys
             and I_Z values as values
-        '''
+        """
         Iz_dict = {}
         for ii, loc_ind0 in enumerate(loc_inds):
             for jj, loc_ind1 in enumerate(loc_inds):
@@ -339,38 +339,38 @@ class NET(STree):
             return Iz_dict
 
     def calcIZMatrix(self):
-        '''
+        """
         compute the Iz matrix for all locations present in the tree
 
         Returns
         -------
         np.ndarray of float
             The Iz matrix
-        '''
+        """
         z_mat = self.calcImpedanceMatrix()
         z_in = np.diag(z_mat)
         return (z_in[:,np.newaxis] + z_in[np.newaxis,:]) / (2. * z_mat) - 1.
 
     def calcImpedanceMatrix(self):
-        '''
+        """
         Compute the impedance matrix approximation associated with the NET
 
         Returns
         -------
         np.ndarray (ndim = 2)
             the impedance matrix approximation
-        '''
+        """
         return self.calcImpMat()
 
     def calcImpMat(self):
-        '''
+        """
         Compute the impedance matrix approximation associated with the NET
 
         Returns
         -------
         np.ndarray (ndim = 2)
             the impedance matrix approximation
-        '''
+        """
         n_loc = len(self.root.loc_inds)
         loc_map = {loc_ind: map_ind for map_ind, loc_ind in enumerate(self.root.loc_inds)}
         z_mat = np.zeros((n_loc, n_loc))
@@ -384,7 +384,7 @@ class NET(STree):
             self._addNodeToImpMat(cnode, z_mat, loc_map)
 
     def getCompartmentalization(self, Iz, returntype='node index'):
-        '''
+        """
         Returns a compartmentalization for the NET tree where each pair of
         compartments is separated by an Iz of at least ``Iz``. The
         compartmentalization is coded as a list of list, each sublist representing
@@ -401,7 +401,7 @@ class NET(STree):
         -------
         list of lists
             the compartments
-        '''
+        """
         self._computeTentativeCompartments(Iz=Iz)
         # determine the nodes that contain the eventual compartments and
         # remove the rest
@@ -597,7 +597,7 @@ class NET(STree):
                         inlabels={}, nodelabels={},
                         cs_comp={}, cmap=None,
                         z_max=None, add_scalebar=True):
-        '''
+        """
         Generate a dendrogram of the NET
 
         Parameters
@@ -631,7 +631,7 @@ class NET(STree):
                 ``self``
             add_scalebar: bool
                 whether or not to add a scale bar
-        '''
+        """
         if cs_comp:
             # compute the compartmental colormap if necessary
             arr = np.array([list(cs_comp.values())])

@@ -43,7 +43,7 @@ class _func(object):
 
 def _insert_function_prefixes(string, prefix='np',
                               functions=['exp', 'sin', 'cos', 'tan', 'pi']):
-    '''
+    """
     Prefix all occurences in the input `string` of the functions in the
     `functions` list with the provided `prefix`.
 
@@ -65,7 +65,7 @@ def _insert_function_prefixes(string, prefix='np',
     --------
     >>> _insert_function_prefixes('5. * exp(0.) + 3. * cos(pi)')
     '5. * np.exp(0.) + 3. * np.cos(pi)'
-    '''
+    """
     for func_name in functions:
         numpy_string = ''
         while len(string) > 0:
@@ -81,7 +81,7 @@ def _insert_function_prefixes(string, prefix='np',
 
 
 class IonChannel(object):
-    '''
+    """
     Base class for all different ion channel types.
 
     The algebraic form of the membrance current is stored in three numpy.arrays:
@@ -124,14 +124,14 @@ class IonChannel(object):
         TODO
     coeff_statevar: list of sympy.expression instances
         TODO
-    '''
+    """
 
     def __init__(self):
-        '''
+        """
         Will give an ``AttributeError`` if initialized as is. Should only be
         initialized from its' derived classes that implement specific ion
         channel types.
-        '''
+        """
         if not hasattr(self, 'ion'):
             self.ion = ''
         if not hasattr(self, 'concentrations'):
@@ -159,6 +159,30 @@ class IonChannel(object):
         # set the coefficients for the linear expansion
         self.setLambdaFuncs()
 
+    def __getstate__(self):
+
+        d = dict(self.__dict__)
+
+        # remove lambdified functions from dict as they can not be
+        # pickled
+        del d['f_statevar']
+        del d['f_varinf']
+        del d['f_tauinf']
+        del d['f_p_open']
+        del d['dp_dx'], d['df_dv'], d['df_dx'], d['df_dc']
+        # del d['f_s00']
+
+        return d
+
+
+    def __setstate__(self, s):
+
+        self.__dict__ = s
+
+        # since lambdified functions were not pickled we need to
+        # restore them
+        self.setLambdaFuncs()
+
     def setLambdaFuncs(self):
         # construct lambda function for state variables
         self.f_statevar = self.lambdifyFStatevar()
@@ -173,13 +197,17 @@ class IonChannel(object):
                         self.lambdifyDerivatives()
         # express statevar[0,0] as a function of the other state variables
         self.po = sp.symbols('po')
-        sol = sp.solve(self.p_open - self.po, self.statevars[0,0])
-        ind = np.where([sp.I not in s.atoms() for s in sol])[0][-1]
-        sol = sol[ind]
-        # print self.__class__.__name__
-        # print self.p_open
-        # print sol
-        self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
+
+        sv_aux = [sv for ii, sv in np.ndenumerate(self.statevars)]
+
+        # # sol = sp.solve(self.p_open - self.po, self.statevars[0,0])
+        # sol = sp.solve(self.p_open - self.po, sv_aux)
+        # ind = np.where([sp.I not in s.atoms() for s in sol])[0][-1]
+        # sol = sol[ind]
+        # # print self.__class__.__name__
+        # # print self.p_open
+        # # print sol
+        # self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
 
     def _substituteConc(self, expr):
         for sp_c, ion in zip(self.sp_c, self.concentrations):
@@ -457,19 +485,19 @@ class IonChannel(object):
     #     else:
     #         return np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
 
-    def getStatevarsPOpen(self, p_open):
-        xx = 1.
-        if self.statevars.shape[0] > 1:
-            xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
-        elif self.statevars.shape[1] > 1:
-            xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
-        else:
-            xv = np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
-        return xv
+    # def getStatevarsPOpen(self, p_open):
+    #     xx = 1.
+    #     if self.statevars.shape[0] > 1:
+    #         xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
+    #     elif self.statevars.shape[1] > 1:
+    #         xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
+    #     else:
+    #         xv = np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
+    #     return xv
 
 
     def computeFreqIMax(self, v, e_rev, f_bounds=(0.,10000.)):
-        '''
+        """
         Computes the frequency of voltage fluctuation at which the channel current,
         linearized around the holding potential `v`, is maximal
 
@@ -486,7 +514,7 @@ class IonChannel(object):
         -------
         `np.ndarray`
             the frequency value as a real number (same shape as `v`)
-        '''
+        """
         # optimization function
         def f_min(freq, u, e_r):
             return -np.abs(self.computeLinSum(u, 1j*freq, e_r))
@@ -501,9 +529,9 @@ class IonChannel(object):
             return so.minimize_scalar(f_min, bounds=f_bounds, args=(v, e_rev))['x']
 
     def writeModFile(self, path, g=0., e=0.):
-        '''
+        """
         Writes a modfile of the ion channel for simulations with neuron
-        '''
+        """
         fname = os.path.join(path, 'I' + self.__class__.__name__ + '.mod')
 
         file = open(fname, 'w')
@@ -607,10 +635,10 @@ class IonChannel(object):
         file.close()
 
     def writeCPPCode(self, path, e_rev):
-        '''
+        """
         Warning: concentration dependent ion channels get constant concentrations
         substituted for c++ simulation
-        '''
+        """
 
         fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
         fh = open(os.path.join(path, 'Ionchannels.h'), 'a')
@@ -807,9 +835,9 @@ class IonChannel(object):
 
 
     # def computeLin(self, v):
-    #     '''
+    #     """
     #     computes coefficients for linear simulation
-    #     '''
+    #     """
     #     # coefficients for computing current
     #     fun = self.fun #statevars**self.powers
     #     coeff = np.zeros(self.statevars.shape, dtype=object)
@@ -925,7 +953,7 @@ class IonChannel(object):
 #                         g_max, e_rev,
 #                         powers,
 #                         flag=0, mode=1):
-#         '''
+#         """
 #         Creates a vectorized simulation object and accepts a vector of voltages.
 
 #         Let N be the number of state variables.
@@ -951,7 +979,7 @@ class IonChannel(object):
 #         mode : {0, 1}, optional
 #             If 0, simulates the channel at all locations. If 1, only
 #             simulates at the locations indicated in `inloc_inds`
-#         '''
+#         """
 #         # integration mode
 #         self.flag = flag
 #         self.mode = mode
@@ -1001,7 +1029,7 @@ class IonChannel(object):
 #     p_open = property(get_p_open, set_p_open)
 
 #     def advance(self, dt, V):
-#         '''
+#         """
 #         Advance the ion channels internal variables one timestep
 
 #         Parameters
@@ -1010,7 +1038,7 @@ class IonChannel(object):
 #                 the timestep
 #             V : numpy.array of floats
 #                 Voltage at each location
-#         '''
+#         """
 #         svinf = self.svinf(V)
 #         tauinf = self.tauinf(V)
 #         prop1 = np.exp(-dt/tauinf)
@@ -1019,7 +1047,7 @@ class IonChannel(object):
 #         self.sv += (1. - prop1) * svinf
 
 #     def get_current_general(self, V, I_out=None):
-#         '''
+#         """
 #         Get the channel current given the voltage, according to integration
 #         paradigm
 
@@ -1035,14 +1063,14 @@ class IonChannel(object):
 #         -------
 #         numpy.array of floats
 #             The channel current at each location
-#         '''
+#         """
 #         if self.flag == 1:
 #             return self.get_current_np(V, I_out=I_out)
 #         else:
 #             return self.get_current(V, I_out=I_out)
 
 #     def get_current(self, V, I_out=None):
-#         '''
+#         """
 #         Get the full channel current given the voltage.
 
 #         Parameters
@@ -1057,7 +1085,7 @@ class IonChannel(object):
 #         -------
 #         numpy.array of floats
 #             The channel current at each location
-#         '''
+#         """
 #         if I_out == None: I_out = np.zeros(self.Ninloc)
 #         if self.mode == 1:
 #             I_out[self.inloc_inds] -= self.g * self.p_open \
@@ -1068,7 +1096,7 @@ class IonChannel(object):
 #         return I_out
 
 #     def get_current_np(self, V, I_out=None):
-#         '''
+#         """
 #         Get the non-passive channel current given the voltage.
 
 #         Parameters
@@ -1083,7 +1111,7 @@ class IonChannel(object):
 #         -------
 #         numpy.array of floats
 #             The channel current at each location
-#         '''
+#         """
 #         if I_out == None: I_out = np.zeros(self.Ninloc)
 #         if self.mode == 1:
 #             I_out[self.inloc_inds] -= self.g_max \
@@ -1096,7 +1124,7 @@ class IonChannel(object):
 #         return I_out
 
 #     def get_conductance_general(self, G_out=None, I_out=None):
-#         '''
+#         """
 #         Let the channel current be :math:`-g (V-e)`. Returns :math:`-g` and
 #         :math:`-g (E_eq-e)`. Returns the component according to integration
 #         paradigm.
@@ -1116,14 +1144,14 @@ class IonChannel(object):
 #         -------
 #         (numpy.array of floats, numpy.array of floats)
 #             :math:`-g` at each location and :math:`-g (E_eq-e)` at each location
-#         '''
+#         """
 #         if self.flag == 1:
 #             return self.get_conductance_np(G_out=G_out, I_out=I_out)
 #         else:
 #             return self.get_conductance(G_out=G_out, I_out=I_out)
 
 #     def get_conductance(self, G_out=None, I_out=None):
-#         '''
+#         """
 #         Let the channel current be :math:`-g (V-e)`. Returns :math:`-g` and
 #         :math:`-g (E_eq-e)`. Returns the full component
 
@@ -1142,7 +1170,7 @@ class IonChannel(object):
 #         -------
 #         (numpy.array of floats, numpy.array of floats)
 #             :math:`-g` at each location and :math:`-g (E_eq-e)` at each location
-#         '''
+#         """
 #         if G_out == None: G_out = np.zeros(self.Ninloc)
 #         if I_out == None: I_out = np.zeros(self.Ninloc)
 #         p_open = self.p_open
@@ -1157,7 +1185,7 @@ class IonChannel(object):
 #         return G_out, I_out
 
 #     def get_conductance_np(self, G_out=None, I_out=None):
-#         '''
+#         """
 #         Let the channel current be :math:`-g (V-e)`. Returns :math:`-g` and
 #         :math:`-g (E_eq-e)`. Returns the non-passive component
 
@@ -1176,7 +1204,7 @@ class IonChannel(object):
 #         -------
 #         (numpy.array of floats, numpy.array of floats)
 #             :math:`-g` at each location and :math:`-g (E_eq-e)` at each location
-#         '''
+#         """
 #         if G_out == None: G_out = np.zeros(self.Ninloc)
 #         if I_out == None: I_out = np.zeros(self.Ninloc)
 #         p_open = self.p_open - self.p_open_eq

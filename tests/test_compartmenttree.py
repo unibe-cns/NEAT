@@ -12,14 +12,14 @@ from neat.channels import channelcollection
 
 class TestCompartmentTree():
     def loadTTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
+        """
         print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = SOVTree(fname, types=[1,3,4])
@@ -518,11 +518,11 @@ class TestCompartmentTree():
 
 class TestCompartmentTreePlotting():
     def _initTree1(self):
-        '''
+        """
         1   2
          \ /
           0
-        '''
+        """
         croot = CompartmentNode(0, loc_ind=0)
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
@@ -534,7 +534,7 @@ class TestCompartmentTreePlotting():
         self.ctree = ctree
 
     def _initTree2(self):
-        '''
+        """
         3
         |
         2
@@ -542,7 +542,7 @@ class TestCompartmentTreePlotting():
         1
         |
         0
-        '''
+        """
         croot = CompartmentNode(0, loc_ind=0)
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
@@ -556,14 +556,14 @@ class TestCompartmentTreePlotting():
         self.ctree = ctree
 
     def _initTree3(self):
-        '''
+        """
         4 5 6 7   8
          \|/   \ /
           1  2  3
            \ | /
             \|/
              0
-        '''
+        """
         cns = [CompartmentNode(ii, loc_ind=ii) for ii in range(9)]
 
         ctree = CompartmentTree(root=cns[0])
