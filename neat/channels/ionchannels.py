@@ -160,11 +160,27 @@ class IonChannel(object):
         self.setLambdaFuncs()
 
     def __getstate__(self):
-        self.unsetLambdaFuncs()
-        return self.__dict__
+
+        d = dict(self.__dict__)
+
+        # remove lambdified functions from dict as they can not be
+        # pickled
+        del d['f_statevar']
+        del d['f_varinf']
+        del d['f_tauinf']
+        del d['f_p_open']
+        del d['dp_dx'], d['df_dv'], d['df_dx'], d['df_dc']
+        del d['f_s00']
+
+        return d
+
 
     def __setstate__(self, s):
+
         self.__dict__ = s
+
+        # since lambdified functions were not pickled we need to
+        # restore them
         self.setLambdaFuncs()
 
     def setLambdaFuncs(self):
@@ -188,14 +204,6 @@ class IonChannel(object):
         # print self.p_open
         # print sol
         self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
-
-    def unsetLambdaFuncs(self):
-        del self.f_statevar
-        del self.f_varinf
-        del self.f_tauinf
-        del self.f_p_open
-        del self.dp_dx, self.df_dv, self.df_dx, self.df_dc
-        del self.f_s00
 
     def _substituteConc(self, expr):
         for sp_c, ion in zip(self.sp_c, self.concentrations):

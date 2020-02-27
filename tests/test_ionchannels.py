@@ -54,6 +54,21 @@ class TestChannels():
         # TODO
 
 
+def test_pickling():
+
+    # pickle and restore
+    na_ta_channel = channelcollection.Na_Ta()
+    s = pickle.dumps(na_ta_channel)
+    new_na_ta_channel = pickle.loads(s)
+
+    # multiple pickles
+    s = pickle.dumps(na_ta_channel)
+    s = pickle.dumps(na_ta_channel)
+    new_na_ta_channel = pickle.loads(s)
+
+    assert True  # reaching this means we didn't encounter an error
+
+
 if __name__ == '__main__':
     tcns = TestChannels()
     tcns.testBasic()
