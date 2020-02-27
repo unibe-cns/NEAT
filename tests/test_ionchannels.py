@@ -119,7 +119,6 @@ class TestNa(IonChannel):
         self.setLambdaFuncs()
 
     def testPOpen(self):
-        print('---')
         na = channelcollection.Na_Ta()
 
         p_o_1 = na.computePOpen(-35.)
@@ -141,8 +140,6 @@ def test_na():
 
 
 def test_pickling():
-    print('!!!')
-
     # pickle and restore
     na_ta_channel = channelcollection.Na_Ta()
     s = pickle.dumps(na_ta_channel)

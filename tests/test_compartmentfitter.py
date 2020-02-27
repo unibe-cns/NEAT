@@ -250,9 +250,16 @@ class TestCompartmentFitter():
         assert ctree1.channel_storage.keys() == ctree2.channel_storage.keys()
         for n1, n2 in zip(ctree1, ctree2):
             assert np.allclose(n1.g_c, n2.g_c)
-            print('----')
-            print(n1.currents)
-            print(n2.currents)
+            for key in n1.currents:
+                assert np.allclose(n1.currents[key][0], n2.currents[key][0])
+                assert np.allclose(n1.currents[key][1], n2.currents[key][1])
+
+    def _checkPhysTrees(self, tree1, tree2):
+        assert len(tree1) == len(tree2)
+        assert tree1.channel_storage.keys() == tree2.channel_storage.keys()
+        for n1, n2 in zip(tree1, tree2):
+            assert np.allclose(n1.r_a, n2.r_a)
+            assert np.allclose(n1.c_m, n2.c_m)
             for key in n1.currents:
                 assert np.allclose(n1.currents[key][0], n2.currents[key][0])
                 assert np.allclose(n1.currents[key][1], n2.currents[key][1])
@@ -519,9 +526,20 @@ class TestCompartmentFitter():
         cm = CompartmentFitter(self.tree)
         ctree_cm_1 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=False)
         ctree_cm_2 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
-        # TODO: test for parallel and test with saving
         self._checkAllCurrProps(self.ctree, ctree_cm_1)
         self._checkAllCurrProps(self.ctree, ctree_cm_2)
+
+
+        # pickling of tree works
+        print('\n--- testing pickling ---')
+        import pickle
+        ss = pickle.dumps(self.tree)
+        pt_ = pickle.loads(ss)
+        self._checkPhysTrees(self.tree, pt_)
+        # but parallel test fails
+        print('\n--- testing parallel ---')
+        ctree_cm_3 = cm.fitModel(locs, parallel=True, use_all_chans_for_passive=True)
+
 
 
 if __name__ == '__main__':
