@@ -344,7 +344,7 @@ class TestCompartmentFitter():
         greens_tree = cm.createTreeGF(channel_names=[])
         greens_tree.setEEq(-75.)
         greens_tree.setImpedancesInTree()
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0].real
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0]
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
         # compute impedances with compartmentfitter function
         z_calc = np.array([ \
@@ -361,7 +361,7 @@ class TestCompartmentFitter():
         greens_tree = cm.createTreeGF(channel_names=list(cm.tree.channel_storage.keys()))
         greens_tree.setEEq(-75.)
         greens_tree.setImpedancesInTree()
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0].real
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0]
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
         # compute impedances with compartmentfitter function
         z_calc = np.array([ \
@@ -373,7 +373,26 @@ class TestCompartmentFitter():
         assert np.allclose(z_calc, z_test)
 
     def testSynRescale(self, g_inp=np.linspace(0.,0.01, 20)):
+        e_rev, v_eq = 0., -75.
         self.loadBallAndStick()
+        fit_locs = [(4,.7)]
+        syn_locs = [(4,1.)]
+        cm = CompartmentFitter(self.tree)
+        cm.setCTree(fit_locs)
+        # compute impedance matrix
+        greens_tree = cm.createTreeGF(channel_names=[])
+        greens_tree.setEEq(-75.)
+        greens_tree.setImpedancesInTree()
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs+syn_locs)[0]
+        # analytical synapse scale factors
+        beta_calc = 1. / (1. + (z_mat[1,1] - z_mat[0,0]) * g_inp)
+        beta_full = z_mat[0,1] / z_mat[0,0] * (e_rev - v_eq) / \
+                    ((1. + (z_mat[1,1] - z_mat[0,0]) * g_inp ) * (e_rev - v_eq))
+        # synapse scale factors from compartment fitter
+        beta_cm = np.array([cm.fitSynRescale(fit_locs, syn_locs, [0], [g_i], e_revs=[0.])[0] \
+                            for g_i in g_inp])
+        assert np.allclose(beta_calc, beta_cm, atol=.020)
+        assert np.allclose(beta_full, beta_cm, atol=.015)
 
 
 if __name__ == '__main__':
@@ -382,4 +401,5 @@ if __name__ == '__main__':
     # tcf.testCreateTreeGF()
     # tcf.testChannelFitMats()
     # tcf.testPassiveFit()
-    tcf.testRecalcImpedanceMatrix()
+    # tcf.testRecalcImpedanceMatrix()
+    tcf.testSynRescale()
