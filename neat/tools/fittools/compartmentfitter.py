@@ -124,7 +124,7 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
 class FitTreeGF(GreensTree):
     def __init__(self, *args, **kwargs):
         super(FitTreeGF, self).__init__(*args, **kwargs)
-        self.setName('')
+        self.setName('dont save', '')
 
     def setExpansionPointsForFit(self, sv_h, e_h):
         """
@@ -143,15 +143,20 @@ class FitTreeGF(GreensTree):
             for c_name, sv in sv_h.items():
                 node.setExpansionPoint(c_name, statevar=sv)
 
-    def setName(self, name):
+    def setName(self, name, path):
         """
-        Set the name under which the tree will be stored
+        Set the name and path under which the tree will be stored
 
         Parameters
         ----------
         name: string
+            string based on which name is generated (not equal to actual file
+            name)
+        path: string
+            path where the file is to be located
         """
         self.name = name
+        self.path = path
 
     def setImpedancesInTree(self, many_freqs=False, recompute=False, pprint=False):
         """
@@ -159,11 +164,18 @@ class FitTreeGF(GreensTree):
 
         Parameters
         ----------
+        many_freqs: bool (optional, default is ``False``)
+            If ``True``, evaluates the impedances over an array suitable to
+            apply the inverse Fourrier transform to obtain temporal kernel
+            If ``False``, evaluates at zero frequency
         recompute: bool (optional, default is ``False``)
             Force the impedances to be recomputed
         pprint: bool (optional, default is ``False``)
             Print info
         """
+        if pprint:
+            print('>>> evaluating impedances with ' + str(list(self.channel_storage.keys())))
+
         if many_freqs:
             freqs = ke.create_logspace_freqarray()
             suffix = 'allfreqs_'
@@ -171,25 +183,28 @@ class FitTreeGF(GreensTree):
             freqs = np.array([0.])
             suffix = ''
 
-        if pprint:
-            print('>>> evaluating impedances with ' + str(list(self.channel_storage.keys())))
-        # create filename
+        e_h_string = '_eh=%.2f'%(self.root.e_eq)
+
+        # create suffix for state variable expansion point if it is specified
         cname_string = ''
         for c_name, channel in self.channel_storage.items():
-            if c_name is not 'L':
+            cname_string += '_' + c_name + '_'
+            try:
                 sv_h = self.root.expansion_points[c_name]
-                cname_string += '_' + c_name + '_'
-                if sv_h is not None:
-                    for ind, varname in np.ndenumerate(channel.varnames):
-                        sv = sv_h[ind]
-                        cname_string += varname + '=%.8f'%sv
-        file_name = 'GF_' + suffix + self.name + cname_string + '.p'
+                for ind, varname in np.ndenumerate(channel.varnames):
+                    sv = sv_h[ind]
+                    cname_string += varname + '=%.8f'%sv
+            except (KeyError, TypeError):
+                pass
+
+        file_name = 'GF_' + suffix + self.name + e_h_string + cname_string + '.p'
+
         # check if impedances already exist
         try:
             # ensure that the tree is recomputed if 'recompute' is true
             if recompute:
                 raise IOError
-            file = open(paths.tool_path + file_name, 'rb')
+            file = open(self.path + file_name, 'rb')
             tree = dill.load(file)
             self.__dict__.update(tree.__dict__)
             file.close()
@@ -206,7 +221,7 @@ class FitTreeGF(GreensTree):
 
             if not 'dont save' in self.name:
                 # store the impedance tree
-                file = open(paths.tool_path + file_name, 'wb')
+                file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
                 file.close()
 
@@ -261,17 +276,22 @@ class FitTreeGF(GreensTree):
 class FitTreeSOV(SOVTree):
     def __init__(self, *args, **kwargs):
         super(FitTreeSOV, self).__init__(*args, **kwargs)
-        self.setName('')
+        self.setName('dont save', '')
 
-    def setName(self, name):
+    def setName(self, name, path):
         """
-        Set the name under which the tree will be stored
+        Set the name and path under which the tree will be stored
 
         Parameters
         ----------
         name: string
+            string based on which name is generated (not equal to actual file
+            name)
+        path: string
+            path where the file is to be located
         """
         self.name = name
+        self.path = path
 
     def setSOVInTree(self, recompute=False, pprint=False, maxspace_freq=100.):
         file_name = 'SOV_' + self.name + '.p'
@@ -280,7 +300,7 @@ class FitTreeSOV(SOVTree):
             # ensure that the tree is recomputed if 'recompute' is true
             if recompute:
                 raise IOError
-            file = open(paths.tool_path + file_name, 'rb')
+            file = open(self.path + file_name, 'rb')
             tree = dill.load(file)
             self.__dict__.update(tree.__dict__)
             file.close()
@@ -296,7 +316,7 @@ class FitTreeSOV(SOVTree):
             self.channel_storage = {}
             if not 'dont save' in self.name:
                 # store the tree
-                file = open(paths.tool_path + file_name, 'wb')
+                file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
                 file.close()
 
@@ -320,8 +340,8 @@ class CompartmentFitter(object):
     """
 
     def __init__(self, phys_tree,
-                       name='dont save', e_hs=np.array([-75., -55., -35., -15.]),
-                       freqs=np.array([0.])):
+                 e_hs=np.array([-75., -55., -35., -15.]), freqs=np.array([0.]),
+                 name='dont save', path=''):
         self.tree = phys_tree.__copy__(new_tree=PhysTree())
         # get all channels in the tree
         self.channel_names = self.tree.getChannelsInTree()
@@ -331,6 +351,7 @@ class CompartmentFitter(object):
         self.e_hs = e_hs
         # name to store fit models
         self.name = name
+        self.path = path
 
     def setCTree(self, loc_arg, extend_w_bifurc=True):
         """
@@ -389,7 +410,7 @@ class CompartmentFitter(object):
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeGF())
         tree.channel_storage = {}
-        tree.setName(self.name)
+        tree.setName(self.name, self.path)
         # add the ion channel to the tree
         channel_names_newtree = set()
         for node, node_orig in zip(tree, self.tree):
@@ -439,7 +460,7 @@ class CompartmentFitter(object):
         n_tree = len(e_hs)
         # create the trees with only a single channel
         fit_tree = self.createTreeGF([channel_name])
-        fit_tree.setName(self.name)
+        fit_tree.setName(self.name, self.path)
         fit_trees = []
         for sv_h, e_h in zip(sv_hs, e_hs):
             ftree = fit_tree.__copy__(new_tree=FitTreeGF())
@@ -538,7 +559,7 @@ class CompartmentFitter(object):
             whether to print information
 
         """
-        # compute equilibirum potentials
+        # get equilibirum potentials
         v_eqs_tree = self.getEEq('tree')
         v_eqs_fit = self.getEEq('fit')
 
@@ -548,7 +569,7 @@ class CompartmentFitter(object):
                                                                else []
         fit_tree = self.createTreeGF(channel_names)
         fit_tree.setEEq(v_eqs_tree)
-        fit_tree.setName(self.name + '_atRest_')
+        fit_tree.setName(self.name + '_atRest_', self.path)
         # set the channels to passive
         fit_tree.asPassiveMembrane()
         # set the impedances in the tree
@@ -575,7 +596,7 @@ class CompartmentFitter(object):
 
     def fitPassiveLeak(self, recompute=False, pprint=True):
         """
-        Fit leak only.
+        Fit leak only. Coupling conductances have to have been fit already.
 
         Parameters
         ----------
@@ -587,7 +608,7 @@ class CompartmentFitter(object):
         locs = self.tree.getLocs('fit locs')
         # compute the steady state impedance matrix
         fit_tree = self.createTreeGF([])
-        fit_tree.setName(self.name + '_onlyL_')
+        fit_tree.setName(self.name + '_onlyL_', self.path)
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
         # compute the steady state impedance matrix
@@ -629,9 +650,9 @@ class CompartmentFitter(object):
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeSOV())
         if use_all_channels:
-            tree.setName(self.name + '_allchans_')
+            tree.setName(self.name + '_allchans_', self.path)
         else:
-            tree.setName(self.name)
+            tree.setName(self.name, self.path)
 
         if not use_all_channels:
             tree.channel_storage = {}
@@ -640,7 +661,7 @@ class CompartmentFitter(object):
                 node.currents = {}
                 g_l, e_l = node_orig.currents['L']
                 # add the current to the tree
-                node.addCurrent('L', g_l, e_rev=e_l)
+                node._addCurrent('L', g_l, e_l)
 
         # set the computational tree
         tree.setCompTree(eps=eps)
@@ -732,7 +753,7 @@ class CompartmentFitter(object):
                 node.ca = node.currents['L'][0] / taus_m_orig[ii]
 
             warnings.warn('No sane capacitance fit achieved for this configuragion,' + \
-                         'reverted to more basic membrane time scale matching.')
+                          'reverted to more basic membrane time scale matching.')
 
         if pprint:
             # mode time scales
@@ -1001,7 +1022,7 @@ class CompartmentFitter(object):
         e_eqs = self.calcEEq(all_locs + locs)
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
-        greens_tree.setName(self.name + '_atRest_')
+        greens_tree.setName(self.name + '_atRest_', self.path)
         for ii, node in enumerate(greens_tree):
             node.setEEq(e_eqs[ii])
         greens_tree.setImpedancesInTree(recompute=recompute, pprint=False)
@@ -1074,7 +1095,7 @@ class CompartmentFitter(object):
         e_eqs = self.calcEEq(all_locs + cs_locs)
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
-        greens_tree.setName(self.name + '_atRest_')
+        greens_tree.setName(self.name + '_atRest_', self.path)
         for ii, node in enumerate(greens_tree):
             node.setEEq(e_eqs[ii])
         greens_tree.setImpedancesInTree(recompute=recompute, pprint=False)
@@ -1156,7 +1177,7 @@ class CompartmentFitter(object):
         e_eqs = self.getEEq('tree')
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
-        greens_tree.setName(self.name + '_atRest_')
+        greens_tree.setName(self.name + '_atRest_', self.path)
         for ii, node in enumerate(greens_tree):
             node.setEEq(e_eqs[ii])
         greens_tree.setImpedancesInTree(recompute=recompute, pprint=False)

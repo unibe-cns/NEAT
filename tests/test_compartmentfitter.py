@@ -6,7 +6,7 @@ import random
 import copy
 
 from neat import MorphLoc
-from neat import PhysTree, GreensTree
+from neat import PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
 from neat.channels import channelcollection
 import neat.tools.fittools.compartmentfitter as compartmentfitter
@@ -54,6 +54,8 @@ class TestCompartmentFitter():
         self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
+        # set equilibirum potententials
+        self.tree.setEEq(-75.)
         # set computational tree
         self.tree.setCompTree()
 
@@ -232,7 +234,104 @@ class TestCompartmentFitter():
             assert np.allclose(np.sum(fm_cm[0]), fm_control[0][0,0]) # feature matrices
             assert np.allclose(fm_cm[1], fm_control[1]) # target vectors
 
+    def _checkPasCondProps(self, ctree1, ctree2):
+        assert len(ctree1) == len(ctree2)
+        for n1, n2 in zip(ctree1, ctree2):
+            assert np.allclose(n1.currents['L'][0], n2.currents['L'][0])
+            assert np.allclose(n1.g_c, n2.g_c)
 
+    def _checkPasCaProps(self, ctree1, ctree2):
+        assert len(ctree1) == len(ctree2)
+        for n1, n2 in zip(ctree1, ctree2):
+            assert np.allclose(n1.ca, n2.ca)
+
+    def _checkEL(self, ctree, e_l):
+        for n in ctree:
+            assert np.allclose(n.currents['L'][1], e_l)
+
+    def testPassiveFit(self):
+        self.loadTTree()
+        fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]
+
+        # fit a tree directly from CompartmentTree
+        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree.setCompTree()
+        freqs = np.array([0.])
+        greens_tree.setImpedance(freqs)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
+        ctree = greens_tree.createCompartmentTree(fit_locs)
+        ctree.computeGMC(z_mat)
+        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree.calcSOVEquations()
+        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+
+        # fit a tree with compartment fitter
+        cm = CompartmentFitter(self.tree)
+        cm.setCTree(fit_locs)
+        cm.fitPassive()
+        cm.fitCapacitance()
+        cm.fitEEq()
+
+        # check whether both trees are the same
+        self._checkPasCondProps(ctree, cm.ctree)
+        self._checkPasCaProps(ctree, cm.ctree)
+        self._checkEL(cm.ctree, -75.)
+
+        # test whether all channels are used correctly for passive fit
+        self.loadBall()
+        fit_locs = [(1,.5)]
+        # fit ball model with only leak
+        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree.channel_storage = {}
+        for n in greens_tree:
+            n.currents = {'L': n.currents['L']}
+        greens_tree.setCompTree()
+        freqs = np.array([0.])
+        greens_tree.setImpedance(freqs)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
+        ctree_leak = greens_tree.createCompartmentTree(fit_locs)
+        ctree_leak.computeGMC(z_mat)
+        sov_tree = greens_tree.__copy__(new_tree=SOVTree())
+        sov_tree.calcSOVEquations()
+        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        ctree_leak.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+        # make ball model with leak based on all channels
+        tree = self.tree.__copy__()
+        tree.asPassiveMembrane()
+        greens_tree = tree.__copy__(new_tree=GreensTree())
+        greens_tree.setCompTree()
+        freqs = np.array([0.])
+        greens_tree.setImpedance(freqs)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
+        ctree_all = greens_tree.createCompartmentTree(fit_locs)
+        ctree_all.computeGMC(z_mat)
+        sov_tree = tree.__copy__(new_tree=SOVTree())
+        sov_tree.calcSOVEquations()
+        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        ctree_all.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+
+        # new compartment fitter
+        cm = CompartmentFitter(self.tree)
+        cm.setCTree(fit_locs)
+        # test fitting
+        cm.fitPassive(use_all_channels=False)
+        cm.fitCapacitance(use_all_channels=False)
+        cm.fitEEq()
+        self._checkPasCondProps(ctree_leak, cm.ctree)
+        self._checkPasCaProps(ctree_leak, cm.ctree)
+        with pytest.raises(AssertionError):
+            self._checkEL(cm.ctree, self.tree[1].currents['L'][1])
+        cm.fitPassive(use_all_channels=True)
+        cm.fitCapacitance(use_all_channels=True)
+        cm.fitEEq()
+        self._checkPasCondProps(ctree_all, cm.ctree)
+        self._checkPasCaProps(ctree_all, cm.ctree)
+        self._checkEL(cm.ctree, greens_tree[1].currents['L'][1])
+        with pytest.raises(AssertionError):
+            self._checkEL(cm.ctree, self.tree[1].currents['L'][1])
+        with pytest.raises(AssertionError):
+            self._checkPasCondProps(ctree_leak, ctree_all)
 
 
 
@@ -240,4 +339,5 @@ if __name__ == '__main__':
     tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
-    tcf.testChannelFitMats()
+    # tcf.testChannelFitMats()
+    tcf.testPassiveFit()
