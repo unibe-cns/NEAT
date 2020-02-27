@@ -329,15 +329,10 @@ class PhysTree(MorphTree):
             node._addCurrent(channel_name, g_max, e_rev)
 
     @morphtree.originalTreetypeDecorator
-    def getChannelsInTree(self, store=False):
+
+    def getChannelsInTree(self):
         """
         Returns list of strings of all channel names in the tree
-
-        Parameters
-        ----------
-        store: bool, optional (default `False`)
-            if `True`, stores all channels in the tree in `self.channel_storage`
-            if they are not already there
 
         Returns
         -------

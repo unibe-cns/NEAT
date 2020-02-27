@@ -1035,9 +1035,10 @@ class CompartmentTree(STree):
         all_channel_names: list of str or ``None``
             The names of all channels whose conductances will be fitted in a
             single linear least squares fit
-        other_channel_names: list of str or ``None``
+        other_channel_names: list of str or ``None`` (default)
             List of channels present in `z_mat`, but whose conductances are
-            already fitted.
+            already fitted. If ``None`` and 'L' is not in `all_channel_names`,
+            sets `other_channel_names` to 'L'
         action: 'fit', 'store' or 'return'
             If 'fit', fits the conductances for this feature matrix and target
             vector for directly; only based on `z_mat`; nothing is stored.
@@ -1108,9 +1109,10 @@ class CompartmentTree(STree):
         all_channel_names: list of str or ``None``
             The names of all channels whose conductances will be fitted in a
             single linear least squares fit
-        other_channel_names: list of str or ``None``
+        other_channel_names: list of str or ``None`` (default)
             List of channels present in `z_mat`, but whose conductances are
-            already fitted.
+            already fitted. If ``None`` and 'L' is not in `all_channel_names`,
+            sets `other_channel_names` to 'L'
         action: 'fit', 'store' or 'return'
             If 'fit', fits the conductances for this feature matrix and target
             vector for directly; only based on `z_mat`; nothing is stored.
