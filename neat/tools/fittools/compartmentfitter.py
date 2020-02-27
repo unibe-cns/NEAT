@@ -213,12 +213,12 @@ class FitTreeGF(GreensTree):
             self.setCompTree()
             # set the impedances
             self.setImpedance(freqs, pprint=pprint)
-            # clear the stuff that isn't impedances and unnecessary
-            # :class:IonChannel objects cause problems with pickling
-            self.clearLocs()
-            self.channel_storage = {}
 
             if not 'dont save' in self.name:
+                # clear the stuff that isn't impedances and unnecessary
+                # :class:IonChannel objects cause problems with pickling
+                self.clearLocs()
+                self.channel_storage = {}
                 # store the impedance tree
                 file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
@@ -305,15 +305,16 @@ class FitTreeSOV(SOVTree):
             file.close()
             del tree
         except (IOError, EOFError, KeyError) as err:
-            if pprint: print('\'' + file_name + '\' does not exist, calculating cell...')
+            suffix = self.path + file_name if not 'dont save' in self.name else ''
+            if pprint: print('>>>>> Calculating SOV expansion... ' + suffix)
             # set the computational tree
             self.setCompTree(eps=1.)
             # compute SOV factorisation
             self.calcSOVEquations(maxspace_freq=maxspace_freq, pprint=False)
-            # remove all locations and stored ion channel objects
-            self.clearLocs()
-            self.channel_storage = {}
             if not 'dont save' in self.name:
+                # remove all locations and stored ion channel objects
+                self.clearLocs()
+                self.channel_storage = {}
                 # store the tree
                 file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
@@ -960,7 +961,7 @@ class CompartmentFitter(object):
         self.ctree.setEEq(v_eqs)
         self.ctree.fitEL()
 
-    def fitModel(self, loc_arg, alpha_inds=[0], use_allchans_for_passive=True,
+    def fitModel(self, loc_arg, alpha_inds=[0], use_all_chans_for_passive=True,
                        recompute=False, pprint=False, parallel=True):
         """
         Runs the full fit for a set of locations (the location are automatically
@@ -973,7 +974,7 @@ class CompartmentFitter(object):
             The compartment locations
         alpha_inds: list of ints (optional, default to ``[0]``)
             Indices of all mode time-scales to be included in the fit
-        use_allchans_for_passive: bool (optional, default ``True``)
+        use_all_chans_for_passive: bool (optional, default ``True``)
             Uses all channels in the tree to compute coupling conductances
         recompute: bool (optional, defaults to ``False``)
             whether to force recomputing the impedances
@@ -987,15 +988,15 @@ class CompartmentFitter(object):
         :class:`neat.CompartmentTree`
             The reduced tree containing the fitted parameters
         """
-        self.setFitLocs(loc_arg)
+        self.setCTree(loc_arg)
         # fit the passive steady state model
         self.fitPassive(recompute=recompute, pprint=pprint,
-                        use_all_channels=use_allchans_for_passive)
+                        use_all_channels=use_all_chans_for_passive)
         # fit the capacitances
-        self.fitCapacitance(inds=alpha_inds, use_all_channels=use_allchans_for_passive,
-                            recompute=recompute, pprint=True, pplot=False)
+        self.fitCapacitance(inds=alpha_inds, use_all_channels=use_all_chans_for_passive,
+                            recompute=recompute, pprint=pprint, pplot=False)
         # refit with only leak
-        if use_allchans_for_passive:
+        if use_all_chans_for_passive:
             self.fitPassiveLeak(recompute=recompute, pprint=pprint)
 
         # fit the ion channel

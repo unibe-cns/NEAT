@@ -245,6 +245,18 @@ class TestCompartmentFitter():
         for n1, n2 in zip(ctree1, ctree2):
             assert np.allclose(n1.ca, n2.ca)
 
+    def _checkAllCurrProps(self, ctree1, ctree2):
+        assert len(ctree1) == len(ctree2)
+        assert ctree1.channel_storage.keys() == ctree2.channel_storage.keys()
+        for n1, n2 in zip(ctree1, ctree2):
+            assert np.allclose(n1.g_c, n2.g_c)
+            print('----')
+            print(n1.currents)
+            print(n2.currents)
+            for key in n1.currents:
+                assert np.allclose(n1.currents[key][0], n2.currents[key][0])
+                assert np.allclose(n1.currents[key][1], n2.currents[key][1])
+
     def _checkEL(self, ctree, e_l):
         for n in ctree:
             assert np.allclose(n.currents['L'][1], e_l)
@@ -394,6 +406,123 @@ class TestCompartmentFitter():
         assert np.allclose(beta_calc, beta_cm, atol=.020)
         assert np.allclose(beta_full, beta_cm, atol=.015)
 
+    def fitBall(self):
+        self.loadBall()
+        freqs = np.array([0.])
+        locs = [(1, 0.5)]
+        e_eqs = [-75., -55., -35., -15.]
+        # create compartment tree
+        ctree = self.tree.createCompartmentTree(locs)
+        ctree.addCurrent(channelcollection.Na_Ta(), 50.)
+        ctree.addCurrent(channelcollection.Kv3_1(), -85.)
+
+        # create tree with only leak
+        greens_tree_pas = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
+        greens_tree_pas.setCompTree()
+        greens_tree_pas.setImpedance(freqs)
+        # compute the passive impedance matrix
+        z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
+
+        # create tree with only potassium
+        greens_tree_k = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
+                                               if key != 'Na_Ta'}
+        # compute potassium impedance matrices
+        z_mats_k = []
+        for e_eq in e_eqs:
+            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setCompTree()
+            greens_tree_k.setImpedance(freqs)
+            z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
+
+        # create tree with only sodium
+        greens_tree_na = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
+                                               if key != 'Kv3_1'}
+        # create state variable expansion points
+        svs = []; e_eqs_ = []
+        na_chan = greens_tree_na.channel_storage['Na_Ta']
+        for e_eq1 in e_eqs:
+            e_eqs_.append(e_eq1)
+            sv1 = na_chan.computeVarInf(e_eq1)
+            for e_eq2 in e_eqs:
+                sv2 = na_chan.computeVarInf(e_eq2)
+                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+        # compute sodium impedance matrices
+        z_mats_na = []
+        for ii, sv in enumerate(svs):
+            greens_tree_na.setEEq(e_eqs[ii%len(e_eqs)])
+            greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
+            greens_tree_na.setCompTree()
+            greens_tree_na.setImpedance(freqs)
+            z_mats_na.append(greens_tree_na.calcImpedanceMatrix(locs))
+
+        # passive fit
+        ctree.computeGMC(z_mat_pas)
+        # get SOV constants for capacitance fit
+        sov_tree = greens_tree_pas.__copy__(new_tree=SOVTree())
+        sov_tree.setCompTree()
+        sov_tree.calcSOVEquations()
+        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
+                                            sort_type='importance', eps=1e-12,
+                                            return_importance=True)
+        # fit the capacitances from SOV time-scales
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
+
+        # potassium channel fit
+        for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
+            ctree.computeGSingleChanFromImpedance('Kv3_1', z_mat_k, e_eq, freqs,
+                                                    other_channel_names=['L'])
+        ctree.runFit()
+        # sodium channel fit
+        for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
+            ctree.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, freqs,
+                                                    sv=sv, other_channel_names=['L'])
+        ctree.runFit()
+
+        ctree.setEEq(-75.)
+        ctree.removeExpansionPoints()
+        ctree.fitEL()
+
+        self.ctree = ctree
+
+    def testFitModel(self):
+        self.loadTTree()
+        fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]
+
+        # fit a tree directly from CompartmentTree
+        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree.setCompTree()
+        freqs = np.array([0.])
+        greens_tree.setImpedance(freqs)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
+        ctree = greens_tree.createCompartmentTree(fit_locs)
+        ctree.computeGMC(z_mat)
+        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree.calcSOVEquations()
+        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+
+        # fit a tree with compartmentfitter
+        cm = CompartmentFitter(self.tree)
+        ctree_cm = cm.fitModel(fit_locs)
+
+        # compare the two trees
+        self._checkPasCondProps(ctree_cm, ctree)
+        self._checkPasCaProps(ctree_cm, ctree)
+        self._checkEL(ctree_cm, -75.)
+
+        # check active channel
+        self.fitBall()
+        locs = [(1, 0.5)]
+        cm = CompartmentFitter(self.tree)
+        ctree_cm_1 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=False)
+        ctree_cm_2 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
+        # TODO: test for parallel and test with saving
+        self._checkAllCurrProps(self.ctree, ctree_cm_1)
+        self._checkAllCurrProps(self.ctree, ctree_cm_2)
+
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
@@ -402,4 +531,5 @@ if __name__ == '__main__':
     # tcf.testChannelFitMats()
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
-    tcf.testSynRescale()
+    # tcf.testSynRescale()
+    tcf.testFitModel()
