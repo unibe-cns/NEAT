@@ -4,6 +4,9 @@ import matplotlib.pyplot as pl
 import pytest
 import random
 import copy
+import pickle
+
+import dill
 
 from neat import MorphLoc
 from neat import PhysTree, GreensTree, SOVTree
@@ -503,7 +506,7 @@ class TestCompartmentFitter():
         greens_tree.setCompTree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0]
         ctree = greens_tree.createCompartmentTree(fit_locs)
         ctree.computeGMC(z_mat)
         sov_tree = self.tree.__copy__(new_tree=SOVTree())
@@ -532,10 +535,34 @@ class TestCompartmentFitter():
 
         # pickling of tree works
         print('\n--- testing pickling ---')
-        import pickle
+        # of PhysTree
         ss = pickle.dumps(self.tree)
         pt_ = pickle.loads(ss)
         self._checkPhysTrees(self.tree, pt_)
+
+        # of GreensTree
+        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree.setCompTree()
+        freqs = np.array([0.])
+        greens_tree.setImpedance(freqs)
+
+        ss = dill.dumps(greens_tree)
+        gt_ = dill.loads(ss)
+        self._checkPhysTrees(greens_tree, gt_)
+
+        # of SOVTree
+        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree.calcSOVEquations()
+
+        # fails with pickle (lambda functions)
+        with pytest.raises(AttributeError):
+            ss = pickle.dumps(sov_tree)
+
+        # works with dill
+        ss = dill.dumps(sov_tree)
+        st_ = dill.loads(ss)
+        self._checkPhysTrees(sov_tree, st_)
+
         # but parallel test fails
         print('\n--- testing parallel ---')
         ctree_cm_3 = cm.fitModel(locs, parallel=True, use_all_chans_for_passive=True)
