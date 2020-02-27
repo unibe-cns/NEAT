@@ -159,6 +159,30 @@ class IonChannel(object):
         # set the coefficients for the linear expansion
         self.setLambdaFuncs()
 
+    def __getstate__(self):
+
+        d = dict(self.__dict__)
+
+        # remove lambdified functions from dict as they can not be
+        # pickled
+        del d['f_statevar']
+        del d['f_varinf']
+        del d['f_tauinf']
+        del d['f_p_open']
+        del d['dp_dx'], d['df_dv'], d['df_dx'], d['df_dc']
+        # del d['f_s00']
+
+        return d
+
+
+    def __setstate__(self, s):
+
+        self.__dict__ = s
+
+        # since lambdified functions were not pickled we need to
+        # restore them
+        self.setLambdaFuncs()
+
     def setLambdaFuncs(self):
         # construct lambda function for state variables
         self.f_statevar = self.lambdifyFStatevar()
@@ -173,13 +197,17 @@ class IonChannel(object):
                         self.lambdifyDerivatives()
         # express statevar[0,0] as a function of the other state variables
         self.po = sp.symbols('po')
-        sol = sp.solve(self.p_open - self.po, self.statevars[0,0])
-        ind = np.where([sp.I not in s.atoms() for s in sol])[0][-1]
-        sol = sol[ind]
-        # print self.__class__.__name__
-        # print self.p_open
-        # print sol
-        self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
+
+        sv_aux = [sv for ii, sv in np.ndenumerate(self.statevars)]
+
+        # # sol = sp.solve(self.p_open - self.po, self.statevars[0,0])
+        # sol = sp.solve(self.p_open - self.po, sv_aux)
+        # ind = np.where([sp.I not in s.atoms() for s in sol])[0][-1]
+        # sol = sol[ind]
+        # # print self.__class__.__name__
+        # # print self.p_open
+        # # print sol
+        # self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
 
     def _substituteConc(self, expr):
         for sp_c, ion in zip(self.sp_c, self.concentrations):
@@ -457,15 +485,15 @@ class IonChannel(object):
     #     else:
     #         return np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
 
-    def getStatevarsPOpen(self, p_open):
-        xx = 1.
-        if self.statevars.shape[0] > 1:
-            xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
-        elif self.statevars.shape[1] > 1:
-            xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
-        else:
-            xv = np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
-        return xv
+    # def getStatevarsPOpen(self, p_open):
+    #     xx = 1.
+    #     if self.statevars.shape[0] > 1:
+    #         xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
+    #     elif self.statevars.shape[1] > 1:
+    #         xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
+    #     else:
+    #         xv = np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
+    #     return xv
 
 
     def computeFreqIMax(self, v, e_rev, f_bounds=(0.,10000.)):
