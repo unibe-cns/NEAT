@@ -120,7 +120,6 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
         return phys_tree
 
 
-
 class FitTreeGF(GreensTree):
     def __init__(self, *args, **kwargs):
         super(FitTreeGF, self).__init__(*args, **kwargs)

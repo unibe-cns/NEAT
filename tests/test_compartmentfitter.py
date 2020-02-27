@@ -333,6 +333,47 @@ class TestCompartmentFitter():
         with pytest.raises(AssertionError):
             self._checkPasCondProps(ctree_leak, ctree_all)
 
+    def testRecalcImpedanceMatrix(self, g_inp=np.linspace(0.,0.01, 20)):
+        self.loadBall()
+        fit_locs = [(1,.5)]
+        cm = CompartmentFitter(self.tree)
+        cm.setCTree(fit_locs)
+
+        # test only leak
+        # compute impedances explicitly
+        greens_tree = cm.createTreeGF(channel_names=[])
+        greens_tree.setEEq(-75.)
+        greens_tree.setImpedancesInTree()
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0].real
+        z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
+        # compute impedances with compartmentfitter function
+        z_calc = np.array([ \
+                           cm.recalcImpedanceMatrix('fit locs', [g_i], \
+                               channel_names=[]
+                           ) \
+                           for g_i in g_inp \
+                          ])
+        z_calc = np.swapaxes(z_calc, 0, 2)
+        assert np.allclose(z_calc, z_test)
+
+        # test with z based on all channels (passive)
+        # compute impedances explicitly
+        greens_tree = cm.createTreeGF(channel_names=list(cm.tree.channel_storage.keys()))
+        greens_tree.setEEq(-75.)
+        greens_tree.setImpedancesInTree()
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0].real
+        z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
+        # compute impedances with compartmentfitter function
+        z_calc = np.array([ \
+                           cm.recalcImpedanceMatrix('fit locs', [g_i], \
+                               channel_names=list(cm.tree.channel_storage.keys())) \
+                           for g_i in g_inp \
+                          ])
+        z_calc = np.swapaxes(z_calc, 0, 2)
+        assert np.allclose(z_calc, z_test)
+
+    def testSynRescale(self, g_inp=np.linspace(0.,0.01, 20)):
+        self.loadBallAndStick()
 
 
 if __name__ == '__main__':
@@ -340,4 +381,5 @@ if __name__ == '__main__':
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
     # tcf.testChannelFitMats()
-    tcf.testPassiveFit()
+    # tcf.testPassiveFit()
+    tcf.testRecalcImpedanceMatrix()
