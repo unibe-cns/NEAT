@@ -359,7 +359,7 @@ class NeuronSimTree(PhysTree):
         # channel state variable recordings
         if record_from_channels:
             res['chan'] = {}
-            channel_names = self.getChannelsInTree(store=True)
+            channel_names = self.getChannelsInTree()
             for channel_name in channel_names:
                 res['chan'][channel_name] = {var: [] for var in self.channel_storage[channel_name].varnames.flatten()}
                 for loc in self.getLocs('rec locs'):
