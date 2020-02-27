@@ -1,6 +1,6 @@
-'''
+"""
 writes mod files for all channels defined in ``neat.channels.channelcollection``
-'''
+"""
 import os
 
 from . import channelcollection
