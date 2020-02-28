@@ -6,7 +6,7 @@ from neat import netsim
 from neat import NETNode, NET, Kernel
 from neat import GreensTree, NeuronSimTree, SOVTree
 
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 class TestCNET():

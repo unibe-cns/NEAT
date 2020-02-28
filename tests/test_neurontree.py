@@ -11,7 +11,7 @@ from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
 from neat import NeuronSimTree, createReducedModel
 import neat.tools.kernelextraction as ke
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
