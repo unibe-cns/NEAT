@@ -96,8 +96,7 @@ except FileExistsError:
     os.symlink(compile_file, link_name)
 # install the default ion channels
 os.chdir(channel_path)
-subprocess.call(["compilechannels",
-                 "channelcollection/"])
+subprocess.call(["compilechannels", "channelcollection/"])
 
 
 

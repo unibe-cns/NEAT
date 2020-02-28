@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# create mech directory if it doesn't exist and make sure it is empy
+# # create mech directory if it doesn't exist and make sure it is empy
 # mkdir -p neat/tools/simtools/neuron/mech
 # rm neat/tools/simtools/neuron/mech/*
 # # write the IonChannel mod files and copy other input mod files for NEURON

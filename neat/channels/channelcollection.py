@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 
-from neat import IonChannel
+from .ionchannels import IonChannel
 
 
 def sp_exp(x):

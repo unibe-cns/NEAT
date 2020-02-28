@@ -22,7 +22,7 @@ import copy
 import time
 import warnings
 
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 def c2r(arr_c):
