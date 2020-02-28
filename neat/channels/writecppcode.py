@@ -5,7 +5,7 @@ Writes C++ simulation code for the ionchannels
 import os
 
 # from neat.channels import channelcollection
-from . import channelcollection
+from .channelcollection import channelcollection
 
 print('--> Writing c++ channel file')
 path = os.path.join(os.path.dirname(__file__), '../tools/simtools/net/')
