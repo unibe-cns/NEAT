@@ -9,6 +9,8 @@ Author: W. Wybo
 from distutils.core import setup
 from distutils.extension import Extension
 
+import os, subprocess, shutil
+
 import numpy
 from Cython.Distutils import build_ext
 
@@ -49,7 +51,7 @@ ext = Extension("netsim",
 #     install_requires=dependencies,
 # )
 
-setup(
+s_ = setup(
     name='neat',
     version=pversion,
     packages=['neat',
@@ -71,3 +73,16 @@ setup(
                  'Programming Language :: Python :: 3.7'],
     install_requires=dependencies,
 )
+
+# set paths required for installation of neat/channels/compilechannels.py script
+installation_path = s_.command_obj['install'].install_lib
+channel_path = os.path.join(installation_path, 'neat/channels')
+compile_file = os.path.join(channel_path, "compilechannels.py")
+# install the script
+subprocess.call(["chmod", "+x", compile_file])
+os.symlink(compile_file, "/usr/local/bin/compilechannels")
+
+
+
+
+
