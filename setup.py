@@ -5,6 +5,8 @@ NEAT (NEural Analysis Toolkit)
 
 Author: W. Wybo
 """
+# write c++ code for default ion channels
+import neat.channels.writecppcode
 
 from distutils.core import setup
 from distutils.extension import Extension
@@ -33,23 +35,6 @@ ext = Extension("netsim",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
                 include_dirs=[numpy.get_include()])
 
-# setup(
-#     name='neat',
-#     version=pversion,
-#     packages=['neat',
-#               'neat.trees',
-#               'neat.tools',
-#               'neat.tools.fittools',
-#               'neat.tools.plottools',
-#               'neat.channels'],
-#     ext_modules=[ext],
-#     cmdclass={'build_ext': build_ext},
-#     include_package_data=True,
-#     author='Willem Wybo',
-#     classifiers=['Development Status :: 3 - Alpha',
-#                  'Programming Language :: Python :: 3.7'],
-#     install_requires=dependencies,
-# )
 
 s_ = setup(
     name='neat',
@@ -62,8 +47,6 @@ s_ = setup(
               'neat.tools.simtools.neuron',
               'neat.channels',
               'neat.channels.channelcollection'],
-    # package_dir={'neat': 'neat/tools'},
-    # package_data={'neat': ['neat/tools/simtools/neuron/mech/*.mod']},
     ext_package='neat',
     # ext_modules=cythonize([ext]),
     ext_modules=[ext],
@@ -74,6 +57,7 @@ s_ = setup(
                  'Programming Language :: Python :: 3.7'],
     install_requires=dependencies,
 )
+
 
 # set paths required for installation of neat/channels/compilechannels.py script
 installation_path = s_.command_obj['install'].install_lib

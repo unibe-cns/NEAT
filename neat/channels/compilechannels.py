@@ -11,7 +11,7 @@ except IndexError:
     path_neat = neat.__path__[0]
 path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/mech/')
 path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/')
-print('--- writing channels from \n' + path_to_dir + ' to \n' + path_for_mod_files)
+print('--- writing channels from \n' + path_to_dir + '\nto \n' + path_for_mod_files)
 
 
 def allBaseClasses(cls):
