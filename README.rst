@@ -4,38 +4,54 @@ NEAT (NEural Analysis Toolkit)
 Introduction
 ------------
 
-NEAT is a python library that allows for the study of neuronal integration in morphological neuron models using (semi-) analytical techniques. For now, NEAT accepts morphologies in the *de facto* standard .swc format [#f1]_.
+NEAT is a python library for the study, simulation and simplification of
+morphological neuron models. NEAT accepts morphologies in the *de facto*
+standard .swc format [Cannon1998]_, and implements high-level tools to interact
+with and analyze the morphologies.
 
-NEAT implements:
+NEAT also allows for the convenient definition of morphological neuron models.
+These models can be simulated, through an interface with the NEURON simulator
+[Carnevale2004]_, or can be analyzed with two classical methods: *(i)* the
+separation of variables method [Major1993]_ to obtain impedance kernels as
+a superposition of exponentials and *(ii)* Koch's method to compute impedances
+with linearized ion channels analytically in the frequency domain [Koch1985]_.
+Furthermore, NEAT implements the neural evaluation tree framework [Wybo2019]_
+and an associated C++ simulator, to analyze subunit independence.
 
-* The separation of variables method to compute the Green's function associated with a morphology [#f2]_, [#f3]_, [#f4]_, [#f5]_.
-* Green's function calculation with linearized ion channels [#f6]_.
-* The neural evaluation tree framework [#f7]_.
-* Various tools to plot, analyze and interact with neuronal morphologies.
-* A c++ simulator that simulates the NET framework [#f7]_.
+Finally, NEAT implements a new and powerful method to simplify morphological
+neuron models into compartmental models with few compartments [Wybo2020]_. For
+these models, NEAT also provides a NEURON interface so that they can be
+simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
 
 Installation
 ------------
 
-Note: The following instructions are for Linux and Max OSX systems and only use command line tools. Please follow the appropriate manuals for Windows systems or tools with graphical interfaces.
+Note: The following instructions are for Linux and Max OSX systems and only use
+command line tools. Please follow the appropriate manuals for Windows systems or
+tools with graphical interfaces.
 
-Check out the git repository and install using :code:`setup.py`
+Install with pip:
 ::
-    git clone https://github.com/WillemWybo/NEAT
+    pip install neat-dend
+
+Install using `setup.py` (requires `git <https://git-scm.com>`_):
+::
+    git clone https://github.com/unibe-cns/NEAT
     cd NEAT
     python setup.py install
 
-To test the installation (requires :code:`pytest`)
+To test the installation (requires `pytest`)
 ::
     sh run_tests.sh
 
-
 References
+----------
 
-.. [#f1] Cannon et al. *An online archive of reconstructed hippocampal neurons.*, J. Neurosci. methods.
-.. [#f2] Major, G., Evans, J. D. and Jack, J. B. (1993) *Solutions for transients in arbitrarily branching cables: I. Voltage recording with a somatic shunt.*, Biophysical journal, 65(1), pp. 423–49.
-.. [#f3] Major, G., Evans, J. D. and Jack, J. B. (1993) *Solutions for transients in arbitrarily branching cables II. Voltage clamp theory*, Biophysical journal, 65(1), pp. 469–491.
-.. [#f4] Major, G. (1993) *Solutions for transients in arbitrarily branching cables: III. Voltage clamp problems.*, Biophysical journal, 65(1), pp. 469–491.
-.. [#f5] Major, G. and Evans, J. D. (1994) *Solutions for transients in arbitrarily branching cables: IV. Nonuniform electrical parameters.*, Biophysical journal, 66(3 Pt 1), pp. 615–33.
-.. [#f6] Koch, C. and Poggio, T. (1985) *A simple algorithm for solving the cable equation in dendritic trees of arbitrary geometry.*, Journal of neuroscience methods, 12(4), pp. 303–315.
-.. [#f7] Wybo, W. A. M., Torben-nielsen, B. and Gewaltig, M. (2018) *Dynamic compartmentalization in neurons enables branch-specific learning.*, bioRxiv, 10.1101/24. doi: 10.1101/244772.
+.. [Cannon1998] Cannon et al. (1998) *An online archive of reconstructed hippocampal neurons*, J. Neurosci. methods.
+.. [Carnevale2004] Carnevale, Nicholas T. and Hines, Michael L. (2004) *The NEURON book*
+.. [Koch1985] Koch, C. and Poggio, T. (1985) *A simple algorithm for solving the cable equation in dendritic trees of arbitrary geometry*, Journal of neuroscience methods, 12(4), pp. 303–315.
+.. [Major1993] Major et al. (1993) *Solutions for transients in arbitrarily branching cables: I. Voltage recording with a somatic shunt*, Biophysical journal, 65(1), pp. 423–49.
+.. [Martelli03] A. Martelli (2003) *Python in a Nutshell*, O’Reilly Media Inc.
+.. [Wybo2019] Wybo, Willem A.M. et al. (2019) *Electrical Compartmentalization in Neurons*, Cell Reports, 26(7), pp. 1759--1773 shunt.*, Biophysical journal, 65(1), pp. 423–49.
+.. [Wybo2020] Wybo, Willem A.M. et al. (2020) TBA.
+.. [Gewaltig2007] Gewaltig, Marc-Oliver and Diesmann, Markus. (2007) *NEST (NEural Simulation Tool)*, Scholarpedia, 2(4), pp. 1430
