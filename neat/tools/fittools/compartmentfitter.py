@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 import matplotlib.patheffects as patheffects
 import matplotlib.patches as patches
@@ -16,13 +17,16 @@ from ...trees.sovtree import SOVTree
 from ...trees.netree import NET, NETNode, Kernel
 
 from ...tools import kernelextraction as ke
-from ...tools.simtools.neuron import neuronmodel as neurm
+
+try:
+    from ...tools.simtools.neuron import neuronmodel as neurm
+except ModuleNotFoundError:
+    warnings.warn('NEURON not available', UserWarning)
 
 import dill
 from pathos.multiprocessing import ProcessingPool
 from pathos.threading import ThreadPool
 
-import warnings
 import copy
 
 
