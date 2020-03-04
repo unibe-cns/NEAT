@@ -880,7 +880,7 @@ class NeuronCompartmentTree(NeuronSimTree):
                 self.shunts.append(shunt)
 
 
-def createReducedModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
+def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
     # calculate geometry that will lead to correct constants
     arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                  factor_r_a=1e-6, delta=1e-10,
