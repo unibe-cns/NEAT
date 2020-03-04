@@ -42,6 +42,8 @@ class PostInstallCommand(install):
 
 
 def compile_default_ion_channels():
+    import neat.channels.writecppcode as writecppcode
+    writecppcode.write()
     subprocess.call(['neat/channels/compilechannels', 'neat/channels/channelcollection/'])
 
 
