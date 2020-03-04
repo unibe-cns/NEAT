@@ -1,7 +1,9 @@
 Citing
 ======
 
-To cite TODO please use the following publication:
+To cite NEAT please use the following publication:
+
+TODO
 
 Aric A. Hagberg, Daniel A. Schult and Pieter J. Swart,
 `"Exploring network structure, dynamics, and function using NetworkX"

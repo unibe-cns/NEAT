@@ -4,11 +4,11 @@
  Introduction
 ==============
 
-These pages describe a git_ and github_ workflow for the `networkx`_
+These pages describe a git_ and github_ workflow for the `neat`_
 project.
 
 There are several different workflows here, for different ways of
-working with *networkx*.
+working with *neat*.
 
 This is not a comprehensive git reference, it's just a workflow for our
 own project.  It's tailored to the github hosting service. You may well

@@ -1,5 +1,5 @@
-.. networkx
-.. _`networkx`: http://networkx.github.io
-.. _`networkx github`: https://github.com/networkx/networkx
+.. neat
+.. _`neat`: http://neat.github.io
+.. _`neat github`: https://github.com/neat/neat
 
-.. _`networkx mailing list`: http://groups.google.com/group/networkx-discuss/
+.. _`neat mailing list`: http://groups.google.com/group/neat-discuss/

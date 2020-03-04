@@ -5,7 +5,7 @@
 ================
 
 You've discovered a bug or something else you want to change
-in `networkx`_ .. |emdash| excellent!
+in `neat`_ .. |emdash| excellent!
 
 You've worked out a way to fix it |emdash| even better!
 
@@ -31,9 +31,9 @@ Overview
    git config --global user.email you@yourdomain.example.com
    git config --global user.name "Your Name Comes Here"
    # get the repository if you don't have it
-   git clone git://github.com/networkx/networkx.git
+   git clone git://github.com/neat/neat.git
    # make a branch for your patching
-   cd networkx
+   cd neat
    git branch the-fix-im-thinking-of
    git checkout the-fix-im-thinking-of
    # hack, hack, hack
@@ -46,7 +46,7 @@ Overview
    # make the patch files
    git format-patch -M -C master
 
-Then, send the generated patch files to the `networkx
+Then, send the generated patch files to the `neat
 mailing list`_ |emdash| where we will thank you warmly.
 
 In detail
@@ -59,10 +59,10 @@ In detail
       git config --global user.name "Your Name Comes Here"
 
 #. If you don't already have one, clone a copy of the
-   `networkx`_ repository::
+   `neat`_ repository::
 
-      git clone git://github.com/networkx/networkx.git
-      cd networkx
+      git clone git://github.com/neat/neat.git
+      cd neat
 
 #. Make a 'feature branch'.  This will be where you work on
    your bug fix.  It's nice and safe and leaves you with
@@ -104,7 +104,7 @@ In detail
       0001-BF-added-tests-for-Funny-bug.patch
       0002-BF-added-fix-for-Funny-bug.patch
 
-   Send these files to the `networkx mailing list`_.
+   Send these files to the `neat mailing list`_.
 
 When you are done, to switch back to the main copy of the
 code, just return to the ``master`` branch::
@@ -119,7 +119,7 @@ more feature branches, you will probably want to switch to
 development mode.  You can do this with the repository you
 have.
 
-Fork the `networkx`_ repository on github |emdash| :ref:`forking`.
+Fork the `neat`_ repository on github |emdash| :ref:`forking`.
 Then::
 
    # checkout and refresh master branch from main repo
@@ -128,7 +128,7 @@ Then::
    # rename pointer to main repository to 'upstream'
    git remote rename origin upstream
    # point your repo to default read / write to your fork on github
-   git remote add origin git@github.com:your-user-name/networkx.git
+   git remote add origin git@github.com:your-user-name/neat.git
    # push up any branches you've made and want to keep
    git push origin the-fix-im-thinking-of
 

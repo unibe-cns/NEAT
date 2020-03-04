@@ -18,7 +18,7 @@ access to the upstream repo.  Being a maintainer, you've got read-write access.
 It's good to have your upstream remote have a scary name, to remind you that
 it's a read-write remote::
 
-    git remote add upstream-rw git@github.com:networkx/networkx.git
+    git remote add upstream-rw git@github.com:neat/neat.git
     git fetch upstream-rw
 
 *******************
@@ -31,7 +31,7 @@ Let's say you have some changes that need to go into trunk
 The changes are in some branch that you are currently on.  For example, you are
 looking at someone's changes like this::
 
-    git remote add someone git://github.com/someone/networkx.git
+    git remote add someone git://github.com/someone/neat.git
     git fetch someone
     git branch cool-feature --track someone/cool-feature
     git checkout cool-feature
