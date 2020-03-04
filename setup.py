@@ -19,13 +19,15 @@ from __version__ import version as pversion
 
 
 """
-Define post install commands via command classes.
+Define pre- and post-install commands via command classes.
 From https://stackoverflow.com/questions/20288711/post-install-script-with-python-setuptools
 """
 
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
     def run(self):
+        # execute pre installation commands
+        write_ionchannel_header_and_cpp_file()
         # develop install
         develop.run(self)
         # execute post installation commands
@@ -35,15 +37,32 @@ class PostDevelopCommand(develop):
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
+        # execute pre installation commands
+        write_ionchannel_header_and_cpp_file()
         # regular install
         install.run(self)
         # execute post installation commands
         compile_default_ion_channels()
 
 
-def compile_default_ion_channels():
+def write_ionchannel_header_and_cpp_file():
+    """
+    Writes Ionchannel.h and Ionchannel.cpp files that are required for
+    the netsim.pyx extension.
+
+    """
+    # we can import even before installation as we are in the root
+    # directory
     import neat.channels.writecppcode as writecppcode
     writecppcode.write()
+
+
+def compile_default_ion_channels():
+    """
+    Compiles the default ion channels found in channelcollection for
+    use with NEURON.
+
+    """
     subprocess.call(['neat/channels/compilechannels', 'neat/channels/channelcollection/'])
 
 
