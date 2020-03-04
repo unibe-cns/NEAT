@@ -12,6 +12,6 @@ Create an empty graph with no nodes and no edges.
 
 .. nbplot::
 
-    >>> from neat import MorphTree, MorphNode
+    >>> #from neat import MorphTree, MorphNode
 
 .. code-links::

@@ -7,6 +7,16 @@ filterwarnings(
     "ignore", message="Matplotlib is currently using agg", category=UserWarning
 )
 
+# -- Path setup --------------------------------------------------------------
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+#
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+
 # General configuration
 # ---------------------
 
@@ -54,6 +64,22 @@ extensions = [
 # generate autosummary pages
 autosummary_generate = True
 
+# Napoleon settings
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = False
+napoleon_use_admonition_for_examples = False
+napoleon_use_admonition_for_notes = False
+napoleon_use_admonition_for_references = False
+napoleon_use_ivar = True
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_use_keyword = True
+napoleon_custom_sections = None
+
+
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = ['']
 
@@ -69,7 +95,7 @@ source_encoding = "utf-8"
 master_doc = "index"
 
 # Do not include release announcement template
-exclude_patterns = ["release/release_template.rst"]
+exclude_patterns = ["release/release_template.rst", "neat/fittools", "simtools/neuron"]
 
 # General substitutions.
 project = "NEAT"
@@ -79,12 +105,12 @@ copyright = f"2020-{date.today().year}, NEAT Developers"
 # other places throughout the built documents.
 #
 # The short X.Y version.
-#import networkx
+#import neat
 
-#version = networkx.__version__
+#version = neat.__version__
 version = '0.1'
 # The full version, including dev info
-#release = networkx.__version__.replace("_", "")
+#release = neat.__version__.replace("_", "")
 release = "0.1"
 
 # There are two options for replacing |today|: either, you set today to some
@@ -112,10 +138,7 @@ pygments_style = "sphinx"
 # A list of prefixs that are ignored when creating the module index. (new in Sphinx 0.6)
 modindex_common_prefix = ["neat."]
 
-#doctest_global_setup = "import networkx as nx"
-
-# treat ``x, y : type`` as vars x and y instead of default ``y(x,) : type``
-napoleon_use_param = False
+#doctest_global_setup = "import neat"
 
 # Options for HTML output
 # -----------------------
@@ -180,9 +203,9 @@ latex_paper_size = "letter"
 latex_documents = [
     (
         "reference/index",
-        "networkx_reference.tex",
-        "NetworkX Reference",
-        "Aric Hagberg, Dan Schult, Pieter Swart",
+        "neat_reference.tex",
+        "NEAT Reference",
+        "Willem Wybo",
         "manual",
         1,
     )
