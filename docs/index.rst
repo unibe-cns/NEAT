@@ -1,7 +1,7 @@
 .. _contents:
 
-Overview of NEAT_
-=================
+Overview of NEAT
+================
 
 .. _NEAT: https://github.com/unibe-cns/NEAT
 
@@ -71,7 +71,7 @@ Documentation
 
    install
    tutorial
-   reference/index
+   source/index
    developer/index
    news
    license

@@ -1,6 +1,6 @@
 .. _using-git:
 
-Working with *networkx* source code
+Working with *NEAT* source code
 ================================================
 
 Contents:

@@ -1,18 +1,18 @@
 # Building docs
 
 We currently use Sphinx for generating the API and reference
-documentation for NetworkX.
+documentation for NEAT.
 
 If you only want to get the documentation, note that pre-built
 versions can be found at
 
-    http://networkx.github.io/
+    http://neat.github.io/
 
 for both the stable and the latest (i.e., development) releases.
 
 ## Instructions
 
-In addition to installing NetworkX and its dependencies, install the Python
+In addition to installing NEAT and its dependencies, install the Python
 packages need to build the documentation by entering::
 
     pip install -r requirements.txt
