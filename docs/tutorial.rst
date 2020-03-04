@@ -5,9 +5,6 @@ Tutorial
 
 This guide can help you start working with NEAT.
 
-.. include:: ../tutorials/models.rst
-.. include:: ../tutorials/morphologies.rst
-
 Creating a graph
 ----------------
 
