@@ -6,14 +6,14 @@
 Development workflow
 ####################
 
-You already have your own forked copy of the `networkx`_ repository, by
+You already have your own forked copy of the `neat`_ repository, by
 following :ref:`forking`. You have :ref:`set-up-fork`. You have configured
 git by following :ref:`configure-git`.  Now you are ready for some real work.
 
 Workflow summary
 ================
 
-In what follows we'll refer to the upstream networkx ``master`` branch, as
+In what follows we'll refer to the upstream neat ``master`` branch, as
 "trunk".
 
 * Don't use your ``master`` branch for anything.  Consider deleting it.
@@ -26,7 +26,7 @@ In what follows we'll refer to the upstream networkx ``master`` branch, as
 * If you can possibly avoid it, avoid merging trunk or any other branches into
   your feature branch while you are working.  
 * If you do find yourself merging from trunk, consider :ref:`rebase-on-trunk`
-* Ask on the `networkx mailing list`_ if you get stuck.
+* Ask on the `neat mailing list`_ if you get stuck.
 * Ask for code review!
 
 This way of working helps to keep work well organized, with readable history.
@@ -83,7 +83,7 @@ what the changes in the branch are for.  For example ``add-ability-to-fly``, or
     git checkout my-new-feature
 
 Generally, you will want to keep your feature branches on your public github_
-fork of `networkx`_.  To do this, you `git push`_ this new branch up to your
+fork of `neat`_.  To do this, you `git push`_ this new branch up to your
 github repo.  Generally (if you followed the instructions in these pages, and by
 default), git will have a link to your github repo, called ``origin``.  You push
 up to your own repo on github with::
@@ -154,7 +154,7 @@ Ask for your changes to be reviewed or merged
 When you are ready to ask for someone to review your code and consider a merge:
 
 #. Go to the URL of your forked repo, say
-   ``https://github.com/your-user-name/networkx``.
+   ``https://github.com/your-user-name/neat``.
 #. Use the 'Switch Branches' dropdown menu near the top left of the page to
    select the branch with your changes:
 
@@ -196,10 +196,10 @@ If you want to work on some stuff with other people, where you are all
 committing into the same repository, or even the same branch, then just
 share it via github.
 
-First fork networkx into your account, as from :ref:`forking`.
+First fork neat into your account, as from :ref:`forking`.
 
 Then, go to your forked repository github page, say
-``https://github.com/your-user-name/networkx``
+``https://github.com/your-user-name/neat``
 
 Click on the 'Admin' button, and add anyone else to the repo as a
 collaborator:
@@ -208,7 +208,7 @@ collaborator:
 
 Now all those people can do::
 
-    git clone git@githhub.com:your-user-name/networkx.git
+    git clone git@githhub.com:your-user-name/neat.git
 
 Remember that links starting with ``git@`` use the ssh protocol and are
 read-write; links starting with ``git://`` are read-only.
