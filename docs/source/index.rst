@@ -7,10 +7,6 @@ Reference
    :Date: |today|
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
-   introduction
-
-   neat.channels
-   neat.tools
-   neat.trees
+   neat
