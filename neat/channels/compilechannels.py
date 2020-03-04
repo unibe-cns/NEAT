@@ -5,10 +5,7 @@ import neat
 from neat import IonChannel
 
 path_to_dir = sys.argv[1]
-try:
-    path_neat = sys.argv[2]
-except IndexError:
-    path_neat = neat.__path__[0]
+path_neat = neat.__path__[0]
 path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/mech/')
 path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/')
 print('--- writing channels from \n' + path_to_dir + '\nto \n' + path_for_mod_files)
@@ -20,6 +17,9 @@ def allBaseClasses(cls):
     """
     return [cls.__base__] + allBaseClasses(cls.__base__) if cls is not None else []
 
+
+if not os.path.exists(path_for_mod_files):
+        os.makedirs(path_for_mod_files)
 
 for channel_module in glob.glob(path_to_dir + '*.py'):
     # import channel modules
@@ -41,6 +41,3 @@ for channel_module in glob.glob(path_to_dir + '*.py'):
 os.chdir(path_for_compilation)
 subprocess.call(["rm", "-r", "x86_64/"])
 subprocess.call(["nrnivmodl", "mech/"])
-
-
-
