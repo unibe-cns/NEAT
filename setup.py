@@ -42,7 +42,9 @@ class PostInstallCommand(install):
 
 
 def compile_default_ion_channels():
-    subprocess.call(['python', 'neat/channels/compilechannels.py', 'neat/channels/channelcollection/'])
+    import neat.channels.writecppcode as writecppcode
+    writecppcode.write()
+    subprocess.call(['neat/channels/compilechannels', 'neat/channels/channelcollection/'])
 
 
 dependencies = ['numpy>=1.14.1',
@@ -66,6 +68,7 @@ ext = Extension("netsim",
 s_ = setup(
     name='neat',
     version=pversion,
+    scripts=['neat/channels/compilechannels'],
     packages=['neat',
               'neat.trees',
               'neat.tools',
