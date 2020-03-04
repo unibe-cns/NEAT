@@ -115,7 +115,7 @@ class PhysNode(MorphNode):
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
         e_l = e_eq_target - i_eq / g_l
-        self.currents['L'] = (g_l, e_l)
+        self.currents['L'] = [g_l, e_l]
         self.e_eq = e_eq_target
 
     def getGTot(self, channel_storage, v=None):
@@ -126,6 +126,8 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
+            channel_storage: dict {``channel_name``: `channel_instance`}
+                dict where all ion channel objects present on the node are stored
             v: float (optional, defaults to `self.e_eq`)
                 the potential (in mV) at which to compute the membrane conductance
 
@@ -138,7 +140,7 @@ class PhysNode(MorphNode):
         g_tot = self.currents['L'][0]
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
-            # create the ionchannel object
+            # get the ionchannel object
             channel = channel_storage[channel_name]
             g_tot += g * channel.computePOpen(v)
 
@@ -329,15 +331,9 @@ class PhysTree(MorphTree):
             node._addCurrent(channel_name, g_max, e_rev)
 
     @morphtree.originalTreetypeDecorator
-    def getChannelsInTree(self, store=False):
+    def getChannelsInTree(self):
         """
         Returns list of strings of all channel names in the tree
-
-        Parameters
-        ----------
-        store: bool, optional (default `False`)
-            if `True`, stores all channels in the tree in `self.channel_storage`
-            if they are not already there
 
         Returns
         -------

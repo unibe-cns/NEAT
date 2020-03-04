@@ -364,10 +364,13 @@ class GreensTree(PhysTree):
             if `list` of locations, specifies the locations for which the
             impedance matrix is evaluated, if ``string``, specifies the
             name under which a set of location is stored
+        explicit_method: bool, optional (default ``True``)
+            if ``False``, will use the transitivity property of the impedance
+            matrix to further optimize the computation.
 
         Returns
         -------
-        `np.ndarray` (``dtype = complex``, ``ndim = 3``)
+        `np.ndarray` (``dtype = self.freqs.dtype``, ``ndim = 3``)
             the impedance matrix, first dimension corresponds to the
             frequency, second and third dimensions contain the impedance
             matrix at that frequency
@@ -378,7 +381,8 @@ class GreensTree(PhysTree):
             locs = self.getLocs(locarg)
         else:
             raise IOError('`locarg` should be list of locs or string')
-        z_mat = np.zeros((len(self.freqs), len(locs), len(locs)), dtype=complex)
+        z_mat = np.zeros((len(self.freqs), len(locs), len(locs)),
+                         dtype=self.freqs.dtype)
 
         if explicit_method:
             for ii, loc0 in enumerate(locs):

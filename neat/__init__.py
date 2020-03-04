@@ -34,9 +34,11 @@ try:
     from neat.tools.simtools.neuron.neuronmodel import NeuronSimTree
     from neat.tools.simtools.neuron.neuronmodel import NeuronSimNode
     from neat.tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
-    from neat.tools.simtools.neuron.neuronmodel import createReducedModel
+    from neat.tools.simtools.neuron.neuronmodel import createReducedNeuronModel
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
+
+from neat.tools.kernelextraction import FourrierTools
 
 from neat.channels.ionchannels import IonChannel
 

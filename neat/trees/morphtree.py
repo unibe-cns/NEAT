@@ -76,32 +76,31 @@ class MorphLoc(object):
     coordinates, the class stores a reference to the morphology tree on which
     the location is defined, and returns either the original coordinate or the
     coordinate on the computational tree, depending on which tree is active.
+
+    Initialized based on either a tuple or a dict where one entry specifies the
+    node index and the other entry the x-coordinate specifying the location
+    between parent node (x=0) or the node indicated by the index (x=1), or on
+    a :class:`MorphLoc`.
+
+    Parameters
+    ----------
+        loc: tuple or dict or :class:`MorphLoc`
+            if tuple: (node index, x-value)
+            if dict: {'node': node index, 'x': x-value}
+        reftree: :class:`MorphTree`
+        set_as_comploc: bool
+            if True, assumes the paremeters provided in `loc` are coordinates
+            on the computational tree. Doing this while no computational tree
+            has been initialized in `reftree` will result in an error.
+            Defaults to False
+
+    Raises
+    ------
+        ValueError
+            If x-coordinate of location is not in ``[0,1]``
     """
 
     def __init__(self, loc, reftree, set_as_comploc=False):
-        """
-        Initialize an object to specify a location on the morphology. Input is
-        either a tuple or a dict where one entry specifies the node index and
-        the other entry the x-coordinate specifying the location between parent
-        node (x=0) or the node indicated by the index (x=1).
-
-        Parameters
-        ----------
-            loc: tuple or dict
-                if tuple: (node index, x-value)
-                if dict: {'node': node index, 'x': x-value}
-            reftree: :class:`MorphTree`
-            set_as_comploc: bool
-                if True, assumes the paremeters provided in `loc` are coordinates
-                on the computational tree. Doing this while no computational tree
-                has been initialized in `reftree` will result in an error.
-                Defaults to False
-
-        Raises
-        ------
-            ValueError
-                If x-coordinate of location is not in ``[0,1]``
-        """
         self.reftree = reftree
 
         if isinstance(loc, tuple):
@@ -800,7 +799,6 @@ class MorphTree(STree):
 
         for node in nodes:
             if node.index not in compnode_indices:
-                print('!!!', node)
                 self.removeSingleNode(node)
             elif node.parent_node != None:
                 orig_node = self[node.index]
