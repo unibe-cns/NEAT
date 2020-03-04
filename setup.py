@@ -5,18 +5,45 @@ NEAT (NEural Analysis Toolkit)
 
 Author: W. Wybo
 """
-# write c++ code for default ion channels
-import neat.channels.writecppcode
 
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup
+from setuptools.extension import Extension
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
 import os, subprocess, shutil, sys
 
 import numpy
-from Cython.Distutils import build_ext
 
 from __version__ import version as pversion
+
+
+"""
+Define post install commands via command classes.
+From https://stackoverflow.com/questions/20288711/post-install-script-with-python-setuptools
+"""
+
+class PostDevelopCommand(develop):
+    """Post-installation for development mode."""
+    def run(self):
+        # develop install
+        develop.run(self)
+        # execute post installation commands
+        compile_default_ion_channels()
+
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        # regular install
+        install.run(self)
+        # execute post installation commands
+        compile_default_ion_channels()
+
+
+def compile_default_ion_channels():
+    subprocess.call(['python', 'neat/channels/compilechannels.py', 'neat/channels/channelcollection/'])
+
 
 dependencies = ['numpy>=1.14.1',
                 'matplotlib>=2.1.2',
@@ -48,40 +75,14 @@ s_ = setup(
               'neat.channels',
               'neat.channels.channelcollection'],
     ext_package='neat',
-    # ext_modules=cythonize([ext]),
     ext_modules=[ext],
-    cmdclass={'build_ext': build_ext},
+    cmdclass={
+        'develop': PostDevelopCommand,
+        'install': PostInstallCommand,
+    },
     include_package_data=True,
     author='Willem Wybo',
     classifiers=['Development Status :: 3 - Alpha',
                  'Programming Language :: Python :: 3.7'],
     install_requires=dependencies,
 )
-
-
-# set paths required for installation of neat/channels/compilechannels.py script
-installation_path = s_.command_obj['install'].install_lib
-current_path = os.path.dirname(sys.argv[0])
-channel_path = os.path.join(installation_path, 'neat/channels/')
-compile_file = os.path.join(channel_path, "compilechannels.py")
-
-# copy standard mechanism storage to installation path
-mech_path = os.path.join(installation_path, 'neat/tools/simtools/neuron/mech')
-storage_path = os.path.join(current_path, 'neat/tools/simtools/neuron/mech_storage')
-subprocess.call(["cp", "-rf", storage_path, mech_path])
-
-# install the script, remove symlink if it already exists
-subprocess.call(["chmod", "+x", compile_file])
-link_name = "/usr/local/bin/compilechannels"
-try:
-    os.symlink(compile_file, link_name)
-except FileExistsError:
-    os.remove(link_name)
-    os.symlink(compile_file, link_name)
-# install the default ion channels
-os.chdir(channel_path)
-subprocess.call(["compilechannels", "channelcollection/"])
-
-
-
-
