@@ -20,6 +20,26 @@ sys.path.insert(0, os.path.abspath('..'))
 # General configuration
 # ---------------------
 
+
+# Trick to get the jupyter nbs to the documentation
+import shutil
+project_root = '..'
+print("Copy example notebooks into docs/_examples")
+
+
+def all_but_ipynb(dir, contents):
+    result = []
+    for c in contents:
+        if os.path.isfile(os.path.join(dir, c)) and (not c.endswith(".ipynb")):
+            result += [c]
+    return result
+
+
+shutil.rmtree(os.path.join(project_root, "docs/_examples"), ignore_errors=True)
+shutil.copytree(os.path.join(project_root, "examples"),
+                os.path.join(project_root, "docs/_examples"),
+                ignore=all_but_ipynb)
+
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
@@ -35,6 +55,7 @@ extensions = [
     "sphinx_gallery.gen_gallery",
     "nb2plots",
     "texext",
+    "nbsphinx"
 ]
 
 # https://github.com/sphinx-gallery/sphinx-gallery
@@ -95,7 +116,7 @@ source_encoding = "utf-8"
 master_doc = "index"
 
 # Do not include release announcement template
-exclude_patterns = ["release/release_template.rst", "neat/fittools", "simtools/neuron"]
+exclude_patterns = ["release/release_template.rst", "neat/fittools", "simtools/neuron", '_build', '**.ipynb_checkpoints']
 
 # General substitutions.
 project = "NEAT"

@@ -1,0 +1,10 @@
+numpy>=1.14.1
+matplotlib>=2.1.2
+cython>=0.27.3
+scipy>=1.0.0
+sympy>=1.1.1
+sklearn>=0.19.1
+
+# documentation
+sphinx>=2.4.3
+nbspinx>=0.5.1
