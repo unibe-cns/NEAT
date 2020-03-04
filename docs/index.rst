@@ -1,69 +1,62 @@
 .. _contents:
 
-Overview of NetworkX_
-=====================
+Overview of NEAT_
+=================
 
-.. _NetworkX: https://networkx.github.io/
+.. _NEAT: https://github.com/unibe-cns/NEAT
 
-NetworkX is a Python package for the creation, manipulation, and study
-of the structure, dynamics, and functions of complex networks.
+NEAT is a python library for the study, simulation and simplification of
+morphological neuron models. NEAT accepts morphologies in the *de facto*
+standard .swc format [Cannon1998]_, and implements high-level tools to interact
+with and analyze the morphologies.
 
-NetworkX provides:
+NEAT also allows for the convenient definition of morphological neuron models.
+These models can be simulated, through an interface with the NEURON simulator
+[Carnevale2004]_, or can be analyzed with two classical methods: *(i)* the
+separation of variables method [Major1993]_ to obtain impedance kernels as
+a superposition of exponentials and *(ii)* Koch's method to compute impedances
+with linearized ion channels analytically in the frequency domain [Koch1985]_.
+Furthermore, NEAT implements the neural evaluation tree framework [Wybo2019]_
+and an associated C++ simulator, to analyze subunit independence.
 
--  tools for the study of the structure and
-   dynamics of social, biological, and infrastructure networks;
--  a standard programming interface and graph implementation that is suitable
-   for many applications;
--  a rapid development environment for collaborative, multidisciplinary
-   projects;
--  an interface to existing numerical algorithms and code written in C,
-   C++, and FORTRAN; and
--  the ability to painlessly work with large nonstandard data sets.
-
-With NetworkX you can load and store networks in standard and nonstandard data
-formats, generate many types of random and classic networks, analyze network
-structure, build network models, design new network algorithms, draw networks,
-and much more.
+Finally, NEAT implements a new and powerful method to simplify morphological
+neuron models into compartmental models with few compartments [Wybo2020]_. For
+these models, NEAT also provides a NEURON interface so that they can be
+simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
 
 Audience
 --------
 
-The audience for NetworkX includes mathematicians, physicists, biologists,
-computer scientists, and social scientists. Good reviews of the science of
-complex networks are presented in Albert and Barabási [BA02]_, Newman
-[Newman03]_, and Dorogovtsev and Mendes [DM03]_. See also the classic texts
-[Bollobas01]_, [Diestel97]_ and [West01]_ for graph theoretic results and
-terminology. For basic graph algorithms, we recommend the texts of Sedgewick
-(e.g., [Sedgewick01]_ and [Sedgewick02]_) and the survey of Brandes and
-Erlebach [BE05]_.
+NEAT is of interest to neuroscientist who aim to understand dendritic
+computation, and to explore dendritic computation at the network level.
 
 Python
 ------
 
 Python is a powerful programming language that allows simple and flexible
-representations of networks as well as clear and concise expressions of network
-algorithms.  Python has a vibrant and growing ecosystem of packages that
-NetworkX uses to provide more features such as numerical linear algebra and
-drawing.  In order to make the most out of NetworkX you will want to know how
-to write basic programs in Python.  Among the many guides to Python, we
+representations neural morphologies. Python has a vibrant and growing ecosystem
+of packages that NEAT uses to provide more features such as numerical linear
+algebra and drawing. In order to make the most out of NEAT you will want to know
+how to write basic programs in Python. Among the many guides to Python, we
 recommend the `Python documentation <https://docs.python.org/3/>`_ and the text
 by Alex Martelli [Martelli03]_.
 
 Free software
 -------------
 
-NetworkX is free software; you can redistribute it and/or modify it under the
-terms of the :doc:`3-clause BSD License </license>`.  We welcome contributions.
-Join us on `GitHub <https://github.com/networkx/networkx>`_.
+NEAT is free software; you can redistribute it and/or modify it under the
+terms of the :doc:`GNU General Public License`.  We welcome contributions.
+Join us on `GitHub <https://github.com/unibe-cns/NEAT>`_.
 
 History
 -------
 
-NetworkX was born in May 2002. The original version was designed and written by
-Aric Hagberg, Dan Schult, and Pieter Swart in 2002 and 2003.  The first public
-release was in April 2005.
-Many people have contributed to the success of NetworkX. Some of the
-contributors are listed in the :doc:`credits. <credits>`
+NEAT was born in April 2018. The original version was designed and written by
+Willem Wybo, based on code by Benjamin Torben-Nielsen. With help of Jakob
+Jordan and Benjamin Ellenberger, NEAT became an installable python package with
+documentation website.
+
+Contributors are listed in :doc:`credits. <credits>`
 
 Documentation
 -------------
