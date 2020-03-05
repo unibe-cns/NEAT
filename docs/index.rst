@@ -24,6 +24,50 @@ neuron models into compartmental models with few compartments [Wybo2020]_. For
 these models, NEAT also provides a NEURON interface so that they can be
 simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
 
+Structure
+---------
+
+NEAT's main functionality is implemented throught a number of tree classes.
+`neat.STree` is the base class, implementing basic functionalities such as
+getting and iterating over nodes, as well as adding and removing nodes. Each
+class implements another layer of functionality over the class from which it
+inherits. Figure 1 provides an overview of the inheritance structure.
+For instance, `neat.MorphTree` inherits from `neat.STree`, and implements all
+functionality to load, store and interact with morphologies. `neat.PhysTree`
+then adds another layer of functionality by allowing the definition of
+electrical parameters.
+
+NEAT furthermore has a number of other classes, notably to implement ion
+channels (`neat.IonChannel`) and to provide a high-level API for the
+simplification method described in [Wybo2020]_ (`neat.CompartmentFitter`).
+
+.. figure:: figures/neat_overview.png
+   :height: 380 px
+   :width: 550 px
+   :scale: 100 %
+   :alt: NEAT structure overview
+
+   **Figure 1.** Overview of NEAT structures. NEAT contains a number of tree classes,
+   inheriting from `neat.STree`, as well as a number of helper classes.
+
+A NEAT tree consists of nodes, and each tree class has a corresponding node class
+(Figure 2A). A tree class contains a `root` attribute (Figure 2B), which points to the
+corresponding node class instance that is the root of the tree (the soma, if
+the tree is a `MorphTree` or a derived class). Each node has an index (by which
+it can be accessed from the tree class), a reference to its parent node (``None``
+if the node is the root), and a list containing references to its child nodes
+(empty if the node is a leaf).
+
+.. figure:: figures/tree_overview.png
+   :height: 490 px
+   :width: 460 px
+   :scale: 100 %
+   :alt: NEAT structure overview
+
+   **Figure 2.** Layout of a NEAT tree. **A:** Each NEAT tree consists of corresponding nodes.
+   **B:** A tree contains a root node attribute, and each node has a parent node,
+   an index and a list of child nodes.
+
 Audience
 --------
 
