@@ -5,7 +5,7 @@ import pytest
 import copy
 
 from neat import PhysTree, PhysNode
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 class TestPhysTree():

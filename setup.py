@@ -6,13 +6,65 @@ NEAT (NEural Analysis Toolkit)
 Author: W. Wybo
 """
 
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup
+from setuptools.extension import Extension
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+
+import os, subprocess, shutil, sys
 
 import numpy
-from Cython.Distutils import build_ext
 
 from __version__ import version as pversion
+
+
+"""
+Define pre- and post-install commands via command classes.
+From https://stackoverflow.com/questions/20288711/post-install-script-with-python-setuptools
+"""
+
+class PostDevelopCommand(develop):
+    """Post-installation for development mode."""
+    def run(self):
+        # execute pre installation commands
+        write_ionchannel_header_and_cpp_file()
+        # develop install
+        develop.run(self)
+        # execute post installation commands
+        compile_default_ion_channels()
+
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        # execute pre installation commands
+        write_ionchannel_header_and_cpp_file()
+        # regular install
+        install.run(self)
+        # execute post installation commands
+        compile_default_ion_channels()
+
+
+def write_ionchannel_header_and_cpp_file():
+    """
+    Writes Ionchannel.h and Ionchannel.cpp files that are required for
+    the netsim.pyx extension.
+
+    """
+    # we can import even before installation as we are in the root
+    # directory
+    import neat.channels.writecppcode as writecppcode
+    writecppcode.write()
+
+
+def compile_default_ion_channels():
+    """
+    Compiles the default ion channels found in channelcollection for
+    use with NEURON.
+
+    """
+    subprocess.call(['neat/channels/compilechannels', 'neat/channels/channelcollection/'])
+
 
 dependencies = ['numpy>=1.14.1',
                 'matplotlib>=2.1.2',
@@ -31,40 +83,25 @@ ext = Extension("netsim",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
                 include_dirs=[numpy.get_include()])
 
-# setup(
-#     name='neat',
-#     version=pversion,
-#     packages=['neat',
-#               'neat.trees',
-#               'neat.tools',
-#               'neat.tools.fittools',
-#               'neat.tools.plottools',
-#               'neat.channels'],
-#     ext_modules=[ext],
-#     cmdclass={'build_ext': build_ext},
-#     include_package_data=True,
-#     author='Willem Wybo',
-#     classifiers=['Development Status :: 3 - Alpha',
-#                  'Programming Language :: Python :: 3.7'],
-#     install_requires=dependencies,
-# )
 
-setup(
+s_ = setup(
     name='neat',
     version=pversion,
+    scripts=['neat/channels/compilechannels'],
     packages=['neat',
               'neat.trees',
               'neat.tools',
               'neat.tools.fittools',
               'neat.tools.plottools',
               'neat.tools.simtools.neuron',
-              'neat.channels'],
-    # package_dir={'neat': 'neat/tools'},
-    # package_data={'neat': ['neat/tools/simtools/neuron/mech/*.mod']},
+              'neat.channels',
+              'neat.channels.channelcollection'],
     ext_package='neat',
-    # ext_modules=cythonize([ext]),
     ext_modules=[ext],
-    cmdclass={'build_ext': build_ext},
+    cmdclass={
+        'develop': PostDevelopCommand,
+        'install': PostInstallCommand,
+    },
     include_package_data=True,
     author='Willem Wybo',
     classifiers=['Development Status :: 3 - Alpha',

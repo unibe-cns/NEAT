@@ -532,7 +532,8 @@ class IonChannel(object):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
-        fname = os.path.join(path, 'I' + self.__class__.__name__ + '.mod')
+        modname = 'I' + self.__class__.__name__ + '.mod'
+        fname = os.path.join(path, modname)
 
         file = open(fname, 'w')
 
@@ -633,6 +634,8 @@ class IonChannel(object):
         file.write('}\n\n')
 
         file.close()
+
+        return modname
 
     def writeCPPCode(self, path, e_rev):
         """

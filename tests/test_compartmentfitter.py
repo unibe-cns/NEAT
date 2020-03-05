@@ -8,7 +8,7 @@ import copy
 from neat import MorphLoc
 from neat import PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 import neat.tools.fittools.compartmentfitter as compartmentfitter
 
 

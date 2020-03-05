@@ -7,7 +7,7 @@ import copy
 
 from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 class TestCompartmentTree():

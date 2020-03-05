@@ -6,7 +6,7 @@ from neat import netsim
 from neat import NETNode, NET, Kernel
 from neat import GreensTree, NeuronSimTree, SOVTree
 
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 class TestCNET():
@@ -47,7 +47,9 @@ class TestCNET():
         # add ion channel to NET simulator
         a_soma = 4. *  np.pi * (self.sim_tree[1].R*1e-4)**2
         self.cnet = netsim.NETSim(net_py, v_eq=self.v_eq)
-        self.cnet.addChannel('h', 0, gh*a_soma, e_rev=eh)
+
+        hchan = channelcollection.h()
+        self.cnet.addChannel(hchan, 0, gh*a_soma, eh)
 
         # add the synapse
         # to neuron tree

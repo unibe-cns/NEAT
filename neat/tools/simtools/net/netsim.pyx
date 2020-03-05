@@ -22,7 +22,7 @@ import copy
 import time
 import warnings
 
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 def c2r(arr_c):
@@ -235,20 +235,20 @@ cdef class NETSim:
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
         self.net_ptr.addVNodeToArr(&vc_arr[0], vc_arr.shape[0])
 
-    def addChannel(self, channel_name, loc_index, g_max, e_rev=None,
+    def addChannel(self, chan, loc_index, g_max, e_rev,
                          instantaneous=False, v_const={}):
         """
         Add an ion channel to the NET model
 
         Parameters
         ----------
-        channel_name: string
+        chan: :class:`neat.channels.IonChannel
             name of the ion channel
         loc_index: int
             index of the location
         g_max: float
             maximal conductance of the channel
-        e_rev: float (optional)
+        e_rev: float
             reversal potential (if not provide, default value is taken)
         instantaneous: bool (optional, default to 'False')
             whether the activation should be approximated as instantaneous if
@@ -260,10 +260,8 @@ cdef class NETSim:
             provided, state variable activations are computed based on actual
             voltage during Newton iteration
         """
-        if e_rev is None: e_rev = channelcollection.E_REV_DICT[channel_name]
-        cdef string cname = channel_name.encode('UTF-8')
+        cdef string cname = chan.__class__.__name__.encode('UTF-8')
         # voltage values
-        chan = eval('channelcollection.' + channel_name + '()')
         cdef np.ndarray[np.double_t, ndim=1] vs_arr = np.zeros(chan.statevars.size)
         for ii, vn in enumerate(np.nditer(chan.varnames, flags=['refs_ok'])):
             vn = str(vn)

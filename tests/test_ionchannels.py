@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 from neat import IonChannel
 
 import pytest
