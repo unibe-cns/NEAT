@@ -1,22 +1,12 @@
-.. NEAT (NEural Analysis Toolkit) documentation master file, created by
-   sphinx-quickstart on Wed Feb 26 10:47:50 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. _reference:
 
-Welcome to NEAT (NEural Analysis Toolkit)'s documentation!
-==========================================================
+Reference
+*********
+
+   :Release: |release|
+   :Date: |today|
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 4
 
-   neat.channels.rst
-   neat.tools.rst
-   neat.trees.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   neat
