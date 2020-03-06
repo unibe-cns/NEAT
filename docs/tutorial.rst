@@ -4,4 +4,6 @@ Tutorial
 .. toctree::
    :maxdepth: 1
 
-   _examples/morphtree_example.ipynb
+   _tutorials/models.ipynb
+   _tutorials/morphologies.ipynb
+

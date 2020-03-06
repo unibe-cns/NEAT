@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # Trick to get the jupyter nbs to the documentation
 import shutil
 project_root = '..'
-print("Copy example notebooks into docs/_examples")
+print("Copy example notebooks into docs/_tutorials")
 
 
 def all_but_ipynb(dir, contents):
@@ -35,9 +35,9 @@ def all_but_ipynb(dir, contents):
     return result
 
 
-shutil.rmtree(os.path.join(project_root, "docs/_examples"), ignore_errors=True)
-shutil.copytree(os.path.join(project_root, "examples"),
-                os.path.join(project_root, "docs/_examples"),
+shutil.rmtree(os.path.join(project_root, "docs/_tutorials"), ignore_errors=True)
+shutil.copytree(os.path.join(project_root, "tutorials"),
+                os.path.join(project_root, "docs/_tutorials"),
                 ignore=all_but_ipynb)
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
@@ -52,35 +52,10 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
-    "sphinx_gallery.gen_gallery",
     "nb2plots",
     "texext",
     "nbsphinx"
 ]
-
-# https://github.com/sphinx-gallery/sphinx-gallery
-# sphinx_gallery_conf = {
-#     # path to your examples scripts
-#     "examples_dirs": "../examples",
-#     "subsection_order": ExplicitOrder(
-#         [
-#             "../examples/basic",
-#             "../examples/drawing",
-#             "../examples/graph",
-#             "../examples/algorithms",
-#             "../examples/advanced",
-#             "../examples/3d_drawing",
-#             "../examples/pygraphviz",
-#             "../examples/javascript",
-#             "../examples/jit",
-#             "../examples/applications",
-#             "../examples/subclass",
-#         ]
-#     ),
-#     # path where to save gallery generated examples
-#     "gallery_dirs": "auto_examples",
-#     "backreferences_dir": "modules/generated",
-# }
 
 # generate autosummary pages
 autosummary_generate = True

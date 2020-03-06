@@ -115,7 +115,7 @@ Documentation
 
    install
    tutorial
-   source/index
+   reference/index
    developer/index
    news
    license
