@@ -347,6 +347,7 @@ class CompartmentFitter(object):
                  e_hs=np.array([-75., -55., -35., -15.]), freqs=np.array([0.]),
                  name='dont save', path=''):
         self.tree = phys_tree.__copy__(new_tree=PhysTree())
+        self.tree.treetype = 'original'
         # get all channels in the tree
         self.channel_names = self.tree.getChannelsInTree()
         # frequencies for fit
@@ -966,7 +967,7 @@ class CompartmentFitter(object):
         self.ctree.fitEL()
 
     def fitModel(self, loc_arg, alpha_inds=[0], use_all_chans_for_passive=True,
-                       recompute=False, pprint=False, parallel=True):
+                       recompute=False, pprint=False, parallel=False):
         """
         Runs the full fit for a set of locations (the location are automatically
         extended with the bifurcation locs)
@@ -984,7 +985,7 @@ class CompartmentFitter(object):
             whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
-        parallel:  bool (optional, defaults to ``True``)
+        parallel:  bool (optional, defaults to ``False``)
             whether the models are evaluated in parallel
 
         Returns

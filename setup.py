@@ -71,7 +71,6 @@ def read_requirements():
         requirements = fp.read()
     return requirements
 
-
 ext = Extension("netsim",
                 ["neat/tools/simtools/net/netsim.pyx",
                  "neat/tools/simtools/net/NETC.cc",

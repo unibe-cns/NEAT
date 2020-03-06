@@ -364,6 +364,9 @@ class GreensTree(PhysTree):
             if `list` of locations, specifies the locations for which the
             impedance matrix is evaluated, if ``string``, specifies the
             name under which a set of location is stored
+        explicit_method: bool, optional (default ``True``)
+            if ``False``, will use the transitivity property of the impedance
+            matrix to further optimize the computation.
 
         Returns
         -------
