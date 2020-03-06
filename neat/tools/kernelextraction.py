@@ -979,32 +979,46 @@ def create_logspace_freqarray(fmax=7, base=10, num=200):
 
 
 class FourrierTools(object):
-    def __init__(self, tarr, fmax=7, base=10, num=200):
-        """
-        Performs an accurate Fourrier transform on functions
-        evaluated at a given array of temporal grid points
+    """
+    Performs an accurate Fourrier transform on functions
+    evaluated at a given array of temporal grid points
 
-        input:
-            [tarr]: numpy 1d array, the time points at which
-                the function is evaluated, have to be regularly
-                spaced, in ms
-            [fmax]: float, the maximum value to which the logarithm
-                is evaluated to get the maximum evaluation frequency
-            [base]: float, the base of the logarithm used to generated
-                the logspace
-            [num]: int, even, the number of points. the eventual number of
-                points in frequency space is (2+1/2)*num
-        """
+    Parameters
+    ----------
+    tarr: `np.array` of floats,
+        the time points (ms) at which the function is evaluated, have to be
+        regularly spaced
+    fmax: float, optional (default ``7.``)
+        the maximum value to which the logarithm is evaluated to get the
+        maximum evaluation frequency
+    base: float, optional (defaul ``10``)
+        the base of the logarithm used to generated the logspace
+    num: int, even, optional (default ``200``)
+        Number of points. the eventual number of points in frequency space
+        is (2+1/2)*num
+
+    Attributes
+    ----------
+    s: np.array of complex
+        The frequencies at which input arrays in the Fourrier domain are
+        supposed to be evaluated
+    t: np.array of real
+        The time array at which input arrays in the time domain are supposed
+        to be evaluated
+    ind_0s: int
+        Index of the zero frequency component in `self.s`
+    """
+    def __init__(self, tarr, fmax=7, base=10, num=200):
         assert num % 2 == 0
         # create the frequency points at which to evaluate the transform
         self.s = create_logspace_freqarray(fmax=fmax, base=base, num=num)
         self.t = tarr
         self.ind_0s = len(self.s) // 2
         # create the quadrature matrix
-        self.set_quad()
-        self.set_quad_inv()
+        self.setQuad()
+        self.setQuadInv()
 
-    def set_quad(self):
+    def setQuad(self):
         s = self.s
         t = self.t
         N = len(t)
@@ -1027,7 +1041,7 @@ class FourrierTools(object):
         c[np.where(np.logical_not(mask_arr))[0],N-1] = dt / 2.
         self.c = c
 
-    def set_quad_inv(self):
+    def setQuadInv(self):
         t = self.t[:,np.newaxis]*1e-3
         s = self.s[np.newaxis,:]
         ic = np.zeros((len(self.t), len(self.s)), dtype=complex)
@@ -1063,10 +1077,10 @@ class FourrierTools(object):
         farr = np.dot(self.c, arr)
         return self.s, farr
 
-    def FT(self, arr):
+    def ft(self, arr):
         return self(arr)
 
-    def FT_inv(self, arr):
+    def ftInv(self, arr):
         tarr = np.dot(self.ic, arr)
         return self.t, tarr
 
