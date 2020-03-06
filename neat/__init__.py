@@ -18,10 +18,10 @@ from neat.trees.phystree import PhysTree
 from neat.trees.phystree import PhysNode
 
 from neat.trees.sovtree import SOVTree
-from neat.trees.sovtree import SOVNode
+from neat.trees.sovtree import SOVNode, SomaSOVNode
 
 from neat.trees.greenstree import GreensTree
-from neat.trees.greenstree import GreensNode
+from neat.trees.greenstree import GreensNode, SomaGreensNode
 
 from neat.trees.netree import NET
 from neat.trees.netree import NETNode

@@ -133,6 +133,16 @@ class STree(object):
 
     Generic implementation of a tree structure as a linked list extended with
     some convenience functions
+
+    Parameters
+    ----------
+    root: `neat.SNode`, optional
+        The root of the tree, default is ``None`` which creates an empty tree
+
+    Attributes
+    ----------
+    root: `neat.SNode`
+        The root of the tree
     """
 
     def __init__(self, root=None):
@@ -154,7 +164,8 @@ class STree(object):
             index: int
                 the index of the node to be found
 
-        Returns:
+        Returns
+        -------
             `neat.SNode` or None
         """
         return self._findNode(self.root, index)
@@ -696,19 +707,18 @@ class STree(object):
 
         Returns
         -------
-        (node, sisterLeafs, corresponding_children)
-            node: `neat.SNode`
-                the bifurcation node
-            sisterLeafs: list of `neat.SNode`
-                The first element is the input node. The others are the leafs
-                of the subtree emanating from the bifurcation node that are not
-                in the subtree from the input node.
-            corresponding_children: list of `neat.SNode`
-                The children of the bifurcation node. If the number of leafs
-                ``sisterLeafs`` is the same as the number of
-                ``corresponding_children``, the subtree of each element of
-                ``corresponding_children`` has exactly one leaf, the corresponding
-                element in ``sisterLeafs``
+        node: `neat.SNode`
+            the bifurcation node
+        sister_leafs: list of `neat.SNode`
+            The first element is the input node. The others are the leafs
+            of the subtree emanating from the bifurcation node that are not
+            in the subtree from the input node.
+        corresponding_children: list of `neat.SNode`
+            The children of the bifurcation node. If the number of leafs
+            ``sister_leafs`` is the same as the number of
+            ``corresponding_children``, the subtree of each element of
+            ``corresponding_children`` has exactly one leaf, the corresponding
+            element in ``sister_leafs``
         """
         sleafs = [node]; cchildren = []
         snode = self._goUpUntil(node, None, sl=sleafs, cc=cchildren)
@@ -740,18 +750,17 @@ class STree(object):
 
         Parameters
         ----------
-            node: `neat.SNode`
-                Starting node for search
-            cnode: `neat.SNode`
-                For recursion, don't touch default
+        node: `neat.SNode`
+            Starting node for search
+        cnode: `neat.SNode`
+            For recursion, don't change default
 
         Returns
         -------
-        (node, cnode)
-            node: `neat.SNode`
-                the bifurcation node
-            cnode: `neat.SNode`
-                The bifurcation node's child on the path to the input node.
+        node: `neat.SNode`
+            the bifurcation node
+        cnode: `neat.SNode`
+            The bifurcation node's child on the path to the input node.
 
         """
         if cnode == None or len(node.getChildNodes()) <= 1:
@@ -766,14 +775,13 @@ class STree(object):
 
         Parameters
         ----------
-            node: `neat.SNode`
-                Starting node for search
+        node: `neat.SNode`
+            Starting node for search
 
         Returns
         -------
-        (node, cnode)
-            node: `neat.SNode`
-                the bifurcation node
+        node: `neat.SNode`
+            the bifurcation node
         """
         if len(node.child_nodes) > 1:
             return node
@@ -781,34 +789,6 @@ class STree(object):
             return None
         else:
             self.downBifurcationNode(node.child_nodes[0])
-
-    # def getBifurcationNodes(self, nodes):
-    #     """
-    #     Get the bifurcation nodes in bewteen the provided input nodes
-
-    #     Parameters
-    #     ----------
-    #     nodes: list of `neat.SNode`
-    #         the input nodes
-
-    #     Returns
-    #     -------
-    #     list of `neat.SNode`
-    #         the bifurcation nodes
-    #     """
-    #     # find the 'leaf' within the list of nodes (i.e. most centripetal nodes)
-    #     pnodes = []
-    #     for node in nodes:
-    #         pnodes.extend([n for n in self.pathToRoot(node)])
-    #     pcount = Counter(pnodes)
-    #     nodes = [node for node in nodes if pcount[node] == 1]
-    #     # find the minimal set of bifurcations
-    #     bnodes = []
-    #     for node in nodes:
-    #         bnodes.extend([n for n in self.pathToRoot(node)[1:] if len(n.child_nodes) > 1])
-    #     bcount = Counter(bnodes)
-    #     return [self.root] + [bnode for bnode, count in bcount.iteritems() \
-    #                           if count > 1 and not self.isRoot(bnode)]
 
     def getBifurcationNodes(self, nodes):
         """
@@ -860,13 +840,20 @@ class STree(object):
 
     def getNearestNeighbours(self, node, nodes):
         """
-        Find the nearest neighbours of `node` in `nodes`. If `nodes` contains
-        `node`, it is excluded from the search.
+        Find the nearest neighbours of ``node`` in ``nodes``. If ``nodes`` contains
+        ``node``, it is excluded from the search.
 
-        When a node in the up-direction is a bifurcation node and in `nodes`, nodes
+        When a node in the up-direction is a bifurcation node and in ``nodes``, nodes
         in its other subtree are excluded from the search
 
         !!! Untested
+
+        Parameters
+        ----------
+        node: `neat.SNode`
+            node for which the nearest neighbours are sought
+        nodes: list of `neat.SNode`
+            list in which nearest neighbours of ``node`` are sought
         """
         nns = []
         self._searchNNUp(node, nodes, nns)

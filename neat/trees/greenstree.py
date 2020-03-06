@@ -1,9 +1,9 @@
 """
 File contains:
 
-    - :class:`GreensNode`
-    - :class:`SomaGreensNode`
-    - :class:`GreensTree`
+    - `neat.GreensNode`
+    - `neat.SomaGreensNode`
+    - `neat.GreensTree`
 
 Author: W. Wybo
 """
@@ -18,11 +18,20 @@ from .phystree import PhysNode, PhysTree
 
 
 class GreensNode(PhysNode):
+    '''
+    Node that stores quantities and defines functions to implement the impedance
+    matrix calculation based on Koch's algorithm (Koch & Poggio, 1985).
+
+    Attributes
+    ----------
+    expansion_points: dict {str: np.ndarray}
+        Stores ion channel expansion points for this segment.
+    '''
     def __init__(self, index, p3d):
         super(GreensNode, self).__init__(index, p3d)
         self.expansion_points = {}
 
-    def rescaleLengthRadius(self):
+    def _rescaleLengthRadius(self):
         self.R_ = self.R * 1e-4 # convert to cm
         self.L_ = self.L * 1e-4 # convert to cm
 
@@ -55,7 +64,7 @@ class GreensNode(PhysNode):
             self.expansion_points[channel_name] = None
             return self.expansion_points[channel_name]
 
-    def calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
+    def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
         """
         Compute the impedance of the membrane at the node
 
@@ -112,15 +121,15 @@ class GreensNode(PhysNode):
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
-    def setImpedance(self, freqs, channel_storage, use_conc=False):
+    def _setImpedance(self, freqs, channel_storage, use_conc=False):
         self.counter = 0
-        self.z_m = self.calcMembraneImpedance(freqs, channel_storage,
+        self.z_m = self._calcMembraneImpedance(freqs, channel_storage,
                                               use_conc=use_conc)
         self.z_a = self.r_a / (np.pi * self.R_**2)
         self.gamma = np.sqrt(self.z_a / self.z_m)
         self.z_c = self.z_a / self.gamma
 
-    def setImpedanceDistal(self):
+    def _setImpedanceDistal(self):
         """
         Set the boundary condition at the distal end of the segment
         """
@@ -128,11 +137,11 @@ class GreensNode(PhysNode):
             self.z_distal = np.infty*np.ones(len(self.z_m)) if self.g_shunt < 1e-10 else \
                             1. / self.g_shunt
         else:
-            self.z_distal = 1. / (np.sum([1. / cnode.collapseBranchToRoot() \
+            self.z_distal = 1. / (np.sum([1. / cnode._collapseBranchToRoot() \
                                          for cnode in self.child_nodes], 0) + \
                                   self.g_shunt)
 
-    def setImpedanceProximal(self):
+    def _setImpedanceProximal(self):
         """
         Set the boundary condition at the proximal end of the segment
         """
@@ -142,26 +151,26 @@ class GreensNode(PhysNode):
         # compute the impedance
         val = 0.
         if self.parent_node is not None:
-            val += 1. / self.parent_node.collapseBranchToLeaf()
+            val += 1. / self.parent_node._collapseBranchToLeaf()
             val += self.parent_node.g_shunt
         for snode in sister_nodes:
-            val += 1. / snode.collapseBranchToRoot()
+            val += 1. / snode._collapseBranchToRoot()
         self.z_proximal = 1. / val
 
-    def collapseBranchToLeaf(self):
+    def _collapseBranchToLeaf(self):
         return self.z_c * (self.z_proximal * np.cosh(self.gamma * self.L_) + \
                            self.z_c * np.sinh(self.gamma * self.L_)) / \
                           (self.z_proximal * np.sinh(self.gamma * self.L_) +
                            self.z_c * np.cosh(self.gamma * self.L_))
 
-    def collapseBranchToRoot(self):
+    def _collapseBranchToRoot(self):
         zr = self.z_c * (np.cosh(self.gamma * self.L_) +
                          self.z_c / self.z_distal * np.sinh(self.gamma * self.L_)) / \
                         (np.sinh(self.gamma * self.L_) +
                          self.z_c / self.z_distal * np.cosh(self.gamma * self.L_))
         return zr
 
-    def setImpedanceArrays(self):
+    def _setImpedanceArrays(self):
         self.gammaL = self.gamma * self.L_
         self.z_cp = self.z_c / self.z_proximal
         self.z_cd = self.z_c / self.z_distal
@@ -174,7 +183,7 @@ class GreensNode(PhysNode):
                     self.wrongskian
         self.z_01 = 1. / self.wrongskian
 
-    def calcZF(self, x1, x2):
+    def _calcZF(self, x1, x2):
         if x1 <  1e-3 and x2 < 1e-3:
             return self.z_00
         elif x1 > 1.-1e-3 and x2 > 1.-1e-3:
@@ -192,28 +201,28 @@ class GreensNode(PhysNode):
 
 
 class SomaGreensNode(GreensNode):
-    def calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
-        z_m = super(SomaGreensNode, self).calcMembraneImpedance(freqs, channel_storage,
+    def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
+        z_m = super(SomaGreensNode, self)._calcMembraneImpedance(freqs, channel_storage,
                                                                 use_conc=use_conc)
         # rescale for soma surface instead of cylinder radius
         # return z_m / (2. * self.R_)
         return 1. / (2. * self.R_ / z_m + self.g_shunt)
 
-    def setImpedance(self, freqs, channel_storage, use_conc=False):
+    def _setImpedance(self, freqs, channel_storage, use_conc=False):
         self.counter = 0
-        self.z_soma = self.calcMembraneImpedance(freqs, channel_storage,
+        self.z_soma = self._calcMembraneImpedance(freqs, channel_storage,
                                                  use_conc=use_conc)
 
-    def collapseBranchToLeaf(self):
+    def _collapseBranchToLeaf(self):
         return self.z_soma
 
-    def setImpedanceArrays(self):
+    def _setImpedanceArrays(self):
         val = 1. / self.z_soma
         for node in self.child_nodes:
-            val += 1. / node.collapseBranchToRoot()
+            val += 1. / node._collapseBranchToRoot()
         self.z_in = 1. / val
 
-    def calcZF(self, x1, x2):
+    def _calcZF(self, x1, x2):
         return self.z_in
 
 
@@ -221,13 +230,18 @@ class GreensTree(PhysTree):
     """
     Class that computes the Green's function in the Fourrier domain of a given
     neuronal morphology (Koch, 1985). This three defines a special
-    :class:`SomaGreensNode` as a derived class from :class:`GreensNode` as some
+    `neat.SomaGreensNode` as a derived class from `neat.GreensNode` as some
     functions required for Green's function calculation are different and thus
     overwritten.
 
     The calculation proceeds on the computational tree (see docstring of
-    :class:`MorphNode`). Thus it makes no sense to look for Green's function
+    `neat.MorphNode`). Thus it makes no sense to look for Green's function
     related quantities in the original tree.
+
+    Attributes
+    ----------
+    freqs: np.array of complex
+        Frequencies at which impedances are evaluated
     """
     def __init__(self, file_n=None, types=[1,3,4]):
         super(GreensTree, self).__init__(file_n=file_n, types=types)
@@ -248,6 +262,9 @@ class GreensTree(PhysTree):
             return GreensNode(node_index, p3d)
 
     def removeExpansionPoints(self):
+        """
+        Remove expansion points from all nodes in the tree
+        """
         for node in self:
             node.expansion_points = {}
 
@@ -269,8 +286,8 @@ class GreensTree(PhysTree):
         self.freqs = freqs
         # set the node specific impedances
         for node in self:
-            node.rescaleLengthRadius()
-            node.setImpedance(freqs, self.channel_storage, use_conc=use_conc)
+            node._rescaleLengthRadius()
+            node._setImpedance(freqs, self.channel_storage, use_conc=use_conc)
         # recursion
         if len(self) > 1:
             self._impedanceFromLeaf(self.leafs[0], self.leafs[1:], pprint=pprint)
@@ -278,7 +295,7 @@ class GreensTree(PhysTree):
         # clean
         for node in self:
             node.counter = 0
-            node.setImpedanceArrays()
+            node._setImpedanceArrays()
 
     def _impedanceFromLeaf(self, node, leafs, pprint=False):
         if pprint:
@@ -291,7 +308,7 @@ class GreensTree(PhysTree):
         # the recursion has passed node, the distal impedance can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            node.setImpedanceDistal()
+            node._setImpedanceDistal()
             if not self.isRoot(node):
                 self._impedanceFromLeaf(pnode, leafs, pprint=pprint)
         elif len(leafs) > 0:
@@ -299,7 +316,7 @@ class GreensTree(PhysTree):
 
     def _impedanceFromRoot(self, node):
         if node != self.root:
-            node.setImpedanceProximal()
+            node._setImpedanceProximal()
         for cnode in node.child_nodes:
             self._impedanceFromRoot(cnode)
 
@@ -311,8 +328,10 @@ class GreensTree(PhysTree):
 
         Parameters
         ----------
-        loc1, loc2: dict, tuples or `:class:MorphLoc`
-            Two locations between which the transfer impedance is computed
+        loc1: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        loc2: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
 
         Returns
         -------
@@ -328,26 +347,26 @@ class GreensTree(PhysTree):
         z_f = np.ones_like(self.freqs)
         if len(path) == 1:
             # both locations are on same node
-            z_f *= path[0].calcZF(loc1['x'], loc2['x'])
+            z_f *= path[0]._calcZF(loc1['x'], loc2['x'])
         else:
             # different cases whether path goes to or from root
             if path[1] == self[loc1['node']].parent_node:
-                z_f *= path[0].calcZF(loc1['x'], 0.)
+                z_f *= path[0]._calcZF(loc1['x'], 0.)
             else:
-                z_f *= path[0].calcZF(loc1['x'], 1.)
-                z_f /= path[0].calcZF(1., 1.)
+                z_f *= path[0]._calcZF(loc1['x'], 1.)
+                z_f /= path[0]._calcZF(1., 1.)
             if path[-2] == self[loc2['node']].parent_node:
-                z_f *= path[-1].calcZF(loc2['x'], 0.)
+                z_f *= path[-1]._calcZF(loc2['x'], 0.)
             else:
-                z_f *= path[-1].calcZF(loc2['x'], 1.)
-                z_f /= path[-1].calcZF(1., 1.)
+                z_f *= path[-1]._calcZF(loc2['x'], 1.)
+                z_f /= path[-1]._calcZF(1., 1.)
             # nodes within the path
             ll = 1
             for node in path[1:-1]:
-                z_f /= node.calcZF(1., 1.)
+                z_f /= node._calcZF(1., 1.)
                 if path[ll-1] not in node.child_nodes or \
                    path[ll+1] not in node.child_nodes:
-                    z_f *= node.calcZF(0., 1.)
+                    z_f *= node._calcZF(0., 1.)
                 ll += 1
 
         return z_f
@@ -406,16 +425,16 @@ class GreensTree(PhysTree):
         node = self[locs[ii]['node']]
         for jj, loc in enumerate(locs):
             if loc['node'] == node.index and jj >= ii:
-                z_new = node.calcZF(locs[ii]['x'],loc['x'])
+                z_new = node._calcZF(locs[ii]['x'],loc['x'])
                 z_mat[:,ii,jj] = z_new
                 z_mat[:,jj,ii] = z_new
         # move down
         for c_node in node.child_nodes:
-            z_new = node.calcZF(locs[ii]['x'], 1.)
+            z_new = node._calcZF(locs[ii]['x'], 1.)
             self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
 
         if node.parent_node is not None:
-            z_new = node.calcZF(locs[ii]['x'], 0.)
+            z_new = node._calcZF(locs[ii]['x'], 0.)
             # move to sister nodes
             for c_node in set(node.parent_node.child_nodes) - {node}:
                 self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
@@ -424,33 +443,33 @@ class GreensTree(PhysTree):
 
     def _calcImpedanceMatrixUp(self, ii, z_0, node, locs, z_mat):
         # compute impedances
-        z_in = node.calcZF(1.,1.)
+        z_in = node._calcZF(1.,1.)
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
-                z_new = z_0 / z_in * node.calcZF(1.,loc['x'])
+                z_new = z_0 / z_in * node._calcZF(1.,loc['x'])
                 z_mat[:,ii,jj] = z_new
                 z_mat[:,jj,ii] = z_new
 
         if node.parent_node is not None:
-            z_new = z_0 / z_in * node.calcZF(0., 1.)
+            z_new = z_0 / z_in * node._calcZF(0., 1.)
             # move to sister nodes
             for c_node in set(node.parent_node.child_nodes) - {node}:
                 self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
             # move to parent node
-            z_new = z_0 / z_in * node.calcZF(0., 1.)
+            z_new = z_0 / z_in * node._calcZF(0., 1.)
             self._calcImpedanceMatrixUp(ii, z_new, node.parent_node, locs, z_mat)
 
     def _calcImpedanceMatrixDown(self, ii, z_0, node, locs, z_mat):
         # compute impedances
-        z_in = node.calcZF(0.,0.)
+        z_in = node._calcZF(0.,0.)
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
-                z_new = z_0 / z_in * node.calcZF(0., loc['x'])
+                z_new = z_0 / z_in * node._calcZF(0., loc['x'])
                 z_mat[:,ii,jj] = z_new
                 z_mat[:,jj,ii] = z_new
 
         # recurse to child nodes
-        z_new = z_0 / z_in * node.calcZF(0., 1.)
+        z_new = z_0 / z_in * node._calcZF(0., 1.)
         for c_node in node.child_nodes:
             self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
 
