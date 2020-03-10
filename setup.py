@@ -65,13 +65,19 @@ def copy_default_neuron_mechanisms():
         neat/tools/simtools/neuron/mech_storage/
     to
         neat/tools/simtools/neuron/mech/
-    and creates an `__init__.py` file in that directory
+    and creates an `__init__.py` file in that directory.
+
+    The mech/ directory is generated in a clean state by the installer and
+    aggregates all neuron .mod files. Hence, it should never be used for
+    permanent storage.
+
     """
     mech_path = 'neat/tools/simtools/neuron/mech/'
     if os.path.exists(mech_path):
         shutil.rmtree(mech_path)
     shutil.copytree('neat/tools/simtools/neuron/mech_storage/', mech_path)
-    open('neat/tools/simtools/neuron/mech/__init__.py', 'wb')
+    f = open('neat/tools/simtools/neuron/mech/__init__.py', 'wb')
+    f.close()
 
 
 def compile_default_ion_channels():
