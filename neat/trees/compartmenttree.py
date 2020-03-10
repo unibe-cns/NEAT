@@ -394,7 +394,7 @@ class CompartmentTree(STree):
         # for fitting the model
         self.resetFitData()
 
-    def createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
+    def _createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
         """
         Creates a node with the given index corresponding to the tree class.
 

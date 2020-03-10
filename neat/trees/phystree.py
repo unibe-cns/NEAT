@@ -206,7 +206,7 @@ class PhysTree(MorphTree):
             node.setPhysiology(1.0, 100./1e6)
         self.channel_storage = {}
 
-    def createCorrespondingNode(self, node_index, p3d=None,
+    def _createCorrespondingNode(self, node_index, p3d=None,
                                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         """
         Creates a node with the given index corresponding to the tree class.
