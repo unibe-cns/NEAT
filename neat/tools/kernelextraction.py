@@ -1015,10 +1015,10 @@ class FourrierTools(object):
         self.t = tarr
         self.ind_0s = len(self.s) // 2
         # create the quadrature matrix
-        self.setQuad()
-        self.setQuadInv()
+        self._setQuad()
+        self._setQuadInv()
 
-    def setQuad(self):
+    def _setQuad(self):
         s = self.s
         t = self.t
         N = len(t)
@@ -1041,7 +1041,7 @@ class FourrierTools(object):
         c[np.where(np.logical_not(mask_arr))[0],N-1] = dt / 2.
         self.c = c
 
-    def setQuadInv(self):
+    def _setQuadInv(self):
         t = self.t[:,np.newaxis]*1e-3
         s = self.s[np.newaxis,:]
         ic = np.zeros((len(self.t), len(self.s)), dtype=complex)
@@ -1064,23 +1064,60 @@ class FourrierTools(object):
 
     def __call__(self, arr):
         """
-        Evaluate the Fourrier transform of [arr]
+        Evaluate the Fourrier transform of `arr`
 
-        input:
-            [arr]: numpy 1d array, should have the same length as [self.t]
+        Parameters
+        ----------
+            arr: `np.array`
+                Should have the same length as `self.t`
 
-        output:
-            [s]: numpy 1d array, the frequency points at which the Fourrier
+        Returns
+        -------
+            s: `np.array`
+                the frequency points at which the Fourrier
                 transform is evaluated (in Hz)
-            [farr]: numpy 1d array, the Fourrier transform of [arr]
+            farr: `np.array`
+                the Fourrier transform of `arr`
         """
         farr = np.dot(self.c, arr)
         return self.s, farr
 
     def ft(self, arr):
+        """
+        Evaluate the Fourrier transform of `arr`
+
+        Parameters
+        ----------
+            arr: `np.array`
+                Should have the same length as `self.t`
+
+        Returns
+        -------
+            s: `np.array`
+                the frequency points at which the Fourrier
+                transform is evaluated (in Hz)
+            farr: `np.array`
+                the Fourrier transform of `arr`
+        """
         return self(arr)
 
     def ftInv(self, arr):
+        """
+        Evaluate the inverse Fourrier transform of `arr`
+
+        Parameters
+        ----------
+            arr: `np.array`
+                Should have the same length as `self.s`
+
+        Returns
+        -------
+            t: `np.array`
+                the time points at which the inverse Fourrier
+                transform is evaluated (in ms)
+            tarr: `np.array`
+                the Fourrier transform of `arr`
+        """
         tarr = np.dot(self.ic, arr)
         return self.t, tarr
 

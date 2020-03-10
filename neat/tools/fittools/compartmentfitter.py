@@ -50,7 +50,7 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
     ----------
     e_hs: iterable collection
         The holding potentials around which the expansion points are computed
-    channel: :class:`neat.channels.ionchannels.IonChannel`
+    channel: `neat.channels.ionchannels.IonChannel`
         The ion channels
     only_e_h: bool
         If True, othe entries in ``sv_hs`` are only at ``e_hs``
@@ -94,7 +94,7 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
 
         Parameters
         ----------
-        phys_tree: :class:`neat.PhysTree()`
+        phys_tree: `neat.PhysTree()`
             the neuron model
         factor_lambda: float (optional, defaults to 2.)
             multiplies the numbers of compartments given by the lambda rule (to
@@ -104,7 +104,7 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
 
         Returns
         -------
-        :class:`neat.PhysTree()`
+        `neat.PhysTree()`
         """
         dt, t_max = .1, 1.
         # create a biophysical simulation model
@@ -220,7 +220,7 @@ class FitTreeGF(GreensTree):
 
             if not 'dont save' in self.name:
                 # clear the stuff that isn't impedances and unnecessary
-                # :class:IonChannel objects cause problems with pickling
+                # IonChannel objects cause problems with pickling
                 self.clearLocs()
                 self.channel_storage = {}
                 # store the impedance tree
@@ -331,7 +331,7 @@ class CompartmentFitter(object):
 
     Attributes
     ----------
-    tree: ::class::`neat.PhysTree()`
+    tree: `neat.PhysTree()`
         The full tree based on which reductions are made
     name: str (default 'dont save')
         name of files in which intermediate trees required for the fit are
@@ -360,7 +360,7 @@ class CompartmentFitter(object):
 
     def setCTree(self, loc_arg, extend_w_bifurc=True):
         """
-        Store an initial ::class::`neat.CompartmentTree`, providing a tree
+        Store an initial `neat.CompartmentTree`, providing a tree
         structure scaffold for the fit for a given set of locations. The
         locations are also stored on ``self.tree`` under the name 'fit locs'
 
@@ -397,7 +397,7 @@ class CompartmentFitter(object):
 
     def createTreeGF(self, channel_names=[]):
         """
-        Create a ::class::`FitTreeGF` copy of the old tree, but only with the
+        Create a `FitTreeGF` copy of the old tree, but only with the
         channels in ``channel_names``. Leak 'L' is included in the tree by
         default.
 
@@ -409,7 +409,7 @@ class CompartmentFitter(object):
 
         Returns
         -------
-        ::class::`FitTreeGF()`
+        `FitTreeGF()`
 
         """
         # create new tree and empty channel storage
@@ -639,7 +639,7 @@ class CompartmentFitter(object):
 
     def createTreeSOV(self, use_all_channels=False, eps=1.):
         """
-        Create a :class:`SOVTree` copy of the old tree
+        Create a `SOVTree` copy of the old tree
 
         Parameters
         ----------
@@ -649,7 +649,7 @@ class CompartmentFitter(object):
 
         Returns
         -------
-        :class:`neat.PhysTree`
+        `neat.PhysTree`
 
         """
         # create new tree and empty channel storage
@@ -990,7 +990,7 @@ class CompartmentFitter(object):
 
         Returns
         -------
-        :class:`neat.CompartmentTree`
+        `neat.CompartmentTree`
             The reduced tree containing the fitted parameters
         """
         self.setCTree(loc_arg)

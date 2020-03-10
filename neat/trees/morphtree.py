@@ -315,6 +315,20 @@ class MorphNode(SNode):
         self.R = R
 
     def getChildNodes(self, skip_inds=(2,3)):
+        """
+        Get the `child_nodes` of this node. Indices ``2`` and ``3`` are skipped
+        by default (3-point soma convention)
+
+        Parameters
+        ----------
+        skip_inds: list or tuple of ints
+            Node indices of child nodes that are not added to the returned list
+
+        Returns
+        -------
+        list of `neat.MorphNode`
+            The child nodes
+        """
         return [cnode for cnode in self._child_nodes \
                       if cnode.index not in skip_inds]
 
@@ -470,6 +484,10 @@ class MorphTree(STree):
                     if node.index not in skip_inds: yield inode
 
     def getRoot(self):
+        """
+        Returns the root of the original or the computational tree, depending
+        on which `treetype` is active.
+        """
         if self.treetype == 'original':
             return self._original_root
         else:
@@ -594,6 +612,14 @@ class MorphTree(STree):
         return [node for node in self if node.swc_type in [2]]
 
     def setTreetype(self, treetype):
+        """
+        Set the active tree
+
+        Parameters
+        ----------
+        treetype: 'original' or 'computational'
+            the treetype thas is set to active
+        """
         if treetype == 'original':
             self._treetype = treetype
             self.root = self._original_root

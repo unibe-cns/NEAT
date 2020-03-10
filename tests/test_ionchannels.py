@@ -141,8 +141,6 @@ def test_na():
 
 
 def test_pickling():
-    print('!!!')
-
     # pickle and restore
     na_ta_channel = channelcollection.Na_Ta()
     s = pickle.dumps(na_ta_channel)

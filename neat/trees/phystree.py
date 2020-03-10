@@ -429,7 +429,10 @@ class PhysTree(MorphTree):
     def _evaluateCompCriteria(self, node, eps=1e-8, rbool=False):
         """
         Return ``True`` if relative difference in any physiological parameters
-        between node and child node is larger than margin ``eps``
+        between node and child node is larger than margin ``eps``.
+
+        Overrides the `MorphTree._evaluateCompCriteria()` function called by
+        `MorphTree.setCompTree()`.
 
         Parameters
         ----------

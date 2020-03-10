@@ -436,6 +436,8 @@ class SOVTree(PhysTree):
                                 eps=1e-4, sort_type='timescale',
                                 return_importance=False):
         """
+        Returns the most importand eigenmodes (those whose importance is above
+        the threshold defined by `eps`)
 
         Parameters
         ----------

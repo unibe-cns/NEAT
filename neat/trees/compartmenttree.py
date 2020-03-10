@@ -444,6 +444,23 @@ class CompartmentTree(STree):
         return e_eq
 
     def setExpansionPoints(self, expansion_points):
+        """
+        Set the choice for the state variables of the ion channel around which
+        to linearize.
+
+        Note that when adding an ion channel to the tree, the default expansion
+        point setting is to linearize around the asymptotic values for the state
+        variables at the equilibrium potential store in `self.e_eq`.
+        Hence, this function only needs to be called to change that setting.
+
+        Parameters
+        ----------
+        expansion_points: dict {`channel_name`: ``None`` or `np.ndarray`}
+            dictionary with as keys `channel_name` the name of the ion channel
+            and as value its expansion point
+        """
+        warnings.warn("This function will cause problems with new-style ion channels")
+
         to_tree_inds = self._permuteToTreeInds()
         for channel_name, expansion_point in expansion_points.items():
             # if one set of state variables, set throughout neuron
@@ -532,10 +549,6 @@ class CompartmentTree(STree):
         return np.array([node.loc_ind for node in self])
 
     def _permuteToTree(self, mat):
-        """
-        give index list that can be used to permutate the axes of the impedance
-        and system matrix to correspond to the associated set of locations
-        """
         index_arr = self._permuteToTreeInds()
         if mat.ndim == 1:
             return mat[index_arr]
@@ -545,6 +558,10 @@ class CompartmentTree(STree):
             return mat[:,index_arr,:][:,:,index_arr]
 
     def _permuteToLocsInds(self):
+        """
+        give index list that can be used to permutate the axes of the impedance
+        and system matrix to correspond to the associated set of locations
+        """
         loc_inds = np.array([node.loc_ind for node in self])
         return np.argsort(loc_inds)
 
