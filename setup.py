@@ -66,13 +66,10 @@ def compile_default_ion_channels():
     subprocess.call(['neat/channels/compilechannels', 'neat/channels/channelcollection/'])
 
 
-dependencies = ['numpy>=1.14.1',
-                'matplotlib>=2.1.2',
-                'cython>=0.27.3',
-                'scipy>=1.0.0',
-                'sympy>=1.1.1',
-                'scikit-learn>=0.19.1',
-                'nbsphinx>=0.5.1']
+def read_requirements():
+    with open('./requirements.txt') as fp:
+        requirements = fp.read()
+    return requirements
 
 ext = Extension("netsim",
                 ["neat/tools/simtools/net/netsim.pyx",
@@ -107,5 +104,5 @@ s_ = setup(
     author='Willem Wybo',
     classifiers=['Development Status :: 3 - Alpha',
                  'Programming Language :: Python :: 3.7'],
-    install_requires=dependencies,
+    install_requires=read_requirements(),
 )
