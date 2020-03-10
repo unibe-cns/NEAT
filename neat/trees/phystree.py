@@ -17,6 +17,29 @@ from ..channels import concmechs, ionchannels
 
 
 class PhysNode(MorphNode):
+    """
+    Node associated with `neat.PhysTree`. Stores the physiological parameters
+    of the cylindrical segment connecting this node with its parent node
+
+    Attributes
+    ----------
+    currents: dict {str: [float,float]}
+        dict with as keys the channel names and as values lists of length two
+        containing as first entry the channels' conductance density (uS/cm^2)
+        and as second element the channels reversal (mV) (i.e.:
+        {name: [g_max (uS/cm^2), e_rev (mV)]})
+        For the leak conductance, the corresponding key is 'L'
+    concmechs: dict
+        dict containing concentration mechanisms present in the segment
+    c_m: float
+        The sement's specific membrane capacitance (uF/cm^2)
+    r_a: float
+        The segment's axial resistance (MOhm*cm)
+    g_shunt: float
+        Point-like shunt conductance located at x=1 (uS)
+    e_eq: float
+        Segment's equilibrium potential
+    """
     def __init__(self, index, p3d=None,
                        c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         super(PhysNode, self).__init__(index, p3d)
@@ -165,6 +188,16 @@ class PhysNode(MorphNode):
 
 
 class PhysTree(MorphTree):
+    """
+    Adds physiological parameters to `neat.MorphTree` and convenience functions
+    to set them across the morphology. Initialized in the same way as
+    `neat.MorphTree`
+
+    Attributes
+    ----------
+    channel_storage: dict {str: `neat.IonChannel`}
+        Stores the user defined ion channels present in the tree
+    """
     def __init__(self, file_n=None, types=[1,3,4]):
         super(PhysTree, self).__init__(file_n=file_n, types=types)
         # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
