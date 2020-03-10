@@ -7,6 +7,6 @@ Reference
    :Date: |today|
 
 .. toctree::
-   :maxdepth: 4
-
-   neat
+   :maxdepth: 2
+   
+   trees
