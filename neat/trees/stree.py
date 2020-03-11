@@ -219,9 +219,10 @@ class STree(object):
 
     def __iter__(self, node=None, **kwargs):
         """
-        Iterate over the nodes in the subtree of the given node. Beware, if
-        the given node is not in the tree, it will simply iterate over the
-        subtree of the given node.
+        Iterate over the nodes in the subtree of the given node.
+
+        Beware, if the given node is not in the tree, it will simply iterate
+        over the subtree of the given node.
 
         Parameters
         ----------
@@ -239,9 +240,10 @@ class STree(object):
 
     def __str__(self, node=None):
         """
-        Generate a string of the subtree of the given node. Beware, if
-        the given node is not in the tree, it will simply iterate over the
-        subtree of the given node.
+        Generate a string of the subtree of the given node.
+
+        Beware, if the given node is not in the tree, it will simply iterate
+        over the subtree of the given node.
 
         Parameters
         ----------
@@ -376,7 +378,7 @@ class STree(object):
         else:
             return False
 
-    def createCorrespondingNode(self, node_index):
+    def _createCorrespondingNode(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -405,7 +407,7 @@ class STree(object):
                 if ``node_index`` is already in the tree
         """
         if self[node_index] == None:
-            node = self.createCorrespondingNode(node_index, *args, **kwargs)
+            node = self._createCorrespondingNode(node_index, *args, **kwargs)
             self.addNodeWithParent(node, pnode)
         else:
             raise ValueError('Index %d is already exists in the tree.')
@@ -540,7 +542,7 @@ class STree(object):
         if new_tree is None:
             new_tree = STree()
 
-        new_node = new_tree.createCorrespondingNode(node.index)
+        new_node = new_tree._createCorrespondingNode(node.index)
         node.__copy__(new_node=new_node)
         new_node.setParentNode(None)
         new_tree.setRoot(new_node)
@@ -881,8 +883,6 @@ class STree(object):
 
     def __copy__(self, new_tree=None):
         """
-        experimental, untested
-
         Fill the ``new_tree`` with it's corresponding nodes in the same
         structure as ``self``, and copies all node variables that both tree
         classes have in common
@@ -900,7 +900,7 @@ class STree(object):
         if new_tree is None:
             new_tree = self.__class__()
 
-        new_node = new_tree.createCorrespondingNode(self.root.index)
+        new_node = new_tree._createCorrespondingNode(self.root.index)
 
         self.root.__copy__(new_node=new_node)
         new_tree.setRoot(new_node)
@@ -916,7 +916,7 @@ class STree(object):
 
     def _recurseCopy(self, pnode, new_tree):
         for node in pnode.getChildNodes(skip_inds=[]):
-            new_node = new_tree.createCorrespondingNode(node.index)
+            new_node = new_tree._createCorrespondingNode(node.index)
             new_node = node.__copy__(new_node=new_node)
             new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
                                                                       skip_inds=[]))

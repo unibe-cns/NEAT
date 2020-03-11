@@ -104,6 +104,9 @@ class Kernel(object):
         return Kernel((a, c))
 
     def getKBar(self):
+        """
+        The total surface under the kernel
+        """
         return np.sum(self.c / self.a).real
 
     def setKBar(self, kk):
@@ -238,7 +241,31 @@ class NET(STree):
             string += '  > ' + str(node) + '\n'
         return string
 
+    def _createCorrespondingNode(self, node_index):
+        """
+        Creates a node with the given index corresponding to the tree class.
+
+        Parameters
+        ----------
+            node_index: int
+                index of the new node
+        """
+        return NETNode(node_index, [])
+
     def getLocInds(self, sroot=None):
+        """
+        Get the indices of the locations a subtree integrates
+
+        Parameters
+        ----------
+        sroot: `neat.NETNode`, int or None
+            Root of the subtree, or index of the root. If ``None``, subtree is
+            the whole tree.
+
+        Returns
+        -------
+        loc_inds: indices of locations
+        """
         if isinstance(sroot, int):
             sroot = self[sroot]
         elif sroot is None:

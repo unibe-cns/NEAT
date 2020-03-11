@@ -247,7 +247,7 @@ class GreensTree(PhysTree):
         super(GreensTree, self).__init__(file_n=file_n, types=types)
         self.freqs = None
 
-    def createCorrespondingNode(self, node_index, p3d=None):
+    def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 

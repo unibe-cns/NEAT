@@ -315,6 +315,20 @@ class MorphNode(SNode):
         self.R = R
 
     def getChildNodes(self, skip_inds=(2,3)):
+        """
+        Get the `child_nodes` of this node. Indices ``2`` and ``3`` are skipped
+        by default (3-point soma convention)
+
+        Parameters
+        ----------
+        skip_inds: list or tuple of ints
+            Node indices of child nodes that are not added to the returned list
+
+        Returns
+        -------
+        list of `neat.MorphNode`
+            The child nodes
+        """
         return [cnode for cnode in self._child_nodes \
                       if cnode.index not in skip_inds]
 
@@ -470,6 +484,10 @@ class MorphTree(STree):
                     if node.index not in skip_inds: yield inode
 
     def getRoot(self):
+        """
+        Returns the root of the original or the computational tree, depending
+        on which `treetype` is active.
+        """
         if self.treetype == 'original':
             return self._original_root
         else:
@@ -594,6 +612,14 @@ class MorphTree(STree):
         return [node for node in self if node.swc_type in [2]]
 
     def setTreetype(self, treetype):
+        """
+        Set the active tree
+
+        Parameters
+        ----------
+        treetype: 'original' or 'computational'
+            the treetype thas is set to active
+        """
         if treetype == 'original':
             self._treetype = treetype
             self.root = self._original_root
@@ -612,7 +638,7 @@ class MorphTree(STree):
 
     treetype = property(getTreetype, setTreetype)
 
-    def createCorrespondingNode(self, node_index, p3d=None):
+    def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -661,7 +687,7 @@ class MorphTree(STree):
                 # create the nodes
                 if swc_type in types:
                     p3d = (np.array([x,y,z]), radius, swc_type)
-                    node = self.createCorrespondingNode(index, p3d)
+                    node = self._createCorrespondingNode(index, p3d)
                     all_nodes[index] = (swc_type, node, parent_index)
 
         if soma_type == 1:
@@ -737,8 +763,8 @@ class MorphTree(STree):
         rp1 = np.array([rp.x, rp.y - radius, rp.z])
         rp2 = np.array([rp.x, rp.y + radius, rp.z])
         # create the soma nodes
-        s_node_1 = self.createCorrespondingNode(2, (rp1, radius, 1))
-        s_node_2 = self.createCorrespondingNode(3, (rp2, radius, 1))
+        s_node_1 = self._createCorrespondingNode(2, (rp1, radius, 1))
+        s_node_2 = self._createCorrespondingNode(3, (rp2, radius, 1))
 
         return s_node_1, s_node_2
 
@@ -2676,7 +2702,7 @@ class MorphTree(STree):
             # use the soma as root
             snode = self[1]
         p3d = (snode.xyz, snode.R, snode.swc_type)
-        new_snode = new_tree.createCorrespondingNode(1, p3d)
+        new_snode = new_tree._createCorrespondingNode(1, p3d)
         new_snode.L = snode.L
         new_tree.setRoot(new_snode)
         new_nodes = [new_snode]
@@ -2686,14 +2712,14 @@ class MorphTree(STree):
         # make two other soma nodes
         if fake_soma:
             for index in [2,3]:
-                new_cnode = new_tree.createCorrespondingNode(index, p3d)
+                new_cnode = new_tree._createCorrespondingNode(index, p3d)
                 new_tree.addNodeWithParent(new_cnode, new_snode)
                 new_nodes.append(new_cnode)
         else:
             for cnode in snode.getChildNodes(skip_inds=[]):
                 if cnode.index in [2,3]:
                     p3d = (cnode.xyz, cnode.R, cnode.swc_type)
-                    new_cnode = new_tree.createCorrespondingNode(cnode.index, p3d)
+                    new_cnode = new_tree._createCorrespondingNode(cnode.index, p3d)
                     new_tree.addNodeWithParent(new_cnode, new_snode)
                     new_nodes.append(new_cnode)
         # make rest of tree
@@ -2727,7 +2753,7 @@ class MorphTree(STree):
                 new_radius = node.parent_node.R * (1.-xs[ind]) + node.R * xs[ind]
             # make new node
             p3d = (new_xyz, new_radius, node.swc_type)
-            new_node = new_tree.createCorrespondingNode(index, p3d)
+            new_node = new_tree._createCorrespondingNode(index, p3d)
             if store_loc_inds:
                 new_node.content['loc ind'] = ind
             # add new node
@@ -2849,7 +2875,7 @@ class MorphTree(STree):
         try:
             # set the computational tree
             self.treetype = 'computational'
-            new_node = new_tree.createCorrespondingNode(self.root.index)
+            new_node = new_tree._createCorrespondingNode(self.root.index)
             self.root.__copy__(new_node=new_node)
             new_tree._computational_root = new_node
             new_tree.treetype = 'computational'

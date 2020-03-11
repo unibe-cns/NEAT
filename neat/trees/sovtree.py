@@ -260,7 +260,7 @@ class SOVTree(PhysTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super(SOVTree, self).__init__(file_n=file_n, types=types)
 
-    def createCorrespondingNode(self, node_index, p3d=None):
+    def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -436,6 +436,8 @@ class SOVTree(PhysTree):
                                 eps=1e-4, sort_type='timescale',
                                 return_importance=False):
         """
+        Returns the most importand eigenmodes (those whose importance is above
+        the threshold defined by `eps`)
 
         Parameters
         ----------
