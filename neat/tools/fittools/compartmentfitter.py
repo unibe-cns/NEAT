@@ -1,3 +1,6 @@
+import concurrent.futures
+import contextlib
+import multiprocessing
 import numpy as np
 
 import matplotlib.patheffects as patheffects
@@ -17,10 +20,6 @@ from ...trees.netree import NET, NETNode, Kernel
 
 from ...tools import kernelextraction as ke
 from ...tools.simtools.neuron import neuronmodel as neurm
-
-import dill
-from pathos.multiprocessing import ProcessingPool
-from pathos.threading import ThreadPool
 
 import warnings
 import copy
@@ -353,6 +352,29 @@ class CompartmentFitter(object):
         self.name = name
         self.path = path
 
+        # number of currently used cores
+        self._n_occupied_cores = 0
+
+    @property
+    def _n_free_cores(self):
+        """Returns number of currently unused cores"""
+        return multiprocessing.cpu_count() - self._n_occupied_cores
+
+    @contextlib.contextmanager
+    def reserve_cores(self, n):
+        """ContextManager to manage CPU resources. Occupies and frees cores."""
+        self._occupy_cores(n)
+        yield
+        self._free_cores(n)
+
+    def _occupy_cores(self, n):
+        """Marks n more cores as occupied"""
+        self._n_occupied_cores += n
+
+    def _free_cores(self, n):
+        """Marks n fewer cores as occupied"""
+        self._n_occupied_cores -= n
+
     def setCTree(self, loc_arg, extend_w_bifurc=True):
         """
         Store an initial ::class::`neat.CompartmentTree`, providing a tree
@@ -473,8 +495,10 @@ class CompartmentFitter(object):
                      [pprint for _ in range(n_tree)]]
         # compute the impedance matrices
         if parallel:
-            pool = ProcessingPool(processes=len(args_list[0]))
-            fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
+            max_workers = min(n_tree, self._n_free_cores)
+            with self.reserve_cores(max_workers):
+                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                    fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
         else:
             fit_mats = [self._calcFitMatrices(*args) for args in zip(*args_list)]
         # fit the model for this channel
@@ -528,9 +552,10 @@ class CompartmentFitter(object):
                      [parallel for _ in range(n_arg)],
                     ]
         if parallel:
-            # pool = ProcessingPool(processes=n_arg)
-            pool = ThreadPool(processes=n_arg)
-            fit_mats_ = list(pool.map(self.evalChannel, *args_list))
+            max_workers = min(n_arg, self._n_free_cores)
+            with self.reserve_cores(max_workers):
+                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                    fit_mats_ = list(pool.map(self.evalChannel, *args_list))
         else:
             fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
         fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
