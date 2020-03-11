@@ -76,8 +76,7 @@ def copy_default_neuron_mechanisms():
     if os.path.exists(mech_path):
         shutil.rmtree(mech_path)
     shutil.copytree('neat/tools/simtools/neuron/mech_storage/', mech_path)
-    f = open('neat/tools/simtools/neuron/mech/__init__.py', 'wb')
-    f.close()
+    open('neat/tools/simtools/neuron/mech/__init__.py', 'w').close()
 
 
 def compile_default_ion_channels():
