@@ -62,6 +62,31 @@ class TestCompartmentFitter():
         # set computational tree
         self.tree.setCompTree()
 
+    def loadTSegmentTree(self):
+        '''
+        Load point neuron model
+        '''
+        # self.tree = PhysTree(file_n='test_morphologies/Ttree_segments.swc')
+        self.tree = PhysTree(file_n='test_morphologies/L23PyrBranco.swc')
+        # capacitance and axial resistance
+        self.tree.setPhysiology(0.8, 100./1e6)
+        # ion channels
+        k_chan = channelcollection.Kv3_1()
+
+        g_k = {1: 0.766*1e6}
+        g_k.update({n.index: 0.034*1e6 / self.tree.pathLength((1,.5), (n.index,.5)) \
+                    for n in self.tree if n.index != 1})
+
+        self.tree.addCurrent(k_chan, g_k, -85.)
+        na_chan = channelcollection.Na_Ta()
+        self.tree.addCurrent(na_chan, 1.71*1e6, 50., node_arg=[self.tree[1]])
+        # fit leak current
+        self.tree.fitLeakCurrent(-75., 10.)
+        # set equilibirum potententials
+        self.tree.setEEq(-75.)
+        # set computational tree
+        self.tree.setCompTree()
+
     def testTreeStructure(self):
         self.loadTTree()
         cm = CompartmentFitter(self.tree)
@@ -532,6 +557,8 @@ class TestCompartmentFitter():
         self._checkAllCurrProps(self.ctree, ctree_cm_1)
         self._checkAllCurrProps(self.ctree, ctree_cm_2)
 
+        print(ctree_cm_2)
+
 
         # pickling of tree works
         print('\n--- testing pickling ---')
@@ -567,6 +594,43 @@ class TestCompartmentFitter():
         print('\n--- testing parallel ---')
         ctree_cm_3 = cm.fitModel(locs, parallel=True, use_all_chans_for_passive=True)
 
+        from timeit import default_timer as timer
+        t0 = timer()
+        cm.fitChannels(recompute=False, pprint=False, parallel=False)
+        t1 = timer()
+        print('Not parallel: %.8f s'%(t1-t0))
+        t0 = timer()
+        cm.fitChannels(recompute=False, pprint=False, parallel=True)
+        t1 = timer()
+        print('Parallel: %.8f s'%(t1-t0))
+
+        print(ctree_cm_3)
+
+    def testParallel(self):
+        self.loadTSegmentTree()
+
+
+
+        print( self.tree)
+
+        # locs = [(1, 0.5)] + [(nn,0.5) for nn in range(4,13)]
+        locs = [(nn.index,0.5) for nn in self.tree.nodes[:30]]
+        cm = CompartmentFitter(self.tree)
+
+        print('\n--- testing parallel ---')
+        ctree_cm_3 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
+
+        from timeit import default_timer as timer
+        t0 = timer()
+        cm.fitChannels(recompute=False, pprint=False, parallel=False)
+        t1 = timer()
+        print('Not parallel: %.8f s'%(t1-t0))
+        t0 = timer()
+        cm.fitChannels(recompute=False, pprint=False, parallel=True)
+        t1 = timer()
+        print('Parallel: %.8f s'%(t1-t0))
+
+
 
 
 if __name__ == '__main__':
@@ -577,4 +641,5 @@ if __name__ == '__main__':
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
-    tcf.testFitModel()
+    # tcf.testFitModel()
+    tcf.testParallel()
