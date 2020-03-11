@@ -339,7 +339,7 @@ class PhysTree(MorphTree):
         list of string
             the channel names
         """
-        return self.channel_storage.keys()
+        return list(self.channel_storage.keys())
 
     @morphtree.originalTreetypeDecorator
     def addConcMech(self, ion, params={}, node_arg=None):
