@@ -28,6 +28,7 @@ class PostDevelopCommand(develop):
     def run(self):
         # execute pre installation commands
         write_ionchannel_header_and_cpp_file()
+        copy_default_neuron_mechanisms()
         # develop install
         develop.run(self)
         # execute post installation commands
@@ -39,6 +40,7 @@ class PostInstallCommand(install):
     def run(self):
         # execute pre installation commands
         write_ionchannel_header_and_cpp_file()
+        copy_default_neuron_mechanisms()
         # regular install
         install.run(self)
         # execute post installation commands
@@ -57,13 +59,35 @@ def write_ionchannel_header_and_cpp_file():
     writecppcode.write()
 
 
+def copy_default_neuron_mechanisms():
+    """
+    Copies the default neuron mechanisms from
+        neat/tools/simtools/neuron/mech_storage/
+    to
+        neat/tools/simtools/neuron/mech/
+    and creates an `__init__.py` file in that directory.
+
+    The mech/ directory is generated in a clean state by the installer and
+    aggregates all neuron .mod files. Hence, it should never be used for
+    permanent storage.
+
+    """
+    mech_path = 'neat/tools/simtools/neuron/mech/'
+    if os.path.exists(mech_path):
+        shutil.rmtree(mech_path)
+    shutil.copytree('neat/tools/simtools/neuron/mech_storage/', mech_path)
+    open('neat/tools/simtools/neuron/mech/__init__.py', 'w').close()
+
+
 def compile_default_ion_channels():
     """
     Compiles the default ion channels found in channelcollection for
     use with NEURON.
-
     """
-    subprocess.call(['neat/channels/compilechannels', 'neat/channels/channelcollection/'])
+    cwd = os.getcwd()
+    os.chdir('neat/channels/')
+    subprocess.call(['compilechannels', 'channelcollection/'])
+    os.chdir(cwd)
 
 
 def read_requirements():
@@ -92,6 +116,7 @@ s_ = setup(
               'neat.tools.fittools',
               'neat.tools.plottools',
               'neat.tools.simtools.neuron',
+              'neat.tools.simtools.neuron.mech',
               'neat.channels',
               'neat.channels.channelcollection'],
     ext_package='neat',
@@ -101,6 +126,7 @@ s_ = setup(
         'install': PostInstallCommand,
     },
     include_package_data=True,
+    package_data={'': ['*.mod']},
     author='Willem Wybo',
     classifiers=['Development Status :: 3 - Alpha',
                  'Programming Language :: Python :: 3.7'],
