@@ -17,6 +17,7 @@ E_REV_DICT = {
                 'TestChannel2': -23.,
                 'Na_Ta': 50.,
                 'Kv3_1': -85.,
+                'Na_Ta_simplified': -85.,
                 'h': -43.
              }
 
