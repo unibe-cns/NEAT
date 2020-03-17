@@ -82,19 +82,11 @@ def _insert_function_prefixes(string, prefix='np',
 
 class IonChannelSimplified(object):
     """
-    Base class for all different ion channel types.
 
-    The algebraic form of the membrance current is stored in three numpy.arrays:
-    `varnames`, `powers` and `factors`. An example of how the current is
-    computed is given below:
-        `varnames` = ``[['a00', 'a01', 'a02'],
-                        ['a10', 'a11', 'a12']]``
-        `powers` = ``[[n00, n01, n02],
-                      [n10, n11, n12]]``
-        `factors` = ``[f0, f1]``
-    Then the corresponding probability that the channel is open is given by
-        math::`f0 a00^{n00} a01^{n01} a02^{n02}
-                + f1 a10^{n10} a11^{n11} a12^{n12})`
+
+            I.e. if the channel defines state
+            variables 'm' and 'h', call `computePOpen(v_inp, m=m_inp, h=h_inp),
+            with `m_inp` and `h_inp` being of the same type and shape as `v_inp`
 
     Attributes
     ----------
@@ -132,45 +124,56 @@ class IonChannelSimplified(object):
         initialized from its' derived classes that implement specific ion
         channel types.
         """
+        # define the channel based on user specified state variables and activations
+        self.define()
         if not hasattr(self, 'ion'):
             self.ion = ''
         if not hasattr(self, 'concentrations'):
             self.concentrations = []
         self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
+        if not hasattr(self, 'qtemp'):
+            self.qtemp = 1.
+
+        # extract the state variables
+        self.statevars = list(self.p_open.free_symbols)
+
+        if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
+            # convert to internal representation
+            self.varinf, self.tauinf = {}, {}
+            for var in self.statevars:
+                self.varinf[var] = self.alpha[var] / (self.alpha[var]  + self.beta[var])
+                self.tauinf[var] = (1./self.qtemp) / (self.alpha[var]  + self.beta[var])
 
         # set the voltage state variable
         self.sp_v = sp.symbols('v')
-        # extract the state variables
-        self.statevars = list(self.p_open.free_symbols)
         # set the right hand side of the differential equation for
         # state variables
         self.fstatevar = {}
         for statevar in self.statevars:
             self.fstatevar[statevar] = (-statevar + self.varinf[statevar]) / self.tauinf[statevar]
+
+        # set the lambda functions for efficient numpy evaluation
         self.setLambdaFuncs()
 
     def __getstate__(self):
-
+        """
+        remove lambdified functions from dict as they can not be pickled
+        """
         d = dict(self.__dict__)
 
-        # remove lambdified functions from dict as they can not be
-        # pickled
         del d['f_statevar']
         del d['f_varinf']
         del d['f_tauinf']
         del d['f_p_open']
         del d['dp_dx'], d['df_dv'], d['df_dx'], d['df_dc']
-        # del d['f_s00']
 
         return d
 
-
     def __setstate__(self, s):
-
+        """
+        since lambdified functions were not pickled we need to restore them
+        """
         self.__dict__ = s
-
-        # since lambdified functions were not pickled we need to
-        # restore them
         self.setLambdaFuncs()
 
     def setLambdaFuncs(self):
@@ -185,19 +188,6 @@ class IonChannelSimplified(object):
         # construct lambda function for linear current coefficient evaluations
         self.dp_dx, self.df_dv, self.df_dx, self.df_dc = \
                         self.lambdifyDerivatives()
-        # # express statevar[0,0] as a function of the other state variables
-        # self.po = sp.symbols('po')
-
-        # sv_aux = [sv for ii, sv in np.ndenumerate(self.statevars)]
-
-        # # sol = sp.solve(self.p_open - self.po, self.statevars[0,0])
-        # sol = sp.solve(self.p_open - self.po, sv_aux)
-        # ind = np.where([sp.I not in s.atoms() for s in sol])[0][-1]
-        # sol = sol[ind]
-        # # print self.__class__.__name__
-        # # print self.p_open
-        # # print sol
-        # self.f_s00 = sp.lambdify((self.statevars, self.po), sol)
 
     def _substituteConc(self, expr):
         for sp_c, ion in zip(self.sp_c, self.concentrations):
@@ -296,27 +286,67 @@ class IonChannelSimplified(object):
             rstring += sv_name + ' = %.6f, '%(sv)
         p_open = self.computePOpen(v, statevars=statevars)
         rstring += 'p_open = %.4f'%(p_open)
-        return rstring
+        return rstringp
 
-    def computePOpen(self, v, statevars=None):
-        if statevars is None:
-            args = [v] + [self.f_varinf[var](v) for var in self.statevars]
-        else:
-            args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
+    def _argsAsList(self, v, **kwargs):
+        """
+        Converts arguments to list for lambdified functions
+        """
+        arg_list = [v]
+
+        for var in self.statevars:
+            try:
+                arg_list.append(kwargs[var])
+            except KeyError:
+                # state variable is not in kwargs
+                # set default value based on voltage
+                arg_list.append(self.f_varinf[var](v))
+
+        return arg_list
+
+    def computePOpen(self, v, **kwargs):
+        """
+        Compute the open probability of the ion channel
+
+        Parameters
+        ----------
+        v: float or `np.ndarray` of float
+            The voltage at which to evaluate the open probability
+        **kwargs
+            Optional Values of the state variables.
+
+        Returns
+        -------
+        float or `np.ndarray` of float
+            The open probability
+        """
+        args = self._argsAsList(v, **kwargs)
         return self.f_p_open(*args)
 
-    def computeDerivatives(self, v, statevars=None):
-        if statevars is None:
-            args = [v] + [self.f_varinf[var](v) for var in self.statevars]
-        else:
-            args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
+    def computeDerivatives(self, v, **kwargs):
+        """
+        Compute:
+        (i) the derivatives of the open probability to the state variables
+        (ii) The derivatives of state functions to the voltage
+        (iii) The derivatives of state functions to the state variables
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage at which to evaluate the open probability
+        **kwargs
+            Optional Values of the state variables.
+
+        Returns
+        -------
+        tuple of three floats or three `np.ndarray`s of float
+            The derivatives
+        """
+        args = self._argsAsList(v, **kwargs)
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
-    def computeDerivativesConc(self, v, statevars=None):
-        if statevars is None:
-            args = [v] + [self.f_varinf[var](v) for var in self.statevars]
-        else:
-            args = [v] + [var0 for var0 in statevars.reshape(-1, *statevars.shape[2:])]
+    def computeDerivativesConc(self, v, **kwargs):
+        args = self._argsAsList(v, **kwargs)
         return self.df_dc(*args)
 
     def computeVarInf(self, v):
@@ -345,8 +375,8 @@ class IonChannelSimplified(object):
             res[ind_slice] = f_tauinf(v)
         return res
 
-    def computeLinear(self, v, freqs, statevars=None):
-        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, statevars=statevars)
+    def computeLinear(self, v, freqs, **kwargs):
+        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, **kwargs)
         lin_f = np.zeros_like(freqs)
         for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
             df_dv_ = df_dv_arr[ind] * 1e3 # convert to 1 / s
@@ -355,10 +385,10 @@ class IonChannelSimplified(object):
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
 
-    def computeLinearConc(self, v, freqs, ion, statevars=None):
+    def computeLinearConc(self, v, freqs, ion, **kwargs):
         ind_c = self.concentrations.index(ion)
-        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, statevars=statevars)
-        df_dc = self.computeDerivativesConc(v, statevars=statevars)
+        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, **kwargs)
+        df_dc = self.computeDerivativesConc(v, **kwargs)
         lin_f = np.zeros_like(freqs)
         for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
             df_dc_ = df_dc[ind_c][ind] * 1e3 # convert to 1 / s
@@ -367,159 +397,13 @@ class IonChannelSimplified(object):
             lin_f += dp_dx_ * df_dc_ / (freqs - df_dx_)
         return lin_f
 
-    def computeLinSum(self, v, freqs, e_rev, statevars=None):
-        return (e_rev - v) * self.computeLinear(v, freqs, statevars=statevars) - \
-               self.computePOpen(v, statevars=statevars)
-    # def computeLinSum(self, v, freqs, e_rev, statevars=None):
-    #     return - self.computePOpen(v, statevars=statevars)
+    def computeLinSum(self, v, freqs, e_rev, **kwargs):
+        return (e_rev - v) * self.computeLinear(v, freqs, **kwargs) - \
+               self.computePOpen(v, **kwargs)
 
-    def computeLinConc(self, v, freqs, e_rev, ion, statevars=None):\
-        return (e_rev - v) * self.computeLinearConc(v, freqs, ion, statevars=statevars)
+    def computeLinConc(self, v, freqs, e_rev, ion, **kwargs):\
+        return (e_rev - v) * self.computeLinearConc(v, freqs, ion, **kwargs)
 
-    def findMaxCurrent(self, freqs, e_rev):
-        def f_min(xx):
-            xv = xx[1:].reshape(self.statevars.shape)
-            val = 1. / np.abs(np.sum(self.computeLinSum(xx[0], freqs, e_rev, statevars=xv)))
-            return val
-        # optimization
-        x0 = [-45.] + [0.5 for _ in range(self.statevars.size)]
-        bounds = [(-90., 0.)] + [(0., 1.) for _ in range(self.statevars.size)]
-        res = so.minimize(f_min, x0, bounds=bounds)
-        return res['x'][0], res['x'][1:].reshape(self.statevars.shape)
-
-    def findMaxCurrentVGiven(self, v, freqs, e_rev):
-        def f_min(xx):
-            xv = xx.reshape(self.statevars.shape)
-            val = 1. / np.abs(np.sum(self.computeLinSum(v, freqs, e_rev, statevars=xv)))
-            return val
-        # optimization
-        x0 = [0.5 for _ in range(self.statevars.size)]
-        bounds = [(0., 1.) for _ in range(self.statevars.size)]
-        res = so.minimize(f_min, x0, bounds=bounds)
-        return res['x'].reshape(self.statevars.shape)
-
-    def findStatevarsVPGiven(self, v, p_open):
-        def f_object(xx):
-            xv = xx.reshape(self.statevars.shape)
-            return np.abs(p_open - self.computePOpen(v, statevars=xv))
-        # the bounds for the optimization
-        constraints = ({'type': 'ineq', 'fun': lambda xx: xx - 0.1},
-                       {'type': 'ineq', 'fun': lambda xx: 0.9 - xx})
-        # initialization
-        x0 = np.array([0.5 for _ in range(self.statevars.size)])
-        # optimization
-        res = so.minimize(f_object, x0, method='SLSQP', constraints=constraints)
-        return res['x'].reshape(self.statevars.shape)
-
-    # def findMaxLinear(self, v, freqs, e_rev, p_open=None):
-    #     # contraint function for the optimization
-    #     if p_open is not None:
-    #     # if False:
-    #         def f_constraint(xx):
-    #             xv = xx.reshape(self.statevars.shape)
-    #             return p_open - self.computePOpen(v, statevars=xv)
-    #         constraints = ({'type': 'ineq', 'fun': lambda xx: 0.001 - f_constraint(xx)/p_open},
-    #                        {'type': 'ineq', 'fun': lambda xx: 0.001 + f_constraint(xx)/p_open},
-    #                        {'type': 'ineq', 'fun': lambda xx: xx},
-    #                        {'type': 'ineq', 'fun': lambda xx: 1. - xx})
-    #     else:
-    #         constraints = ({'type': 'ineq', 'fun': lambda xx: xx},
-    #                        {'type': 'ineq', 'fun': lambda xx: 1. - xx})
-    #     # the objective function for the optimization
-    #     def f_object(xx):
-    #         xv = xx.reshape(self.statevars.shape)
-    #         val = 1. / np.abs(np.sum(self.computeLinear(v, freqs, statevars=xv)))
-    #         return val
-    #     # the bounds for the optimization
-    #     # bounds = [(0., 1.) for _ in xrange(self.statevars.size)]
-    #     # initialization
-    #     # if p_open is not None:
-    #     if False:
-    #         x0 = self.findStatevarsVPGiven(v, p_open).reshape(self.statevars.size)
-    #     else:
-    #         x0 = np.array([0.5 for _ in xrange(self.statevars.size)])
-
-    #     # print '\n>>>>>'
-    #     # print self.__class__.__name__
-    #     # print 'p_open =', p_open
-    #     # print 'sv_0 =', x0.reshape(self.statevars.shape)
-    #     # print 'f_constraint =', f_constraint(x0)
-    #     # print 'f_object =', f_object(x0)
-    #     # print '<<<<<\n'
-    #     # optimization
-    #     res_0 = so.minimize(f_object, x0, method='SLSQP', constraints=constraints)
-    #     x0 = np.array([0.1 for _ in xrange(self.statevars.size)])
-    #     res_1 = so.minimize(f_object, x0, method='COBYLA', constraints=constraints)
-    #     # res = so.minimize(f_object, x0, method='SLSQP', bounds=bounds)
-    #     if np.abs(f_object(res_0['x'])) < np.abs(f_object(res_1['x'])):
-    #         return res_0['x'].reshape(self.statevars.shape)
-    #     else:
-    #         return res_1['x'].reshape(self.statevars.shape)
-    #     # return res_1['x'].reshape(self.statevars.shape)
-
-    # def findMaxLinear(self, v, freqs, e_rev, p_open=None):
-    #     if self.statevars.size > 1:
-    #         def to_statevar(xx):
-    #             if self.statevars.shape[0] > 1:
-    #                 xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
-    #             elif self.statevars.shape[1] > 1:
-    #                 xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
-    #             return xv
-    #         # the objective function for the optimization
-    #         def f_object(xx):
-    #             xv = to_statevar(xx)
-    #             val = 1. / np.abs(np.sum(self.computeLinear(v, freqs, statevars=xv)))
-    #             return val
-    #         # the bounds for the optimization
-    #         bounds = [0.001, 0.999]
-    #         # optimization
-    #         res_0 = so.minimize_scalar(f_object, method='bounded', bounds=bounds)
-    #         return to_statevar(res_0['x'])
-    #     else:
-    #         return np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
-
-    # def getStatevarsPOpen(self, p_open):
-    #     xx = 1.
-    #     if self.statevars.shape[0] > 1:
-    #         xv = np.array([[self.f_s00(np.array([[np.nan], [xx]]), p_open)], [xx]])
-    #     elif self.statevars.shape[1] > 1:
-    #         xv = np.array([[self.f_s00(np.array([[np.nan, xx]]), p_open), xx]])
-    #     else:
-    #         xv = np.array([[self.f_s00(np.zeros_like(self.statevars), p_open)]])
-    #     return xv
-
-
-    def computeFreqIMax(self, v, e_rev, f_bounds=(0.,10000.)):
-        """
-        Computes the frequency of voltage fluctuation at which the channel current,
-        linearized around the holding potential `v`, is maximal
-
-        Parameters
-        ----------
-        v: `float` or `np.ndarray`
-            the holding potential around which the voltage is linearized [mV]
-        e_rev: `float`
-            the reversal potential of the channel [mV]
-        f_bounds: `tuple` `(f_min, f_max)`
-            the minimal resp. maximal frequencies [Hz] of the search interval
-
-        Returns
-        -------
-        `np.ndarray`
-            the frequency value as a real number (same shape as `v`)
-        """
-        # optimization function
-        def f_min(freq, u, e_r):
-            return -np.abs(self.computeLinSum(u, 1j*freq, e_r))
-        # find minima
-        if hasattr(v, '__iter__') or hasattr(v, '__getitem__'):
-            freq_vals = np.zeros_like(np.array(v))
-            for ind, vv in np.ndenumerate(v):
-                res = so.minimize_scalar(f_min, bounds=f_bounds, args=(vv, e_rev))
-                freq_vals[ind] = res['x']
-            return freq_vals
-        else:
-            return so.minimize_scalar(f_min, bounds=f_bounds, args=(v, e_rev))['x']
 
     def writeModFile(self, path, g=0., e=0.):
         """

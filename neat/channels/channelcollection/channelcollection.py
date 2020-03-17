@@ -97,7 +97,7 @@ class Na_Ta(IonChannel):
 
 
 class Na_Ta_simplified(IonChannelSimplified):
-    def __init__(self):
+    def define(self):
         """
         (Colbert and Pan, 2002)
 
@@ -110,18 +110,13 @@ class Na_Ta_simplified(IonChannelSimplified):
         # define channel open probability
         self.p_open = h * m ** 3
         # define activation functions
-        spalpham =  0.182 * (v + 38.) / (1. - sp_exp(-(v + 38.) / 6.)) # 1/ms
-        spbetam  = -0.124 * (v + 38.) / (1. - sp_exp( (v + 38.) / 6.)) # 1/ms
-        spalphah = -0.015 * (v + 66.) / (1. - sp_exp( (v + 66.) / 6.)) # 1/ms
-        spbetah  =  0.015 * (v + 66.) / (1. - sp_exp(-(v + 66.) / 6.)) # 1/ms
-        self.varinf = {}
-        self.varinf[m] = spalpham / (spalpham + spbetam)
-        self.varinf[h] = spalphah / (spalphah + spbetah)
-        self.tauinf = {}
-        self.tauinf[m] = (1./2.95) / (spalpham + spbetam)
-        self.tauinf[h] = (1./2.95) / (spalphah + spbetah)
-        # call base class constructor
-        super().__init__()
+        self.alpha, self.beta = {}, {}
+        self.alpha[m] =  0.182 * (v + 38.) / (1. - sp_exp(-(v + 38.) / 6.)) # 1/ms
+        self.beta[m] = -0.124 * (v + 38.) / (1. - sp_exp( (v + 38.) / 6.)) # 1/ms
+        self.alpha[h] = -0.015 * (v + 66.) / (1. - sp_exp( (v + 66.) / 6.)) # 1/ms
+        self.beta[h] =  0.015 * (v + 66.) / (1. - sp_exp(-(v + 66.) / 6.)) # 1/ms
+        # temperature factor for time-scales
+        self.qtemp = 2.95
 
 
 class Kv3_1(IonChannel):
