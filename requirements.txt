@@ -10,4 +10,4 @@ scikit_learn>=0.22.2.post1
 
 # documentation
 sphinx>=2.4.3
-nbspinx>=0.5.1
+nbsphinx>=0.5.1
