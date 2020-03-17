@@ -2,6 +2,7 @@ import numpy as np
 import sympy as sp
 
 from neat import IonChannel
+from neat import IonChannelSimplified
 
 
 def sp_exp(x):
@@ -92,6 +93,34 @@ class Na_Ta(IonChannel):
                                  (1./2.95) / (spalphah + spbetah)]]) # 1/ms
         # base class constructor
         super(Na_Ta, self).__init__()
+
+
+class Na_Ta_simplified(IonChannelSimplified):
+    def __init__(self):
+        """
+        (Colbert and Pan, 2002)
+
+        Used in (Hay, 2011)
+        """
+        self.ion = 'na'
+        self.concentrations = []
+        # define symbols used in the equations
+        v, m, h = sp.symbols('v, m, h')
+        # define channel open probability
+        self.p_open = h * m ** 3
+        # define activation functions
+        spalpham =  0.182 * (v + 38.) / (1. - sp_exp(-(v + 38.) / 6.)) # 1/ms
+        spbetam  = -0.124 * (v + 38.) / (1. - sp_exp( (v + 38.) / 6.)) # 1/ms
+        spalphah = -0.015 * (v + 66.) / (1. - sp_exp( (v + 66.) / 6.)) # 1/ms
+        spbetah  =  0.015 * (v + 66.) / (1. - sp_exp(-(v + 66.) / 6.)) # 1/ms
+        self.varinf = {}
+        self.varinf[m] = spalpham / (spalpham + spbetam)
+        self.varinf[h] = spalphah / (spalphah + spbetah)
+        self.tauinf = {}
+        self.tauinf[m] = (1./2.95) / (spalpham + spbetam)
+        self.tauinf[h] = (1./2.95) / (spalphah + spbetah)
+        # call base class constructor
+        super().__init__()
 
 
 class Kv3_1(IonChannel):

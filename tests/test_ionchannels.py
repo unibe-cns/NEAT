@@ -3,6 +3,7 @@ import sympy as sp
 
 from neat.channels.channelcollection import channelcollection
 from neat import IonChannel
+from neat import IonChannelSimplified
 
 import pytest
 import pickle
@@ -138,6 +139,15 @@ def test_na():
     tna = TestNa()
     tna.testPOpen()
     tna.testLinSum()
+
+
+def test_ionchannel_simplified_POpen():
+    na = channelcollection.Na_Ta()
+    na_simplified = channelcollection.Na_Ta_simplified()
+
+    p_o_1 = na.computePOpen(-35.)
+    p_o_2 = na_simplified.computePOpen(-35.)
+    assert np.allclose(p_o_1, p_o_2)
 
 
 def test_pickling():

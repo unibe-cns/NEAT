@@ -41,5 +41,6 @@ except ModuleNotFoundError:
 from neat.tools.kernelextraction import FourrierTools
 
 from neat.channels.ionchannels import IonChannel
+from neat.channels.ionchannels_simplified import IonChannelSimplified
 
 from neat.tools.fittools.compartmentfitter import CompartmentFitter
