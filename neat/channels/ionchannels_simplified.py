@@ -89,16 +89,90 @@ class CallDict(dict):
     """
     def __call__(self, *args):
         """
-        Calls dictionary items (supposed to be callable or dict)
+        Calls dictionary items (supposed to be callable)
         """
-        return {k: f(*args) if not isinstance(f, dict) else
-                       self._funcdictToLambda(f) for k, f in self.items()}
+        return {k: f(*args) for k, f in self.items()}
 
 
 class IonChannelSimplified(object):
     """
-    """
+    Base ion channel class that implements linearization and code generation for
+    NEURON (.mod-files) and C++.
 
+    Userdefined ion channels should inherit from this class and implement the
+    `define()` function, where the specific attributes of the ion channel are set.
+
+    The ion channel current is of the form
+    .. math:: i_{chan} = \overline{g} \, p_o(x_1, \hdots x_n) \, (e - v)
+    where $p_o$ is the open probability defined as a function of a number of
+    state variables. State variables evolve according to
+    .. math:: \dot{x}_i = f_i(x_i, v, c_1, \hdots, c_k)
+    with $c_1, \hdots, c_n$ the (optional set of concentrations the ion channel
+    depends on). There are two canonical ways to define $f_i$, either based on
+    reaction rates $alpha$ and $beta$:
+    .. math:: \dot{x}_i = \alpha_i(v) \, (1 - x_i) - \beta_i{v} \, x_i,
+    or based on an asymtotic value $x_i^{\infty}$  and time-scale $\tau_i$
+    .. math:: \dot{x}_i = \frac{x_i^{\infty}(v) - x_i}{\tau_i(v)}.
+    `IonChannel` accepts handles either description. For the former description,
+    dicts `self.alpha` and `self.beta` must be defined with as keys the names
+    of every state variable in the open probability. Similarly, for the latter
+    description, dicts `self.tauinf` and `self.varinf` must be defined with as
+    keys the name of every state variable.
+
+    The user **must** define the following attributes in the `define()` function:
+
+    Attributes
+    ----------
+    **Obligatory**
+    p_open: str
+        The open probability of the ion channel.
+    alpha, beta: dict {str: str}
+        dictionary of the rate function for each state variables. Keys must
+        correspond to the name of every state variable in `p_open`, values must
+        be formulas written as strings with `v` and possible ion as variabels
+    tauinf, varinf: dict {str: str}
+        state variable time scale and asymptotic activation level. Keys must
+        correspond to the name of every state variable in `p_open`, values must
+        be formulas written as strings with `v` and possible ion as variabels
+    **Optional**
+    ion: str ('na', 'ca', 'k' or '')
+        The ion to which the ion channel is permeable
+    conc: set of str (containing 'na', 'ca', 'k') or dict of {str: float}
+        The concentrations the ion channel activation depends on. Can be a set
+        of ions or a dict with the ions as keys and default values as float.
+    q10: str
+        Temperature dependence of the state variable rate functions. Must
+        contain the variable 't' for the temperature in ``[deg C]``
+    t: float
+        The temperature at which the ion channel is evaluated.
+    e: float
+        Reversal of the ion channel in ``[mV]``. functions that need it allow
+        the default value to be overwritten with a keyword argument. If nothing
+        is provided, will take a default reversal for `self.ion`. If no ion
+        is provided, will given an error if functions that need `e` are called
+        without specifying it.
+
+    Examples
+    --------
+    ```
+    class Na_Ta(IonChannelSimplified):
+        def define(self):
+            # from (Colbert and Pan, 2002), Used in (Hay, 2011)
+            self.ion = 'na'
+            # concentrations the ion channel depends on
+            self.conc = {}
+            # define channel open probability
+            self.p_open = 'h * m ** 3'
+            # define activation functions
+            self.alpha, self.beta = {}, {}
+            self.alpha['m'] =  '0.182 * (v + 38.) / (1. - exp(-(v + 38.) / 6.))' # 1/ms
+            self.beta['m']  = '-0.124 * (v + 38.) / (1. - exp( (v + 38.) / 6.))' # 1/ms
+            self.alpha['h'] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
+            self.beta['h']  =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
+            # temperature factor for time-scale
+            self.q10 = 2.95
+    ```
+    """
     def __init__(self):
         """
         Will give an ``AttributeError`` if initialized as is. Should only be
@@ -264,8 +338,8 @@ class IonChannelSimplified(object):
             self.df_dx[svar] = sp.lambdify(args, sp.diff(f_svar, svar, 1))
 
             # derivatives of state variable function to concentrations
-            self.df_dc[svar] = {c: sp.lambdify(args, sp.diff(f_svar, c, 1)) \
-                                for c in self.sp_c}
+            self.df_dc[svar] = CallDict({c: sp.lambdify(args, sp.diff(f_svar, c, 1)) \
+                                         for c in self.sp_c})
 
     def _argsAsList(self, v, w_statevar=True, **kwargs):
         """
