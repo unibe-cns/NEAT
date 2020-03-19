@@ -58,7 +58,8 @@ def write():
     fh.close()
 
     for name, channel_class in list(channelcollection.__dict__.items()):
-        if isinstance(channel_class, type) and (name != 'IonChannel' and name != 'IonChannelSimplified') and '_func' not in name:
+        if isinstance(channel_class, type) and \
+           (name != 'IonChannel' and name != 'IonChannelSimplified' and name != 'SK_simplified') and '_func' not in name:
             print('\n\n\n', channel_class)
             chan = channel_class()
             print(chan.__dict__)
@@ -72,7 +73,8 @@ def write():
     fh.write('    IonChannel* createInstance(string channel_name){\n')
     kk = 0
     for name, channel_class in list(channelcollection.__dict__.items()):
-        if isinstance(channel_class, type) and (name != 'IonChannel' and name != 'IonChannelSimplified') and '_func' not in name:
+        if isinstance(channel_class, type) and \
+           (name != 'IonChannel' and name != 'IonChannelSimplified' and name != 'SK_simplified') and '_func' not in name:
             if kk == 0:
                 fh.write('        if(channel_name == \"' + name +'\"){\n')
             else:

@@ -195,8 +195,6 @@ def test_ionchannel_simplified():
     na = channelcollection.Na_Ta()
     na_simplified = channelcollection.Na_Ta_simplified()
 
-
-
     p_o_1 = na.computePOpen(-35.)
     p_o_2 = na_simplified.computePOpen(-35.)
     assert np.allclose(p_o_1, p_o_2)
@@ -204,6 +202,11 @@ def test_ionchannel_simplified():
     l_s_1 = na.computeLinSum(-35., 0., 50.)
     l_s_2 = na_simplified.computeLinSum(-35., 0., 50.)
     assert np.allclose(l_s_1, l_s_2)
+
+    na_simplified.writeModFile('mech/')
+
+    sk = channelcollection.SK_simplified()
+    sk.writeModFile('mech/')
 
 
 def test_pickling():

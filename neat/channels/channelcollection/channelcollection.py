@@ -17,7 +17,8 @@ E_REV_DICT = {
                 'TestChannel2': -23.,
                 'Na_Ta': 50.,
                 'Kv3_1': -85.,
-                'Na_Ta_simplified': -85.,
+                'Na_Ta_simplified': 50.,
+                'SK_simplified': -85.,
                 'h': -43.
              }
 
@@ -115,13 +116,27 @@ class Na_Ta_simplified(IonChannelSimplified):
         self.alpha['h'] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
         self.beta['h']  =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
         # temperature factor for time-scale
-        self.q10 = 2.95
+        # self.q10 = 2.95
 
         # # temperature factor for time-scales
-        # self.q10 = '2.3**((t - 23.)/10.)'
+        self.q10 = '2.3**((temp - 23.)/10.)'
         # # default parameters
         # self.t = 36. # [deg Celsius]
         # self.e = 50. # [mV]
+
+class SK_simplified(IonChannelSimplified):
+    def define(self):
+        '''
+        SK-type calcium-activated potassium current (Kohler et al., 1996)
+        used in (Hay et al., 2011)
+        '''
+        self.ion = 'k'
+        self.conc = ['ca']
+        # define channel open probability
+        self.p_open = 'z'
+        # activation functions
+        self.varinf = {'z': '1. / (1. + (0.00043 / ca)**4.8)'}
+        self.tauinf = {'z': '1.'} # ms
 
 
 class Kv3_1(IonChannel):

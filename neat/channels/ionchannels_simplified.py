@@ -84,7 +84,7 @@ def _insert_function_prefixes(string, prefix='np',
 
 class CallDict(dict):
     """
-    Callable dictionary, items are supposed to be callable functions (or dict)
+    Callable dictionary, items are supposed to be callables
     that all accept an identical argument list
     """
     def __call__(self, *args):
@@ -142,8 +142,8 @@ class IonChannelSimplified(object):
         of ions or a dict with the ions as keys and default values as float.
     q10: str
         Temperature dependence of the state variable rate functions. Must
-        contain the variable 't' for the temperature in ``[deg C]``
-    t: float
+        contain the variable 'temp' for the temperature in ``[deg C]``
+    temp: float
         The temperature at which the ion channel is evaluated.
     e: float
         Reversal of the ion channel in ``[mV]``. functions that need it allow
@@ -189,11 +189,11 @@ class IonChannelSimplified(object):
         # temperature factor, if it exist
         if not hasattr(self, 'q10'):
             self.q10 = '1.'
-        self.q10 = sp.sympify(self.q10)
+        self.q10 = sp.sympify(self.q10, evaluate=False)
         # sympy temperature symbols
         assert len(self.q10.free_symbols) <= 1
         self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
-                    sp.symbols('t')
+                    sp.symbols('temp')
 
         # the voltage variable
         self.sp_v = sp.symbols('v')
@@ -609,7 +609,11 @@ class IonChannelSimplified(object):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
-        modname = 'I' + self.__class__.__name__ + '.mod'
+        cname =  self.__class__.__name__
+        sv = [str(svar) for svar in self.statevars]
+        cs = [str(conc) for conc in self.conc]
+
+        modname = 'I' + cname + '.mod'
         fname = os.path.join(path, modname)
 
         file = open(fname, 'w')
@@ -618,31 +622,27 @@ class IonChannelSimplified(object):
                     '``neat.channels.ionchannels`` module\n\n')
 
         file.write('NEURON {\n')
-        cname =  self.__class__.__name__
-        file.write('    SUFFIX I' + cname + '\n')
+        file.write('    SUFFIX I%s\n'%cname)
         if self.ion == '':
             file.write('    NONSPECIFIC_CURRENT i' + '\n')
         else:
-            file.write('    USEION ' + self.ion + ' WRITE i' + self.ion + '\n')
-        if len(self.concentrations) > 0:
-            for concstring in self.concentrations:
-                file.write('    USEION ' + concstring + ' READ ' \
-                                      + concstring + 'i' + '\n')
+            file.write('    USEION %s WRITE i%s\n'%(self.ion, self.ion))
+        for c in cs:
+            file.write('    USEION %s READ %si\n'%(c, c))
         file.write('    RANGE  g, e' + '\n')
-        varstring = 'var0inf'
-        taustring = 'tau0'
-        for ind in range(len(self.varinf.flatten()[1:])):
-            varstring += ', var' + str(ind+1) + 'inf'
-            taustring += ', tau' + str(ind+1)
-        file.write('    GLOBAL ' + varstring + ', ' + taustring + '\n')
+
+        taustring = 'tau_' + ', tau_'.join(sv)
+        varstring = '_inf, '.join(sv) + '_inf'
+        file.write('    GLOBAL %s, %s\n'%(varstring, taustring))
         file.write('    THREADSAFE' + '\n')
         file.write('}\n\n')
 
         file.write('PARAMETER {\n')
         file.write('    g = ' + str(g*1e-6) + ' (S/cm2)' + '\n')
         file.write('    e = ' + str(e) + ' (mV)' + '\n')
-        for ion in self.concentrations:
+        for ion in cs:
             file.write('    ' + ion + 'i (mM)' + '\n')
+        file.write('    celsius (degC)\n')
         file.write('}\n\n')
 
         file.write('UNITS {\n')
@@ -652,62 +652,56 @@ class IonChannelSimplified(object):
         file.write('}\n\n')
 
         file.write('ASSIGNED {\n')
-        file.write('    i' + self.ion + ' (mA/cm2)' + '\n')
-        # if self.ion != '':
-        #     f.write('    e' + self.ion + ' (mV)' + '\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + 'inf' + '\n')
-            file.write('    tau' + str(ind) + ' (ms)' + '\n')
+        file.write('    i%s (mA/cm2)\n'%self.ion)
+        for var in sv:
+            file.write('    %s_inf      \n'%var)
+            file.write('    tau_%s (ms) \n'%var)
         file.write('    v (mV)' + '\n')
+        file.write('    %s (degC)\n'%(self.sp_t))
         file.write('}\n\n')
 
         file.write('STATE {\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + '\n')
+        for var in sv:
+            file.write('    %s\n'%var)
         file.write('}\n\n')
+
+        calcstring = 'i%s = g * (%s) * (v - e)'%(self.ion, sp.printing.ccode(self.p_open))
 
         file.write('BREAKPOINT {\n')
         file.write('    SOLVE states METHOD cnexp' + '\n')
-        calcstring = '    i' + self.ion + ' = g * ('
-        ll = 0
-        for ii in range(self.statevars.shape[0]):
-            for jj in range(self.statevars.shape[1]):
-                for kk in range(self.powers[ii,jj]):
-                    calcstring += ' var' + str(ll) + ' *'
-                ll += 1
-            calcstring += str(self.factors[ii])
-            if ii < self.statevars.shape[0] - 1:
-                calcstring += ' + '
-        # calcstring += ') * (v - e' + self.ion + ')'
-        calcstring += ') * (v - e)'
-        file.write(calcstring + '\n')
+        file.write('    %s\n'%calcstring)
         file.write('}\n\n')
 
-        concstring = ''
-        for ion in self.concentrations:
-            concstring += ', ' + ion + 'i'
+        concstring = 'i, '.join(cs)
+        if len(cs) > 0:
+            concstring = ', ' + concstring
+            concstring += 'i'
+
         file.write('INITIAL {\n')
-        file.write('    rates(v' + concstring + ')' + '\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + ' = var' + str(ind) + 'inf' + '\n')
+        file.write('    rates(v%s)\n'%concstring)
+        for var in sv:
+            file.write('    %s = %s_inf\n'%(var,var))
         file.write('}\n\n')
 
         file.write('DERIVATIVE states {\n')
-        file.write('    rates(v' + concstring + ')' + '\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + '\' = (var' + str(ind) \
-                        + 'inf - var' + str(ind) + ') / tau' + str(ind) + '\n')
+        file.write('    rates(v%s)\n'%concstring)
+        for var in sv:
+            file.write('    %s\' = (%s_inf - %s) /  tau_%s \n'%(var,var,var,var))
         file.write('}\n\n')
 
-        concstring = ''
-        for ion in self.concentrations:
-            concstring += ', ' + ion
-        file.write('PROCEDURE rates(v' + concstring + ') {\n')
-        for ind, varinf in enumerate(self.varinf.flatten()):
-            file.write('    var' + str(ind) + 'inf = ' \
-                            + sp.printing.ccode(varinf) + '\n')
-            file.write('    tau' + str(ind) + ' = ' \
-                            + sp.printing.ccode(self.tauinf.flatten()[ind]) + '\n')
+        # substitution for common neuron names
+        repl_pairs = [(str(c), str(c)+'i') for c in self.conc]
+
+        file.write('PROCEDURE rates(v%s) {\n'%concstring)
+        file.write('    %s = celsius\n'%str(self.sp_t))
+        for var, svar in zip(sv, self.statevars):
+            vi = sp.printing.ccode(self.varinf[svar])
+            ti = sp.printing.ccode(self.tauinf[svar])
+            for repl_pair in repl_pairs:
+                vi = vi.replace(*repl_pair)
+                ti = ti.replace(*repl_pair)
+            file.write('    %s_inf = %s\n'%(var, vi))
+            file.write('    tau_%s = %s\n'%(var, ti))
         file.write('}\n\n')
 
         file.close()
