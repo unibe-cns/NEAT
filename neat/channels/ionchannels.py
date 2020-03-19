@@ -10,6 +10,8 @@ CONC_DICT = {'na': 10., # mM
              'ca': 1e-4, # 1e-4
             }
 
+TEMP_DEFAULT = 36.
+
 E_ION_DICT = {'na': 50.,
              'k': -85.,
              'ca': 50.,

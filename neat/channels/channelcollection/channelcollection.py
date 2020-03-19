@@ -104,19 +104,24 @@ class Na_Ta_simplified(IonChannelSimplified):
         Used in (Hay, 2011)
         """
         self.ion = 'na'
-        self.concentrations = []
-        # define symbols used in the equations
-        v, m, h = sp.symbols('v, m, h')
+        # concentrations the ion channel depends on
+        self.conc = {}
         # define channel open probability
-        self.p_open = h * m ** 3
+        self.p_open = 'h * m ** 3'
         # define activation functions
         self.alpha, self.beta = {}, {}
-        self.alpha[m] =  0.182 * (v + 38.) / (1. - sp_exp(-(v + 38.) / 6.)) # 1/ms
-        self.beta[m] = -0.124 * (v + 38.) / (1. - sp_exp( (v + 38.) / 6.)) # 1/ms
-        self.alpha[h] = -0.015 * (v + 66.) / (1. - sp_exp( (v + 66.) / 6.)) # 1/ms
-        self.beta[h] =  0.015 * (v + 66.) / (1. - sp_exp(-(v + 66.) / 6.)) # 1/ms
-        # temperature factor for time-scales
-        self.qtemp = 2.95
+        self.alpha['m'] =  '0.182 * (v + 38.) / (1. - exp(-(v + 38.) / 6.))' # 1/ms
+        self.beta['m']  = '-0.124 * (v + 38.) / (1. - exp( (v + 38.) / 6.))' # 1/ms
+        self.alpha['h'] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
+        self.beta['h']  =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
+        # temperature factor for time-scale
+        self.q10 = 2.95
+
+        # # temperature factor for time-scales
+        # self.q10 = '2.3**((t - 23.)/10.)'
+        # # default parameters
+        # self.t = 36. # [deg Celsius]
+        # self.e = 50. # [mV]
 
 
 class Kv3_1(IonChannel):
