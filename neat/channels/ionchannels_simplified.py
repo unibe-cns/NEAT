@@ -10,6 +10,8 @@ CONC_DICT = {'na': 10., # mM
              'ca': 1e-4, # 1e-4
             }
 
+TEMP_DEFAULT = 36.
+
 E_ION_DICT = {'na': 50.,
              'k': -85.,
              'ca': 50.,
@@ -80,44 +82,97 @@ def _insert_function_prefixes(string, prefix='np',
     return string
 
 
+class CallDict(dict):
+    """
+    Callable dictionary, items are supposed to be callables
+    that all accept an identical argument list
+    """
+    def __call__(self, *args):
+        """
+        Calls dictionary items (supposed to be callable)
+        """
+        return {k: f(*args) for k, f in self.items()}
+
+
 class IonChannelSimplified(object):
     """
+    Base ion channel class that implements linearization and code generation for
+    NEURON (.mod-files) and C++.
 
+    Userdefined ion channels should inherit from this class and implement the
+    `define()` function, where the specific attributes of the ion channel are set.
 
-            I.e. if the channel defines state
-            variables 'm' and 'h', call `computePOpen(v_inp, m=m_inp, h=h_inp),
-            with `m_inp` and `h_inp` being of the same type and shape as `v_inp`
+    The ion channel current is of the form
+    .. math:: i_{chan} = \overline{g} \, p_o(x_1, \hdots x_n) \, (e - v)
+    where $p_o$ is the open probability defined as a function of a number of
+    state variables. State variables evolve according to
+    .. math:: \dot{x}_i = f_i(x_i, v, c_1, \hdots, c_k)
+    with $c_1, \hdots, c_n$ the (optional set of concentrations the ion channel
+    depends on). There are two canonical ways to define $f_i$, either based on
+    reaction rates $alpha$ and $beta$:
+    .. math:: \dot{x}_i = \alpha_i(v) \, (1 - x_i) - \beta_i{v} \, x_i,
+    or based on an asymtotic value $x_i^{\infty}$  and time-scale $\tau_i$
+    .. math:: \dot{x}_i = \frac{x_i^{\infty}(v) - x_i}{\tau_i(v)}.
+    `IonChannel` accepts handles either description. For the former description,
+    dicts `self.alpha` and `self.beta` must be defined with as keys the names
+    of every state variable in the open probability. Similarly, for the latter
+    description, dicts `self.tauinf` and `self.varinf` must be defined with as
+    keys the name of every state variable.
+
+    The user **must** define the following attributes in the `define()` function:
 
     Attributes
     ----------
-    *Every derived class should define all these attributes in its constructor,
-    before the base class constructor is called*
-    varnames : 2d numpy.ndarray of strings
-        The names associated with each channel state variable
-    powers : 2d numpy.ndarray of floats or ints
-        The powers to which each state variable is raised to compute the
-        channels' open probalility
-    factors : numpy.array of floats or ints
-        factors which multiply each product of state variables in the sum
-    varinf : 2d numpy.ndarray of sympy.expression instances
-        The activation functions of the channel state variables
-    tauinf : 2d numpy.ndarray of sympy.expression instances\
-        The relaxation timescales of the channel state variables [ms]
+    **Obligatory**
+    p_open: str
+        The open probability of the ion channel.
+    alpha, beta: dict {str: str}
+        dictionary of the rate function for each state variables. Keys must
+        correspond to the name of every state variable in `p_open`, values must
+        be formulas written as strings with `v` and possible ion as variabels
+    tauinf, varinf: dict {str: str}
+        state variable time scale and asymptotic activation level. Keys must
+        correspond to the name of every state variable in `p_open`, values must
+        be formulas written as strings with `v` and possible ion as variabels
+    **Optional**
+    ion: str ('na', 'ca', 'k' or '')
+        The ion to which the ion channel is permeable
+    conc: set of str (containing 'na', 'ca', 'k') or dict of {str: float}
+        The concentrations the ion channel activation depends on. Can be a set
+        of ions or a dict with the ions as keys and default values as float.
+    q10: str
+        Temperature dependence of the state variable rate functions. Must
+        contain the variable 'temp' for the temperature in ``[deg C]``
+    temp: float
+        The temperature at which the ion channel is evaluated.
+    e: float
+        Reversal of the ion channel in ``[mV]``. functions that need it allow
+        the default value to be overwritten with a keyword argument. If nothing
+        is provided, will take a default reversal for `self.ion`. If no ion
+        is provided, will given an error if functions that need `e` are called
+        without specifying it.
 
-    *The base class then defines the following attributes*
-    statevars: 2d numpy.ndarray of sympy.symbols
-        Symbols associated with the state variables
-    fstatevar: 2d numpy.ndarray of sympy.expression instances
-        The functions that give the time-derivative of the statevariables (i.e.
-        math::`(varinf - var) / tauinf`)
-    fun: sympy.expression
-        The analytical form of the open probability
-    coeff_curr: list of sympy.expression instances
-        TODO
-    coeff_statevar: list of sympy.expression instances
-        TODO
+    Examples
+    --------
+    ```
+    class Na_Ta(IonChannelSimplified):
+        def define(self):
+            # from (Colbert and Pan, 2002), Used in (Hay, 2011)
+            self.ion = 'na'
+            # concentrations the ion channel depends on
+            self.conc = {}
+            # define channel open probability
+            self.p_open = 'h * m ** 3'
+            # define activation functions
+            self.alpha, self.beta = {}, {}
+            self.alpha['m'] =  '0.182 * (v + 38.) / (1. - exp(-(v + 38.) / 6.))' # 1/ms
+            self.beta['m']  = '-0.124 * (v + 38.) / (1. - exp( (v + 38.) / 6.))' # 1/ms
+            self.alpha['h'] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
+            self.beta['h']  =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
+            # temperature factor for time-scale
+            self.q10 = 2.95
+    ```
     """
-
     def __init__(self):
         """
         Will give an ``AttributeError`` if initialized as is. Should only be
@@ -126,34 +181,82 @@ class IonChannelSimplified(object):
         """
         # define the channel based on user specified state variables and activations
         self.define()
+
+        # ion that carries the channel current
         if not hasattr(self, 'ion'):
             self.ion = ''
-        if not hasattr(self, 'concentrations'):
-            self.concentrations = []
-        self.sp_c = [sp.symbols(conc) for conc in self.concentrations]
-        if not hasattr(self, 'qtemp'):
-            self.qtemp = 1.
+
+        # temperature factor, if it exist
+        if not hasattr(self, 'q10'):
+            self.q10 = '1.'
+        self.q10 = sp.sympify(self.q10, evaluate=False)
+        # sympy temperature symbols
+        assert len(self.q10.free_symbols) <= 1
+        self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
+                    sp.symbols('temp')
+
+        # the voltage variable
+        self.sp_v = sp.symbols('v')
 
         # extract the state variables
+        self.p_open = sp.sympify(self.p_open)
         self.statevars = list(self.p_open.free_symbols)
 
+        # construct the rate functions
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
+            for svar in self.statevars:
+                key = str(svar)
+                self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
+                self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
             # convert to internal representation
             self.varinf, self.tauinf = {}, {}
-            for var in self.statevars:
-                self.varinf[var] = self.alpha[var] / (self.alpha[var]  + self.beta[var])
-                self.tauinf[var] = (1./self.qtemp) / (self.alpha[var]  + self.beta[var])
+            for svar in self.statevars:
+                self.varinf[svar] = self.alpha[svar] / (self.alpha[svar] + self.beta[svar])
+                self.tauinf[svar] = (1./self.q10) / (self.alpha[svar] + self.beta[svar])
+        elif 'tauinf' in self.__dict__ and 'varinf' in self.__dict__:
+            for svar in self.statevars:
+                key = str(svar)
+                self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
+                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False) / self.q10
+        else:
+            raise AttributeError("Necessary attributes not defined, define either " + \
+                                 "`alpha` and `beta` or `tauinf` and `varinf`.")
 
-        # set the voltage state variable
-        self.sp_v = sp.symbols('v')
         # set the right hand side of the differential equation for
         # state variables
         self.fstatevar = {}
-        for statevar in self.statevars:
-            self.fstatevar[statevar] = (-statevar + self.varinf[statevar]) / self.tauinf[statevar]
+        for svar in self.statevars:
+            self.fstatevar[svar] = (-svar + self.varinf[svar]) / self.tauinf[svar]
+
+        # concentrations the ion channel depends on
+        if not hasattr(self, 'conc'):
+            # if concentration ions are not defined, attempt to extract them from
+            # the state variable functions
+            self.conc = {}
+            for key, expr in self.fstatevar.items():
+                self.conc |= expr.free_symbols # set union
+            # remove everything that is not a concentration
+            self.conc -= set(self.statevars)
+            self.conc -= {self.sp_v, self.sp_t}
+        # if no default concentrations are defined, default values are taken
+        # from default concentration values
+        if not hasattr(self.conc, 'values'):
+            self.conc = {sp.symbols(str(ion)): CONC_DICT[str(ion)] for ion in self.conc}
+        # sympy concentration symbols
+        self.sp_c = [ion for ion in self.conc]
+
+        # default parameters
+        self.default_params = {}
+        self.default_params[str(self.sp_t)] = self.t if 't' in self.__dict__ else \
+                                              TEMP_DEFAULT
+        try:
+            self.default_params['e'] = self.e if 'e' in self.__dict__ else \
+                                       E_ION_DICT[self.ion]
+        except KeyError:
+            warnings.warn('No default reversal potential defined.')
 
         # set the lambda functions for efficient numpy evaluation
-        self.setLambdaFuncs()
+        self._lambdifyChannel()
 
     def __getstate__(self):
         """
@@ -174,133 +277,94 @@ class IonChannelSimplified(object):
         since lambdified functions were not pickled we need to restore them
         """
         self.__dict__ = s
-        self.setLambdaFuncs()
+        self._lambdifyChannel()
 
-    def setLambdaFuncs(self):
-        # construct lambda function for state variables
-        self.f_statevar = self.lambdifyFStatevar()
-        # construct lambda functions for steady state activation
-        self.f_varinf = self.lambdifyVarInf()
-        # construct lambda functions for state variable time scales
-        self.f_tauinf = self.lambdifyTauInf()
-        # construct lambda function for passive opening
-        self.f_p_open = self.lambdifyPOpen()
-        # construct lambda function for linear current coefficient evaluations
-        self.dp_dx, self.df_dv, self.df_dx, self.df_dc = \
-                        self.lambdifyDerivatives()
+    def setDefaultParams(self, **kwargs):
+        """
+        **kwargs
+            Default values for temperature, reversal
+        """
+        self.default_params.update(kwargs)
 
-    def _substituteConc(self, expr):
-        for sp_c, ion in zip(self.sp_c, self.concentrations):
-            expr = expr.subs(sp_c, CONC_DICT[ion])
+    def _substituteDefaults(self, expr):
+        """
+        Substitute default values in input expression
+
+        Parameters
+        ----------
+        expr: sympy expression
+        """
+        for param, val in self.default_params.items():
+            expr = expr.subs(sp.symbols(param), val)
         return expr
 
-    def lambdifyVarInf(self):
-        f_varinf = {}
-        for statevar in self.statevars:
-            varinf = self._substituteConc(self.varinf[statevar])
-            f_varinf[statevar] = sp.lambdify(self.sp_v, varinf)
-        return f_varinf
-
-    def lambdifyTauInf(self):
-        f_tauinf = {}
-        for statevar in self.statevars:
-            tauinf = self._substituteConc(self.tauinf[statevar])
-            f_tauinf[statevar] = sp.lambdify(self.sp_v, tauinf)
-        return f_tauinf
-
-    def lambdifyPOpen(self):
+    def _lambdifyChannel(self):
+        """
+        Create lambda functions based on sympy expression for relevant ion
+        channel functions
+        """
         # arguments for lambda function
-        args = [self.sp_v] + [statevar for statevar in self.statevars]
-        # return lambda function
-        return sp.lambdify(args, self.p_open)
+        args = [self.sp_v] + self.statevars + self.sp_c
+        args_ = [self.sp_v] + self.sp_c
 
-    def lambdifyFStatevar(self):
-        # arguments for lambda function
-        args = [self.sp_v] + [statevar for statevar in self.statevars]
-        # construct dict of lambda functions for each statevar
-        f_statevar = {}
-        for statevar in self.statevars:
-            f_statevar[statevar] = sp.lambdify(args, self.fstatevar[statevar])
-        return f_statevar
+        # lambdified open probability
+        self.f_p_open = sp.lambdify(args, self.p_open)
+        # storatestate variable function
+        self.f_statevar = CallDict()
+        self.f_varinf, self.f_tauinf = CallDict(), CallDict()
+        # storage of derivatives
+        self.dp_dx = CallDict()
+        self.df_dv, self.df_dx, self.df_dc = CallDict(), CallDict(), CallDict()
 
-    def lambdifyDerivatives(self):
-        # arguments for lambda function
-        args = [self.sp_v] + [statevar for statevar in self.statevars]
-        # compute open probability derivatives to state vars
-        dp_dx_aux = np.zeros(len(self.statevars), dtype=object)
-        for ind, var in np.ndenumerate(self.statevars):
-            dp_dx_aux[ind] = sp.lambdify(args,
-                                     sp.diff(self.p_open, var, 1))
-        # compute state variable derivatives
-        df_dv_aux = np.zeros(len(self.statevars), dtype=object)
-        df_dx_aux = np.zeros(len(self.statevars), dtype=object)
-        df_dc_aux = [np.zeros(len(self.statevars), dtype=object) for _ in self.sp_c]
-        # differentiate
-        for ind, var in np.ndenumerate(self.statevars):
-            f_sv = self.fstatevar[var]
-            # derivatives to concentrations
-            for ii, sp_c in enumerate(self.sp_c):
-                df_dc_aux[ii][ind] = sp.lambdify(args,
-                                        self._substituteConc(sp.diff(f_sv, sp_c, 1)))
-            # derivative to voltage and state variable
-            f_sv = self._substituteConc(f_sv)
-            df_dv_aux[ind] = sp.lambdify(args,
-                                     sp.diff(f_sv, self.sp_v, 1))
-            df_dx_aux[ind] = sp.lambdify(args,
-                                     sp.diff(f_sv, var, 1))
+        for svar, f_svar in self.fstatevar.items():
+            f_svar = self._substituteDefaults(f_svar)
+            varinf = self._substituteDefaults(self.varinf[svar])
+            tauinf = self._substituteDefaults(self.tauinf[svar])
 
-        # define convenient functions
-        def dp_dx(*args):
-            dp_dx_list = [[] for _ in range(len(self.statevars))]
-            for ind, dp_dx_ in np.ndenumerate(dp_dx_aux):
-                dp_dx_list[ind[0]].append(dp_dx_aux[ind](*args))
-            return np.array(dp_dx_list)
-        def df_dv(*args):
-            df_dv_list = [[] for _ in range(len(self.statevars))]
-            for ind, df_dv_ in np.ndenumerate(df_dv_aux):
-                df_dv_list[ind[0]].append(df_dv_aux[ind](*args))
-            return np.array(df_dv_list)
-        def df_dx(*args):
-            df_dx_list = [[] for _ in range(len(self.statevars))]
-            for ind, df_dx_ in np.ndenumerate(df_dx_aux):
-                df_dx_list[ind[0]].append(df_dx_aux[ind](*args))
-            return np.array(df_dx_list)
-        def df_dc(*args):
-            df_dc_list = []
-            for ic, (sp_c, df_dc__) in enumerate(zip(self.sp_c, df_dc_aux)):
-                df_dc_list.append([[] for _ in range(len(self.statevars))])
-                for ind, df_dc_ in np.ndenumerate(df_dc__):
-                    df_dc_list[-1][ind[0]].append(df_dc__[ind](*args))
-            return np.array(df_dc_list)
+            # state variable function
+            self.f_statevar = sp.lambdify(args, f_svar)
 
-        return dp_dx, df_dv, df_dx, df_dc
+            # state variable activation & timescale
+            self.f_varinf[svar] = sp.lambdify(args_, varinf)
+            self.f_tauinf[svar] = sp.lambdify(args_, tauinf)
 
-    def expansionPointAsString(self, v, statevars=None):
-        if statevars is None:
-            statevars = np.zeros(self.statevars.shape, dtype=float)
-            for ind, f_varinf in np.ndenumerate(self.f_varinf):
-                statevars[ind] = f_varinf(v)
-        rstring = 'v = %.2f'%(v) + ', sv --> '
-        for ind, sv in np.ndenumerate(statevars):
-            sv_name = self.varnames[ind]
-            rstring += sv_name + ' = %.6f, '%(sv)
-        p_open = self.computePOpen(v, statevars=statevars)
-        rstring += 'p_open = %.4f'%(p_open)
-        return rstringp
+            # derivatives of open probability to state variables
+            self.dp_dx[svar] = sp.lambdify(args, sp.diff(self.p_open, svar, 1))
 
-    def _argsAsList(self, v, **kwargs):
+            # derivatives of state variable function to voltage
+            self.df_dv[svar] = sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1))
+
+            # derivatives of state variable function to state variable
+            self.df_dx[svar] = sp.lambdify(args, sp.diff(f_svar, svar, 1))
+
+            # derivatives of state variable function to concentrations
+            self.df_dc[svar] = CallDict({c: sp.lambdify(args, sp.diff(f_svar, c, 1)) \
+                                         for c in self.sp_c})
+
+    def _argsAsList(self, v, w_statevar=True, **kwargs):
         """
         Converts arguments to list for lambdified functions
         """
         arg_list = [v]
 
-        for var in self.statevars:
+        if w_statevar:
+            for svar in self.statevars:
+                key = str(svar)
+                try:
+                    arg_list.append(kwargs[key])
+                except KeyError:
+                    # state variable is not in kwargs
+                    # set default value based on voltage
+                    arg_list.append(self.f_varinf[svar](v))
+
+        for c in self.sp_c:
+            key = str(c)
             try:
-                arg_list.append(kwargs[var])
+                arg_list.append(kwargs[key])
             except KeyError:
-                # state variable is not in kwargs
-                # set default value based on voltage
-                arg_list.append(self.f_varinf[var](v))
+                # ion is not in kwargs
+                # set stored default value
+                arg_list.append(self.conc[c])
 
         return arg_list
 
@@ -313,7 +377,8 @@ class IonChannelSimplified(object):
         v: float or `np.ndarray` of float
             The voltage at which to evaluate the open probability
         **kwargs
-            Optional Values of the state variables.
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -335,7 +400,8 @@ class IonChannelSimplified(object):
         v: float or `np.ndarray`
             The voltage at which to evaluate the open probability
         **kwargs
-            Optional Values of the state variables.
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -346,70 +412,208 @@ class IonChannelSimplified(object):
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
     def computeDerivativesConc(self, v, **kwargs):
+        """
+        Compute the derivatives of the state functions to the concentrations
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage at which to evaluate the open probability
+        **kwargs
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
+
+        Returns
+        -------
+        tuple of three floats or three `np.ndarray`s of float
+            The derivatives
+        """
         args = self._argsAsList(v, **kwargs)
         return self.df_dc(*args)
 
-    def computeVarInf(self, v):
-        if isinstance(v, np.ndarray):
-            dims = tuple(list(tuple(self.f_varinf.shape)) + list(v.shape))
-            slice_ind = [slice(dd) for dd in v.shape]
-        else:
-            dims = self.f_varinf.shape
-            slice_ind = []
-        res = np.zeros(dims)
-        for ind, f_varinf in np.ndenumerate(self.f_varinf):
-            ind_slice = tuple(list(ind) + slice_ind)
-            res[ind_slice] = f_varinf(v)
-        return res
+    def computeVarinf(self, v):
+        """
+        Compute the asymptotic values for the state variables at a given
+        activation level
 
-    def computeTauInf(self, v):
-        if isinstance(v, np.ndarray):
-            dims = tuple(list(tuple(self.f_tauinf.shape)) + list(v.shape))
-            slice_ind = [slice(dd) for dd in v.shape]
-        else:
-            dims = self.f_tauinf.shape
-            slice_ind = []
-        res = np.zeros(dims)
-        for ind, f_tauinf in np.ndenumerate(self.f_tauinf):
-            ind_slice = tuple(list(ind) + slice_ind)
-            res[ind_slice] = f_tauinf(v)
-        return res
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage at which to evaluate the open probability
+
+        Returns
+        -------
+        dict of `np.ndarray` of dict of float
+            The asymptotic activations, items are of same type (and shape) as `v`
+        """
+        args = self._argsAsList(v, w_statevar=False, **{})
+        return self.f_varinf(*args)
+
+    def computeTauinf(self, v):
+        """
+        Compute the time-scales for the state variables at a given
+        activation level
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage at which to evaluate the open probability
+
+        Returns
+        -------
+        dict of `np.ndarray` of dict of float
+            The asymptotic activations, items are of same type (and shape) as `v`
+        """
+        args = self._argsAsList(v, w_statevar=False, **{})
+        return self.f_tauinf(*args)
 
     def computeLinear(self, v, freqs, **kwargs):
-        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, **kwargs)
+        """
+        Combute the contributions of the state variables to the linearized
+        channel current
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage ``[mV]`` at which to evaluate the open probability
+        freqs float, complex, or `np.ndarray` of float or complex:
+            The frequencies ``[Hz]`` at which to evaluate the linearized contribution
+        **kwargs
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
+
+        Returns
+        -------
+        float, complex or `np.ndarray` of float or complex
+            The linearized current. Shape is dimension of `freqs` followed by
+            the dimensions of `v`.
+        """
+        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
+
+        # broadcast frequencies
+        if isinstance(freqs, np.ndarray) and isinstance(v, np.ndarray):
+            freqs.reshape(freqs.shape+tuple([1]*v.ndim))
+
         lin_f = np.zeros_like(freqs)
-        for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
-            df_dv_ = df_dv_arr[ind] * 1e3 # convert to 1 / s
-            df_dx_ = df_dx_arr[ind] * 1e3 # convert to 1 / s
+        for svar, dp_dx_ in dp_dx.items():
+            df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
+            df_dx_ = df_dx[svar] * 1e3 # convert to 1 / s
             # add to the impedance contribution
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
 
     def computeLinearConc(self, v, freqs, ion, **kwargs):
-        ind_c = self.concentrations.index(ion)
-        dp_dx_arr, df_dv_arr, df_dx_arr = self.computeDerivatives(v, **kwargs)
+        """
+        Combute the contributions of the state variables to the linearized
+        channel current
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage ``[mV]`` at which to evaluate the open probability
+        freqs: float, complex, or `np.ndarray` of float or complex:
+            The frequencies ``[Hz]`` at which to evaluate the linearized contribution
+        ion: str
+            The ion name for which to compute the linearized contribution
+        **kwargs
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
+
+        Returns
+        -------
+        float, complex or `np.ndarray` of float or complex
+            The linearized current. Shape is dimension of `freqs` followed by
+            the dimensions of `v`.
+        """
+        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
         df_dc = self.computeDerivativesConc(v, **kwargs)
+
+        # broadcast frequencies
+        if isinstance(freqs, np.ndarray) and isinstance(v, np.ndarray):
+            freqs.reshape(freqs.shape+tuple([1]*v.ndim))
+
         lin_f = np.zeros_like(freqs)
-        for ind, dp_dx_ in np.ndenumerate(dp_dx_arr):
-            df_dc_ = df_dc[ind_c][ind] * 1e3 # convert to 1 / s
-            df_dx_ = df_dx_arr[ind] * 1e3 # convert to 1 / s
+        for svar, dp_dx_ in dp_dx.items():
+            df_dc_ = df_dc[svar][ion] * 1e3 # convert to 1 / s
+            df_dx_ = df_dx[svar]      * 1e3 # convert to 1 / s
             # add to the impedance contribution
             lin_f += dp_dx_ * df_dc_ / (freqs - df_dx_)
         return lin_f
 
-    def computeLinSum(self, v, freqs, e_rev, **kwargs):
-        return (e_rev - v) * self.computeLinear(v, freqs, **kwargs) - \
+    def _getReversal(self, e):
+        if e is None:
+            try:
+                e = self.default_params['e']
+            except KeyError:
+                raise KeyError('No default reversal defined, provide value for `e`.')
+        return e
+
+    def computeLinSum(self, v, freqs, e=None, **kwargs):
+        """
+        Combute the linearized channel current contribution
+        (without concentributions from the concentration - see `computeLinConc()`)
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage ``[mV]`` at which to evaluate the open probability
+        freqs: float, complex, or `np.ndarray` of float or complex:
+            The frequencies ``[Hz]`` at which to evaluate the linearized contribution
+        e: float or `None`
+            The reversal potential of the channel. Defaults to the value stored
+            in `self.default_params['e']` if not provided.
+        **kwargs
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
+
+        Returns
+        -------
+        float, complex or `np.ndarray` of float or complex
+            The linearized current. Shape is dimension of `freqs` followed by
+            the dimensions of `v`.
+        """
+        e = self._getReversal(e)
+        return (e - v) * self.computeLinear(v, freqs, **kwargs) - \
                self.computePOpen(v, **kwargs)
 
-    def computeLinConc(self, v, freqs, e_rev, ion, **kwargs):\
-        return (e_rev - v) * self.computeLinearConc(v, freqs, ion, **kwargs)
+    def computeLinConc(self, v, freqs, ion, e=None, **kwargs):
+        """
+        Combute the linearized channel current contribution from the concentrations
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage ``[mV]`` at which to evaluate the open probability
+        freqs: float, complex, or `np.ndarray` of float or complex:
+            The frequencies ``[Hz]`` at which to evaluate the linearized contribution
+        ion: str
+            The ion name for which to compute the linearized contribution
+        e: float or `None`
+            The reversal potential of the channel. Defaults to the value stored
+            in `self.default_params['e']` if not provided.
+        **kwargs
+            Optional values for the state variables and concentrations.
+            Broadcastable to `v` if provided
+
+        Returns
+        -------
+        float, complex or `np.ndarray` of float or complex
+            The linearized current. Shape is dimension of `freqs` followed by
+            the dimensions of `v`.
+        """
+        e = self._getReversal(e)
+        return (e - v) * self.computeLinearConc(v, freqs, ion, **kwargs)
 
 
     def writeModFile(self, path, g=0., e=0.):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
-        modname = 'I' + self.__class__.__name__ + '.mod'
+        cname =  self.__class__.__name__
+        sv = [str(svar) for svar in self.statevars]
+        cs = [str(conc) for conc in self.conc]
+
+        modname = 'I' + cname + '.mod'
         fname = os.path.join(path, modname)
 
         file = open(fname, 'w')
@@ -418,31 +622,27 @@ class IonChannelSimplified(object):
                     '``neat.channels.ionchannels`` module\n\n')
 
         file.write('NEURON {\n')
-        cname =  self.__class__.__name__
-        file.write('    SUFFIX I' + cname + '\n')
+        file.write('    SUFFIX I%s\n'%cname)
         if self.ion == '':
             file.write('    NONSPECIFIC_CURRENT i' + '\n')
         else:
-            file.write('    USEION ' + self.ion + ' WRITE i' + self.ion + '\n')
-        if len(self.concentrations) > 0:
-            for concstring in self.concentrations:
-                file.write('    USEION ' + concstring + ' READ ' \
-                                      + concstring + 'i' + '\n')
+            file.write('    USEION %s WRITE i%s\n'%(self.ion, self.ion))
+        for c in cs:
+            file.write('    USEION %s READ %si\n'%(c, c))
         file.write('    RANGE  g, e' + '\n')
-        varstring = 'var0inf'
-        taustring = 'tau0'
-        for ind in range(len(self.varinf.flatten()[1:])):
-            varstring += ', var' + str(ind+1) + 'inf'
-            taustring += ', tau' + str(ind+1)
-        file.write('    GLOBAL ' + varstring + ', ' + taustring + '\n')
+
+        taustring = 'tau_' + ', tau_'.join(sv)
+        varstring = '_inf, '.join(sv) + '_inf'
+        file.write('    GLOBAL %s, %s\n'%(varstring, taustring))
         file.write('    THREADSAFE' + '\n')
         file.write('}\n\n')
 
         file.write('PARAMETER {\n')
         file.write('    g = ' + str(g*1e-6) + ' (S/cm2)' + '\n')
         file.write('    e = ' + str(e) + ' (mV)' + '\n')
-        for ion in self.concentrations:
+        for ion in cs:
             file.write('    ' + ion + 'i (mM)' + '\n')
+        file.write('    celsius (degC)\n')
         file.write('}\n\n')
 
         file.write('UNITS {\n')
@@ -452,62 +652,56 @@ class IonChannelSimplified(object):
         file.write('}\n\n')
 
         file.write('ASSIGNED {\n')
-        file.write('    i' + self.ion + ' (mA/cm2)' + '\n')
-        # if self.ion != '':
-        #     f.write('    e' + self.ion + ' (mV)' + '\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + 'inf' + '\n')
-            file.write('    tau' + str(ind) + ' (ms)' + '\n')
+        file.write('    i%s (mA/cm2)\n'%self.ion)
+        for var in sv:
+            file.write('    %s_inf      \n'%var)
+            file.write('    tau_%s (ms) \n'%var)
         file.write('    v (mV)' + '\n')
+        file.write('    %s (degC)\n'%(self.sp_t))
         file.write('}\n\n')
 
         file.write('STATE {\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + '\n')
+        for var in sv:
+            file.write('    %s\n'%var)
         file.write('}\n\n')
+
+        calcstring = 'i%s = g * (%s) * (v - e)'%(self.ion, sp.printing.ccode(self.p_open))
 
         file.write('BREAKPOINT {\n')
         file.write('    SOLVE states METHOD cnexp' + '\n')
-        calcstring = '    i' + self.ion + ' = g * ('
-        ll = 0
-        for ii in range(self.statevars.shape[0]):
-            for jj in range(self.statevars.shape[1]):
-                for kk in range(self.powers[ii,jj]):
-                    calcstring += ' var' + str(ll) + ' *'
-                ll += 1
-            calcstring += str(self.factors[ii])
-            if ii < self.statevars.shape[0] - 1:
-                calcstring += ' + '
-        # calcstring += ') * (v - e' + self.ion + ')'
-        calcstring += ') * (v - e)'
-        file.write(calcstring + '\n')
+        file.write('    %s\n'%calcstring)
         file.write('}\n\n')
 
-        concstring = ''
-        for ion in self.concentrations:
-            concstring += ', ' + ion + 'i'
+        concstring = 'i, '.join(cs)
+        if len(cs) > 0:
+            concstring = ', ' + concstring
+            concstring += 'i'
+
         file.write('INITIAL {\n')
-        file.write('    rates(v' + concstring + ')' + '\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + ' = var' + str(ind) + 'inf' + '\n')
+        file.write('    rates(v%s)\n'%concstring)
+        for var in sv:
+            file.write('    %s = %s_inf\n'%(var,var))
         file.write('}\n\n')
 
         file.write('DERIVATIVE states {\n')
-        file.write('    rates(v' + concstring + ')' + '\n')
-        for ind in range(len(self.varinf.flatten())):
-            file.write('    var' + str(ind) + '\' = (var' + str(ind) \
-                        + 'inf - var' + str(ind) + ') / tau' + str(ind) + '\n')
+        file.write('    rates(v%s)\n'%concstring)
+        for var in sv:
+            file.write('    %s\' = (%s_inf - %s) /  tau_%s \n'%(var,var,var,var))
         file.write('}\n\n')
 
-        concstring = ''
-        for ion in self.concentrations:
-            concstring += ', ' + ion
-        file.write('PROCEDURE rates(v' + concstring + ') {\n')
-        for ind, varinf in enumerate(self.varinf.flatten()):
-            file.write('    var' + str(ind) + 'inf = ' \
-                            + sp.printing.ccode(varinf) + '\n')
-            file.write('    tau' + str(ind) + ' = ' \
-                            + sp.printing.ccode(self.tauinf.flatten()[ind]) + '\n')
+        # substitution for common neuron names
+        repl_pairs = [(str(c), str(c)+'i') for c in self.conc]
+
+        file.write('PROCEDURE rates(v%s) {\n'%concstring)
+        file.write('    %s = celsius\n'%str(self.sp_t))
+        for var, svar in zip(sv, self.statevars):
+            vi = sp.printing.ccode(self.varinf[svar])
+            ti = sp.printing.ccode(self.tauinf[svar])
+            for repl_pair in repl_pairs:
+                vi = vi.replace(*repl_pair)
+                ti = ti.replace(*repl_pair)
+            file.write('    %s_inf = %s\n'%(var, vi))
+            file.write('    tau_%s = %s\n'%(var, ti))
         file.write('}\n\n')
 
         file.close()
@@ -554,8 +748,8 @@ class IonChannelSimplified(object):
         for ind, varname in np.ndenumerate(self.statevars):
             tauinf = self.tauinf[varname]
             varinf = self.varinf[varname]
-            varinf_ = self._substituteConc(varinf)
-            tauinf_ = self._substituteConc(tauinf)
+            varinf_ = self._substituteDefaults(varinf)
+            tauinf_ = self._substituteDefaults(tauinf)
             fcc.write('    m_' + sp.printing.ccode(varname) + '_inf = ' + sp.printing.ccode(varinf_) + ';' + '\n')
             # if self.varinf.shape[1] == 2 and ind == (0,0):
             if str(varname) == 'm':
@@ -643,7 +837,7 @@ class IonChannelSimplified(object):
         for ind, varname in np.ndenumerate(self.statevars):
             v_var = sp.symbols('v_' + str(varname))
             # substitute voltage symbol in the activation
-            varinf_ = self._substituteConc(self.varinf[varname]).subs(self.sp_v, v_var)
+            varinf_ = self._substituteDefaults(self.varinf[varname]).subs(self.sp_v, v_var)
             # assign dynamic or fixed voltage to the activation
             fcc.write('    double ' + sp.printing.ccode(v_var) + ';\n')
             fcc.write('    if(m_' + sp.printing.ccode(v_var) + ' > 1000.){' + '\n')
@@ -667,7 +861,7 @@ class IonChannelSimplified(object):
         for ind, varname in np.ndenumerate(self.statevars):
             v_var = sp.symbols('v_' + str(varname))
             # substitute voltage symbol in the activation
-            varinf_ = self._substituteConc(self.varinf[varname]).subs(self.sp_v, v_var)
+            varinf_ = self._substituteDefaults(self.varinf[varname]).subs(self.sp_v, v_var)
             dvarinf_dv = sp.diff(varinf_, v_var, 1)
             # compute derivative
             fcc.write('    double ' + sp.printing.ccode(v_var) + ';\n')
