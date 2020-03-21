@@ -200,7 +200,7 @@ class IonChannelSimplified(object):
 
         # extract the state variables
         self.p_open = sp.sympify(self.p_open)
-        self.statevars = list(self.p_open.free_symbols)
+        self.statevars = self.p_open.free_symbols
 
         # construct the rate functions
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
@@ -236,7 +236,7 @@ class IonChannelSimplified(object):
             for key, expr in self.fstatevar.items():
                 self.conc |= expr.free_symbols # set union
             # remove everything that is not a concentration
-            self.conc -= set(self.statevars)
+            self.conc -= self.statevars
             self.conc -= {self.sp_v, self.sp_t}
         # if no default concentrations are defined, default values are taken
         # from default concentration values
@@ -298,13 +298,17 @@ class IonChannelSimplified(object):
             expr = expr.subs(sp.symbols(param), val)
         return expr
 
+    @property
+    def ordered_statevars(self):
+        return list(sorted(self.statevars, key=str))
+
     def _lambdifyChannel(self):
         """
         Create lambda functions based on sympy expression for relevant ion
         channel functions
         """
         # arguments for lambda function
-        args = [self.sp_v] + self.statevars + self.sp_c
+        args = [self.sp_v] + self.ordered_statevars + self.sp_c
         args_ = [self.sp_v] + self.sp_c
 
         # lambdified open probability
@@ -348,7 +352,7 @@ class IonChannelSimplified(object):
         arg_list = [v]
 
         if w_statevar:
-            for svar in self.statevars:
+            for svar in self.ordered_statevars:
                 key = str(svar)
                 try:
                     arg_list.append(kwargs[key])
