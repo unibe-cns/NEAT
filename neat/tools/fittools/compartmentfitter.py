@@ -25,6 +25,17 @@ import warnings
 import copy
 
 
+def cpu_count(use_hyperthreading=True):
+    """
+    Return number of available cores.
+    Makes use of hypterthreading by default.
+    """
+    if use_hyperthreading:
+        return multiprocessing.cpu_count()
+    else:
+        return multiprocessing.cpu_count() // 2
+
+
 def consecutive(inds):
     """
     split a list of ints into consecutive sublists
@@ -462,29 +473,6 @@ class CompartmentFitter(object):
         self.name = name
         self.path = path
 
-        # number of currently used cores
-        self._n_occupied_cores = 0
-
-    @property
-    def _n_free_cores(self):
-        """Returns number of currently unused cores"""
-        return multiprocessing.cpu_count() - self._n_occupied_cores
-
-    @contextlib.contextmanager
-    def reserve_cores(self, n):
-        """ContextManager to manage CPU resources. Occupies and frees cores."""
-        self._occupy_cores(n)
-        yield
-        self._free_cores(n)
-
-    def _occupy_cores(self, n):
-        """Marks n more cores as occupied"""
-        self._n_occupied_cores += n
-
-    def _free_cores(self, n):
-        """Marks n fewer cores as occupied"""
-        self._n_occupied_cores -= n
-
     def setCTree(self, loc_arg, extend_w_bifurc=True):
         """
         Store an initial ::class::`neat.CompartmentTree`, providing a tree
@@ -565,7 +553,7 @@ class CompartmentFitter(object):
         return tree
 
     def evalChannel(self, channel_name,
-                          recompute=False, pprint=False, parallel=True):
+                          recompute=False, pprint=False, parallel=True, max_workers=None):
         """
         Evaluate the impedance matrix for the model restricted to a single ion
         channel type.
@@ -590,6 +578,7 @@ class CompartmentFitter(object):
         channel = self.tree.channel_storage[channel_name]
         sv_hs, e_hs = getExpansionPoints(self.e_hs, channel)
         n_tree = len(e_hs)
+
         # create the trees with only a single channel
         fit_tree = self.createTreeGF([channel_name])
         fit_tree.setName(self.name, self.path)
@@ -598,6 +587,7 @@ class CompartmentFitter(object):
             ftree = fit_tree.__copy__(new_tree=FitTreeGF())
             ftree.setExpansionPointsForFit({channel_name: sv_h}, e_h)
             fit_trees.append(ftree)
+
         # compute the impedance matrices for different activation levels
         args_list = [fit_trees,
                      [locs for _ in range(n_tree)],
@@ -605,12 +595,13 @@ class CompartmentFitter(object):
                      [pprint for _ in range(n_tree)]]
         # compute the impedance matrices
         if parallel:
-            max_workers = min(n_tree, self._n_free_cores)
-            with self.reserve_cores(max_workers):
-                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-                    fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
+            if max_workers is None:
+                raise ValueError('need to provide number of workers if parallel is True')
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
         else:
             fit_mats = [self._calcFitMatrices(*args) for args in zip(*args_list)]
+
         # fit the model for this channel
         w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         for _, _, w_f in fit_mats: w_f /= w_norm
@@ -666,10 +657,12 @@ class CompartmentFitter(object):
                          [parallel for _ in range(n_arg)],
                         ]
             if parallel:
-                max_workers = min(n_arg, self._n_free_cores)
-                with self.reserve_cores(max_workers):
-                    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-                        fit_mats_ = list(pool.map(self.evalChannel, *args_list))
+                max_workers = min(n_arg, cpu_count())
+                # split cores evenly over inner workers
+                inner_max_workers = cpu_count() // max_workers
+                args_list += [[inner_max_workers for _ in range(n_arg)]]
+                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                    fit_mats_ = list(pool.map(self.evalChannel, *args_list))
             else:
                 fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
             fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
@@ -683,7 +676,6 @@ class CompartmentFitter(object):
 
         # chan_eval = ChannelEvaluator()
         # chan_eval.evaluate(self, recompute=recompute, pprint=pprint, parallel=parallel)
-
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
