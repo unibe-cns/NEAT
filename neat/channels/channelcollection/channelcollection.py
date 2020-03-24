@@ -17,8 +17,10 @@ E_REV_DICT = {
                 'TestChannel2': -23.,
                 'Na_Ta': 50.,
                 'Kv3_1': -85.,
+                'Kv3_1_simplified': -85.,
                 'Na_Ta_simplified': 50.,
                 'SK_simplified': -85.,
+                'h_simplified': -43.,
                 'h': -43.
              }
 
@@ -116,10 +118,10 @@ class Na_Ta_simplified(IonChannelSimplified):
         self.alpha['h'] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
         self.beta['h']  =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
         # temperature factor for time-scale
-        # self.q10 = 2.95
+        self.q10 = 2.95
 
         # # temperature factor for time-scales
-        self.q10 = '2.3**((temp - 23.)/10.)'
+        # self.q10 = '2.3**((temp - 23.)/10.)'
         # # default parameters
         # self.t = 36. # [deg Celsius]
         # self.e = 50. # [mV]
@@ -137,6 +139,30 @@ class SK_simplified(IonChannelSimplified):
         # activation functions
         self.varinf = {'z': '1. / (1. + (0.00043 / ca)**4.8)'}
         self.tauinf = {'z': '1.'} # ms
+
+
+class h_simplified(IonChannelSimplified):
+    def define(self):
+        """
+        Hcn channel from (Bal and Oertel, 2000)
+        """
+        # define channel open probability
+        self.p_open = '.8 * hf + .2 * hs'
+        # define activation functions
+        self.varinf, self.tauinf = {}, {}
+        self.varinf['hf'] = '1. / (1. + exp((v + 82.) / 7.))'
+        self.varinf['hs'] = '1. / (1. + exp((v + 82.) / 7.))'
+        self.tauinf['hf'] = '40.'
+        self.tauinf['hs'] = '300.'
+
+class Kv3_1_simplified(IonChannelSimplified):
+    def define(self):
+        self.ion = 'k'
+        # define channel open probability
+        self.p_open = 'm'
+        # define activation functions
+        self.varinf = {'m': '1. / (1. + exp(-(v - 18.70) /  9.70))'}
+        self.tauinf = {'m': '4. / (1. + exp(-(v + 46.56) / 44.14))'} # ms
 
 
 class Kv3_1(IonChannel):
