@@ -1,8 +1,8 @@
 """
 File contains:
 
-    - :class:`CompartmentNode`
-    - :class:`CompartmentTree`
+    - `CompartmentNode`
+    - `CompartmentTree`
 
 Author: W. Wybo
 """
@@ -24,22 +24,9 @@ from operator import mul
 from functools import reduce
 
 
-class RowMat(object):
-    def __init__(self, row, ii):
-        self.row = row
-        self.ii = ii
-
-    def __mul__(self, rowmat):
-        row_res = self.row[rowmat.ii] * rowmat.row
-        return RowMat(row_res, self.ii)
-
-    def trace(self):
-        return self.row[self.ii]
-
-
 class CompartmentNode(SNode):
     """
-    Implements a node for :class:`CompartmentTree`
+    Implements a node for `CompartmentTree`
 
     Attributes
     ----------
@@ -56,7 +43,7 @@ class CompartmentNode(SNode):
         dictionary with as keys the channel names and as elements lists of length
         two with contain the maximal conductance (uS) and the channels'
         reversal potential in (mV)
-    concmechs: dict {str: :class:`neat.channels.concmechs.ConcMech`}
+    concmechs: dict {str: `neat.channels.concmechs.ConcMech`}
         dictionary with as keys the ion names and as values the concentration
         mechanisms governing the concentration of each ion channel
     expansion_points: dict {str: np.ndarray}
@@ -260,8 +247,8 @@ class CompartmentNode(SNode):
 
         Parameters
         ----------
-        channel_storage: dict {str: ::class::`neat.IonChannel}
-            Dictionary of all ion channels on the ::class::`neat.CompartmentTree`
+        channel_storage: dict {str: `neat.IonChannel`}
+            Dictionary of all ion channels on the `neat.CompartmentTree`
         v: float (optional, default is None which evaluates at `self.e_eq`)
             The potential at which to compute the total conductance
         channel_names: list of str
@@ -305,8 +292,8 @@ class CompartmentNode(SNode):
 
         Parameters
         ----------
-        channel_storage: dict {str: ::class::`neat.IonChannel}
-            Dictionary of all ion channels on the ::class::`neat.CompartmentTree`
+        channel_storage: dict {str: `neat.IonChannel`}
+            Dictionary of all ion channels on the `neat.CompartmentTree`
         v: float (optional, default is None which evaluates at `self.e_eq`)
             The potential at which to compute the total conductance
         channel_names: list of str
@@ -396,13 +383,18 @@ class CompartmentNode(SNode):
 
 
 class CompartmentTree(STree):
+    """
+    Abstract tree that implements physiological parameters for reduced
+    compartmental models. Also implements the matrix algebra to fit physiological
+    parameters to impedance matrices
+    """
     def __init__(self, root=None):
         super(CompartmentTree, self).__init__(root=root)
         self.channel_storage = {}
         # for fitting the model
         self.resetFitData()
 
-    def createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
+    def _createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -452,6 +444,23 @@ class CompartmentTree(STree):
         return e_eq
 
     def setExpansionPoints(self, expansion_points):
+        """
+        Set the choice for the state variables of the ion channel around which
+        to linearize.
+
+        Note that when adding an ion channel to the tree, the default expansion
+        point setting is to linearize around the asymptotic values for the state
+        variables at the equilibrium potential store in `self.e_eq`.
+        Hence, this function only needs to be called to change that setting.
+
+        Parameters
+        ----------
+        expansion_points: dict {`channel_name`: ``None`` or `np.ndarray`}
+            dictionary with as keys `channel_name` the name of the ion channel
+            and as value its expansion point
+        """
+        warnings.warn("This function will cause problems with new-style ion channels")
+
         to_tree_inds = self._permuteToTreeInds()
         for channel_name, expansion_point in expansion_points.items():
             # if one set of state variables, set throughout neuron
@@ -540,10 +549,6 @@ class CompartmentTree(STree):
         return np.array([node.loc_ind for node in self])
 
     def _permuteToTree(self, mat):
-        """
-        give index list that can be used to permutate the axes of the impedance
-        and system matrix to correspond to the associated set of locations
-        """
         index_arr = self._permuteToTreeInds()
         if mat.ndim == 1:
             return mat[index_arr]
@@ -553,6 +558,10 @@ class CompartmentTree(STree):
             return mat[:,index_arr,:][:,:,index_arr]
 
     def _permuteToLocsInds(self):
+        """
+        give index list that can be used to permutate the axes of the impedance
+        and system matrix to correspond to the associated set of locations
+        """
         loc_inds = np.array([node.loc_ind for node in self])
         return np.argsort(loc_inds)
 
@@ -566,6 +575,15 @@ class CompartmentTree(STree):
             return mat[:,index_arr,:][:,:,index_arr]
 
     def getEquivalentLocs(self):
+        """
+        Get list of fake locations in the same order as original list of locations
+        to which the compartment tree was fitted.
+
+        Returns
+        -------
+        list of tuple
+            Tuple has the form `(node.index, .5)`
+        """
         loc_inds = [node.loc_ind for node in self]
         index_arr = np.argsort(loc_inds)
         locs_unordered = [(node.index, .5) for node in self]
@@ -582,10 +600,10 @@ class CompartmentTree(STree):
         ----------
             freqs: np.array (dtype = complex) or float
                 Frequencies at which the matrix is evaluated [Hz]
-            channel_names: `None` (default) or `list` of `str`
-                The channels to be included in the matrix. If `None`, all
+            channel_names: ``None`` (default) or `list` of `str`
+                The channels to be included in the matrix. If ``None``, all
                 channels present on the tree are included in the calculation
-            use_conc: `bool`
+            use_conc: bool
                 wheter or not to use the concentration dynamics
             indexing: 'tree' or 'locs'
                 Whether the indexing order of the matrix corresponds to the tree
@@ -594,7 +612,7 @@ class CompartmentTree(STree):
 
         Returns
         -------
-            `np.ndarra` (``ndim = ``3, ``dtype = complex``)
+            `np.ndarray` (ndim = 3, dtype = complex)
                 The first dimension corresponds to the
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
@@ -1647,7 +1665,7 @@ class CompartmentTree(STree):
 
         Parameters
         ----------
-            ax: :class:`matplotlib.axes`
+            ax: `matplotlib.axes`
                 the axes object in which the plot will be made
             plotargs : dict (string : value)
                 keyword args for the matplotlib plot function, specifies the

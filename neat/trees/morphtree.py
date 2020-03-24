@@ -1,9 +1,9 @@
 """
 File contains:
 
-    - :class:`MorphLoc`
-    - :class:`MorphNode`
-    - :class:`MorphTree`
+    - `neat.MorphLoc`
+    - `neat.MorphNode`
+    - `neat.MorphTree`
 
 Authors: B. Torben-Nielsen (legacy code) and W. Wybo
 """
@@ -57,7 +57,7 @@ def computationalTreetypeDecorator(fun):
         if self._computational_root == None:
             raise AttributeError('No computational tree has been defined, ' + \
                                   'and this function requires one. Use ' + \
-                                  ':func:`MorphTree.setCompTree()` or its ' + \
+                                  '`MorphTree.setCompTree()` or its ' + \
                                   'overwritten version in one of the derived' + \
                                   'classes')
         current_treetype = self.treetype
@@ -76,32 +76,31 @@ class MorphLoc(object):
     coordinates, the class stores a reference to the morphology tree on which
     the location is defined, and returns either the original coordinate or the
     coordinate on the computational tree, depending on which tree is active.
+
+    Initialized based on either a tuple or a dict where one entry specifies the
+    node index and the other entry the x-coordinate specifying the location
+    between parent node (x=0) or the node indicated by the index (x=1), or on
+    a `neat.MorphLoc`.
+
+    Parameters
+    ----------
+        loc: tuple or dict or `neat.MorphLoc`
+            if tuple: (node index, x-value)
+            if dict: {'node': node index, 'x': x-value}
+        reftree: `neat.MorphTree`
+        set_as_comploc: bool
+            if True, assumes the paremeters provided in `loc` are coordinates
+            on the computational tree. Doing this while no computational tree
+            has been initialized in `reftree` will result in an error.
+            Defaults to False
+
+    Raises
+    ------
+        ValueError
+            If x-coordinate of location is not in ``[0,1]``
     """
 
     def __init__(self, loc, reftree, set_as_comploc=False):
-        """
-        Initialize an object to specify a location on the morphology. Input is
-        either a tuple or a dict where one entry specifies the node index and
-        the other entry the x-coordinate specifying the location between parent
-        node (x=0) or the node indicated by the index (x=1).
-
-        Parameters
-        ----------
-            loc: tuple or dict
-                if tuple: (node index, x-value)
-                if dict: {'node': node index, 'x': x-value}
-            reftree: :class:`MorphTree`
-            set_as_comploc: bool
-                if True, assumes the paremeters provided in `loc` are coordinates
-                on the computational tree. Doing this while no computational tree
-                has been initialized in `reftree` will result in an error.
-                Defaults to False
-
-        Raises
-        ------
-            ValueError
-                If x-coordinate of location is not in ``[0,1]``
-        """
         self.reftree = reftree
 
         if isinstance(loc, tuple):
@@ -247,7 +246,7 @@ class MorphLoc(object):
 
 class MorphNode(SNode):
     """
-    Node associated with :class:`MorphTree`. Stores the geometrical information
+    Node associated with `neat.MorphTree`. Stores the geometrical information
     associated with a point on the tree morphology
 
     Attributes
@@ -279,7 +278,7 @@ class MorphNode(SNode):
 
         Parameters
         ----------
-            xyz: numpy.array
+            xyz: `np.array`
                 3D location (um)
             R: float
                 Radius of the segment (um)
@@ -316,9 +315,20 @@ class MorphNode(SNode):
         self.R = R
 
     def getChildNodes(self, skip_inds=(2,3)):
-        # if self.index == 1:
-        # else:
-        #     return super(MorphNode, self).getChildNodes()
+        """
+        Get the `child_nodes` of this node. Indices ``2`` and ``3`` are skipped
+        by default (3-point soma convention)
+
+        Parameters
+        ----------
+        skip_inds: list or tuple of ints
+            Node indices of child nodes that are not added to the returned list
+
+        Returns
+        -------
+        list of `neat.MorphNode`
+            The child nodes
+        """
         return [cnode for cnode in self._child_nodes \
                       if cnode.index not in skip_inds]
 
@@ -335,7 +345,12 @@ class MorphNode(SNode):
 class MorphTree(STree):
     """
     Subclass of simple tree that implements neuronal morphologies. Reads in
-    trees from '.swc' files.
+    trees from '.swc' files (http://neuromorpho.org/).
+
+    Neural morphologies are assumed to follow the three-point soma conventions.
+    Internally however, the soma is represented as a sphere. Hence nodes with
+    indices 2 and 3 do not represent anything and are skipped in iterations and
+    getters.
 
     Can also store a simplified version of the original tree, where only nodes
     are retained that should hold computational parameters - the root, the
@@ -347,10 +362,39 @@ class MorphTree(STree):
     operations is unsafe and should be avoided, it is better to set the proper
     tree to primary first.
 
+    For computational efficiency, it is possible to store sets of locations on
+    the morphology, under user-specified names. These sets are stored as
+    lists of `neat.MorphLoc`, and associated arrays are stored that contain the
+    corresponding node indices of the locations, their x-coordinates, their
+    distances to the soma and their distances to the nearest bifurcation in the
+    'up'-direction
+
+    Parameters
+    ----------
+    file_n: str (optional)
+        the file name of the morphology file. Assumed to follow the '.swc' format.
+        Default is ``None``, which initialized an empty tree
+    types: list of int (optional)
+        The list of node types to be included. As per the '.swc' convention,
+        ``1`` is soma, ``2`` is axon, ``3`` is basal dendrite and ``4`` apical
+        dendrite. Default is ``[1,3,4]``.
+
     Attributes
     ----------
-        root: :class:`MorphNode` instance
+        root: `neat.MorphNode` instance
             The root of the tree.
+        locs: dict {str: list of `neat.MorphLoc`}
+            Stored sets of locations, key is the user-specified the name of the
+            set of locations. Initialized as empty dict.
+        nids: dict {str: np.array of int}
+            Node indices of locations Initialized as empty dict.
+        xs: dict {str: np.array of float}
+            x-coordinates of locations Initialized as empty dict.
+        d2s: dict {str: np.array of float}
+            distances to soma of locations Initialized as empty dict.
+        d2b: dict {str: np.array of float}
+            distances to nearest bifurcation in 'up' direction of locations.
+            Initialized as empty dict.
     """
 
     def __init__(self, file_n=None, types=[1,3,4]):
@@ -380,7 +424,7 @@ class MorphTree(STree):
                 the index of the node to be found
 
         Returns:
-            :class:`SNode` or None
+            `neat.MorphNode` or None
         """
         return self._findNode(self.root, index, skip_inds=skip_inds)
 
@@ -419,7 +463,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            node: :class:`MorphNode`
+            node: `neat.MorphNode`
                 The starting node. Defaults to the root
             skip_inds: tuple of ints
                 Indices of the nodes that are skipped by the iterator. Defaults
@@ -428,7 +472,7 @@ class MorphTree(STree):
 
         Yields
         ------
-            :class:`MorphNode`
+            `neat.MorphNode`
                 Nodes in the tree
         """
         if node is None:
@@ -440,6 +484,10 @@ class MorphTree(STree):
                     if node.index not in skip_inds: yield inode
 
     def getRoot(self):
+        """
+        Returns the root of the original or the computational tree, depending
+        on which `treetype` is active.
+        """
         if self.treetype == 'original':
             return self._original_root
         else:
@@ -472,7 +520,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of :class:`MorphNode`
+            list of `neat.MorphNode`
         """
         if self.treetype == 'original':
             if not hasattr(self, '_nodes_orig') or recompute_flag:
@@ -499,8 +547,8 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            node: :class:`MorphNode`
-            node_list: list of :class:`MorphNode`
+            node: `neat.MorphNode`
+            node_list: list of `neat.MorphNode`
         """
         if node.index not in skip_inds: node_list.append(node)
         for cnode in node.getChildNodes(skip_inds=skip_inds):
@@ -508,7 +556,7 @@ class MorphTree(STree):
 
     def getLeafs(self, recompute_flag=0):
         """
-        Overloads the :func:`getLeafs` of the parent class to return the leafs
+        Overloads the `getLeafs` of the parent class to return the leafs
         in the current `treetype`.
 
         Parameters
@@ -536,7 +584,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of :class:`MorphNode`
+            list of `neat.MorphNode`
                 List of all nodes in the basal subtree
         """
         return [node for node in self if node.swc_type in [3]]
@@ -547,7 +595,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of :class:`MorphNode`
+            list of `neat.MorphNode`
                 List of all nodes in the apical subtree
         """
         return [node for node in self if node.swc_type in [4]]
@@ -558,12 +606,20 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of :class:`MorphNode`
+            list of `neat.MorphNode`
                 List of all nodes in the apical subtree
         """
         return [node for node in self if node.swc_type in [2]]
 
     def setTreetype(self, treetype):
+        """
+        Set the active tree
+
+        Parameters
+        ----------
+        treetype: 'original' or 'computational'
+            the treetype thas is set to active
+        """
         if treetype == 'original':
             self._treetype = treetype
             self.root = self._original_root
@@ -582,7 +638,7 @@ class MorphTree(STree):
 
     treetype = property(getTreetype, setTreetype)
 
-    def createCorrespondingNode(self, node_index, p3d=None):
+    def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -597,7 +653,7 @@ class MorphTree(STree):
         """
         Non-specific for a "tree data structure"
         Read and load a morphology from an SWC file and parse it into
-        an :class:`MorphTree` object.
+        an `neat.MorphTree` object.
 
         On the NeuroMorpho.org website, 5 types of somadescriptions are
         considered (http://neuromorpho.org/neuroMorpho/SomaFormat.html).
@@ -611,7 +667,7 @@ class MorphTree(STree):
         file_n: str
             name of the file to open
         types: list of ints
-            NeuroMorpho.org segment types to be included
+            NeuroMorpho.org segment types to be loaded
         """
         # check soma-representation: 3-point soma or a non-standard representation
         soma_type = self._determineSomaType(file_n)
@@ -631,7 +687,7 @@ class MorphTree(STree):
                 # create the nodes
                 if swc_type in types:
                     p3d = (np.array([x,y,z]), radius, swc_type)
-                    node = self.createCorrespondingNode(index, p3d)
+                    node = self._createCorrespondingNode(index, p3d)
                     all_nodes[index] = (swc_type, node, parent_index)
 
         if soma_type == 1:
@@ -707,8 +763,8 @@ class MorphTree(STree):
         rp1 = np.array([rp.x, rp.y - radius, rp.z])
         rp2 = np.array([rp.x, rp.y + radius, rp.z])
         # create the soma nodes
-        s_node_1 = self.createCorrespondingNode(2, (rp1, radius, 1))
-        s_node_2 = self.createCorrespondingNode(3, (rp2, radius, 1))
+        s_node_1 = self._createCorrespondingNode(2, (rp1, radius, 1))
+        s_node_2 = self._createCorrespondingNode(3, (rp2, radius, 1))
 
         return s_node_1, s_node_2
 
@@ -754,7 +810,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-        node: ::class::`MorphNode`
+        node: `neat.MorphNode`
             node that is compared to parent node
         eps: float (optional, default ``1e-8``)
             the margin
@@ -841,12 +897,12 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            node: :class:`MorphNode` instance
+            node: `neat.MorphNode` instance
                 the input node
 
         Returns
         -------
-            :class:`MorphNode` instance
+            `neat.MorphNode` instance
         """
         if not node.used_in_comp_tree:
             node = self._findCompnodeUp(node.parent_node)
@@ -865,12 +921,12 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            node: :class:`MorphNode` instance
+            node: `neat.MorphNode` instance
                 the input node
 
         Returns
         -------
-            :class:`MorphNode` instance
+            `neat.MorphNode` instance
         """
         if not node.used_in_comp_tree:
             node = self._findCompnodeDown(node.child_nodes[0])
@@ -895,7 +951,7 @@ class MorphTree(STree):
 
     def _convertLocArgToLocs(self, locarg):
         """
-        Converts locations argument to list of :class:`MorphLoc`. Locations can
+        Converts locations argument to list of `neat.MorphLoc`. Locations can
         be specified as list of dictionaries, tuples or :class:`MorphLocs`
         instances. The argument can also be a string, then it refers to a list
         of locs stored on the morphology
@@ -903,11 +959,12 @@ class MorphTree(STree):
         Parameters
         ----------
         locarg: list of (i) dictionaries, (ii) tuples or (iii) list of
-            :class:`MorphLoc` or string
+            `neat.MorphLoc` or string
 
         Returns
         -------
-        list of :class:`MorphLoc`, each referencing the current tree
+        list of `neat.MorphLoc`
+            List of locations, each referencing the current tree
         """
         if isinstance(locarg, list):
             locs = [MorphLoc(loc, self) for loc in locarg]
@@ -932,8 +989,8 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            node_arg: (i) None, (ii) :class:`MorphNode`, (iii) string or (iv) an
-                iterable collection of instances of :class:`MorphNode`
+            node_arg: (i) None, (ii) `neat.MorphNode`, (iii) string or (iv) an
+                iterable collection of instances of `neat.MorphNode`
                 - (i) returns all nodes
                 - (ii) returns nodes in the subtree of the given node
                 - (iii) string can be 'apical', 'basal' or 'axonal', specifying
@@ -942,7 +999,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of :class:`MorphNode`
+            list of `neat.MorphNode`
         """
         # convert the input argument to a list of nodes
         if node_arg == None:
@@ -978,7 +1035,7 @@ class MorphTree(STree):
                         nodes.append(self[node.index])
             except (AssertionError, TypeError):
                 raise ValueError('input should be (i) `None`, (ii) an instance of '
-                        ':class:`MorphNode`, (iii) one of the following 3 strings '
+                        '`neat.MorphNode`, (iii) one of the following 3 strings '
                         '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
                         'collection of instances of :class:MorphNode')
 
@@ -990,9 +1047,9 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            loc1: dict, tuple or :class:`MorphLoc`
+            loc1: dict, tuple or `neat.MorphLoc`
                 one location
-            loc2: dict, tuple or :class:`MorphLoc`
+            loc2: dict, tuple or `neat.MorphLoc`
                 other location
             compute_radius: bool
                 if True, also computes the average weighted radius of the path
@@ -1068,7 +1125,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            locs: list of dicts, tuples or :class:`MorphLoc`
+            locs: list of dicts, tuples or `neat.MorphLoc`
                 the locations to be stored
             name: string
                 name under which these locations are stored
@@ -1085,8 +1142,6 @@ class MorphTree(STree):
             locs_.append(MorphLoc(loc, self))
             if locs_[-1]['node'] == 1: n1 += 1
         if n1 > 1:
-            # raise ValueError('There can only be one location on the soma, \
-            #                  multiple soma location occur in input')
             warnings.warn('There are multiple locations on the soma in this set ' + \
                           'locations, this can cause issues in certain functions', UserWarning)
 
@@ -1105,6 +1160,16 @@ class MorphTree(STree):
 
     @originalTreetypeDecorator
     def addLoc(self, loc, name):
+        """
+        Add location to set of locations of given name
+
+        Parameters
+        ----------
+        loc: dict, tuple or `neat.MorphLoc`
+            the location to be added
+        name: str
+            the name of the set of locations to which the location is added
+        """
         loc = MorphLoc(loc, self)
         self.locs[name].append(loc)
         self._nids_orig[name] = np.concatenate((self._nids_orig[name], [loc['node']]))
@@ -1189,7 +1254,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of :class:`MorphLoc`
+            list of `neat.MorphLoc`
         """
         self._tryName(name)
         return self.locs[name]
@@ -1259,8 +1324,8 @@ class MorphTree(STree):
         ----------
             name: string
                 which list of locations to consider
-            node: :class:`MorphNode`
-                the node to consider. When node, should be part of the original
+            node: `neat.MorphNode`
+                the node to consider. Should be part of the original
                 tree
         Returns
         -------
@@ -1287,7 +1352,7 @@ class MorphTree(STree):
             name: string
                 which list of locations to consider
             node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
+                see documentation of `MorphTree._convertNodeArgToNodes`
         Returns
         -------
             list of ints
@@ -1407,7 +1472,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            locs: list of dicts, tuples or :class:`MorphLoc`
+            locs: list of dicts, tuples or `neat.MorphLoc`
                 the locations for which the nearest location index has to be
                 found
             name: string
@@ -1549,9 +1614,12 @@ class MorphTree(STree):
         Search nearest neighbours to `loc` in `locarg`.
 
         Parameters
-        loc: tuple, dict or :class:`MorphLoc`
+        ----------
+        loc: tuple, dict or `neat.MorphLoc`
+            The locations for which nearest neighbours have to be found
         locarg: str or list of locs
-            see documentation of :func:`self._parseLocArg`
+            See documentation of `MorphTree._parseLocArg`, the set of locations
+            within which to look for nearest neighbours
 
         Returns
         -------
@@ -1637,7 +1705,7 @@ class MorphTree(STree):
         ----------
             name: string
                 name of the desired set of locations
-            recompute: bool (optional, default ``False'')
+            recompute: bool (optional, default ``False``)
                 whether or not to force recomputing the distances
 
         Returns
@@ -1689,20 +1757,18 @@ class MorphTree(STree):
 
         Parameters
         ----------
-        locarg: list` of locations or string
-            if `list` of locations, specifies the locations, if ``string``,
+        locarg: list of locations or string
+            if list of locations, specifies the locations, if str,
             specifies the name under which the set of location is stored
             that should be used to create the new tree
 
         Returns
         -------
-            numpy.array of floats
+            np.array of float
                 the distances to the soma of the corresponding locations
-            recompute: bool (optional, default ``False'')
+            recompute: bool (optional)
                 whether or not to force recomputing the distances
-
         """
-
         # process input argument
         if isinstance(locarg, list):
             locs = [MorphLoc(loc, self) for loc in locarg]
@@ -1731,20 +1797,20 @@ class MorphTree(STree):
     def distancesToBifurcation(self, name, recompute=False):
         """
         Compute the distance of each location to the nearest bifurcation in
-        the direction of the root
+        the 'up' direction (towards root)
 
         Parameters
         ----------
-            name: string
-                name of the set of locations
-            recompute: bool (optional, default ``False'')
-                whether or not to force recomputing the distances
+        name: str
+            name of the set of locations
+        recompute: bool (optional, default ``False``)
+            whether or not to force recomputing the distances
 
         Returns
         -------
-            numpy.array of floats
-                the distances to the nearest bifurcation of the corresponding
-                locations
+        np.array of floats
+            the distances to the nearest bifurcation of the corresponding
+            locations
         """
         try:
             if recompute:
@@ -1765,27 +1831,27 @@ class MorphTree(STree):
                     self.d2b[name].append(0.)
             return self.d2b[name]
 
-    def distributeLocsOnNodes(self, d2s, node_arg=None, name='No'):
+    def distributeLocsOnNodes(self, d2s, node_arg=None, name='dont save'):
         """
         Distributes locs on a given set of nodes at specified distances from the
         soma. If the specified distances are on the specified nodes, the list
         of locations will be empty. The locations are stored if the name is set
-        to be something other than 'No'. On each node, locations are ordered from
-        low to high x-values.
+        to be something other than 'dont save'. On each node, locations are
+        ordered from low to high x-values.
 
         Parameters
         ----------
             d2s: numpy.array of floats
                 the distances from the soma at which to put the locations (micron)
             node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
+                see documentation of `MorphTree._convertNodeArgToNodes`
             name: string
-                the name under which the locations are stored. Defaults to 'No'
+                the name under which the locations are stored. Defaults to 'dont save'
                 which means the locations are not stored
 
         Returns
         -------
-            list of :class:`MorphLoc`
+            list of `neat.MorphLoc`
                 the list of locations
         """
         # distribute the locations
@@ -1803,12 +1869,12 @@ class MorphTree(STree):
             elif np.any(np.abs(d2s) <= 1e-12):
                 # node is soma, append a location on the soma
                 locs.append(MorphLoc((node.index, 0.5), self))
-        if name != 'No': self.storeLocs(locs, name=name)
+        if name != 'dont save': self.storeLocs(locs, name=name)
         return locs
 
     @computationalTreetypeDecorator
     def distributeLocsUniform(self, dx, node_arg=None, add_bifurcations=False,
-                              name='No'):
+                              name='dont save'):
         """
         Distributes locations as uniform as possible, i.e. for a given distance
         between locations `dx`, locations are distributed equidistantly on each
@@ -1821,16 +1887,16 @@ class MorphTree(STree):
             dx: float (> 0)
                 target distance in micron between the locations
             node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
+                see documentation of `MorphTree._convertNodeArgToNodes`
             add_bifurcations: bool
                 whether to ensure that all bifurcation nodes are added
             name: string
-                the name under which the locations are stored. Defaults to 'No'
+                the name under which the locations are stored. Defaults to 'dont save'
                 which means the locations are not stored
 
         Returns
         -------
-            list of :class:`MorphLoc`
+            list of `neat.MorphLoc`
                 the list of locations
         """
         assert dx > 0
@@ -1849,29 +1915,36 @@ class MorphTree(STree):
                 xvals = np.arange(1, Nloc+1) / float(Nloc)
                 locs.extend([MorphLoc((node.index, xv), self,
                                       set_as_comploc=True) for xv in xvals])
-        if name != 'No': self.storeLocs(locs, name=name)
+        if name != 'dont save': self.storeLocs(locs, name=name)
         return locs
 
 
     def distributeLocsRandom(self, num, dx=0.001, node_arg=None,
-                                add_soma=1, name='No', seed=None):
+                             add_soma=True, name='dont save', seed=None):
         """
         Returns a list of input locations randomly distributed on the tree
 
         Parameters
         ----------
-            num: int
-                number of inputs
-            dx: float
-                minimal or given distance between input locations (micron)
-            node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
-            name: string
-                the name under which the locations are stored. Defaults to 'No'
-                which means the locations are not stored
+        num: int
+            number of inputs
+        dx: float (optional)
+            minimal or given distance between input locations (micron)
+        node_arg (optional):
+            see documentation of `MorphTree._convertNodeArgToNodes`
+        add_soma: bool (optional)
+            whether or not to include the possibility of adding locations on the
+            soma
+        name: string (optional)
+            the name under which the locations are stored. Defaults to 'dont save'
+            which means the locations are not stored
+        seed: int (optiona)
+            Seed for numpy random number generator
 
-        output:
-            list of locs
+        Returns
+        -------
+        list of `neat.MorphLoc`
+            the locations
         """
         np.random.seed(seed)
         # use the requested subset of nodes
@@ -1897,7 +1970,7 @@ class MorphTree(STree):
             self._tagNodesUp(node, node, dx=dx)
         self._removeTags()
         # store the locations
-        if name != 'No': self.storeLocs(locs, name=name)
+        if name != 'dont save': self.storeLocs(locs, name=name)
         return locs
 
     def _tagNodesDown(self, start_node, node, dx=0.001):
@@ -1945,22 +2018,22 @@ class MorphTree(STree):
             raise IOError('invalid type for `loc_arg`, should be list or string')
         return locs
 
-    def extendWithBifurcationLocs(self, loc_arg, name='No'):
+    def extendWithBifurcationLocs(self, loc_arg, name='dont save'):
         """
         Extends input loc_arg with the intermediate bifurcations. They are
         appended to the end of the list
 
         Parameters
         ----------
-        loc_arg: list of :class:`MorphLoc` or string
+        loc_arg: list of `neat.MorphLoc` or string
             the locations
         name: string (optional)
             The name under which the list of bifurcation locs will be stored.
-            Defaults to 'No' which means they are not stored.
+            Defaults to 'dont save' which means they are not stored.
 
         Returns
         -------
-        list of :class:`MorphLoc`
+        list of `neat.MorphLoc`
             the bifurcation locs
         """
         locs = self._parseLocArg(loc_arg)
@@ -1972,43 +2045,30 @@ class MorphTree(STree):
         # all_locs = locs + blocs
         all_locs = self.uniqueLocs(locs + blocs)
         # store the locations
-        if name != 'No': self.storeLocs(all_locs, name=name)
+        if name != 'dont save': self.storeLocs(all_locs, name=name)
         return all_locs
 
-    def uniqueLocs(self, loc_arg, name='no'):
+    def uniqueLocs(self, loc_arg, name='dont save'):
         """
         Gets the unique locations in the provided locs
 
         Parameters
         ----------
-        loc_arg: list of :class:`MorphLoc` or string
+        loc_arg: list of `neat.MorphLoc` or string
             the locations
         name: string (optional)
             The name under which the list of bifurcation locs will be stored.
-            Defaults to 'No' which means they are not stored.
+            Defaults to 'dont save' which means they are not stored.
 
         Returns
         -------
-        list of :class:`MorphLoc`
+        list of `neat.MorphLoc`
             the bifurcation locs
         """
         locs = self._parseLocArg(loc_arg)
         locs_ =  reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
 
-        # nds, xs = np.array([[loc['node'], loc['x']] for loc in locs]).T
-        # locs = []
-        # for nd, count in Counter(nds).iteritems():
-        #     if nd == 1:
-        #         locs.append((1,.5))
-        #     elif count > 1:
-        #         inds = np.where(nds == nd)[0]
-        #         xs_ = np.unique(xs[inds])
-        #         locs.extend([(nd, x) for x in xs_])
-        #     else:
-        #         ind = np.where(nds == nd)[0][0]
-        #         locs.append((nd, xs[ind]))
-
-        if name != 'No': self.storeLocs(locs_, name=name)
+        if name != 'dont save': self.storeLocs(locs_, name=name)
         return locs_
 
     def makeXAxis(self, dx=10., node_arg=None, loc_arg=None):
@@ -2021,7 +2081,7 @@ class MorphTree(STree):
         dx: float
             target separation between the plot points (micron)
         node_arg:
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`
+            see documentation of `MorphTree._convertNodeArgToNodes`
             The nodes on which the locations for the x-axis are distributed.
             When this is given as a list of nodes, assumes a depth first
             ordering.
@@ -2083,7 +2143,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            node: int or :class:`MorphNode`
+            node: int or `neat.MorphNode`
                 index of the node or node whose subtree will be colored. Defaults
                 to the root
         """
@@ -2105,7 +2165,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            locs: list of tuples, dicts or :class:`MorphLoc`
+            locs: list of tuples, dicts or `neat.MorphLoc`
                 list of the locations
         """
         locinds = np.array(self.getNearestLocinds(locs, 'xaxis')).astype(int)
@@ -2118,16 +2178,16 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            ax: :class:`matplotlib.axes.Axes` instance
+            ax: `matplotlib.axes.Axes` instance
                 the ax object on which the plot will be made
             parr: numpy.array of floats
                 the array that will be plotted
             args, kwargs:
-                arguments for :func:`matplotlib.pyplot.plot`
+                arguments for `matplotlib.pyplot.plot`
 
         Returns
         -------
-            lines: list of :class:`matplotlib.lines.Line2D` instances
+            lines: list of `matplotlib.lines.Line2D` instances
                 the line segments corresponding to the value of the plotted array
                 in each branch
 
@@ -2162,7 +2222,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            lines: list of :class:`matplotlib.lines.Line2D` instance
+            lines: list of `matplotlib.lines.Line2D` instance
                 the line segments of which the data has to be updated
             parr: numpy.array of floats
                 the array that will be put in the line segments
@@ -2190,20 +2250,20 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            ax: :class:`matplotlib.axes.Axes` instance
+            ax: `matplotlib.axes.Axes` instance
                 the ax object on which the plot will be made
             parr: numpy.array of floats
                 the array that will be plotted
-            cmap: :class:`matplotlib.colors.Colormap` instance
+            cmap: `matplotlib.colors.Colormap` instance
                 If provided, the lines will be colored according to the branch
                 to which they belong, in colors specified by the colormap
             kwargs:
-                keyword arguments for :func:`matplotlib.pyplot.plot`
+                keyword arguments for `matplotlib.pyplot.plot`
 
         Returns
         -------
             lines
-            lines: list of :class:`matplotlib.lines.Line2D`
+            lines: list of `matplotlib.lines.Line2D`
                 the line segments corresponding to the value of the plotted array
                 in each branch
 
@@ -2243,7 +2303,7 @@ class MorphTree(STree):
             lines.append(line[0])
         return lines
 
-    def addScalebar(self, ax, borderpad=-1.8, sep=2):
+    def _addScalebar(self, ax, borderpad=-1.8, sep=2):
         from neat.tools.plottools import scalebars
         scalebars.addScalebar(ax, hidex=False, hidey=False, matchy=False,
                                     labelx='$\mu$m',
@@ -2257,14 +2317,14 @@ class MorphTree(STree):
         !!! Has to be called after all lines are plotted !!!
 
         Furthermor, node colors have to be set first. This can be done with
-        :func:`MorphTree.setNodeColors()` or manually by adding a 'color' entry
+        `MorphTree.setNodeColors()` or manually by adding a 'color' entry
         to the ``MorphNode.content`` dictionary
 
         Parameters
         ----------
-            ax: :class:`matplotlib.axes.Axes` instance
+            ax: `matplotlib.axes.Axes` instance
                 the ax object of which the x-axis will be colored
-            cmap: :class:`matplotlib.colors.Colormap` instance
+            cmap: `matplotlib.colors.Colormap` instance
                 Colormap that determines the color of each branch
             sizex: float
                 Size of scalebar (in micron). If set to None, no scalebar is
@@ -2302,7 +2362,7 @@ class MorphTree(STree):
         ax.set_ylim((ylim[0], ylim[1]))
         # add scalebar
         if addScalebar:
-            self.addScalebar(ax, borderpad=borderpad)
+            self._addScalebar(ax, borderpad=borderpad)
         ax.axes.get_xaxis().set_visible(False)
 
     def plot2DMorphology(self, ax, node_arg=None, cs=None, cminmax=None, cmap=None,
@@ -2318,10 +2378,10 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            ax: :class:`matplotlib.axes.Axes` instance
+            ax: `matplotlib.axes.Axes` instance
                 the ax object on which the plot will be drawn
             node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
+                see documentation of `MorphTree._convertNodeArgToNodes`
             cs: dict {int: float}, None or 'x_color'
                 If dict, node indices are keys and the float value will
                 correspond to the plotted color. If None, the color of the tree
@@ -2331,11 +2391,12 @@ class MorphTree(STree):
                 If 'node_color', colors will be those stored on the nodes. Note
                 that choosing this option when there are nodes without 'color'
                 as an entry in ``node.content`` will result in an error. Node
-                colors can be set with :func:`MorphTree.setNodeColor()``
+                colors can be set with `MorphTree.setNodeColor()``
             cminmax: (float, float) or None (default)
                 The min and max values of the color scale (if cs is provided).
                 If None, the min and max values of cs are used.
-            cmap: :class:`matplotlib.colors.Colormap` instance
+            cmap: `matplotlib.colors.Colormap` instance
+                colormap fram which colors in ``cs`` are taken
             use_radius: bool
                 If ``True``, uses the swc radius for the width of the line
                 segments
@@ -2343,16 +2404,16 @@ class MorphTree(STree):
                 If ``True``, draws the soma as a circle, otherwise doesn't draw
                 soma
             plotargs: dict
-                `kwargs` for :func:`matplotlib.pyplot.plot`. 'c'- or 'color'-
+                `kwargs` for `matplotlib.pyplot.plot`. 'c'- or 'color'-
                 argument will be overwritten when cs is defined. 'lw'- or
                 'linewidth' argument will be multiplied with the swc radius of
                 the node if `use_radius` is ``True``.
             textargs: dict
                 text properties for various labels in the plot
-            marklocs: list of tuples, dicts or instances of :class:`MorphLoc`
+            marklocs: list of tuples, dicts or instances of `neat.MorphLoc`
                 Location that will be plotted on the morphology
             locargs: dict or list of dict
-                `kwargs` for :func:`matplotlib.pyplot.plot` for the location.
+                `kwargs` for `matplotlib.pyplot.plot` for the location.
                 Use only point markers and no lines! When it is a single dict
                 all location will have the same marker. When it is a list it
                 should have the same length as `marklocs`.
@@ -2362,7 +2423,7 @@ class MorphTree(STree):
             labelargs: dict
                 text properties for the location annotation
             cb_draw: bool
-                Whether or not to draw a :class:`matplotlib.pyplot.colorbar()`
+                Whether or not to draw a `matplotlib.pyplot.colorbar()`
                 instance.
             cb_orientation: string, 'vertical' or 'horizontal'
                 The colorbars' orientation
@@ -2534,10 +2595,10 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            ax: :class:`matplotlib.axes.Axes` instance
+            ax: `matplotlib.axes.Axes` instance
                 the ax object on which the plot will be drawn
             node_arg:
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`
+                see documentation of `MorphTree._convertNodeArgToNodes`
             use_radius: bool
                 If ``True``, uses the swc radius for the width of the line
                 segments
@@ -2609,7 +2670,7 @@ class MorphTree(STree):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
-        relation is stored in `L` attribute of :class:`MorphNode`, using the `p3d`
+        relation is stored in `L` attribute of `neat.MorphNode`, using the `p3d`
         attribute containing the 3d coordinates does not maintain distances)
 
         Parameters
@@ -2627,7 +2688,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            :class:`MorphTree`
+            `neat.MorphTree`
                 The new tree.
         """
         self._tryName(name)
@@ -2641,7 +2702,7 @@ class MorphTree(STree):
             # use the soma as root
             snode = self[1]
         p3d = (snode.xyz, snode.R, snode.swc_type)
-        new_snode = new_tree.createCorrespondingNode(1, p3d)
+        new_snode = new_tree._createCorrespondingNode(1, p3d)
         new_snode.L = snode.L
         new_tree.setRoot(new_snode)
         new_nodes = [new_snode]
@@ -2651,14 +2712,14 @@ class MorphTree(STree):
         # make two other soma nodes
         if fake_soma:
             for index in [2,3]:
-                new_cnode = new_tree.createCorrespondingNode(index, p3d)
+                new_cnode = new_tree._createCorrespondingNode(index, p3d)
                 new_tree.addNodeWithParent(new_cnode, new_snode)
                 new_nodes.append(new_cnode)
         else:
             for cnode in snode.getChildNodes(skip_inds=[]):
                 if cnode.index in [2,3]:
                     p3d = (cnode.xyz, cnode.R, cnode.swc_type)
-                    new_cnode = new_tree.createCorrespondingNode(cnode.index, p3d)
+                    new_cnode = new_tree._createCorrespondingNode(cnode.index, p3d)
                     new_tree.addNodeWithParent(new_cnode, new_snode)
                     new_nodes.append(new_cnode)
         # make rest of tree
@@ -2692,7 +2753,7 @@ class MorphTree(STree):
                 new_radius = node.parent_node.R * (1.-xs[ind]) + node.R * xs[ind]
             # make new node
             p3d = (new_xyz, new_radius, node.swc_type)
-            new_node = new_tree.createCorrespondingNode(index, p3d)
+            new_node = new_tree._createCorrespondingNode(index, p3d)
             if store_loc_inds:
                 new_node.content['loc ind'] = ind
             # add new node
@@ -2713,14 +2774,14 @@ class MorphTree(STree):
 
         Parameters
         ----------
-        locarg: list` of locations or string
-            if `list` of locations, specifies the locations, if ``string``,
+        locarg: list of locations or str
+            if list of locations, specifies the locations, if str,
             specifies the name under which the set of location is stored
             that should be used to create the new tree
 
         Returns
         -------
-            :class:`MorphTree`
+            `neat.MorphTree`
                 The new tree.
         """
         # process input argument
@@ -2814,7 +2875,7 @@ class MorphTree(STree):
         try:
             # set the computational tree
             self.treetype = 'computational'
-            new_node = new_tree.createCorrespondingNode(self.root.index)
+            new_node = new_tree._createCorrespondingNode(self.root.index)
             self.root.__copy__(new_node=new_node)
             new_tree._computational_root = new_node
             new_tree.treetype = 'computational'

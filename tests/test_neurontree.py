@@ -9,9 +9,9 @@ import itertools
 
 from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
-from neat import NeuronSimTree, createReducedModel
+from neat import NeuronSimTree, createReducedNeuronModel
 import neat.tools.kernelextraction as ke
-from neat.channels import channelcollection
+from neat.channels.channelcollection import channelcollection
 
 
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
@@ -42,7 +42,7 @@ class TestNeuron():
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
-        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=10., v_eq=v_eq,
+        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=10., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
         self.neurontree.treetype = 'computational'
@@ -71,7 +71,7 @@ class TestNeuron():
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
-        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=10., v_eq=v_eq,
+        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=10., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
         self.neurontree.treetype = 'computational'
@@ -102,7 +102,7 @@ class TestNeuron():
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
-        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=100., v_eq=v_eq,
+        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=100., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
         self.neurontree.treetype = 'computational'
@@ -134,7 +134,7 @@ class TestNeuron():
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
-        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=100., v_eq=v_eq,
+        self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=100., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
         self.neurontree.treetype = 'computational'
@@ -149,7 +149,7 @@ class TestNeuron():
         # convert impedance matrix to time domain
         zk_mat_gf = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zk_mat_gf[:,ii,jj] = self.ft.FT_inv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
+            zk_mat_gf[:,ii,jj] = self.ft.ftInv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
         # test the steady state impedance matrix
         z_mat_neuron = self.neurontree.calcImpedanceMatrix(locs)
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=1.)
@@ -180,7 +180,7 @@ class TestNeuron():
         # convert impedance matrix to time domain
         zk_mat_gf = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zk_mat_gf[:,ii,jj] = self.ft.FT_inv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
+            zk_mat_gf[:,ii,jj] = self.ft.ftInv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
         # test the steady state impedance matrix
         z_mat_neuron = self.neurontree.calcImpedanceMatrix(locs, t_dur=500.)
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=5.)
@@ -427,7 +427,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         # sim_tree.initModel(pprint=True)
@@ -440,7 +440,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         # sim_tree.initModel(pprint=True)
@@ -453,7 +453,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         # sim_tree.initModel(pprint=True)
@@ -466,7 +466,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         # sim_tree.initModel(pprint=True)
@@ -570,7 +570,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
         # sim_tree.initModel(pprint=True)
@@ -583,7 +583,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
         # sim_tree.initModel(pprint=True)
@@ -596,7 +596,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
         # sim_tree.initModel(pprint=True)
@@ -609,7 +609,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
         # sim_tree.initModel(pprint=True)

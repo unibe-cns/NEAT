@@ -96,7 +96,7 @@ class NeuronSimNode(PhysNode):
 
 class NeuronSimTree(PhysTree):
     def __init__(self, file_n=None, types=[1,3,4],
-                       factor_lambda=1., t_calibrate=0., dt=0.025, v_eq=-75.):
+                       factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.):
         super(NeuronSimTree, self).__init__(file_n=file_n, types=types)
         # neuron storage
         self.sections = {}
@@ -111,10 +111,10 @@ class NeuronSimTree(PhysTree):
         self.dt = dt # ms
         self.t_calibrate = t_calibrate # ms
         self.factor_lambda = factor_lambda
-        self.v_eq = v_eq # mV
+        self.v_init = v_init # mV
         self.indstart = int(t_calibrate / dt)
 
-    def createCorrespondingNode(self, node_index, p3d=None):
+    def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -125,12 +125,33 @@ class NeuronSimTree(PhysTree):
         """
         return NeuronSimNode(node_index, p3d=p3d)
 
-    def initModel(self, dt=0.025, t_calibrate=0., v_eq=-75., factor_lambda=1.,
+    def initModel(self, dt=0.025, t_calibrate=0., v_init=-75., factor_lambda=1.,
                         pprint=False):
+        """
+        Initialize hoc-objects to simulate the neuron model implemented by this
+        tree.
+
+        Parameters
+        ----------
+        dt: float (default is ``.025`` ms)
+            Timestep of the simulation
+        t_calibrate: float (default ``0.`` ms)
+            The calibration time; time model runs without input to reach its
+            equilibrium state before the true simulation starts
+        v_init: float (default ``-75.`` mV)
+            The initial voltage at which the model is initialized
+        factor_lambda: float or int (default 1.)
+            If int, the number of segments per section. If float, multiplies the
+            number of segments given by the standard lambda rule (Carnevale, 2004)
+            to give the number of compartments simulated (default value 1. gives
+            the number given by the lambda rule)
+        pprint: bool (default ``False``)
+            Whether or not to print info on the NEURON model's creation
+        """
         self.t_calibrate = t_calibrate
         self.dt = dt
         self.indstart = int(self.t_calibrate / self.dt)
-        self.v_eq = v_eq
+        self.v_init = v_init
         self.factor_lambda = factor_lambda
         # reset all storage
         self.deleteModel()
@@ -138,6 +159,9 @@ class NeuronSimTree(PhysTree):
         self._createNeuronTree(pprint=pprint)
 
     def deleteModel(self):
+        '''
+        Delete all stored hoc-objects
+        '''
         # reset all storage
         self.sections = {}
         self.shunts = []
@@ -167,6 +191,18 @@ class NeuronSimTree(PhysTree):
 
 
     def addShunt(self, loc, g, e_r):
+        """
+        Adds a static conductance at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the shunt.
+        g: float
+            The conductance of the shunt (uS)
+        e_r: float
+            The reversal potential of the shunt (mV)
+        """
         loc = MorphLoc(loc, self)
         # create the shunt
         shunt = h.Shunt(self.sections[loc['node']](loc['x']))
@@ -176,6 +212,18 @@ class NeuronSimTree(PhysTree):
         self.shunts.append(shunt)
 
     def addDoubleExpCurrent(self, loc, tau1, tau2):
+        """
+        Adds a double exponential input current at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau1: float
+            Rise time of the current waveform (ms)
+        tau2: float
+            Decay time of the current waveform (ms)
+        """
         loc = MorphLoc(loc, self)
         # create the synapse
         syn = h.epsc_double_exp(self.sections[loc['node']](loc['x']))
@@ -185,6 +233,18 @@ class NeuronSimTree(PhysTree):
         self.syns.append(syn)
 
     def addExpSyn(self, loc, tau, e_r):
+        """
+        Adds a single-exponential conductance-based synapse
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau: float
+            Decay time of the conductance window (ms)
+        e_r: float
+           Reversal potential of the synapse (mV)
+        """
         loc = MorphLoc(loc, self)
         # create the synapse
         syn = h.exp_AMPA_NMDA(self.sections[loc['node']](loc['x']))
@@ -194,6 +254,20 @@ class NeuronSimTree(PhysTree):
         self.syns.append(syn)
 
     def addDoubleExpSynapse(self, loc, tau1, tau2, e_r):
+        """
+        Adds a double-exponential conductance-based synapse
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau1: float
+            Rise time of the conductance window (ms)
+        tau2: float
+            Decay time of the conductance window (ms)
+        e_r: float
+            Reversal potential of the synapse (mV)
+        """
         loc = MorphLoc(loc, self)
         # create the synapse
         syn = h.Exp2Syn(self.sections[loc['node']](loc['x']))
@@ -204,6 +278,25 @@ class NeuronSimTree(PhysTree):
         self.syns.append(syn)
 
     def addNMDASynapse(self, loc, tau, tau_nmda, e_r=0., nmda_ratio=1.7):
+        """
+        Adds a single-exponential conductance-based synapse with an AMPA and an
+        NMDA component
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau: float
+            Decay time of the AMPA conductance window (ms)
+        tau_nmda: float
+            Decay time of the NMDA conductance window (ms)
+        e_r: float (optional, default ``0.`` mV)
+           Reversal potential of the synapse (mV)
+        nmda_ratio: float (optional, default 1.7)
+            The ratio of the NMDA over AMPA component. Means that the maximum of
+            the NMDA conductance window is ``nmda_ratio`` times the maximum of
+            the AMPA conductance window.
+        """
         loc = MorphLoc(loc, self)
         # create the synapse
         syn = h.exp_AMPA_NMDA(self.sections[loc['node']](loc['x']))
@@ -216,6 +309,29 @@ class NeuronSimTree(PhysTree):
 
     def addDoubleExpNMDASynapse(self, loc, tau1, tau2, tau1_nmda, tau2_nmda,
                                      e_r=0., nmda_ratio=1.7):
+        """
+        Adds a double-exponential conductance-based synapse with an AMPA and an
+        NMDA component
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau1: float
+            Rise time of the AMPA conductance window (ms)
+        tau2: float
+            Decay time of the AMPA conductance window (ms)
+        tau1_nmda: float
+            Rise time of the NMDA conductance window (ms)
+        tau2_nmda: float
+            Decay time of the NMDA conductance window (ms)
+        e_r: float (optional, default ``0.`` mV)
+           Reversal potential of the synapse (mV)
+        nmda_ratio: float (optional, default 1.7)
+            The ratio of the NMDA over AMPA component. Means that the maximum of
+            the NMDA conductance window is ``nmda_ratio`` times the maximum of
+            the AMPA conductance window.
+        """
         loc = MorphLoc(loc, self)
         # create the synapse
         syn = h.double_exp_AMPA_NMDA(self.sections[loc['node']](loc['x']))
@@ -229,6 +345,20 @@ class NeuronSimTree(PhysTree):
         self.syns.append(syn)
 
     def addIClamp(self, loc, amp, delay, dur):
+        """
+        Injects a DC current step at a given lcoation
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        amp: float
+            The amplitude of the current (nA)
+        delay: float
+            The delay of the current step onset (ms)
+        dur: float
+            The duration of the current step (ms)
+        """
         loc = MorphLoc(loc, self)
         # create the current clamp
         iclamp = h.IClamp(self.sections[loc['node']](loc['x']))
@@ -239,6 +369,26 @@ class NeuronSimTree(PhysTree):
         self.iclamps.append(iclamp)
 
     def addSinClamp(self, loc, amp, delay, dur, bias, freq, phase):
+        """
+        Injects a sinusoidal current at a given lcoation
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        amp: float
+            The amplitude of the current (nA)
+        delay: float
+            The delay of the current onset (ms)
+        dur: float
+            The duration of the current (ms)
+        bias: float
+            Constant baseline added to the sinusoidal waveform (nA)
+        freq: float
+            Frequency of the sinusoid (Hz)
+        phase: float
+            Phase of the sinusoid (rad)
+        """
         loc = MorphLoc(loc, self)
         # create the current clamp
         iclamp = h.SinClamp(self.sections[loc['node']](loc['x']))
@@ -252,6 +402,26 @@ class NeuronSimTree(PhysTree):
         self.iclamps.append(iclamp)
 
     def addOUClamp(self, loc, tau, mean, stdev, delay, dur, seed=None):
+        """
+        Injects a Ornstein-Uhlenbeck current at a given lcoation
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau: float
+            Time-scale of the OU process (ms)
+        mean: float
+            Mean of the OU process (nA)
+        stdev: float
+            Standard deviation of the OU process (nA)
+        delay: float
+            The delay of current onset from the start of the simulation (ms)
+        dur: float
+            The duration of the current input (ms)
+        seed: int, optional
+            Seed for the random number generator
+        """
         seed = np.random.randint(1e16) if seed is None else seed
         loc = MorphLoc(loc, self)
         # create the current clamp
@@ -270,6 +440,28 @@ class NeuronSimTree(PhysTree):
         self.iclamps.append(iclamp)
 
     def addOUconductance(self, loc, tau, mean, stdev, e_r, delay, dur, seed=None):
+        """
+        Injects a Ornstein-Uhlenbeck conductance at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the conductance.
+        tau: float
+            Time-scale of the OU process (ms)
+        mean: float
+            Mean of the OU process (uS)
+        stdev: float
+            Standard deviation of the OU process (uS)
+        e_r: float
+            Reversal of the current (mV)
+        delay: float
+            The delay of current onset from the start of the simulation (ms)
+        dur: float
+            The duration of the current input (ms)
+        seed: int, optional
+            Seed for the random number generator
+        """
         seed = np.random.randint(1e16) if seed is None else seed
         loc = MorphLoc(loc, self)
         # create the current clamp
@@ -302,6 +494,18 @@ class NeuronSimTree(PhysTree):
         self.iclamps.append(iclamp)
 
     def addVClamp(self, loc, e_c, dur):
+        """
+        Adds a voltage clamp at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the conductance.
+        e_c: float
+            The clamping voltage (mV)
+        dur: float, ms
+            The duration of the voltage clamp
+        """
         loc = MorphLoc(loc, self)
         # add the voltage clamp
         vclamp = h.SEClamp(self.sections[loc['node']](loc['x']))
@@ -311,10 +515,35 @@ class NeuronSimTree(PhysTree):
         # store the vclamp
         self.vclamps.append(vclamp)
 
-    def addRecLoc(self, loc):
-        self.addLoc(loc, 'rec locs')
+    # def addRecLoc(self, loc):
+    #     self.addLoc(loc, 'rec locs')
 
     def setSpikeTrain(self, syn_index, syn_weight, spike_times):
+        """
+        Each hoc point process that receive spikes through should by appended to
+        the synapse stack (stored under the list `self.syns`).
+
+        Default :class:`NeuronSimTree` point processes that are added to
+        `self.syns` are:
+        - `self.addDoubleExpCurrent()`
+        - `self.addExpSyn()`
+        - `self.addDoubleExpSyn()`
+        - `self.addDoubleExpSyn()`
+        - `self.addNMDASynapse()`
+        - `self.addDoubleExpNMDASynapse()`
+
+        With this function, these synapse can be set to receive a specific spike
+        train.
+
+        Parameters
+        ----------
+        syn_index: int
+            index of the point process in the synapse stack
+        syn_weight: float
+            weight of the synapse (maximal value of the conductance window)
+        spike_times: list or `np.array` of floats
+            the spike times
+        """
         # add spiketrain
         spks = np.array(spike_times) + self.t_calibrate
         spks_vec = h.Vector(spks.tolist())
@@ -330,6 +559,47 @@ class NeuronSimTree(PhysTree):
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
             record_from_channels=False, record_v_deriv=False, record_concentrations=[],
             pprint=False):
+        """
+        Run the NEURON simulation. Records at all locations stored
+        under the name 'rec locs' on `self` (see `MorphTree.storeLocs()`)
+
+        Parameters
+        ----------
+        t_max: float
+            Duration of the simulation
+        downsample: int (> 0)
+            Records the state of the model every `downsample` time-steps
+        record_from_syns: bool (default ``False``)
+            Record currents of synapstic point processes (in `self.syns`).
+            Accessible as `np.ndarray` in the output dict under key 'i_syn'
+        record_from_iclamps: bool (default ``False``)
+            Record currents of iclamps (in `self.iclamps`)
+            Accessible as `np.ndarray` in the output dict under key 'i_clamp'
+        record_from_vclamps: bool (default ``False``)
+            Record currents of vclamps (in `self.vclamps`)
+            Accessible as `np.ndarray` in the output dict under key 'i_vclamp'
+        record_from_channels: bool (default ``False``)
+            Record channel state variables from `neat` defined channels in `self`,
+            at locations stored under 'rec locs'
+            Accessible as `np.ndarray` in the output dict under key 'chan'
+        record_v_deriv: bool (default ``False``)
+            Record voltage derivative at locations stored under 'rec locs'
+            Accessible as `np.ndarray` in the output dict under key 'dv_dt'
+        record_from_concentrations: bool (default ``False``)
+            Record ion concentration at locations stored under 'rec locs'
+            Accessible as `np.ndarray` in the output dict with as key the ion's
+            name
+
+        Returns
+        -------
+        dict
+            Dictionary with the results of the simulation. Contains time and
+            voltage as `np.ndarray` at locations stored under the name '
+            rec locs', respectively with keys 't' and 'v_m'. Also contains
+            traces of other recorded variables if the option to record them was
+            set to ``True``
+        """
+        assert isinstance(downsample, int) and downsample > 0
         # simulation time recorder
         res = {'t': h.Vector()}
         res['t'].record(h._ref_t)
@@ -391,7 +661,7 @@ class NeuronSimTree(PhysTree):
 
         # initialize
         # neuron.celsius=37.
-        h.finitialize(self.v_eq)
+        h.finitialize(self.v_init)
         h.dt = self.dt
 
         # simulate
@@ -437,8 +707,18 @@ class NeuronSimTree(PhysTree):
         return res
 
     def calcEEq(self, t_dur=100., set_e_eq=True):
+        """
+        Compute the equilibrium potentials in the middle (``x=0.5``) of each node.
+
+        Parameters
+        ----------
+        t_dur: float (optional, default ``100.`` ms)
+            The duration of the simulation
+        set_e_eq: bool (optional, default ``True``)
+            Store the equilibrium potential as the ``PhysNode.e_eq`` attribute
+        """
         self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                       v_eq=self.v_eq, factor_lambda=self.factor_lambda)
+                       v_init=self.v_init, factor_lambda=self.factor_lambda)
         self.storeLocs([(n.index, 0.5) for n in self], name='rec locs')
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
@@ -459,7 +739,7 @@ class NeuronSimTree(PhysTree):
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
                 self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                               v_eq=self.v_eq, factor_lambda=self.factor_lambda)
+                               v_init=self.v_init, factor_lambda=self.factor_lambda)
                 self.addIClamp(loc0, i_amp, 0., t_dur)
                 self.storeLocs([loc0, loc1], 'rec locs')
                 # simulate
@@ -491,7 +771,7 @@ class NeuronSimTree(PhysTree):
             for jj, loc1 in enumerate(locs):
                 loc1 = locs[jj]
                 self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                               v_eq=self.v_eq, factor_lambda=self.factor_lambda)
+                               v_init=self.v_init, factor_lambda=self.factor_lambda)
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
                 self.storeLocs([loc0, loc1], 'rec locs')
                 # simulate
@@ -554,9 +834,9 @@ class NeuronCompartmentNode(NeuronSimNode):
 
 
 class NeuronCompartmentTree(NeuronSimTree):
-    def __init__(self, t_calibrate=0., dt=0.025, v_eq=-75.):
+    def __init__(self, t_calibrate=0., dt=0.025, v_init=-75.):
         super(NeuronCompartmentTree, self).__init__(file_n=None, types=[1,3,4],
-                        t_calibrate=t_calibrate, dt=dt, v_eq=v_eq)
+                        t_calibrate=t_calibrate, dt=dt, v_init=v_init)
 
     # redefinition of bunch of standard functions to not include skip inds by default
     def __getitem__(self, index, skip_inds=[]):
@@ -574,7 +854,7 @@ class NeuronCompartmentTree(NeuronSimTree):
     def _gatherNodes(self, node, node_list=[], skip_inds=[]):
         return super(NeuronCompartmentTree, self)._gatherNodes(node, node_list=node_list, skip_inds=skip_inds)
 
-    def createCorrespondingNode(self, node_index):
+    def _createCorrespondingNode(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -600,7 +880,7 @@ class NeuronCompartmentTree(NeuronSimTree):
                 self.shunts.append(shunt)
 
 
-def createReducedModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
+def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
     # calculate geometry that will lead to correct constants
     arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                  factor_r_a=1e-6, delta=1e-10,

@@ -17,6 +17,29 @@ from ..channels import concmechs, ionchannels
 
 
 class PhysNode(MorphNode):
+    """
+    Node associated with `neat.PhysTree`. Stores the physiological parameters
+    of the cylindrical segment connecting this node with its parent node
+
+    Attributes
+    ----------
+    currents: dict {str: [float,float]}
+        dict with as keys the channel names and as values lists of length two
+        containing as first entry the channels' conductance density (uS/cm^2)
+        and as second element the channels reversal (mV) (i.e.:
+        {name: [g_max (uS/cm^2), e_rev (mV)]})
+        For the leak conductance, the corresponding key is 'L'
+    concmechs: dict
+        dict containing concentration mechanisms present in the segment
+    c_m: float
+        The sement's specific membrane capacitance (uF/cm^2)
+    r_a: float
+        The segment's axial resistance (MOhm*cm)
+    g_shunt: float
+        Point-like shunt conductance located at x=1 (uS)
+    e_eq: float
+        Segment's equilibrium potential
+    """
     def __init__(self, index, p3d=None,
                        c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         super(PhysNode, self).__init__(index, p3d)
@@ -115,7 +138,7 @@ class PhysNode(MorphNode):
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
         e_l = e_eq_target - i_eq / g_l
-        self.currents['L'] = (g_l, e_l)
+        self.currents['L'] = [g_l, e_l]
         self.e_eq = e_eq_target
 
     def getGTot(self, channel_storage, v=None):
@@ -126,6 +149,8 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
+            channel_storage: dict {``channel_name``: `channel_instance`}
+                dict where all ion channel objects present on the node are stored
             v: float (optional, defaults to `self.e_eq`)
                 the potential (in mV) at which to compute the membrane conductance
 
@@ -138,7 +163,7 @@ class PhysNode(MorphNode):
         g_tot = self.currents['L'][0]
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
-            # create the ionchannel object
+            # get the ionchannel object
             channel = channel_storage[channel_name]
             g_tot += g * channel.computePOpen(v)
 
@@ -163,6 +188,16 @@ class PhysNode(MorphNode):
 
 
 class PhysTree(MorphTree):
+    """
+    Adds physiological parameters to `neat.MorphTree` and convenience functions
+    to set them across the morphology. Initialized in the same way as
+    `neat.MorphTree`
+
+    Attributes
+    ----------
+    channel_storage: dict {str: `neat.IonChannel`}
+        Stores the user defined ion channels present in the tree
+    """
     def __init__(self, file_n=None, types=[1,3,4]):
         super(PhysTree, self).__init__(file_n=file_n, types=types)
         # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
@@ -171,7 +206,7 @@ class PhysTree(MorphTree):
             node.setPhysiology(1.0, 100./1e6)
         self.channel_storage = {}
 
-    def createCorrespondingNode(self, node_index, p3d=None,
+    def _createCorrespondingNode(self, node_index, p3d=None,
                                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         """
         Creates a node with the given index corresponding to the tree class.
@@ -329,7 +364,6 @@ class PhysTree(MorphTree):
             node._addCurrent(channel_name, g_max, e_rev)
 
     @morphtree.originalTreetypeDecorator
-
     def getChannelsInTree(self):
         """
         Returns list of strings of all channel names in the tree
@@ -395,7 +429,10 @@ class PhysTree(MorphTree):
     def _evaluateCompCriteria(self, node, eps=1e-8, rbool=False):
         """
         Return ``True`` if relative difference in any physiological parameters
-        between node and child node is larger than margin ``eps``
+        between node and child node is larger than margin ``eps``.
+
+        Overrides the `MorphTree._evaluateCompCriteria()` function called by
+        `MorphTree.setCompTree()`.
 
         Parameters
         ----------
