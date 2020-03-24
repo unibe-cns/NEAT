@@ -119,7 +119,6 @@ class TestNa(IonChannel):
         self.setLambdaFuncs()
 
     def testPOpen(self):
-        print('---')
         na = channelcollection.Na_Ta()
 
         p_o_1 = na.computePOpen(-35.)

@@ -1,3 +1,6 @@
+import concurrent.futures
+import contextlib
+import multiprocessing
 import numpy as np
 import warnings
 
@@ -22,12 +25,20 @@ try:
     from ...tools.simtools.neuron import neuronmodel as neurm
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
-
-import dill
-from pathos.multiprocessing import ProcessingPool
-from pathos.threading import ThreadPool
-
+   
+import warnings
 import copy
+
+
+def cpu_count(use_hyperthreading=True):
+    """
+    Return number of available cores.
+    Makes use of hypterthreading by default.
+    """
+    if use_hyperthreading:
+        return multiprocessing.cpu_count()
+    else:
+        return multiprocessing.cpu_count() // 2
 
 
 def consecutive(inds):
@@ -325,6 +336,116 @@ class FitTreeSOV(SOVTree):
                 file.close()
 
 
+# class ChannelEvaluator:
+#     def __init__(self):
+#         # number of currently used cores
+#         self._n_occupied_cores = 0
+
+#     @property
+#     def _n_free_cores(self):
+#         """Returns number of currently unused cores"""
+#         return multiprocessing.cpu_count() - self._n_occupied_cores
+
+#     @contextlib.contextmanager
+#     def reserve_cores(self, n):
+#         """ContextManager to manage CPU resources. Occupies and frees cores."""
+#         self._occupy_cores(n)
+#         yield
+#         self._free_cores(n)
+
+#     def _occupy_cores(self, n):
+#         """Marks n more cores as occupied"""
+#         self._n_occupied_cores += n
+
+#     def _free_cores(self, n):
+#         """Marks n fewer cores as occupied"""
+#         self._n_occupied_cores -= n
+
+#     def evaluate(self, cfit, recompute=False, parallel=False, pprint=False):
+#         tree = cfit.tree # full tree model
+#         ctree = cfit.ctree # reduced tree model
+#         freqs = cfit.freqs
+#         locs = tree.getLocs('fit locs')
+#         channel_names = list(tree.channel_storage.keys())
+
+#         args_list = []
+#         chan_name_map = []
+
+#         for channel_name in channel_names:
+#             channel = tree.channel_storage[channel_name]
+
+#             # compute the expansion points for this channel
+#             sv_hs, e_hs = getExpansionPoints(cfit.e_hs, channel)
+
+#             # create the trees with only a single channel
+#             # evaluated at a given expansion point
+#             fit_tree = cfit.createTreeGF([channel_name])
+#             fit_tree.setName(cfit.name, cfit.path)
+#             for sv_h, e_h in zip(sv_hs, e_hs):
+#                 ftree = fit_tree.__copy__(new_tree=FitTreeGF())
+#                 ftree.storeLocs(locs, name='fit locs')
+#                 ftree.setExpansionPointsForFit({channel_name: sv_h}, e_h)
+#                 # append to the argument list
+#                 args_list.append([ftree, ctree, channel_names, freqs, recompute, pprint])
+#                 chan_name_map.append(channel_name)
+
+#         n_tree = len(args_list)
+
+#         # compute the fit matrices
+#         if parallel:
+#             max_workers = min(n_tree, self._n_free_cores)
+#             args_list_ = zip(*args_list)
+#             with self.reserve_cores(max_workers):
+#                 with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+#                     fit_mats = list(pool.map(self._calcFitMatrices, *args_list_))
+#         else:
+#             fit_mats = [self._calcFitMatrices(*args) for args in args_list]
+
+#         # renormalize fit matrices
+#         for channel, channel_name in tree.channel_storage.items():
+#             # compute the weight norm
+#             w_norm = 1. / np.sum([w_f for ii, (_,_,w_f) in enumerate(fit_mats) \
+#                                       if chan_name_map[ii] == channel_name])
+#             # normalize weights by weight norm
+#             for ii, (_,_,w_f) in enumerate(fit_mats):
+#                 w_f /= w_norm
+
+#         # store all fit matrices on the reduced tree
+#         for m_f, v_t, w_f in fit_mats:
+#             if not (np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()):
+#                 ctree._fitResAction('store', m_f, v_t, w_f,
+#                                              channel_names=channel_names)
+
+#         # run the fit
+#         cfit.ctree.runFit()
+
+
+#     def _calcFitMatrices(self, fit_tree, ctree, channel_names, freqs, recompute, pprint):
+#         """
+#         Compute the matrices needed to fit the channel
+#         """
+#         e_h = fit_tree.root.e_eq
+#         c_name = list(fit_tree.channel_storage.keys())[0]
+#         sv_h = fit_tree.root.expansion_points[c_name]
+
+#         # set the impedances in the tree
+#         fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
+#         # compute the impedance matrix for this acitvation level
+#         z_mat = fit_tree.calcImpedanceMatrix('fit locs')
+
+#         # compute the fit matrices
+#         m_f, v_t = ctree.computeGSingleChanFromImpedance(c_name, z_mat, e_h, freqs,
+#                         sv=sv_h, other_channel_names=['L'],
+#                         all_channel_names=channel_names, action='return')
+#         # compute open probability to weigh fit matrices
+#         channel = fit_tree.channel_storage[c_name]
+#         po_h = channel.computePOpen(e_h, statevars=sv_h)
+#         w_f = 1. / po_h
+
+#         return m_f, v_t, w_f
+
+
+
 class CompartmentFitter(object):
     """
     Helper class to streamline fitting reduced compartmental models
@@ -438,7 +559,7 @@ class CompartmentFitter(object):
         return tree
 
     def evalChannel(self, channel_name,
-                          recompute=False, pprint=False, parallel=True):
+                          recompute=False, pprint=False, parallel=True, max_workers=None):
         """
         Evaluate the impedance matrix for the model restricted to a single ion
         channel type.
@@ -463,6 +584,7 @@ class CompartmentFitter(object):
         channel = self.tree.channel_storage[channel_name]
         sv_hs, e_hs = getExpansionPoints(self.e_hs, channel)
         n_tree = len(e_hs)
+
         # create the trees with only a single channel
         fit_tree = self.createTreeGF([channel_name])
         fit_tree.setName(self.name, self.path)
@@ -471,6 +593,7 @@ class CompartmentFitter(object):
             ftree = fit_tree.__copy__(new_tree=FitTreeGF())
             ftree.setExpansionPointsForFit({channel_name: sv_h}, e_h)
             fit_trees.append(ftree)
+
         # compute the impedance matrices for different activation levels
         args_list = [fit_trees,
                      [locs for _ in range(n_tree)],
@@ -478,10 +601,13 @@ class CompartmentFitter(object):
                      [pprint for _ in range(n_tree)]]
         # compute the impedance matrices
         if parallel:
-            pool = ProcessingPool(processes=len(args_list[0]))
-            fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
+            if max_workers is None:
+                raise ValueError('need to provide number of workers if parallel is True')
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
         else:
             fit_mats = [self._calcFitMatrices(*args) for args in zip(*args_list)]
+
         # fit the model for this channel
         w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         for _, _, w_f in fit_mats: w_f /= w_norm
@@ -492,6 +618,8 @@ class CompartmentFitter(object):
         """
         Compute the matrices needed to fit the channel
         """
+        # self.GLOB_INT += 1
+        # print('>>>', self.GLOB_INT)
         e_h = fit_tree.root.e_eq
         c_name = list(fit_tree.channel_storage.keys())[0]
         sv_h = fit_tree.root.expansion_points[c_name]
@@ -527,25 +655,33 @@ class CompartmentFitter(object):
         """
         # create the fit matrices for each channel
         n_arg = len(self.channel_names)
-        args_list = [self.channel_names,
-                     [recompute for _ in range(n_arg)],
-                     [pprint for _ in range(n_arg)],
-                     [parallel for _ in range(n_arg)],
-                    ]
-        if parallel:
-            # pool = ProcessingPool(processes=n_arg)
-            pool = ThreadPool(processes=n_arg)
-            fit_mats_ = list(pool.map(self.evalChannel, *args_list))
-        else:
-            fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
-        fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
-        # store the fit matrices
-        for m_f, v_t, w_f in fit_mats:
-            if not (np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()):
-                self.ctree._fitResAction('store', m_f, v_t, w_f,
-                                         channel_names=self.channel_names)
-        # run the fit
-        self.ctree.runFit()
+
+        if n_arg > 0:
+            args_list = [self.channel_names,
+                         [recompute for _ in range(n_arg)],
+                         [pprint for _ in range(n_arg)],
+                         [parallel for _ in range(n_arg)],
+                        ]
+            if parallel:
+                max_workers = min(n_arg, cpu_count())
+                # split cores evenly over inner workers
+                inner_max_workers = cpu_count() // max_workers
+                args_list += [[inner_max_workers for _ in range(n_arg)]]
+                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                    fit_mats_ = list(pool.map(self.evalChannel, *args_list))
+            else:
+                fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
+            fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
+            # store the fit matrices
+            for m_f, v_t, w_f in fit_mats:
+                if not (np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()):
+                    self.ctree._fitResAction('store', m_f, v_t, w_f,
+                                             channel_names=self.channel_names)
+            # run the fit
+            self.ctree.runFit()
+
+        # chan_eval = ChannelEvaluator()
+        # chan_eval.evaluate(self, recompute=recompute, pprint=pprint, parallel=parallel)
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
