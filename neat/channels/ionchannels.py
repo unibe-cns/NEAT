@@ -898,7 +898,7 @@ class IonChannel(object):
     #     factor_string += '])\n'
     #     file.write(factor_string)
     #     # write call to base class constructor
-    #     file.write('        super(' + self.__class__.__name__ + 'Sim, self)' \
+    #     file.write('        super()' \
     #                     + '.__init__(self, inloc_inds, Ninloc, es_eq, ' \
     #                     + 'g_max, e_rev, ' \
     #                     + 'flag=flag, mode=mode)\n\n')

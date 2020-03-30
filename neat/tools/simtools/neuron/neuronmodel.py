@@ -38,7 +38,7 @@ mechname = MechName()
 
 class NeuronSimNode(PhysNode):
     def __init__(self, index, p3d=None):
-        super(NeuronSimNode, self).__init__(index, p3d)
+        super().__init__(index, p3d)
 
     def _makeSection(self, factorlambda=1., pprint=False):
         compartment = neuron.h.Section(name=str(self.index))
@@ -62,6 +62,7 @@ class NeuronSimNode(PhysNode):
         compartment.cm = self.c_m # uF/cm^2
         compartment.Ra = self.r_a*1e6 # MOhm*cm --> Ohm*cm
         # insert membrane currents
+        print(mechname, self.currents.keys())
         for key, current in self.currents.items():
             if current[0] > 1e-10:
                 compartment.insert(mechname[key])
@@ -97,7 +98,7 @@ class NeuronSimNode(PhysNode):
 class NeuronSimTree(PhysTree):
     def __init__(self, file_n=None, types=[1,3,4],
                        factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.):
-        super(NeuronSimTree, self).__init__(file_n=file_n, types=types)
+        super().__init__(file_n=file_n, types=types)
         # neuron storage
         self.sections = {}
         self.shunts = []
@@ -785,10 +786,10 @@ class NeuronSimTree(PhysTree):
 
 class NeuronCompartmentNode(NeuronSimNode):
     def __init__(self, index):
-        super(NeuronCompartmentNode, self).__init__(index)
+        super().__init__(index)
 
     def getChildNodes(self, skip_inds=[]):
-        return super(NeuronCompartmentNode, self).getChildNodes(skip_inds=skip_inds)
+        return super().getChildNodes(skip_inds=skip_inds)
 
     def _makeSection(self, pprint=False):
         compartment = neuron.h.Section(name=str(self.index))
@@ -835,24 +836,24 @@ class NeuronCompartmentNode(NeuronSimNode):
 
 class NeuronCompartmentTree(NeuronSimTree):
     def __init__(self, t_calibrate=0., dt=0.025, v_init=-75.):
-        super(NeuronCompartmentTree, self).__init__(file_n=None, types=[1,3,4],
-                        t_calibrate=t_calibrate, dt=dt, v_init=v_init)
+        super().__init__(file_n=None, types=[1,3,4],
+                         t_calibrate=t_calibrate, dt=dt, v_init=v_init)
 
     # redefinition of bunch of standard functions to not include skip inds by default
     def __getitem__(self, index, skip_inds=[]):
-        return super(NeuronCompartmentTree, self).__getitem__(index, skip_inds=skip_inds)
+        return super().__getitem__(index, skip_inds=skip_inds)
 
     def getNodes(self, recompute_flag=0, skip_inds=[]):
-        return super(NeuronCompartmentTree, self).getNodes(recompute_flag=recompute_flag, skip_inds=skip_inds)
+        return super().getNodes(recompute_flag=recompute_flag, skip_inds=skip_inds)
 
     def __iter__(self, node=None, skip_inds=[]):
-        return super(NeuronCompartmentTree, self).__iter__(node=node, skip_inds=skip_inds)
+        return super().__iter__(node=node, skip_inds=skip_inds)
 
     def _findNode(self, node, index, skip_inds=[]):
-        return super(NeuronCompartmentTree, self)._findNode(node, index, skip_inds=skip_inds)
+        return super()._findNode(node, index, skip_inds=skip_inds)
 
     def _gatherNodes(self, node, node_list=[], skip_inds=[]):
-        return super(NeuronCompartmentTree, self)._gatherNodes(node, node_list=node_list, skip_inds=skip_inds)
+        return super()._gatherNodes(node, node_list=node_list, skip_inds=skip_inds)
 
     def _createCorrespondingNode(self, node_index):
         """
