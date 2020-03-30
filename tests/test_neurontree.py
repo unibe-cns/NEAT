@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 import neuron
 from neuron import h
@@ -12,6 +13,9 @@ from neat import CompartmentNode, CompartmentTree
 from neat import NeuronSimTree, createReducedNeuronModel
 import neat.tools.kernelextraction as ke
 from neat.channels.channelcollection import channelcollection
+
+
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
@@ -36,7 +40,7 @@ class TestNeuron():
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
         print('>>> loading T-tree <<<')
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.fitLeakCurrent(v_eq, 10.)
         self.greenstree.setCompTree()
@@ -64,7 +68,7 @@ class TestNeuron():
         # load the morphology
         print('>>> loading T-tree <<<')
         h_chan = channelcollection.h()
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(h_chan, 50., -43.)
         self.greenstree.fitLeakCurrent(v_eq, 10.)
@@ -93,7 +97,7 @@ class TestNeuron():
         # load the morphology
         print('>>> loading T-tree <<<')
         test_chan = channelcollection.TestChannel2()
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(test_chan, 50., -23.)
         self.greenstree.fitLeakCurrent(v_eq, 10.)
@@ -124,7 +128,7 @@ class TestNeuron():
         # load the morphology
         print('>>> loading T-tree <<<')
         test_chan = channelcollection.TestChannel2()
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(test_chan, 50., 23., node_arg=[self.greenstree[1]])
         self.greenstree.fitLeakCurrent(v_eq, 10.)

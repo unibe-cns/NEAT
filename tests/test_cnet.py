@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 import pytest
 
@@ -9,6 +10,9 @@ from neat import GreensTree, NeuronSimTree, SOVTree
 from neat.channels.channelcollection import channelcollection
 
 
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
+
+
 class TestCNET():
     def createPointNeurons(self, v_eq=-75.):
         self.v_eq = v_eq
@@ -16,7 +20,7 @@ class TestCNET():
         gh, eh = 50., -43.
         h_chan = channelcollection.h()
 
-        self.greens_tree = GreensTree(file_n='test_morphologies/ball.swc')
+        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         self.greens_tree.setPhysiology(1., 100./1e6)
         self.greens_tree.addCurrent(h_chan, gh, eh)
         self.greens_tree.fitLeakCurrent(v_eq, 10.)
