@@ -86,7 +86,7 @@ def compile_default_ion_channels():
     """
     cwd = os.getcwd()
     os.chdir('neat/channels/')
-    subprocess.call(['compilechannels', 'channelcollection/'])
+    subprocess.call(['./compilechannels', 'channelcollection/'])
     os.chdir(cwd)
 
 
@@ -94,6 +94,7 @@ def read_requirements():
     with open('./requirements.txt') as fp:
         requirements = fp.read()
     return requirements
+
 
 ext = Extension("netsim",
                 ["neat/tools/simtools/net/netsim.pyx",
@@ -126,7 +127,6 @@ s_ = setup(
         'install': PostInstallCommand,
     },
     include_package_data=True,
-    package_data={'': ['*.mod']},
     author='Willem Wybo',
     classifiers=['Development Status :: 3 - Alpha',
                  'Programming Language :: Python :: 3.7'],
