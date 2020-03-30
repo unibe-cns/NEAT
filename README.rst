@@ -40,9 +40,9 @@ Install using `setup.py` (requires `git <https://git-scm.com>`_):
     cd NEAT
     python setup.py install
 
-To test the installation (requires `pytest`)
+Test the installation
 ::
-    sh run_tests.sh
+    pytest
 
 References
 ----------
