@@ -42,7 +42,7 @@ class PhysNode(MorphNode):
     """
     def __init__(self, index, p3d=None,
                        c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
-        super(PhysNode, self).__init__(index, p3d)
+        super().__init__(index, p3d)
         self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
         self.concmechs = {}
         # biophysical parameters
@@ -177,9 +177,9 @@ class PhysNode(MorphNode):
         self.fitLeakCurrent(channel_storage, e_eq_target=v, tau_m_target=t_m)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super(PhysNode, self).__str__()
+        node_string = super().__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
+            node_string += ', Parent: ' + super().__str__()
         node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
                        ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
                             for cname, cpar in self.currents.items()]) + \
@@ -199,7 +199,7 @@ class PhysTree(MorphTree):
         Stores the user defined ion channels present in the tree
     """
     def __init__(self, file_n=None, types=[1,3,4]):
-        super(PhysTree, self).__init__(file_n=file_n, types=types)
+        super().__init__(file_n=file_n, types=types)
         # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
         # r_a = 0.0001 MOhm*cm)
         for node in self:
@@ -445,7 +445,7 @@ class PhysTree(MorphTree):
         ------
         bool
         """
-        rbool = super(PhysTree, self)._evaluateCompCriteria(node, eps=eps, rbool=rbool)
+        rbool = super()._evaluateCompCriteria(node, eps=eps, rbool=rbool)
 
         if not rbool:
             cnode = node.child_nodes[0]
