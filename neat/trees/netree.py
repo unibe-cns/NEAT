@@ -12,21 +12,49 @@ Author: W. Wybo
 import numpy as np
 import matplotlib.pyplot as pl
 
-from stree import STree, SNode
+from .stree import STree, SNode
 
 import copy
 import itertools
 
 
 class Kernel(object):
+    """
+    Implements a kernel as a superposition of exponentials:
+
+    .. math:: k(t) = \sum_n c_n e^{ - a_n t}
+
+    Kernels can be added and subtracted, as this class overloads the __add__
+    and __subtract__ functions.
+
+    They can be evaluated as a function of time by calling the object with a
+    time array.
+
+    They can be evaluated in the Fourrier domain with `Kernel.ft`
+
+    Parameters
+    ----------
+    kernel: dict, float, neat.Kernel, tuple or list
+        If dict, has the form {'a': `np.array`, 'c': `np.array`}.
+        If float, sets `c` single exponential prefactor and assumes `a` is 1 kHz.
+        If `neat.Kernel`, copies the object.
+        If tuple or list, sets 'a' as first element and 'c' as last element.
+
+    Attributes
+    ----------
+    a: np.array of float or complex
+        The exponential coefficients (kHz)
+    c: np.array of float or complex
+        The exponential prefactors
+    """
     def __init__(self, kernel):
         # set kernel time scales and exponential prefactors
         if isinstance(kernel, dict):
             self.a = copy.deepcopy(kernel['a'])
             self.c = copy.deepcopy(kernel['c'])
-        elif isinstance(kernel, float):
+        elif isinstance(kernel, float) or isinstance(kernel, int):
             self.a = np.array([1.])
-            self.c = np.array([kernel])
+            self.c = np.array([kernel]).astype(float)
         elif isinstance(kernel, Kernel):
             self.a = copy.deepcopy(kernel.a)
             self.c = copy.deepcopy(kernel.c)
@@ -76,6 +104,9 @@ class Kernel(object):
         return Kernel((a, c))
 
     def getKBar(self):
+        """
+        The total surface under the kernel
+        """
         return np.sum(self.c / self.a).real
 
     def setKBar(self, kk):
@@ -83,28 +114,64 @@ class Kernel(object):
                              'by multiplying with a factor to change `k_bar`')
     k_bar = property(getKBar, setKBar)
 
-    # def __mul__(self, mm):
-    #     if isinstance(mm, float) or isinstance(mm, int):
-    #         self.c *= mm
-    #         self.k_bar = np.sum(self.c / self.a).real
-    #     else:
-    #         raise ValueError('Multiplication not implemented for this class, ' + \
-    #                          'input should be `int` or `float`')
-
-
     def __str__(self, as_timescale=False):
         if as_timescale:
-            return 'a = ' + np.array2string(1./self.a, precision=4, max_line_width=1000) + '\n' + \
+            return 't = ' + np.array2string(1./self.a, precision=4, max_line_width=1000) + '\n' + \
                    'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
         else:
             return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
                    'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
 
+    def t(self, t_arr):
+        """
+        Evaluates the kernel in the time domain
+
+        Parameters
+        ----------
+        t_arr: np.array of float
+            the time array at which the kernel is evaluated
+
+        Returns
+        -------
+        np.array of float
+            the temporal kernel
+        """
+        return self(t_arr)
+
     def ft(self, s_arr):
+        """
+        Evaluates the kernel in the Fourrier domain
+
+        Parameters
+        ----------
+        s_arr: np.array of complex
+            The frequencies (Hz) at which the kernel is to be evaluated
+
+        Returns
+        -------
+        np.array of complex
+            The Fourrier transform of the kernel
+
+        """
         return np.sum(self.c[:,None]*1e3 / (self.a[:,None]*1e3 + s_arr[None,:]), 0)
 
 
 class NETNode(SNode):
+    """
+    Node associated with `neat.NET`.
+
+    Attributes
+    ----------
+    loc_inds: list of int
+        The inidices of locations which the node integrates
+    newloc_inds: list of int
+        The locations for which the node is the most local component to integrate
+        them
+    z_kernel: `neat.Kernel`
+        The impedance kernel with which the node integrates inputs
+    z_bar: float
+        The steady state impedance associated with the impedance kernel
+    """
     def __init__(self, index, loc_inds, newloc_inds=[], z_kernel=None):
         super(NETNode, self).__init__(index)
         # location indices that node integrates
@@ -160,6 +227,11 @@ class NETNode(SNode):
 
 
 class NET(STree):
+    """
+    Abstract tree class that implements the Neural Evaluation Tree
+    (Wybo et al., 2019), representing the spatial voltage as a number of voltage
+    components present at different spatial scales.
+    """
     def __init__(self, root=None):
         super(NET, self).__init__(root)
 
@@ -169,7 +241,31 @@ class NET(STree):
             string += '  > ' + str(node) + '\n'
         return string
 
+    def _createCorrespondingNode(self, node_index):
+        """
+        Creates a node with the given index corresponding to the tree class.
+
+        Parameters
+        ----------
+            node_index: int
+                index of the new node
+        """
+        return NETNode(node_index, [])
+
     def getLocInds(self, sroot=None):
+        """
+        Get the indices of the locations a subtree integrates
+
+        Parameters
+        ----------
+        sroot: `neat.NETNode`, int or None
+            Root of the subtree, or index of the root. If ``None``, subtree is
+            the whole tree.
+
+        Returns
+        -------
+        loc_inds: indices of locations
+        """
         if isinstance(sroot, int):
             sroot = self[sroot]
         elif sroot is None:
@@ -177,7 +273,7 @@ class NET(STree):
         return sroot.loc_inds
 
     def getLeafLocNode(self, loc_ind):
-        '''
+        """
         Get the node for which ``loc_ind`` is a new location
 
         Parameters
@@ -188,15 +284,15 @@ class NET(STree):
         Returns
         -------
         :obj:`NETNode`
-        '''
+        """
         for node in self:
             if loc_ind in node.newloc_inds:
                 return node
 
     def setNewLocInds(self):
-        '''
+        """
         Set the new location indices in a tree
-        '''
+        """
         for node in self:
             cloc_inds = set()
             for cnode in node.child_nodes:
@@ -204,7 +300,7 @@ class NET(STree):
             node.newloc_inds = list(set(node.loc_inds) - cloc_inds)
 
     def getReducedTree(self, loc_inds, indexing='NET eval'):
-        '''
+        """
         Construct a reduced tree where only the locations index by ``loc_inds''
         are retained
 
@@ -216,7 +312,7 @@ class NET(STree):
             if 'NET eval', indexing of ``NETNode.loc_inds`` will be taken to be the
             indices of locations for which the full NET is evaluated. Otherwise
             will be indices of the input ``loc_inds``
-        '''
+        """
         loc_inds_newtree = list({loc_ind for loc_ind in loc_inds \
                                          if loc_ind in self.root})
         if loc_inds_newtree:
@@ -270,7 +366,7 @@ class NET(STree):
     #                     self.addNodeWithParent
 
     def calcTotalImpedance(self, node):
-        '''
+        """
         Compute the total impedance associated with a node. I.e. the sum of all
         impedances on the path from node to root
 
@@ -282,11 +378,11 @@ class NET(STree):
         -------
         float
             total impedance
-        '''
+        """
         return np.sum([node_.z_bar for node_ in self.pathToRoot(node)])
 
     def calcTotalKernel(self, node):
-        '''
+        """
         Compute the total impedance kernel associated with a node. I.e. the sum
         of all impedance kernels on the path from node to root
 
@@ -297,7 +393,7 @@ class NET(STree):
         Returns
         -------
         :class:`Kernel`
-        '''
+        """
         z_k = copy.deepcopy(node.z_kernel)
         if node.parent_node is not None:
             for pn in self.pathToRoot(node.parent_node):
@@ -305,7 +401,7 @@ class NET(STree):
         return z_k
 
     def calcIZ(self, loc_inds):
-        '''
+        """
         compute I_Z between any pair of locations in ``loc_inds``
 
         Parameters
@@ -319,7 +415,7 @@ class NET(STree):
             Returns a float if the number of location indices is two, otherwise
             a dictionary with location pairs (smallest is listed first) as keys
             and I_Z values as values
-        '''
+        """
         Iz_dict = {}
         for ii, loc_ind0 in enumerate(loc_inds):
             for jj, loc_ind1 in enumerate(loc_inds):
@@ -335,43 +431,43 @@ class NET(STree):
                 else:
                     break
         if len(loc_inds) == 2:
-            return Iz_dict.values()[0]
+            return list(Iz_dict.values())[0]
         else:
             return Iz_dict
 
     def calcIZMatrix(self):
-        '''
+        """
         compute the Iz matrix for all locations present in the tree
 
         Returns
         -------
         np.ndarray of float
             The Iz matrix
-        '''
+        """
         z_mat = self.calcImpedanceMatrix()
         z_in = np.diag(z_mat)
         return (z_in[:,np.newaxis] + z_in[np.newaxis,:]) / (2. * z_mat) - 1.
 
     def calcImpedanceMatrix(self):
-        '''
+        """
         Compute the impedance matrix approximation associated with the NET
 
         Returns
         -------
         np.ndarray (ndim = 2)
             the impedance matrix approximation
-        '''
+        """
         return self.calcImpMat()
 
     def calcImpMat(self):
-        '''
+        """
         Compute the impedance matrix approximation associated with the NET
 
         Returns
         -------
         np.ndarray (ndim = 2)
             the impedance matrix approximation
-        '''
+        """
         n_loc = len(self.root.loc_inds)
         loc_map = {loc_ind: map_ind for map_ind, loc_ind in enumerate(self.root.loc_inds)}
         z_mat = np.zeros((n_loc, n_loc))
@@ -385,7 +481,7 @@ class NET(STree):
             self._addNodeToImpMat(cnode, z_mat, loc_map)
 
     def getCompartmentalization(self, Iz, returntype='node index'):
-        '''
+        """
         Returns a compartmentalization for the NET tree where each pair of
         compartments is separated by an Iz of at least ``Iz``. The
         compartmentalization is coded as a list of list, each sublist representing
@@ -402,7 +498,7 @@ class NET(STree):
         -------
         list of lists
             the compartments
-        '''
+        """
         self._computeTentativeCompartments(Iz=Iz)
         # determine the nodes that contain the eventual compartments and
         # remove the rest
@@ -598,7 +694,7 @@ class NET(STree):
                         inlabels={}, nodelabels={},
                         cs_comp={}, cmap=None,
                         z_max=None, add_scalebar=True):
-        '''
+        """
         Generate a dendrogram of the NET
 
         Parameters
@@ -632,14 +728,14 @@ class NET(STree):
                 ``self``
             add_scalebar: bool
                 whether or not to add a scale bar
-        '''
+        """
         if cs_comp:
             # compute the compartmental colormap if necessary
-            arr = np.array([cs_comp.values()])
+            arr = np.array([list(cs_comp.values())])
             max_cs = np.max(arr)
             min_cs = np.min(arr)
             norm_cs = (max_cs - min_cs) * (1. + 1./100.)
-            for key, val in cs_comp.iteritems():
+            for key, val in cs_comp.items():
                 cs_comp[key] = (cs_comp[key] - min_cs) / norm_cs
             if cmap is None: cmap = pl.get_cmap('jet')
             cs_comp['cm'] = cmap
@@ -696,7 +792,7 @@ class NET(STree):
                                         cs_comp={}):
         # check if part of compartment
         if cs_comp:
-            if node.index in cs_comp.keys():
+            if node.index in list(cs_comp.keys()):
                 plotargs = copy.deepcopy(plotargs)
                 plotargs['color'] = cs_comp['cm'](cs_comp[node.index])
         # impedance of layer

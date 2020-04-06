@@ -1,8 +1,8 @@
 """
 File contains:
 
-    - :class:`SNode`
-    - :class:`STree`
+    - `neat.SNode`
+    - `neat.STree`
 
 Authors: B. Torben-Nielsen (legacy code), W. Wybo
 """
@@ -12,18 +12,33 @@ import numpy as np
 import warnings
 import copy
 from collections import Counter
+from functools import reduce
 
 class SNode(object):
-    '''
-    Simple Node for use with a simple Tree (STree)
-    By design, the ``content`` attribute should be a dictionary.
-    '''
+    """
+    Simple Node for use with a simple Tree (`neat.STree`)
+
+    Parameters
+    ----------
+    index: int
+        index of the node
+
+    Attributes
+    ----------
+    index: int
+        index of the node
+    parent_node: `neat.SNode` or ``None``
+        parent of node, ``None`` means node is root
+    child_nodes: list of `neat.SNode`
+        child nodes of ``self``, empty list means node is leaf
+    content: dict
+        arbitrary items can be stored at the node
+    """
 
     def __init__(self, index):
         self.index = index
         self._parent_node = None
         self._child_nodes = []
-        self.pval = 1 # for tree plotting
         self._content = {}
 
     def getParentNode(self):
@@ -57,11 +72,22 @@ class SNode(object):
     content = property(getContent, setContent)
 
     def makeEmpty(self):
+        '''
+        Remove content and references to parent and child nodes
+        '''
         self._parent_node = None
         self._content = None
         self._child_nodes = []
 
     def removeChild(self, child_node):
+        '''
+        Remove a single child node
+
+        Parameters
+        ----------
+        child_node: `neat.SNode`
+            child node to be removed
+        '''
         self._child_nodes.remove(child_node)
 
     def __getitem__(self, key):
@@ -79,22 +105,10 @@ class SNode(object):
                             str([str(cnode) for cnode in self.child_nodes])
         return node_string
 
-    # def __copy__(self) : # customization of copy.copy
-    #     ret = SNode(self.index)
-    #     for child in self._child_nodes :
-    #         ret.addChild(child)
-    #     try:
-    #         ret.content = self.content
-    #     except AttributeError:
-    #         # no content variable set
-    #         pass
-    #     ret.setParentNode(self._parent_node)
-    #     return ret
-
     def __copy__(self, new_node=None):
-        '''
+        """
         experimental, untested
-        '''
+        """
         if new_node is None:
             # new_node = self.__class__(self.index)
             for child in self._child_nodes :
@@ -114,12 +128,22 @@ class SNode(object):
 
 
 class STree(object):
-    '''
-    A simple tree for use with a simple Node (:class:`SNode`).
+    """
+    A simple tree for use with a simple Node (`neat.SNode`).
 
     Generic implementation of a tree structure as a linked list extended with
     some convenience functions
-    '''
+
+    Parameters
+    ----------
+    root: `neat.SNode`, optional
+        The root of the tree, default is ``None`` which creates an empty tree
+
+    Attributes
+    ----------
+    root: `neat.SNode`
+        The root of the tree
+    """
 
     def __init__(self, root=None):
         """
@@ -131,7 +155,7 @@ class STree(object):
             self._root = None
 
     def __getitem__(self, index, **kwargs):
-        '''
+        """
         Returns the node with given index, if no such node is in the tree, None
         is returned.
 
@@ -140,9 +164,10 @@ class STree(object):
             index: int
                 the index of the node to be found
 
-        Returns:
-            :class:`SNode` or None
-        '''
+        Returns
+        -------
+            `neat.SNode` or None
+        """
         return self._findNode(self.root, index)
 
     def _findNode(self, node, index):
@@ -153,14 +178,14 @@ class STree(object):
 
         Parameters
         ----------
-            node: :class:`SNode` (optional)
+            node: `neat.SNode` (optional)
                 node where the search is started
             index: int
                 the index of the node to be found
 
         Returns
         -------
-            :class:`SNode`
+            `neat.SNode`
         """
         stack = [];
         stack.append(node)
@@ -174,35 +199,36 @@ class STree(object):
         return None # Not found!
 
     def __len__(self, node=None):
-        '''
+        """
         Return the number of nodes in the tree. If an input node is specified,
         the number of nodes in the subtree of the input node is returned
 
         Parameters
         ----------
-            node: :class:`SNode` (optional)
+            node: `neat.SNode` (optional)
                 The starting node. Defaults to root
 
         Returns
         -------
             int
-        '''
+        """
         self._node_count = 0
         for node in self.__iter__(node=node):
             self._node_count += 1
         return self._node_count
 
     def __iter__(self, node=None, **kwargs):
-        '''
-        Iterate over the nodes in the subtree of the given node. Beware, if
-        the given node is not in the tree, it will simply iterate over the
-        subtree of the given node.
+        """
+        Iterate over the nodes in the subtree of the given node.
+
+        Beware, if the given node is not in the tree, it will simply iterate
+        over the subtree of the given node.
 
         Parameters
         ----------
-            node: :class:`SNode` (optional)
+            node: `neat.SNode` (optional)
                 The starting node. Defaults to the root
-        '''
+        """
         if node is None:
             node = self.root
         if node is not None:
@@ -213,16 +239,17 @@ class STree(object):
                         yield inode
 
     def __str__(self, node=None):
-        '''
-        Generate a string of the subtree of the given node. Beware, if
-        the given node is not in the tree, it will simply iterate over the
-        subtree of the given node.
+        """
+        Generate a string of the subtree of the given node.
+
+        Beware, if the given node is not in the tree, it will simply iterate
+        over the subtree of the given node.
 
         Parameters
         ----------
-            node: :class:`SNode` (optional)
+            node: `neat.SNode` (optional)
                 The starting node. Defaults to the root
-        '''
+        """
         if node is None:
             node = self.root
         tree_string = '>>> Tree'
@@ -231,14 +258,14 @@ class STree(object):
         return tree_string
 
     def checkOrdered(self):
-        '''
+        """
         Check if the indices of the tree are number in the same order as they
         appear in the iterator
-        '''
-        return range(len(self)) == [node.index for node in self]
+        """
+        return list(range(len(self))) == [node.index for node in self]
 
     def getNodes(self, recompute_flag=1):
-        '''
+        """
         Build a list of all the nodes in the tree
 
         Parameters
@@ -249,7 +276,7 @@ class STree(object):
         Returns
         -------
             list of :class:`Snode`
-        '''
+        """
         if not hasattr(self, '_nodes') or recompute_flag:
             self._nodes = []
             self._gatherNodes(self.root, self._nodes)
@@ -261,7 +288,7 @@ class STree(object):
     nodes = property(getNodes, setNodes)
 
     def gatherNodes(self, node):
-        '''
+        """
         Build a list of all the nodes in the subtree of the provided node
 
         Parameters
@@ -272,33 +299,33 @@ class STree(object):
         Returns
         -------
             list of :class:`Snode`
-        '''
+        """
         nodes = []
         self._gatherNodes(node, nodes)
         return nodes
 
     def _gatherNodes(self, node, node_list=[]):
-        '''
+        """
         Append node to list and recurse to its child nodes
 
         Parameters
         ----------
-            node: :class:`SNode`
-            node_list: list of :class:`SNode`
-        '''
+            node: `neat.SNode`
+            node_list: list of `neat.SNode`
+        """
         node_list.append(node)
         for cnode in node.child_nodes:
             self._gatherNodes(cnode, node_list=node_list)
 
     def getLeafs(self, recompute_flag=1):
-        '''
+        """
         Get all leaf nodes in the tree.
 
         Parameters
         ----------
             recompute_flag: bool
                 Whether to force recomputing the leaf list. Defaults to 1.
-        '''
+        """
         if not hasattr(self, '_leafs') or recompute_flag:
             self._leafs = [node for node in self if self.isLeaf(node)]
         return self._leafs
@@ -309,14 +336,14 @@ class STree(object):
     leafs = property(getLeafs, setLeafs)
 
     def setRoot(self, node):
-        '''
+        """
         Set the root node of the tree
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 node to be set as root of the tree
-        '''
+        """
         node.parent_node = None
         self._root = node
 
@@ -326,44 +353,44 @@ class STree(object):
     root = property(getRoot, setRoot)
 
     def isRoot(self, node):
-        '''
+        """
         Check if input node is root of the tree.
 
         Parameters
         ----------
-            node: :class:`SNode`
-        '''
+            node: `neat.SNode`
+        """
         if node.getParentNode() is not None:
             return False
         else:
             return True
 
     def isLeaf(self, node):
-        '''
+        """
         Check if input node is a leaf of the tree
 
         Parameters
         ----------
-            node: :class:`SNode`
-        '''
+            node: `neat.SNode`
+        """
         if len(node.getChildNodes()) == 0:
             return True
         else:
             return False
 
-    def createCorrespondingNode(self, node_index):
-        '''
+    def _createCorrespondingNode(self, node_index):
+        """
         Creates a node with the given index corresponding to the tree class.
 
         Parameters
         ----------
             node_index: int
                 index of the new node
-        '''
+        """
         return SNode(node_index)
 
     def addNodeWithParentFromIndex(self, node_index, pnode, *args, **kwargs):
-        '''
+        """
         Create a node with the given index and add it to the tree under a
         specific parent node.
 
@@ -371,31 +398,31 @@ class STree(object):
         ----------
             node_index: int
                 index of the new node
-            pnode: :class:`SNode`
+            pnode: `neat.SNode`
                 parent node of the newly added node
 
         Raises
         ------
             ValueError
                 if ``node_index`` is already in the tree
-        '''
+        """
         if self[node_index] == None:
-            node = self.createCorrespondingNode(node_index, *args, **kwargs)
+            node = self._createCorrespondingNode(node_index, *args, **kwargs)
             self.addNodeWithParent(node, pnode)
         else:
             raise ValueError('Index %d is already exists in the tree.')
 
     def addNodeWithParent(self, node, pnode):
-        '''
+        """
         Add a node to the tree under a specific parent node
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 node to be added
-            pnode: :class:`SNode`
+            pnode: `neat.SNode`
                 parent node of the newly added node
-        '''
+        """
         if pnode is not None:
             node.setParentNode(pnode)
             pnode.addChild(node)
@@ -403,27 +430,27 @@ class STree(object):
             warnings.warn('`pnode` was `None`, did nothing.')
 
     def softRemoveNode(self, node):
-        '''
+        """
         Remove a node and its subtree from the tree by deleting the reference
         to it in its parent. Internally, the node and its linked subtree are not
         changed
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 node to be removed
-        '''
+        """
         node.getParentNode().removeChild(node)
 
     def removeNode(self, node):
-        '''
+        """
         Remove a node as well as its subtree from the tree
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 node to be removed
-        '''
+        """
         node.getParentNode().removeChild(node)
         self._deepRemove(node)
 
@@ -434,15 +461,15 @@ class STree(object):
             self._deepRemove(cnode)
 
     def removeSingleNode(self, node):
-        '''
+        """
         Remove a single node from the tree. The nodes' children become the
         children of the nodes' parent.
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 node to be removed
-        '''
+        """
         if node == self.root:
             raise ValueError('Removing root is forbidden')
         cnodes = node.getChildNodes()
@@ -453,22 +480,22 @@ class STree(object):
             pnode.addChild(cnode)
 
     def insertNode(self, node, pnode, pcnodes=[]):
-        '''
+        """
         Insert a node in the tree as a child of a specified parent. The
         original children of the parent that will become children of the node
         are specified in the ``pcnodes`` list
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 the node that is to be inserted
-            pnode: :class:`SNode`
+            pnode: `neat.SNode`
                 the node that will become parent of the node that is to be
                 inserted
-            pcnodes: list of :class:`SNode`
+            pcnodes: list of `neat.SNode`
                 the current children of the pnode that will become children of
                 the node
-        '''
+        """
         if pnode != None:
             cnodes = pnode.getChildNodes()
             for pcnode in pcnodes:
@@ -490,47 +517,73 @@ class STree(object):
             self.root = node
 
     def resetIndices(self, n=0):
-        '''
+        """
         Resets the indices in the order they appear in a depth-first iteration
-        '''
+        """
         for ind, node in enumerate(self):
             node.index = ind+n
 
-    def getSubTree(self, node):
-        '''
+    def getSubTree(self, node, new_tree=None):
+        """
         Get the subtree of the specified node. The root of the subtree is a new
         node with the same children as the original node, but None instead of a
-        parent. The other nodes are retained.
+        parent.
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 root of the sub tree
-        '''
-        subtree = STree()
-        cp = copy.copy(node)
-        cp.setParentNode(None)
-        subtree.setRoot(cp)
-        return subtree
+
+        Returns
+        -------
+        `neat.STree`
+            Subtree of with ``node`` as root
+        """
+        if new_tree is None:
+            new_tree = STree()
+
+        new_node = new_tree._createCorrespondingNode(node.index)
+        node.__copy__(new_node=new_node)
+        new_node.setParentNode(None)
+        new_tree.setRoot(new_node)
+
+        self._recurseCopy(node, new_tree)
+
+        return new_tree
+
+    def depthOfNode(self, node):
+        """
+        compute the depth of the node (number of edges between node and root)
+
+        Parameters
+        ----------
+        node: `neat.SNode`
+
+        Returns
+        -------
+        int
+            depth of the node
+        """
+        return len(self.pathToRoot(node)) - 1
 
     def degreeOfNode(self, node):
-        '''
+        """
         Compute the degree (number of leafs in its subtree) of a node.
 
         Parameters
         ----------
-            node: :class:`SNode`
-        '''
+            node: `neat.SNode`
+        """
         return len([node for node in self.__iter__(node) if self.isLeaf(node)])
 
     def orderOfNode(self, node):
-        '''
+        """
         Compute the order (number of bifurcations from the root) of a node.
 
         Parameters
         ----------
-            node: :class:`SNode`
-        '''
+            node: `neat.SNode`
+        """
         ptr = self.pathToRoot(node)
         order = 0
         for node in ptr:
@@ -540,18 +593,18 @@ class STree(object):
         return order - 1
 
     def pathToRoot(self, node):
-        '''
+        """
         Return the path from a given node to the root
 
         Parameters:
-            node: :class:`SNode`
+            node: `neat.SNode`
 
         Returns
         -------
-            list of :class:`SNode`
+            list of `neat.SNode`
                 List of nodes from ``node`` to root. First node is the input node
                 and last node is the root
-        '''
+        """
         nodes = []
         self._goUpFrom(node, nodes)
         return nodes
@@ -563,54 +616,54 @@ class STree(object):
             self._goUpFrom(pnode, nodes)
 
     def pathBetweenNodes(self, from_node, to_node):
-        '''
+        """
         Inclusive path from ``from_node`` to ``to_node``.
 
         Parameters
         ----------
-            from_node: :class:`SNode`
-            to_node: :class:`SNode`
+            from_node: `neat.SNode`
+            to_node: `neat.SNode`
 
         Returns
         -------
-            list of :class:`SNode`
+            list of `neat.SNode`
                 List of nodes representing the direct path between ``from_node``
                 and ``to_node``, which are respectively the first and last nodes
                 in the list.
-        '''
+        """
         path1 = self.pathToRoot(from_node)[::-1]
         path2 = self.pathToRoot(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in xrange(len(path)) if path1[ii] != path2[ii]),
+        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
                    len(path))
         return path1[ind:][::-1] + path2[ind-1:]
 
     def pathBetweenNodesDepthFirst(self, from_node, to_node):
-        '''
+        """
         Inclusive path from ``from_node`` to ``to_node``, ginven in a depth-
         first ordering.
 
         Parameters
         ----------
-            from_node: :class:`SNode`
-            to_node: :class:`SNode`
+            from_node: `neat.SNode`
+            to_node: `neat.SNode`
 
         Returns
         -------
-            list of :class:`SNode`
+            list of `neat.SNode`
                 List of nodes representing the direct path between ``from_node``
                 and ``to_node``, which are respectively the first and last nodes
                 in the list.
-        '''
+        """
         path1 = self.pathToRoot(from_node)[::-1]
         path2 = self.pathToRoot(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in xrange(len(path)) if path1[ii] != path2[ii]),
+        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
                    len(path))
         return path1[ind-1:] + path2[ind:]
 
     def getNodesInSubtree(self, ref_node, subtree_root=None):
-        '''
+        """
         Returns the nodes in the subtree that contains the given reference nodes
         and has the given subtree root as root. If the subtree root is not
         provided, the subtree of the first child node of the root on the path to
@@ -618,18 +671,18 @@ class STree(object):
 
         Parameters
         ----------
-            ref_node: :class:`SNode`
+            ref_node: `neat.SNode`
                 the reference node that is in the subtree
-            subtree_root: :class:`SNode`
+            subtree_root: `neat.SNode`
                 what is to be the root of the subtree. If this node is not on
                 the path from reference node to root, a ValueError is raised
 
         Returns
         -------
-            list of :class:`SNode`
+            list of `neat.SNode`
                 List of all nodes in the subtree. It's root is in the first
                 position
-        '''
+        """
         if subtree_root == None:
             subtree_root = self.root
         ref_path = self.pathBetweenNodes(ref_node, subtree_root)
@@ -645,31 +698,30 @@ class STree(object):
         return subtree_nodes
 
     def sisterLeafs(self, node):
-        '''
+        """
         Find the leafs that are in the subtree of the nearest bifurcation node
         up from the input node.
 
         Parameters
         ----------
-            node: :class:`SNode`
+            node: `neat.SNode`
                 Starting node for search
 
         Returns
         -------
-        (node, sisterLeafs, corresponding_children)
-            node: :class:`SNode`
-                the bifurcation node
-            sisterLeafs: list of :class:`SNode`
-                The first element is the input node. The others are the leafs
-                of the subtree emanating from the bifurcation node that are not
-                in the subtree from the input node.
-            corresponding_children: list of :class:`SNode`
-                The children of the bifurcation node. If the number of leafs
-                ``sisterLeafs`` is the same as the number of
-                ``corresponding_children``, the subtree of each element of
-                ``corresponding_children`` has exactly one leaf, the corresponding
-                element in ``sisterLeafs``
-        '''
+        node: `neat.SNode`
+            the bifurcation node
+        sister_leafs: list of `neat.SNode`
+            The first element is the input node. The others are the leafs
+            of the subtree emanating from the bifurcation node that are not
+            in the subtree from the input node.
+        corresponding_children: list of `neat.SNode`
+            The children of the bifurcation node. If the number of leafs
+            ``sister_leafs`` is the same as the number of
+            ``corresponding_children``, the subtree of each element of
+            ``corresponding_children`` has exactly one leaf, the corresponding
+            element in ``sister_leafs``
+        """
         sleafs = [node]; cchildren = []
         snode = self._goUpUntil(node, None, sl=sleafs, cc=cchildren)
         return snode, sleafs, cchildren
@@ -695,25 +747,24 @@ class STree(object):
                 self._goDownUntil(c_node, sl=sl)
 
     def upBifurcationNode(self, node, cnode=None):
-        '''
+        """
         Find the nearest bifurcation node up (towards root) from the input node.
 
         Parameters
         ----------
-            node: :class:`SNode`
-                Starting node for search
-            cnode: :class:`SNode`
-                For recursion, don't touch default
+        node: `neat.SNode`
+            Starting node for search
+        cnode: `neat.SNode`
+            For recursion, don't change default
 
         Returns
         -------
-        (node, cnode)
-            node: :class:`SNode`
-                the bifurcation node
-            cnode: :class:`SNode`
-                The bifurcation node's child on the path to the input node.
+        node: `neat.SNode`
+            the bifurcation node
+        cnode: `neat.SNode`
+            The bifurcation node's child on the path to the input node.
 
-        '''
+        """
         if cnode == None or len(node.getChildNodes()) <= 1:
             pnode = node.getParentNode()
             if pnode != None:
@@ -721,20 +772,19 @@ class STree(object):
         return node, cnode
 
     def downBifurcationNode(self, node):
-        '''
+        """
         Find the nearest bifurcation node down (towards leafs) from the input node.
 
         Parameters
         ----------
-            node: :class:`SNode`
-                Starting node for search
+        node: `neat.SNode`
+            Starting node for search
 
         Returns
         -------
-        (node, cnode)
-            node: :class:`SNode`
-                the bifurcation node
-        '''
+        node: `neat.SNode`
+            the bifurcation node
+        """
         if len(node.child_nodes) > 1:
             return node
         elif len(node.child_nodes) == 0:
@@ -742,48 +792,20 @@ class STree(object):
         else:
             self.downBifurcationNode(node.child_nodes[0])
 
-    # def getBifurcationNodes(self, nodes):
-    #     '''
-    #     Get the bifurcation nodes in bewteen the provided input nodes
-
-    #     Parameters
-    #     ----------
-    #     nodes: list of :class:`SNode`
-    #         the input nodes
-
-    #     Returns
-    #     -------
-    #     list of :class:`SNode`
-    #         the bifurcation nodes
-    #     '''
-    #     # find the 'leaf' within the list of nodes (i.e. most centripetal nodes)
-    #     pnodes = []
-    #     for node in nodes:
-    #         pnodes.extend([n for n in self.pathToRoot(node)])
-    #     pcount = Counter(pnodes)
-    #     nodes = [node for node in nodes if pcount[node] == 1]
-    #     # find the minimal set of bifurcations
-    #     bnodes = []
-    #     for node in nodes:
-    #         bnodes.extend([n for n in self.pathToRoot(node)[1:] if len(n.child_nodes) > 1])
-    #     bcount = Counter(bnodes)
-    #     return [self.root] + [bnode for bnode, count in bcount.iteritems() \
-    #                           if count > 1 and not self.isRoot(bnode)]
-
     def getBifurcationNodes(self, nodes):
-        '''
+        """
         Get the bifurcation nodes in bewteen the provided input nodes
 
         Parameters
         ----------
-        nodes: list of :class:`SNode`
+        nodes: list of `neat.SNode`
             the input nodes
 
         Returns
         -------
-        list of :class:`SNode`
+        list of `neat.SNode`
             the bifurcation nodes
-        '''
+        """
         # unique nodes
         nodes = reduce(lambda l, x: l.append(x) or l if x not in l else l, nodes, [])
         # tag all nodes
@@ -819,15 +841,22 @@ class STree(object):
         return bifur_nodes
 
     def getNearestNeighbours(self, node, nodes):
-        '''
-        Find the nearest neighbours of `node` in `nodes`. If `nodes` contains
-        `node`, it is excluded from the search.
+        """
+        Find the nearest neighbours of ``node`` in ``nodes``. If ``nodes`` contains
+        ``node``, it is excluded from the search.
 
-        When a node in the up-direction is a bifurcation node and in `nodes`, nodes
+        When a node in the up-direction is a bifurcation node and in ``nodes``, nodes
         in its other subtree are excluded from the search
 
         !!! Untested
-        '''
+
+        Parameters
+        ----------
+        node: `neat.SNode`
+            node for which the nearest neighbours are sought
+        nodes: list of `neat.SNode`
+            list in which nearest neighbours of ``node`` are sought
+        """
         nns = []
         self._searchNNUp(node, nodes, nns)
         self._searchNNDown(node, nodes, nns)
@@ -853,27 +882,25 @@ class STree(object):
                 self._searchNNDown(c_node, nodes, nns)
 
     def __copy__(self, new_tree=None):
-        '''
-        experimental, untested
-
+        """
         Fill the ``new_tree`` with it's corresponding nodes in the same
         structure as ``self``, and copies all node variables that both tree
         classes have in common
 
         Parameters
         ----------
-        new_tree: :class:`STree` or derived class (default is ``None``)
+        new_tree: `neat.STree` or derived class (default is ``None``)
             the tree class in which the ``self`` is copied. If ``None``,
             returns a copy of ``self``.
 
         Returns
         -------
         The new tree instance
-        '''
+        """
         if new_tree is None:
             new_tree = self.__class__()
 
-        new_node = new_tree.createCorrespondingNode(self.root.index)
+        new_node = new_tree._createCorrespondingNode(self.root.index)
 
         self.root.__copy__(new_node=new_node)
         new_tree.setRoot(new_node)
@@ -889,7 +916,7 @@ class STree(object):
 
     def _recurseCopy(self, pnode, new_tree):
         for node in pnode.getChildNodes(skip_inds=[]):
-            new_node = new_tree.createCorrespondingNode(node.index)
+            new_node = new_tree._createCorrespondingNode(node.index)
             new_node = node.__copy__(new_node=new_node)
             new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
                                                                       skip_inds=[]))

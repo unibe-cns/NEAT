@@ -5,7 +5,7 @@ import pytest
 
 class TestSTree():
     def createTree(self, reinitialize=0):
-        '''
+        """
         Create a simple tree structure
 
          2     3
@@ -16,8 +16,8 @@ class TestSTree():
             |
             0
 
-        '''
-        print '>>> creating tree <<<'
+        """
+        print('>>> creating tree <<<')
         # create the four nodes
         node0 = SNode(0)
         node1 = SNode(1)
@@ -32,7 +32,7 @@ class TestSTree():
         self.tree.addNodeWithParent(node3, node1)
 
     def createTree2(self, reinitialize=0):
-        '''
+        """
         Create a simple tree structure
 
           4     5     6
@@ -46,8 +46,8 @@ class TestSTree():
                 |
                 0
 
-        '''
-        print '>>> creating tree <<<'
+        """
+        print('>>> creating tree <<<')
         # create the nodes
         node0 = SNode(0)
         node1 = SNode(1)
@@ -69,7 +69,7 @@ class TestSTree():
 
     def testGetitem(self):
         self.createTree()
-        for ii in xrange(4):
+        for ii in range(4):
             assert self.tree[ii].index == ii
         assert self.tree[4] == None
 
@@ -121,7 +121,7 @@ class TestSTree():
         assert self.nodelist[3] not in newnode.child_nodes
         # test rearranging indices
         self.tree.resetIndices()
-        assert [node.index for node in self.tree] == range(5)
+        assert [node.index for node in self.tree] == list(range(5))
         # test node removal
         self.tree.removeSingleNode(newnode)
         assert set(self.nodelist[1].child_nodes) == set([self.nodelist[2],
@@ -129,7 +129,7 @@ class TestSTree():
         assert self.nodelist[2].parent_node == self.nodelist[1]
         assert self.nodelist[3].parent_node == self.nodelist[1]
         self.tree.resetIndices()
-        assert [node.index for node in self.tree] == range(4)
+        assert [node.index for node in self.tree] == list(range(4))
         # limit case 1: insert and remove root
         newroot = SNode(15)
         self.tree.insertNode(newroot, None)
@@ -149,13 +149,18 @@ class TestSTree():
         # reinitialize original tree
         self.createTree(reinitialize=1)
 
-    def testDegreeOrderNode(self):
+    def testDegreeOrderDepthNode(self):
         self.createTree()
         assert self.tree.orderOfNode(self.nodelist[0]) == -1
         assert self.tree.orderOfNode(self.nodelist[1]) == 0
         assert self.tree.orderOfNode(self.nodelist[2]) == 0
+
         assert self.tree.degreeOfNode(self.nodelist[1]) == 2
         assert self.tree.degreeOfNode(self.nodelist[2]) == 1
+
+        assert self.tree.depthOfNode(self.nodelist[0]) == 0
+        assert self.tree.depthOfNode(self.nodelist[1]) == 1
+        assert self.tree.depthOfNode(self.nodelist[2]) == 2
 
     def testPaths(self):
         self.createTree()
@@ -247,4 +252,5 @@ class TestSTree():
 if __name__ == '__main__':
     tst = TestSTree()
     # tst.testPaths()
-    tst.testBifurcationNodes()
+    # tst.testBifurcationNodes()
+    tst.testDegreeOrderDepthNode()
