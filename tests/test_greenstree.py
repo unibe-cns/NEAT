@@ -9,58 +9,58 @@ import neat.tools.kernelextraction as ke
 
 class TestGreensTree():
     def loadTTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
-        print '>>> loading T-tree <<<'
+        """
+        print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.tree = GreensTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
 
     def loadValidationTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
         5---1---4
-        '''
-        print '>>> loading validation tree <<<'
+        """
+        print('>>> loading validation tree <<<')
         fname = 'test_morphologies/sovvalidationtree.swc'
         self.tree = GreensTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
 
     def loadSOVTTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
           6--5--4--7--8
                 |
                 |
                 1
-        '''
-        print '>>> loading T-tree <<<'
+        """
+        print('>>> loading T-tree <<<')
         fname = 'test_morphologies/Tsovtree.swc'
         self.sovtree = SOVTree(fname, types=[1,3,4])
-        self.sovtree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.sovtree.fitLeakCurrent(-75., 10.)
         self.sovtree.setCompTree()
         self.sovtree.calcSOVEquations()
 
     def loadSOVValidationTree(self):
-        '''
+        """
         Load the T-tree morphology in memory
 
         5---1---4
-        '''
-        print '>>> loading validation tree <<<'
+        """
+        print('>>> loading validation tree <<<')
         fname = 'test_morphologies/sovvalidationtree.swc'
         self.sovtree = SOVTree(fname, types=[1,3,4])
-        self.sovtree.fitLeakCurrent(e_eq_target=-75., tau_m_target=10.)
+        self.sovtree.fitLeakCurrent(-75., 10.)
         self.sovtree.setCompTree()
         self.sovtree.calcSOVEquations()
 
@@ -78,6 +78,8 @@ class TestGreensTree():
         self.tree.storeLocs(locs_1, '1')
         self.tree.storeLocs(locs_2, '2')
         # compute impedance matrices
+        print(ft.ind_0s)
+        print(self.tree.calcImpedanceMatrix('0'))
         z_mat_0 = self.tree.calcImpedanceMatrix('0')[ft.ind_0s]
         z_mat_1 = self.tree.calcImpedanceMatrix('1')[ft.ind_0s]
         z_mat_2 = self.tree.calcImpedanceMatrix('2')[ft.ind_0s]
@@ -126,7 +128,7 @@ class TestGreensTree():
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
         self.tree.setImpedance(ft.s)
-        print '!!! ', ft.ind_0s
+        print('!!! ', ft.ind_0s)
         # sets of location
         # sets of location
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
@@ -137,8 +139,8 @@ class TestGreensTree():
         z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
         z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
-        print '> z_gf =\n', z_gf
-        print '> z_gf2 =\n', z_gf2
+        print('> z_gf =\n', z_gf)
+        print('> z_gf2 =\n', z_gf2)
         assert np.allclose(z_gf2, z_gf, atol=5e-6)
         zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
         zf_gf = self.tree.calcImpedanceMatrix('locs')
@@ -214,5 +216,5 @@ class TestGreensTree():
 
 if __name__ == '__main__':
     tgt = TestGreensTree()
-    # tgt.testBasicProperties()
+    tgt.testBasicProperties()
     tgt.testValues()

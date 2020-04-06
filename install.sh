@@ -1,1 +1,2 @@
-python setup.py install --prefix=~/.local
+#!/bin/bash
+python3 setup.py install --prefix="~/.local"

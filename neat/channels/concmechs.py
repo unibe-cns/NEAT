@@ -20,6 +20,9 @@ class ExpConcMech(ConcMech):
         yield 'gamma', self.gamma
         yield 'tau', self.tau
 
+    def items(self):
+        return [('gamma', self.gamma), ('tau', self.tau)]
+
     def computeLinear(self, freqs):
         return self.gamma / (freqs + 1e3 / self.tau)
 
