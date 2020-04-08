@@ -4,3 +4,13 @@ nbsphinx>=0.5.1
 sphinx-gallery>=0.6.1
 sphinx_rtd_theme>=0.4.3
 nb2plots>=0.6
+
+numpy>=1.14.1
+matplotlib>=2.1.2
+cython>=0.27.3
+scipy>=1.0.0
+sympy>=1.1.1
+dill>=0.3.1.1
+pathos>=0.2.5
+pytest>=4.3.0
+scikit_learn>=0.22.2.post1
