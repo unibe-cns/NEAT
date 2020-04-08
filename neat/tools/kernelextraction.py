@@ -973,7 +973,7 @@ class fExpFitter(Fitter):
 
 def create_logspace_freqarray(fmax=7, base=10, num=200):
     a = np.logspace(1, fmax, num=num, base=base)
-    b = np.linspace(-base, base, num=num/2+1)
+    b = np.linspace(-base, base, num=num//2 + 1)
     # b = np.linspace(-base, base, num=num/2+(num/2)%2)[:-1]
     return 1j * np.concatenate((-a[::-1], b[1:-1], a))
 

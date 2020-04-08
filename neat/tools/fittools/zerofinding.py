@@ -101,7 +101,7 @@ class contour(object):
         self.make_arrays = False
 
     def construct_arrays(self):
-        self.ts = [np.linspace(0., 1., N) for N in self.N_eval] 
+        self.ts = [np.linspace(0., 1., int(N)) for N in self.N_eval]
         self.curve_arrs  = [ curve(self.ts[i]) for i,  curve in enumerate(self.curves )]
         self.dcurve_arrs = [dcurve(self.ts[i]) for i, dcurve in enumerate(self.dcurves)]
         self.make_arrays = True
@@ -117,7 +117,7 @@ class contour(object):
             if self.make_arrays:
                 c = self.curve_arrs[i]
             else:
-                c = self.curves[i](np.linspace(0., 1., N))
+                c = self.curves[i](np.linspace(0., 1., int(N)))
             mincr = np.min(c.real); maxcr = np.max(c.real)
             if mincr < minreal: minreal = mincr
             if maxcr > maxreal: maxreal = maxcr
@@ -133,7 +133,7 @@ class contour(object):
             if self.make_arrays:
                 polygon = np.concatenate(self.curve_arrs)
             else:
-                polygon = np.concatenate([curve(np.linspace(0.,1.,self.N_eval[i])) for i, curve in enumerate(self.curves)])
+                polygon = np.concatenate([curve(np.linspace(0., 1., int(self.N_eval[i]))) for i, curve in enumerate(self.curves)])
             self.polygon = np.concatenate((polygon.real[:,np.newaxis], polygon.imag[:,np.newaxis]), 1)
             self.polygon[-1,:] = copy.copy(self.polygon[0,:])
 
@@ -348,7 +348,7 @@ class poleFinder:
                 dcurve = contour.dcurves[i]
                 dt = 1./contour.N_eval[i]
                 if isinstance(fun, types.FunctionType):
-                    t = np.linspace(0., 1., contour.N_eval[i])
+                    t = np.linspace(0., 1., int(contour.N_eval[i]))
                     fval = fun(curve(t)) * dcurve(t)
                 else:
                     fval = fun[i] * dcurve(t)
