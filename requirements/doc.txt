@@ -1,3 +1,4 @@
 # documentation
 sphinx>=2.4.3
 nbsphinx>=0.5.1
+sphinx-gallery>=0.6.1
