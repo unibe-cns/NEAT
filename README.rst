@@ -23,6 +23,11 @@ neuron models into compartmental models with few compartments [Wybo2020]_. For
 these models, NEAT also provides a NEURON interface so that they can be
 simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
 
+Documentation
+-------------
+
+Documenatation is available `here <neatdend.readthedocs.io>`_
+
 Installation
 ------------
 
