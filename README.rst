@@ -26,7 +26,7 @@ simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
 Documentation
 -------------
 
-Documenatation is available `here <neatdend.readthedocs.io>`_
+Documenatation is available `here <https://neatdend.readthedocs.io>`_
 
 Installation
 ------------
