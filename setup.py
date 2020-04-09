@@ -9,12 +9,28 @@ Author: W. Wybo
 from setuptools import setup
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
 import os, subprocess, shutil, sys
 
 import numpy
 
 from __version__ import version as pversion
+
+
+class DevelopCommand(develop):
+    """Post-installation for development mode."""
+    def run(self):
+        # develop install
+        develop.run(self)
+
+
+class InstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        # regular install
+        install.run(self)
 
 
 class BuildExtCommand(build_ext):
@@ -74,6 +90,8 @@ s_ = setup(
     ext_package='neat',
     ext_modules=[ext],
     cmdclass={
+        'develop': DevelopCommand,
+        'install': InstallCommand,
         'build_ext': BuildExtCommand,
     },
     author='Willem Wybo',
