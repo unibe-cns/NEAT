@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
-import os, glob, sys, inspect, shutil, subprocess
+import imp, os, glob, sys, inspect, shutil, subprocess
 
-import neat
+# get new paths list without the current working directory
+current_path = os.path.realpath(os.getcwd())
+paths = [path for path in sys.path if os.path.realpath(path) != current_path]
+# find and load the neat module based on this paths list
+neatmodule = imp.find_module("neat", paths)
+neat = imp.load_module("neat", *neatmodule)
+
 from neat import IonChannel
 
 
