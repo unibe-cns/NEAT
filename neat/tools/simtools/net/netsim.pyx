@@ -242,7 +242,7 @@ cdef class NETSim:
 
         Parameters
         ----------
-        chan: :class:`neat.channels.IonChannel
+        chan: `neat.channels.IonChannel
             name of the ion channel
         loc_index: int
             index of the location
@@ -262,10 +262,15 @@ cdef class NETSim:
         """
         cdef string cname = chan.__class__.__name__.encode('UTF-8')
         # voltage values
-        cdef np.ndarray[np.double_t, ndim=1] vs_arr = np.zeros(chan.statevars.size)
-        for ii, vn in enumerate(np.nditer(chan.varnames, flags=['refs_ok'])):
-            vn = str(vn)
-            vs_arr[ii] = v_const[vn] if vn in v_const else 1e4
+        cdef np.ndarray[np.double_t, ndim=1] vs_arr = np.zeros(len(chan.statevars))
+        try:
+            for ii, svar in enumerate(chan.ordered_statevars):
+                sv = str(svar)
+                vs_arr[ii] = v_const[sv] if sv in v_const else 1e4
+        except AttributeError:
+            # backwards compatible with old style channels
+            for ii, svar in enumerate(chan.varnames.flatten()):
+                vs_arr[ii] = v_const[svar] if svar in v_const else 1e4
         # add the channel
         self.net_ptr.addIonChannelFromPython(cname, loc_index, g_max, e_rev,
                                              instantaneous, &vs_arr[0], vs_arr.shape[0])

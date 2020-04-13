@@ -1,8 +1,10 @@
 import numpy as np
 import sympy as sp
+# import sympy as cse
 
 from neat.channels.channelcollection import channelcollection
 from neat import IonChannel
+from neat import IonChannelSimplified
 
 import pytest
 import pickle
@@ -139,6 +141,73 @@ def test_na():
     tna.testLinSum()
 
 
+
+
+def sp_exp(x):
+    return sp.exp(x, evaluate=False)
+
+
+class Na_Ta_new(IonChannelSimplified):
+    def define(self):
+        """
+        (Colbert and Pan, 2002)
+
+        Used in (Hay, 2011)
+        """
+        self.ion = 'na'
+        self.concentrations = []
+        # define symbols used in the equations
+        v, m, h = sp.symbols('v, m, h')
+        # define channel open probability
+        self.p_open = h * m ** 3
+        # define activation functions
+        self.alpha, self.beta = {}, {}
+        self.alpha[m] = '0.182 * (v + 38.) / (1. - exp(-(v + 38.) / 6.))' # 1/ms
+        self.beta[m] = '-0.124 * (v + 38.) / (1. - exp( (v + 38.) / 6.))' # 1/ms
+        self.alpha[h] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
+        self.beta[h] =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
+        # self.alpha, self.beta = {}, {}
+        # self.alpha[m] =  0.182 * (v + 38.) / (1. - sp_exp(-(v + 38.) / 6.)) # 1/ms
+        # self.beta[m] = -0.124 * (v + 38.) / (1. - sp_exp( (v + 38.) / 6.)) # 1/ms
+        # self.alpha[h] = -0.015 * (v + 66.) / (1. - sp_exp( (v + 66.) / 6.)) # 1/ms
+        # self.beta[h] =  0.015 * (v + 66.) / (1. - sp_exp(-(v + 66.) / 6.)) # 1/ms
+        # temperature factor for time-scales
+        self.qtemp = 2.95
+
+        for var, expr in self.alpha.items():
+            self.alpha[var] = sp.sympify(expr, evaluate=False)
+            self.beta[var] = sp.sympify(expr, evaluate=False)
+
+        print(self.alpha[m].free_symbols)
+
+        sp_v = sp.symbols('v')
+
+        am = self.alpha[m]
+        dam_dv = sp.diff(self.alpha[m], sp_v)
+
+        exprs = sp.cse([dam_dv])
+
+        print(exprs)
+
+
+def test_ionchannel_simplified():
+    na = channelcollection.Na_Ta()
+    na_simplified = channelcollection.Na_Ta_simplified()
+
+    p_o_1 = na.computePOpen(-35.)
+    p_o_2 = na_simplified.computePOpen(-35.)
+    assert np.allclose(p_o_1, p_o_2)
+
+    l_s_1 = na.computeLinSum(-35., 0., 50.)
+    l_s_2 = na_simplified.computeLinSum(-35., 0., 50.)
+    assert np.allclose(l_s_1, l_s_2)
+
+    na_simplified.writeModFile('mech/')
+
+    sk = channelcollection.SK_simplified()
+    sk.writeModFile('mech/')
+
+
 def test_pickling():
     # pickle and restore
     na_ta_channel = channelcollection.Na_Ta()
@@ -157,8 +226,11 @@ if __name__ == '__main__':
     # tcns = TestChannels()
     # tcns.testBasic()
 
-    tna = TestNa()
-    tna.testPOpen()
-    tna.testLinSum()
+    # tna = TestNa()
+    # tna.testPOpen()
+    # tna.testLinSum()
 
+    test_ionchannel_simplified()
+
+    # Na_Ta_new()
 
