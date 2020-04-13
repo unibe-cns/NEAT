@@ -1072,6 +1072,7 @@ class CompartmentTree(STree):
             assert set(channel_names).issubset(all_channel_names)
         if other_channel_names is None and 'L' not in all_channel_names:
             other_channel_names = ['L']
+
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
             freqs = np.array([freqs])
@@ -1146,6 +1147,7 @@ class CompartmentTree(STree):
             assert channel_name in all_channel_names
         if other_channel_names is None and 'L' not in all_channel_names:
             other_channel_names = ['L']
+
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
             freqs = np.array([freqs])

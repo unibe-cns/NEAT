@@ -7,40 +7,40 @@ if not os.environ.get('DISPLAY'):
 
     matplotlib.use('Agg')
 
-from neat.trees.stree import STree
-from neat.trees.stree import SNode
+from .trees.stree import STree
+from .trees.stree import SNode
 
-from neat.trees.morphtree import MorphTree
-from neat.trees.morphtree import MorphNode
-from neat.trees.morphtree import MorphLoc
+from .trees.morphtree import MorphTree
+from .trees.morphtree import MorphNode
+from .trees.morphtree import MorphLoc
 
-from neat.trees.phystree import PhysTree
-from neat.trees.phystree import PhysNode
+from .trees.phystree import PhysTree
+from .trees.phystree import PhysNode
 
-from neat.trees.sovtree import SOVTree
-from neat.trees.sovtree import SOVNode, SomaSOVNode
+from .trees.sovtree import SOVTree
+from .trees.sovtree import SOVNode, SomaSOVNode
 
-from neat.trees.greenstree import GreensTree
-from neat.trees.greenstree import GreensNode, SomaGreensNode
+from .trees.greenstree import GreensTree
+from .trees.greenstree import GreensNode, SomaGreensNode
 
-from neat.trees.netree import NET
-from neat.trees.netree import NETNode
-from neat.trees.netree import Kernel
+from .trees.netree import NET
+from .trees.netree import NETNode
+from .trees.netree import Kernel
 
-from neat.trees.compartmenttree import CompartmentTree
-from neat.trees.compartmenttree import CompartmentNode
+from .trees.compartmenttree import CompartmentTree
+from .trees.compartmenttree import CompartmentNode
 
 try:
-    from neat.tools.simtools.neuron.neuronmodel import NeuronSimTree
-    from neat.tools.simtools.neuron.neuronmodel import NeuronSimNode
-    from neat.tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
-    from neat.tools.simtools.neuron.neuronmodel import createReducedNeuronModel
+    from .tools.simtools.neuron.neuronmodel import NeuronSimTree
+    from .tools.simtools.neuron.neuronmodel import NeuronSimNode
+    from .tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
+    from .tools.simtools.neuron.neuronmodel import createReducedNeuronModel
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 
-from neat.tools.kernelextraction import FourrierTools
+from .tools.kernelextraction import FourrierTools
 
-from neat.channels.ionchannels import IonChannel
-from neat.channels.ionchannels_simplified import IonChannelSimplified
+from .channels.ionchannels import IonChannel
+from .channels.ionchannels_simplified import IonChannelSimplified
 
-from neat.tools.fittools.compartmentfitter import CompartmentFitter
+from .tools.fittools.compartmentfitter import CompartmentFitter

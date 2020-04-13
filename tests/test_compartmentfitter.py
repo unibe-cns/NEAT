@@ -4,6 +4,9 @@ import matplotlib.pyplot as pl
 import pytest
 import random
 import copy
+import pickle
+
+import dill
 
 from neat import MorphLoc
 from neat import PhysTree, GreensTree, SOVTree
@@ -52,6 +55,31 @@ class TestCompartmentFitter():
         self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
         na_chan = channelcollection.Na_Ta()
         self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
+        # fit leak current
+        self.tree.fitLeakCurrent(-75., 10.)
+        # set equilibirum potententials
+        self.tree.setEEq(-75.)
+        # set computational tree
+        self.tree.setCompTree()
+
+    def loadTSegmentTree(self):
+        '''
+        Load point neuron model
+        '''
+        self.tree = PhysTree(file_n='test_morphologies/Ttree_segments.swc')
+        # self.tree = PhysTree(file_n='test_morphologies/L23PyrBranco.swc')
+        # capacitance and axial resistance
+        self.tree.setPhysiology(0.8, 100./1e6)
+        # ion channels
+        k_chan = channelcollection.Kv3_1()
+
+        g_k = {1: 0.766*1e6}
+        g_k.update({n.index: 0.034*1e6 / self.tree.pathLength((1,.5), (n.index,.5)) \
+                    for n in self.tree if n.index != 1})
+
+        self.tree.addCurrent(k_chan, g_k, -85.)
+        na_chan = channelcollection.Na_Ta()
+        self.tree.addCurrent(na_chan, 1.71*1e6, 50., node_arg=[self.tree[1]])
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
@@ -250,9 +278,16 @@ class TestCompartmentFitter():
         assert ctree1.channel_storage.keys() == ctree2.channel_storage.keys()
         for n1, n2 in zip(ctree1, ctree2):
             assert np.allclose(n1.g_c, n2.g_c)
-            print('----')
-            print(n1.currents)
-            print(n2.currents)
+            for key in n1.currents:
+                assert np.allclose(n1.currents[key][0], n2.currents[key][0])
+                assert np.allclose(n1.currents[key][1], n2.currents[key][1])
+
+    def _checkPhysTrees(self, tree1, tree2):
+        assert len(tree1) == len(tree2)
+        assert tree1.channel_storage.keys() == tree2.channel_storage.keys()
+        for n1, n2 in zip(tree1, tree2):
+            assert np.allclose(n1.r_a, n2.r_a)
+            assert np.allclose(n1.c_m, n2.c_m)
             for key in n1.currents:
                 assert np.allclose(n1.currents[key][0], n2.currents[key][0])
                 assert np.allclose(n1.currents[key][1], n2.currents[key][1])
@@ -496,7 +531,7 @@ class TestCompartmentFitter():
         greens_tree.setCompTree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0]
         ctree = greens_tree.createCompartmentTree(fit_locs)
         ctree.computeGMC(z_mat)
         sov_tree = self.tree.__copy__(new_tree=SOVTree())
@@ -519,9 +554,68 @@ class TestCompartmentFitter():
         cm = CompartmentFitter(self.tree)
         ctree_cm_1 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=False)
         ctree_cm_2 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
-        # TODO: test for parallel and test with saving
+
         self._checkAllCurrProps(self.ctree, ctree_cm_1)
         self._checkAllCurrProps(self.ctree, ctree_cm_2)
+
+    def testPickling(self):
+        self.loadBall()
+
+        # pickling of tree works
+        print('\n--- testing pickling ---')
+        # of PhysTree
+        ss = pickle.dumps(self.tree)
+        pt_ = pickle.loads(ss)
+        self._checkPhysTrees(self.tree, pt_)
+
+        # of GreensTree
+        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree.setCompTree()
+        freqs = np.array([0.])
+        greens_tree.setImpedance(freqs)
+
+        ss = dill.dumps(greens_tree)
+        gt_ = dill.loads(ss)
+        self._checkPhysTrees(greens_tree, gt_)
+
+        # of SOVTree
+        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree.calcSOVEquations()
+
+        # fails with pickle (lambda functions)
+        with pytest.raises(AttributeError):
+            ss = pickle.dumps(sov_tree)
+
+        # works with dill
+        ss = dill.dumps(sov_tree)
+        st_ = dill.loads(ss)
+        self._checkPhysTrees(sov_tree, st_)
+
+
+    def testParallel(self, w_benchmark=False):
+        self.loadTSegmentTree()
+        locs = [(nn.index,0.5) for nn in self.tree.nodes[:30]]
+        cm = CompartmentFitter(self.tree)
+
+        print('\n--- testing parallel ---')
+        ctree_cm = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
+        # ctree_cm_ = cm.fitModel(locs, parallel=True, use_all_chans_for_passive=True)
+
+        # self._checkPasCaProps(ctree_cm, ctree_cm_)
+        # self._checkAllCurrProps(ctree_cm, ctree_cm_)
+
+        if w_benchmark:
+            from timeit import default_timer as timer
+            t0 = timer()
+            cm.fitChannels(recompute=False, pprint=False, parallel=False)
+            t1 = timer()
+            print('Not parallel: %.8f s'%(t1-t0))
+            t0 = timer()
+            cm.fitChannels(recompute=False, pprint=False, parallel=True)
+            t1 = timer()
+            print('Parallel: %.8f s'%(t1-t0))
+
+
 
 
 if __name__ == '__main__':
@@ -532,4 +626,6 @@ if __name__ == '__main__':
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
-    tcf.testFitModel()
+    # tcf.testFitModel()
+    # tcf.testPickling()
+    tcf.testParallel(w_benchmark=True)
