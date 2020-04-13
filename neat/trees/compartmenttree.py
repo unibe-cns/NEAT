@@ -133,19 +133,18 @@ class CompartmentNode(SNode):
         ----------
         channel_name: string
             the name of the ion channel
-        statevar: `np.ndarray`
-            Should be of the same shape as the ion channels' state variables array
-        channel_storage: dict of ion channels (optional)
-            The ion channels that have been initialized already. If not
-            provided, a new channel is initialized
+        statevar: dict of float
+            values of the state variable expansion point
         """
+        if statevar is None:
+            statevar = {}
         self.expansion_points[channel_name] = statevar
 
     def getExpansionPoint(self, channel_name):
         try:
             return self.expansion_points[channel_name]
         except KeyError:
-            self.expansion_points[channel_name] = None
+            self.expansion_points[channel_name] = {}
             return self.expansion_points[channel_name]
 
     def calcMembraneConductanceTerms(self, channel_storage,
@@ -185,8 +184,7 @@ class CompartmentNode(SNode):
             # check if needs to be computed around expansion point
             sv = self.getExpansionPoint(channel_name)
             # add linearized channel contribution to membrane conductance
-            cond_terms[channel_name] = - channel.computeLinSum(v, freqs, e,
-                                                               statevars=sv)
+            cond_terms[channel_name] = - channel.computeLinSum(v, freqs, e, **sv)
 
         return cond_terms
 
@@ -229,11 +227,11 @@ class CompartmentNode(SNode):
                 # if the channel adds to ion channel current, add it here
                 if channel.ion == ion:
                     conc_write_channels += \
-                    g * channel.computeLinSum(v, freqs, e, statevars=sv)
+                    g * channel.computeLinSum(v, freqs, e, **sv)
                 # if channel reads the ion channel current, add it here
                 if ion in channel.concentrations:
                     conc_read_channels -= \
-                    g * channel.computeLinConc(v, freqs, e, ion, statevars=sv)
+                    g * channel.computeLinConc(v, freqs, e, ion, **sv)
 
         return conc_write_channels * \
                conc_read_channels * \
@@ -276,7 +274,7 @@ class CompartmentNode(SNode):
                 sv = self.getExpansionPoint(channel_name)
                 # open probability
                 if p_open_channels is None:
-                    p_o = channel.computePOpen(v, statevars=sv)
+                    p_o = channel.computePOpen(v, **sv)
                 else:
                     p_o = p_open_channels[channel_name]
                 # add to total conductance
@@ -321,7 +319,7 @@ class CompartmentNode(SNode):
                     channel = channel_storage[channel_name]
                     # check if needs to be computed around expansion point
                     sv = self.getExpansionPoint(channel_name)
-                    i_tot += g * channel.computePOpen(v, statevars=sv) * (v - e)
+                    i_tot += g * channel.computePOpen(v, **sv) * (v - e)
                 else:
                     i_tot += g * p_open_channels[channel_name] * (v - e)
 
@@ -455,7 +453,7 @@ class CompartmentTree(STree):
 
         Parameters
         ----------
-        expansion_points: dict {`channel_name`: ``None`` or `np.ndarray`}
+        expansion_points: dict {`channel_name`: ``None`` or dict}
             dictionary with as keys `channel_name` the name of the ion channel
             and as value its expansion point
         """
@@ -464,16 +462,30 @@ class CompartmentTree(STree):
         to_tree_inds = self._permuteToTreeInds()
         for channel_name, expansion_point in expansion_points.items():
             # if one set of state variables, set throughout neuron
-            if isinstance(expansion_point, str) or \
-               expansion_point is None:
-                svs = np.array([expansion_point for _ in self])
-            elif isinstance(expansion_point, np.ndarray):
-                if expansion_point.ndim == 3:
-                    svs = np.array(expansion_point)
-                elif expansion_point.ndim == 2:
-                    svs = np.array([expansion_point for _ in self])
-            for node, sv in zip(self, svs[to_tree_inds]):
-                node.setExpansionPoint(channel_name, statevar=sv)
+            if expansion_point is None:
+                eps = [None for _ in self]
+            else:
+                eps = [{} for _ in self]
+                for svar, exp_p in expansion_point.items():
+                    if isinstance(exp_p, float):
+                        for ep in eps:
+                            ep[svar] = exp_p
+                    else:
+                        assert len(exp_p) == len(self)
+                        for ep, ep_ in zip(eps, exp_p[to_tree_inds]):
+                            ep[svar] = ep_
+
+            for node, ep in zip(self, eps):
+                node.setExpansionPoint(channel_name, ep)
+
+
+            # elif isinstance(expansion_point, np.ndarray):
+            #     if expansion_point.ndim == 3:
+            #         svs = np.array(expansion_point)
+            #     elif expansion_point.ndim == 2:
+            #         svs = np.array([expansion_point for _ in self])
+            # for node, sv in zip(self, svs[to_tree_inds]):
+            #     node.setExpansionPoint(channel_name, statevar=sv)
 
     def removeExpansionPoints(self):
         for node in self:
@@ -1023,7 +1035,7 @@ class CompartmentTree(STree):
         self._toTreeGMC(g_vec, channel_names)
 
     def computeGChanFromImpedance(self, channel_names, z_mat, e_eq, freqs,
-                                sv={}, weight=1.,
+                                sv=None, weight=1.,
                                 all_channel_names=None, other_channel_names=None,
                                 action='store'):
         """
@@ -1072,6 +1084,8 @@ class CompartmentTree(STree):
             assert set(channel_names).issubset(all_channel_names)
         if other_channel_names is None and 'L' not in all_channel_names:
             other_channel_names = ['L']
+        if sv is None:
+            sv = {}
 
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
@@ -1118,9 +1132,9 @@ class CompartmentTree(STree):
             The equilibirum potential at which the impedance matrix was computed
         freqs: np.array
             The frequencies at which `z_mat` is computed (shape is ``(F,)``)
-        sv: dict {channel_name: np.ndarray}, np.ndarray or None (default)
-            The state variable expansion point. If ``np.ndarray``, assumes it is
-            the expansion point of the channel that is fitted. If dict, the
+        sv: dict or nested dict of float or np.array, or None (default)
+            The state variable expansion point. If simple dict, assumes it is
+            the expansion point of the channel that is fitted. If nested dict, the
             expansion points of multiple channels can be specified. ``None``
             implies the asymptotic point derived from the equilibrium potential
         weight: float
@@ -1151,7 +1165,8 @@ class CompartmentTree(STree):
         z_mat = self._permuteToTree(z_mat)
         if isinstance(freqs, float):
             freqs = np.array([freqs])
-        if isinstance(sv, np.ndarray) or sv is None:
+        if sv is None or not isinstance(list(sv.items())[0], dict):
+            # if it is not a nested dict, make nested dict
             sv = {channel_name: sv}
         # set equilibrium conductances
         self.setEEq(e_eq)

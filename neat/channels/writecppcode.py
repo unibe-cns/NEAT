@@ -61,7 +61,7 @@ def write():
         if isinstance(channel_class, type) and \
            (name != 'IonChannel' and name != 'IonChannelSimplified') and '_func' not in name:
             chan = channel_class()
-            chan.writeCPPCode(path, channelcollection.E_REV_DICT[name])
+            chan.writeCPPCode(path)
 
 
     fh = open(os.path.join(path, 'Ionchannels.h'), 'a')

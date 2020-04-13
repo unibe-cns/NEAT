@@ -348,11 +348,11 @@ class TestCompartmentTree():
         svs = []; e_eqs_ = []
         na_chan = greens_tree_na.channel_storage['Na_Ta']
         for e_eq1 in e_eqs:
-            e_eqs_.append(e_eq1)
-            sv1 = na_chan.computeVarInf(e_eq1)
+            sv1 = na_chan.computeVarinf(e_eq1)
             for e_eq2 in e_eqs:
-                sv2 = na_chan.computeVarInf(e_eq2)
-                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+                e_eqs_.append(e_eq2)
+                sv2 = na_chan.computeVarinf(e_eq2)
+                svs.append({'m': sv2['m'], 'h': sv1['h']})
         # compute sodium impedance matrices
         z_mats_na = []
         for ii, sv in enumerate(svs):
@@ -480,7 +480,7 @@ class TestCompartmentTree():
 
         # test total current, conductance
         sv = svs[-1]
-        p_open = sv[0,0]**3 * sv[0,1]
+        p_open = sv['m']**3 * sv['h']
         # with p_open given
         g1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
         i1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
@@ -496,6 +496,7 @@ class TestCompartmentTree():
         g4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
         i4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
         # check if correct
+        print(g1, g2)
         assert np.abs(g1 - g2) < 1e-10
         assert np.abs(g1 - g3) < 1e-10
         assert np.abs(g1 - g4) < 1e-10

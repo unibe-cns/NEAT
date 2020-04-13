@@ -631,9 +631,10 @@ class NeuronSimTree(PhysTree):
             res['chan'] = {}
             channel_names = self.getChannelsInTree()
             for channel_name in channel_names:
-                res['chan'][channel_name] = {var: [] for var in self.channel_storage[channel_name].varnames.flatten()}
+                res['chan'][channel_name] = {str(var): [] for var in self.channel_storage[channel_name].statevars}
                 for loc in self.getLocs('rec locs'):
-                    for ind, varname in enumerate(self.channel_storage[channel_name].varnames.flatten()):
+                    for ind, varname in enumerate(self.channel_storage[channel_name].statevars):
+                        var = str(varname)
                         # assure xcoordinate is refering to proper neuron section (not endpoint)
                         xx = loc['x']
                         if xx < 1e-3: xx += 1e-3
@@ -641,11 +642,11 @@ class NeuronSimTree(PhysTree):
                         # create the recorder
                         try:
                             rec = h.Vector()
-                            exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_var' + str(ind) +')')
-                            res['chan'][channel_name][varname].append(rec)
+                            exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +')')
+                            res['chan'][channel_name][var].append(rec)
                         except AttributeError:
                             # the channel does not exist here
-                            res['chan'][channel_name][varname].append([])
+                            res['chan'][channel_name][var].append([])
         if len(record_concentrations) > 0:
             for c_ion in record_concentrations:
                 res[c_ion] = []
@@ -690,19 +691,22 @@ class NeuronSimTree(PhysTree):
         if 'chan' in res:
             for channel_name in channel_names:
                 channel = self.channel_storage[channel_name]
-                for ind0, varname in enumerate(channel.varnames.flatten()):
+                for ind0, varname in enumerate(channel.statevars):
+                    var = str(varname)
                     for ind1 in range(len(self.getLocs('rec locs'))):
-                        res['chan'][channel_name][varname][ind1] = \
-                                np.array(res['chan'][channel_name][varname][ind1])[self.indstart:][::downsample]
-                        if len(res['chan'][channel_name][varname][ind1]) == 0:
-                            res['chan'][channel_name][varname][ind1] = np.zeros_like(res['t'])
-                    res['chan'][channel_name][varname] = \
-                            np.array(res['chan'][channel_name][varname])
+                        res['chan'][channel_name][var][ind1] = \
+                                np.array(res['chan'][channel_name][var][ind1])[self.indstart:][::downsample]
+                        if len(res['chan'][channel_name][var][ind1]) == 0:
+                            res['chan'][channel_name][var][ind1] = np.zeros_like(res['t'])
+                    res['chan'][channel_name][var] = \
+                            np.array(res['chan'][channel_name][var])
                 # compute P_open
-                sv = np.zeros((channel.varnames.shape[0], channel.varnames.shape[1], len(self.getLocs('rec locs')), len(res['t'])))
-                for (ii,jj), varname in np.ndenumerate(channel.varnames):
-                    sv[ii,jj,:,:] = res['chan'][channel_name][varname]
-                res['chan'][channel_name]['p_open'] = channel.computePOpen(res['v_m'], statevars=sv)
+                # sv = np.zeros((len(channel.statevars), len(self.getLocs('rec locs')), len(res['t'])))
+                sv = {}
+                for varname in channel.statevars:
+                    var = str(varname)
+                    sv[var] = res['chan'][channel_name][var]
+                res['chan'][channel_name]['p_open'] = channel.computePOpen(res['v_m'], **sv)
 
         return res
 
