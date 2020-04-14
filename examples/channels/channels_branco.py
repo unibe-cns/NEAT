@@ -4,36 +4,50 @@ from neat import IonChannel
 
 
 class Na(IonChannel):
-    def __init__(self):
+    def define(self):
         '''
         L2/3 Pyr (Branco et al., 2010)
         '''
         self.ion = 'na'
-        self.p_open = m**3 * h
+        self.p_open = 'm**3 * h'
         v = sp.symbols('v')
         # activation functions
+        alpha, beta = {}, {}
         def vfun(v, th, r, q): return r * (v - th) / (1. - sp.exp(-(v - th) / q, evaluate=False))
-        self.alpha['m'] = vfun(v, -35.013, 0.182, 9.) # 1/ms
-        self.beta['m']  = vfun(-v, 35.013, 0.124, 9.) # 1/ms
-        self.alpha['h'] = vfun(v, -50.013, 0.024, 5.) # 1/ms
-        self.beta['h']  = vfun(-v, 75.013, 0.0091, 5.) # 1/ms
+        alpha['m'] = vfun(v, -35.013, 0.182, 9.) # 1/ms
+        beta['m']  = vfun(-v, 35.013, 0.124, 9.) # 1/ms
+        alpha['h'] = vfun(v, -50.013, 0.024, 5.) # 1/ms
+        beta['h']  = vfun(-v, 75.013, 0.0091, 5.) # 1/ms
+        # non-standard h activation
+        self.varinf = {'m': alpha['m'] / (alpha['m'] + beta['m']),
+                       'h': 1. / (1. + sp.exp((v + 65.) / 6.2, evaluate=False))}
+        self.tauinf = {'m': 1. / (alpha['m'] + beta['m']),
+                       'h': 1. / (alpha['h'] + beta['h'])} # 1/ms
+        # temperature factor
         self.q10 = 3.21
 
 
 class Na_shift(IonChannel):
-    def __init__(self):
+    def define(self):
         '''
         L2/3 Pyr (Branco et al., 2010)
         '''
         self.ion = 'na'
-        self.p_open = m**3 * h
+        self.p_open = 'm**3 * h'
         v = sp.symbols('v')
         # activation functions
+        alpha, beta = {}, {}
         def vfun(v, th, r, q): return r * (v - th) / (1. - sp.exp(-(v - th) / q, evaluate=False))
-        self.alpha['m'] = vfun(v-15., -35.013, 0.182, 9.) # 1/ms
-        self.beta['m']  = vfun(-v+15., 35.013, 0.124, 9.) # 1/ms
-        self.alpha['h'] = vfun(v-15., -50.013, 0.024, 5.) # 1/ms
-        self.beta['h']  = vfun(-v+15., 75.013, 0.0091, 5.) # 1/ms
+        alpha['m'] = vfun(v-15., -35.013, 0.182, 9.) # 1/ms
+        beta['m']  = vfun(-v+15., 35.013, 0.124, 9.) # 1/ms
+        alpha['h'] = vfun(v-15., -50.013, 0.024, 5.) # 1/ms
+        beta['h']  = vfun(-v+15., 75.013, 0.0091, 5.) # 1/ms
+        # non-standard h activation
+        self.varinf = {'m': alpha['m'] / (alpha['m'] + beta['m']),
+                       'h': 1. / (1. + sp.exp((v-15. + 65.) / 6.2, evaluate=False))}
+        self.tauinf = {'m': 1. / (alpha['m'] + beta['m']),
+                       'h': 1. / (alpha['h'] + beta['h'])} # 1/ms
+        # temperature factor
         self.q10 = 3.21
 
 
@@ -41,7 +55,7 @@ class K_v(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'k'
         self.p_open = 'n'
         # activation functions
@@ -53,21 +67,19 @@ class K_v_shift(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'k'
         self.p_open = 'n'
         # activation functions
         self.varinf = {'n': '1. / (1. + exp(-(v - 20. - 18.7)  / 9.7  ))'}
         self.tauinf = {'n': '4. / (1. + exp(-(v - 20. + 46.56) / 44.14))'} # ms
-        # base class constructor
-        super(K_v_shift, self).__init__()
 
 
 class K_m(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'k'
         self.p_open = 'n'
         # activation functions
@@ -76,11 +88,25 @@ class K_m(IonChannel):
         self.q10 = 3.21
 
 
+class K_m35(IonChannel):
+    '''
+    m-type potassium channel
+    Used in (Mengual et al., 2010)
+    '''
+    def define(self):
+        self.ion = 'k'
+        self.p_open = 'n'
+        # activation functions
+        self.alpha = {'n': ' 0.001 * (v + 30.) / (1. - exp(-(v + 30.) / 9.))'}
+        self.beta  = {'n': '-0.001 * (v + 30.) / (1. - exp( (v + 30.) / 9.))'}
+        self.q10 = 2.71
+
+
 class K_ca(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'k'
         self.concentrations = {'ca'}
         self.p_open = 'n'
@@ -89,11 +115,12 @@ class K_ca(IonChannel):
         self.beta  = {'n': '0.02'}
         self.q10 = 3.21
 
+
 class K_ir(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'k'
         self.p_open = 'm'
         # asomptotic state variable functions
@@ -105,7 +132,7 @@ class H_distal(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.p_open = 'l'
         # state variables
         self.varinf = {'l': '1. / 1. + exp((v + 81.) / 8.)'}
@@ -116,7 +143,7 @@ class Ca_T(IonChannel):
     '''
     L2/3 Pyr (Branco et al., 2010)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'ca'
         self.p_open = 'm**2 * h'
         # activation functions
@@ -131,7 +158,7 @@ class Ca_H(IonChannel):
     High voltage-activated calcium channel (Reuveni, Friedman, Amitai, and Gutnick, J.Neurosci. 1993)
     Used in (Branco, 2011)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'ca'
         self.p_open = 'm**2 * h'
         # activation functions
@@ -147,7 +174,7 @@ class Ca_R(IonChannel):
     R-type calcium channel (slow)
     Used in (Poirazi et al, 2003)
     '''
-    def __init__(self):
+    def define(self):
         self.ion = 'ca'
         self.p_open = 'm**3 * h'
         # activation functions
@@ -162,7 +189,7 @@ class h_u(IonChannel):
     hcn channel
     Used in (Mengual et al., 2019)
     '''
-    def __init__(self):
+    def define(self):
         self.p_open = 'q'
         # activation functions
         self.alpha = {'q': '0.001*6.43* (v+154.9) / (exp((v+154.9) / 11.9) - 1.)'}

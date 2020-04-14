@@ -93,14 +93,14 @@ class K23(IonChannel):
     '''
     def define(self):
         self.ion = 'k'
-        self.concentrations = {'ca'}
+        self.concentrations = ['ca']
         self.p_open = 'm * z**2'
         # activation functions
         self.varinf, self.tauinf = {}, {}
-        self.varinf['z'] = '1. / (1. + 20. / (ca*1000))'
+        self.varinf['z'] = '1. / (1. + 0.020 / ca)'
         self.tauinf['z'] = '10.'
         self.varinf['m'] = '25. / (25. + (0.075 / exp((v + 5.) / 10.)))'
-        self.tauinf['m'] = '1. / (25. + (0.075 / exp((v + 5.) / 10.)))'
+        self.tauinf['m'] = '1.  / (25. + (0.075 / exp((v + 5.) / 10.)))'
 
 
 class KC3(IonChannel):
@@ -109,13 +109,14 @@ class KC3(IonChannel):
         Purkinje Cell (Miyasho et al., 2001)
         '''
         self.ion = 'k'
-        self.concentrations = {'ca'}
+        self.concentrations = ['ca']
         self.p_open = 'm * z**2'
         # activation functions
-        self.varinf['z'] = '1. / (1. + 400. / (ca*1000))'
+        self.varinf, self.tauinf = {}, {}
+        self.varinf['z'] = '1. / (1. + 0.4 / ca)'
         self.tauinf['z'] = '10.'
         self.varinf['m'] = '7.5 / (7.5 + (0.11 / exp((v - 35.) / 14.9)))'
-        self.tauinf['m'] = '1.  / (7.5  + (0.11 / exp((v - 35.) / 14.9)))'
+        self.tauinf['m'] = '1.  / (7.5 + (0.11 / exp((v - 35.) / 14.9)))'
 
 
 class KA(IonChannel):
@@ -183,4 +184,3 @@ class Khh(IonChannel):
         # activation functions
         self.alpha = {'n': '.01 * -(v + 55.1234) / (exp(-(v + 55.1234) / 10.) - 1.)'}
         self.beta  = {'n': '.125 * exp(-(v + 65.) / 80.)'}
-        super(Khh, self).define()

@@ -399,7 +399,8 @@ class IonChannel(object):
                 except KeyError:
                     # state variable is not in kwargs
                     # set default value based on voltage
-                    arg_list.append(self.f_varinf[svar](v))
+                    args = self._argsAsList(v, w_statevar=False, **kwargs)
+                    arg_list.append(self.f_varinf[svar](*args))
 
         for c in self.sp_c:
             key = str(c)

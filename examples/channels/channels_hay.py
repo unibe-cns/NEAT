@@ -1,3 +1,5 @@
+import sympy as sp
+
 from neat import IonChannel
 
 
@@ -6,11 +8,7 @@ class h_HAY(IonChannel):
     Hcn channel from (Kole, Hallermann and Stuart, 2006)
     Used in (Hay, 2011)
     '''
-    def __init__(self):
-        # state variables
-        self.varnames = np.array([['m']])
-        self.powers = np.array([[1]], dtype=int)
-        self.factors = np.array([1.])
+    def define(self):
         self.p_open = 'm'
         # activation functions
         self.alpha, self.beta = {}, {}
@@ -48,11 +46,19 @@ class Na_p(IonChannel):
         # channel open probability
         self.p_open = 'm**3 * h'
         # activation functions
-        self.alpha, self.beta = {}, {}
-        self.alpha['m'] = '  0.182   * (v + 38. ) / (1. - exp(-(v + 38. ) / 6.  ))' #1/ms
-        self.beta['m']  = '- 0.124   * (v + 38. ) / (1. - exp( (v + 38. ) / 6.  ))' #1/ms
-        self.alpha['h'] = '- 2.88e-6 * (v + 17. ) / (1. - exp( (v + 17. ) / 4.63))' #1/ms
-        self.beta['m']  = '  6.94e-6 * (v + 64.4) / (1. - exp(-(v + 64.4) / 2.63))' #1/ms
+        self.varinf = {'m': '1. / (1. + exp(-(v + 52.6) / 4.6))',
+                       'h': '1. / (1. + exp( (v + 48.8) / 10.))'}
+        # non-standard time-scale definition
+        v = sp.symbols('v')
+        alpha, beta = {}, {}
+        alpha['m'] =   0.182   * (v + 38. ) / (1. - sp.exp(-(v + 38. ) / 6.  , evaluate=False)) #1/ms
+        beta['m']  = - 0.124   * (v + 38. ) / (1. - sp.exp( (v + 38. ) / 6.  , evaluate=False)) #1/ms
+        alpha['h'] = - 2.88e-6 * (v + 17. ) / (1. - sp.exp( (v + 17. ) / 4.63, evaluate=False)) #1/ms
+        beta['h']  =   6.94e-6 * (v + 64.4) / (1. - sp.exp(-(v + 64.4) / 2.63, evaluate=False)) #1/ms
+        self.tauinf = {'m': 6./(alpha['m'] + beta['m']),
+                       'h': 1./(alpha['h'] + beta['h'])}
+        # temperature factor
+        self.q10 = 2.95
 
 
 class Kv3_1(IonChannel):
@@ -108,8 +114,8 @@ class m(IonChannel):
         self.ion = 'k'
         self.p_open = 'm'
         # activation functions
-        self.alpha['m'] = '3.3e-3 * exp( 2.5 * 0.04 * (v + 35.))'
-        self.beta['m']  = '3.3e-3 * exp(-2.5 * 0.04 * (v + 35.))'
+        self.alpha = {'m': '3.3e-3 * exp( 2.5 * 0.04 * (v + 35.))'}
+        self.beta  = {'m': '3.3e-3 * exp(-2.5 * 0.04 * (v + 35.))'}
         self.q10 = 2.95
 
 
