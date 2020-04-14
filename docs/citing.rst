@@ -3,18 +3,11 @@ Citing
 
 To cite NEAT please use the following publication:
 
-TODO
-
-Aric A. Hagberg, Daniel A. Schult and Pieter J. Swart,
-`"Exploring network structure, dynamics, and function using NetworkX"
-<http://conference.scipy.org/proceedings/SciPy2008/paper_2/>`_,
+Willem A.M. Wybo, Jakob Jordan, Benjamin Ellenberger, Ulisses M. Mengual, Thomas Nevian & Walter Senn,
+`"Data-driven reduction of dendritic morphologies with preserved dendro-somatic responses",
 in
-`Proceedings of the 7th Python in Science Conference (SciPy2008)
-<http://conference.scipy.org/proceedings/SciPy2008/index.html>`_, Gäel
-Varoquaux, Travis Vaught, and Jarrod Millman (Eds), (Pasadena, CA
-USA), pp. 11--15, Aug 2008
+`bioRxiv` (2020), doi `10.1101/2020.04.06.028183 <https://doi.org/10.1101/2020.04.06.028183>`_
 
 .. only:: html
 
-   `PDF <http://conference.scipy.org/proceedings/SciPy2008/paper_2/full_text.pdf>`_
-   `BibTeX <http://conference.scipy.org/proceedings/SciPy2008/paper_2/reference.bib>`_
+   `PDF <https://www.biorxiv.org/content/10.1101/2020.04.06.028183v1>`_

@@ -1,4 +1,7 @@
 Credits
 =======
 
-TODO
+Willem Wybo
+Jakob Jordan
+Benjamin Ellenberger
+Benjamin Torben-Nielsen
