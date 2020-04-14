@@ -457,8 +457,6 @@ class CompartmentTree(STree):
             dictionary with as keys `channel_name` the name of the ion channel
             and as value its expansion point
         """
-        warnings.warn("This function will cause problems with new-style ion channels")
-
         to_tree_inds = self._permuteToTreeInds()
         for channel_name, expansion_point in expansion_points.items():
             # if one set of state variables, set throughout neuron
