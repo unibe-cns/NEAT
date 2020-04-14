@@ -137,7 +137,7 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
 
 class FitTreeGF(GreensTree):
     def __init__(self, *args, **kwargs):
-        super(FitTreeGF, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setName('dont save', '')
 
     def setExpansionPointsForFit(self, sv_h, e_h):
@@ -289,7 +289,7 @@ class FitTreeGF(GreensTree):
 
 class FitTreeSOV(SOVTree):
     def __init__(self, *args, **kwargs):
-        super(FitTreeSOV, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setName('dont save', '')
 
     def setName(self, name, path):

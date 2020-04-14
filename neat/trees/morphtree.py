@@ -263,7 +263,7 @@ class MorphNode(SNode):
             The length of the node (um)
     """
     def __init__(self, index, p3d=None):
-        super(MorphNode, self).__init__(index)
+        super().__init__(index)
         if p3d != None:
             self.setP3D(*p3d)
         else:
@@ -333,13 +333,13 @@ class MorphNode(SNode):
                       if cnode.index not in skip_inds]
 
     def setChildNodes(self, cnodes):
-        return super(MorphNode, self).setChildNodes(cnodes)
+        return super().setChildNodes(cnodes)
 
     child_nodes = property(getChildNodes, setChildNodes)
 
 
     def __str__(self, **kwarg):
-        return super(MorphNode, self).__str__(**kwarg)
+        return super().__str__(**kwarg)
 
 
 class MorphTree(STree):
@@ -2871,7 +2871,7 @@ class MorphTree(STree):
 
         current_treetype = self.treetype
         self.treetype = 'original'
-        super(MorphTree, self).__copy__(new_tree=new_tree)
+        super().__copy__(new_tree=new_tree)
         try:
             # set the computational tree
             self.treetype = 'computational'

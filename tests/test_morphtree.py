@@ -1,9 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 import pytest
 
 from neat import MorphTree, MorphNode, MorphLoc
+
+
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 
 class TestMorphTree():
@@ -39,7 +43,7 @@ class TestMorphTree():
         if not hasattr(self, 'tree') or reinitialize:
             print('>>> loading T-tree <<<')
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
-            self.tree = MorphTree('test_morphologies/'+fname, types=[1,3,4])
+            self.tree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
 
     def testLocEquality(self):
         self.loadTree()

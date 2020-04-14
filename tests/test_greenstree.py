@@ -1,10 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 import pytest
 
 from neat import SOVTree, GreensTree, GreensNode
 import neat.tools.kernelextraction as ke
+
+
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 
 class TestGreensTree():
@@ -18,7 +22,7 @@ class TestGreensTree():
                 1
         """
         print('>>> loading T-tree <<<')
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
@@ -30,7 +34,7 @@ class TestGreensTree():
         5---1---4
         """
         print('>>> loading validation tree <<<')
-        fname = 'test_morphologies/sovvalidationtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
@@ -45,7 +49,7 @@ class TestGreensTree():
                 1
         """
         print('>>> loading T-tree <<<')
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
         self.sovtree.fitLeakCurrent(-75., 10.)
         self.sovtree.setCompTree()
@@ -58,7 +62,7 @@ class TestGreensTree():
         5---1---4
         """
         print('>>> loading validation tree <<<')
-        fname = 'test_morphologies/sovvalidationtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
         self.sovtree.fitLeakCurrent(-75., 10.)
         self.sovtree.setCompTree()
@@ -191,7 +195,7 @@ class TestGreensTree():
 
         # import morphologyReader as morphR
         # distr = {'L': {'type': 'fit', 'param': [-65., 10.], 'E': -65.}}
-        # fname = 'test_morphologies/Tsovtree.swc'
+        # fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         # gt = morphR.greensTree(fname, ionc_distr=distr, soma_distr=distr, cnodesdistr='all')
         # # gt.set_changenodes()
         # gt.set_impedance(ft.s)

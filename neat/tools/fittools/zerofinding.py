@@ -24,7 +24,7 @@ class monicPolynomial(npol.Polynomial):
                 raise Exception('Coefficients don\'t define a monic polynomial')
         else:
             raise Exception('Invalid coef_type, should be \'normal\', \'monic\' or \'zeros\'.')
-        super(monicPolynomial, self).__init__(coef)
+        super().__init__(coef)
 
     def f_polynomial(self):
         if len(self.coef) == 1:
@@ -144,7 +144,7 @@ class contour(object):
 
 class circularContour(contour):
     def __init__(self, radius=1., center=0.+0j, N_eval=1e3):
-        super(circularContour, self).__init__()
+        super().__init__()
         self.center = center
         self.radius = radius
         self.curves  = [lambda x: center +               radius * np.exp(2.*np.pi*1j*x)]
@@ -157,7 +157,7 @@ class circularContour(contour):
 
 class trapezoidContour(contour):
     def __init__(self, t1, nparam=1e3, N_eval=1e3):
-        super(trapezoidContour, self).__init__()
+        super().__init__()
         # set of points defining the trapezoid
         self.points = [t1[1],t1[0]] + [np.conj(t1[0]), np.conj(t1[1])]
         # line segments defining the trapezoid contour

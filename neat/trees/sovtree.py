@@ -32,7 +32,7 @@ class SOVNode(PhysNode):
     of variables calculation (Major, 1993)
     """
     def __init__(self, index, p3d=None):
-        super(SOVNode, self).__init__(index, p3d)
+        super().__init__(index, p3d)
 
     def _setSOV(self, channel_storage, tau_0=0.02):
         self.counter = 0
@@ -164,7 +164,7 @@ class SomaSOVNode(SOVNode):
     `neat.SOVNode._findLocalPoles()`
     """
     def __init__(self, index, p3d=None):
-        super(SOVNode, self).__init__(index, p3d)
+        super().__init__(index, p3d)
 
     def _setSOV(self, channel_storage, tau_0=0.02):
         self.counter = 0
@@ -258,7 +258,7 @@ class SOVTree(PhysTree):
     original tree.
     """
     def __init__(self, file_n=None, types=[1,3,4]):
-        super(SOVTree, self).__init__(file_n=file_n, types=types)
+        super().__init__(file_n=file_n, types=types)
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """

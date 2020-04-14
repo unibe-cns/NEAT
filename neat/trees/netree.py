@@ -173,7 +173,7 @@ class NETNode(SNode):
         The steady state impedance associated with the impedance kernel
     """
     def __init__(self, index, loc_inds, newloc_inds=[], z_kernel=None):
-        super(NETNode, self).__init__(index)
+        super().__init__(index)
         # location indices that node integrates
         self.loc_inds = loc_inds
         self.newloc_inds = newloc_inds
@@ -233,7 +233,7 @@ class NET(STree):
     components present at different spatial scales.
     """
     def __init__(self, root=None):
-        super(NET, self).__init__(root)
+        super().__init__(root)
 
     def __str__(self):
         string = 'NET\n'

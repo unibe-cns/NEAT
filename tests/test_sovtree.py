@@ -1,9 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 import pytest
 from neat import SOVTree, SOVNode, Kernel, GreensTree
 import neat.tools.kernelextraction as ke
+
+
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 
 class TestSOVTree():
@@ -17,7 +21,7 @@ class TestSOVTree():
                 1
         """
         print('>>> loading T-tree <<<')
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
@@ -29,7 +33,7 @@ class TestSOVTree():
         5---1---4
         """
         print('>>> loading validation tree <<<')
-        fname = 'test_morphologies/sovvalidationtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
@@ -116,7 +120,7 @@ class TestSOVTree():
         Load point neuron model
         """
         print('>>> loading validation tree <<<')
-        fname = 'test_morphologies/ball.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc')
         self.btree = SOVTree(fname, types=[1,3,4])
         self.btree.fitLeakCurrent(-75., 10.)
         self.btree.setCompTree()
