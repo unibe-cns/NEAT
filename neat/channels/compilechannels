@@ -24,10 +24,6 @@ def loadNEATCorrectPath():
     neatspec = importlib.machinery.PathFinder().find_spec("neat", paths)
     neat = neatspec.loader.load_module()
     neatspec.loader.exec_module(neat)
-    # Deprecated implementation with imp package
-    # import imp
-    # neatmodule = imp.find_module("neat", paths)
-    # neat = imp.load_module("neat", *neatmodule)
 
     return neat
 
