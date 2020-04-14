@@ -35,7 +35,7 @@ if not os.path.exists(path_for_mod_files):
         os.makedirs(path_for_mod_files)
 
 sys.path.insert(0, path_for_channels)
-for channel_module in glob.glob(path_for_channels + '*.py'):
+for channel_module in glob.glob(os.path.join(path_for_channels, '*.py')):
     # import channel modules
     # convert names from glob to something susceptible to python import
     channel_module = os.path.split(channel_module)[1]
