@@ -1,14 +1,38 @@
 #!/usr/bin/env python3
-import imp, os, glob, sys, inspect, shutil, subprocess
+import os, glob, sys, inspect, shutil, subprocess
 
-# get new paths list without the current working directory
-current_path = os.path.realpath(os.getcwd())
-paths = [path for path in sys.path if os.path.realpath(path) != current_path]
-paths += [current_path]
-# find and load the neat module based on this paths list
-neatmodule = imp.find_module("neat", paths)
-neat = imp.load_module("neat", *neatmodule)
 
+def loadNEATCorrectPath():
+    """
+    Loads neat from a custom paths list where the current working directory
+    only occurs as the final path, so that neat is first loaded from the install
+    path and only from the current path if we are working in development mode.
+
+    Required to run `compilechannels default` from package root directory after
+    installation via `setup.py`
+    """
+    # get new paths list without the current working directory
+    current_path = os.path.realpath(os.getcwd())
+    paths = [path for path in sys.path if os.path.realpath(path) != current_path]
+    paths += [current_path]
+
+    # load module with importlib according to
+    # https://stackoverflow.com/questions/35288021/what-is-the-equivalent-of-imp-find-module-in-importlib
+    # and to
+    # https://import-sig.python.narkive.com/JW8eIKSg/how-best-to-replace-imp-load-module
+    import importlib
+    neatspec = importlib.machinery.PathFinder().find_spec("neat", paths)
+    neat = neatspec.loader.load_module()
+    neatspec.loader.exec_module(neat)
+    # Deprecated implementation with imp package
+    # import imp
+    # neatmodule = imp.find_module("neat", paths)
+    # neat = imp.load_module("neat", *neatmodule)
+
+    return neat
+
+
+neat = loadNEATCorrectPath()
 from neat import IonChannel
 
 
