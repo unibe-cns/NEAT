@@ -45,7 +45,7 @@ class TestChannel(IonChannel):
         self.tauinf = np.array([[sp.Float(1.), sp.Float(2.), sp.Float(1.)],
                                 [sp.Float(2.), sp.Float(2.), sp.Float(3.)]])
         # base class instructor
-        super(TestChannel, self).__init__()
+        super().__init__()
 
 
 class TestChannel2(IonChannel):
@@ -68,7 +68,7 @@ class TestChannel2(IonChannel):
         self.tauinf = np.array([[1., 2.],
                                 [2., 2.]])
         # base class instructor
-        super(TestChannel2, self).__init__()
+        super().__init__()
 
 
 class Na_Ta(IonChannel):
@@ -96,7 +96,7 @@ class Na_Ta(IonChannel):
         self.tauinf = np.array([[(1./2.95) / (spalpham + spbetam),
                                  (1./2.95) / (spalphah + spbetah)]]) # 1/ms
         # base class constructor
-        super(Na_Ta, self).__init__()
+        super().__init__()
 
 
 class Na_Ta_simplified(IonChannelSimplified):
@@ -184,7 +184,7 @@ class Kv3_1(IonChannel):
         self.varinf = np.array([[1. / (1. + sp_exp(-(self.sp_v - 18.7) / 9.7))]])
         self.tauinf = np.array([[4. / (1. + sp_exp(-(self.sp_v + 46.56) / 44.14))]]) # ms
         # base class constructor
-        super(Kv3_1, self).__init__()
+        super().__init__()
 
 
 class h(IonChannel):
@@ -212,7 +212,4 @@ class h(IonChannel):
         self.tauinf = np.array([[sp.Float(self.tauf)],
                                 [sp.Float(self.taus)]])
         # base class constructor
-        super(h, self).__init__()
-
-
-
+        super().__init__()

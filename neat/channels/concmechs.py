@@ -14,7 +14,7 @@ class ExpConcMech(ConcMech):
     def __init__(self, ion, tau, gamma):
         self.tau = tau # ms
         self.gamma = gamma # ms * mM / nA
-        super(ExpConcMech, self).__init__(ion)
+        super().__init__(ion)
 
     def iteritems(self):
         yield 'gamma', self.gamma
