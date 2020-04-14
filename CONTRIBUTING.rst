@@ -1,4 +1,6 @@
 Developer overview
 ==================
 
-TODO
+Willem Wybo
+Jakob Jordan
+Benjamin Ellenberger
