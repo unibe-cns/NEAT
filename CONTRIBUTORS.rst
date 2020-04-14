@@ -2,6 +2,9 @@ Credits
 =======
 
 Willem Wybo
+
 Jakob Jordan
+
 Benjamin Ellenberger
+
 Benjamin Torben-Nielsen
