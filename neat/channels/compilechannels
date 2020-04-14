@@ -4,6 +4,7 @@ import imp, os, glob, sys, inspect, shutil, subprocess
 # get new paths list without the current working directory
 current_path = os.path.realpath(os.getcwd())
 paths = [path for path in sys.path if os.path.realpath(path) != current_path]
+paths += [current_path]
 # find and load the neat module based on this paths list
 neatmodule = imp.find_module("neat", paths)
 neat = imp.load_module("neat", *neatmodule)
