@@ -40,7 +40,8 @@ path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/')
 
 def resetDefaultMech():
     """
-    Create the "mech/" directory in a clean state with only the default channels
+    Create the "mech/" directory in a clean state with only the default
+    mechanisms and channels
     """
     path_default_mech = os.path.join(path_neat, 'tools/simtools/neuron/mech_storage/')
 
@@ -48,7 +49,7 @@ def resetDefaultMech():
     if os.path.exists(path_for_mod_files):
         shutil.rmtree(path_for_mod_files)
 
-    # copy default mecha
+    # copy default mechanisms
     shutil.copytree(path_default_mech, path_for_mod_files)
 
 
