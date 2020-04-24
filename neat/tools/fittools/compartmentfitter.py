@@ -102,6 +102,7 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
     else:
         raise Exception('Method only implemented for channels with two ' + \
                         'or less state variables')
+
     return sv_hs, e_hs
 
 
@@ -212,7 +213,7 @@ class FitTreeGF(GreensTree):
             cname_string += '_' + c_name + '_'
             try:
                 sv_h = self.root.expansion_points[c_name]
-                for svar in enumerate(channel.ordered_statevars):
+                for svar in channel.ordered_statevars:
                     sv = sv_h[str(svar)]
                     cname_string += str(svar) + '=%.8f'%sv
             except (KeyError, TypeError):
