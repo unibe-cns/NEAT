@@ -60,7 +60,7 @@ def getL23PyramidNaK():
     phys_tree.setLeakCurrent(1./rm*1e6, el, node_arg='basal')
 
     # passive apical dendrite
-    phys_tree.addCurrent('L', 1./rm*1e6, e_rev=el, node_arg='apical')
+    phys_tree.setLeakCurrent(1./rm*1e6, el, node_arg='apical')
 
     return phys_tree
 
