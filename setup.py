@@ -85,7 +85,7 @@ s_ = setup(
               'neat.channels',
               'neat.channels.channelcollection'],
     package_data={
-        "neat.tools.simtools.neuron": ["mech/*.mod"],
+        "neat.tools.simtools.neuron": ["mech_storage/*.mod"],
     },
     ext_package='neat',
     ext_modules=[ext],
