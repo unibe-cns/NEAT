@@ -1,8 +1,5 @@
-import concurrent.futures
-import contextlib
-import multiprocessing
 import numpy as np
-import warnings
+import dill
 
 import matplotlib.patheffects as patheffects
 import matplotlib.patches as patches
@@ -28,6 +25,9 @@ except ModuleNotFoundError:
 
 import warnings
 import copy
+import concurrent.futures
+import contextlib
+import multiprocessing
 
 
 def cpu_count(use_hyperthreading=True):
@@ -237,10 +237,6 @@ class FitTreeGF(GreensTree):
             self.setImpedance(freqs, pprint=pprint)
 
             if not 'dont save' in self.name:
-                # clear the stuff that isn't impedances and unnecessary
-                # IonChannel objects cause problems with pickling
-                self.clearLocs()
-                self.channel_storage = {}
                 # store the impedance tree
                 file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
@@ -334,9 +330,6 @@ class FitTreeSOV(SOVTree):
             # compute SOV factorisation
             self.calcSOVEquations(maxspace_freq=maxspace_freq, pprint=False)
             if not 'dont save' in self.name:
-                # remove all locations and stored ion channel objects
-                self.clearLocs()
-                self.channel_storage = {}
                 # store the tree
                 file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
