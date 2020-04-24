@@ -1,4 +1,4 @@
-from ..channels import channels_hay
+from .channels import channels_hay
 
 from neat import PhysTree
 
@@ -8,11 +8,11 @@ def getL5Pyramid():
     Return a minimal model of the L5 pyramid for BAC-firing
     """
     # load the morphology
-    phys_tree = PhysTree('../morphologies/cell1_simplified.swc')
+    phys_tree = PhysTree('models/morphologies/cell1_simplified.swc')
 
     # set specific membrane capacitance and axial resistance
-    phys_tree.setPhysiology(lambda x: 1. if x < .1 else 2. # Cm [uF/cm^2]
-                            100./1e6 # Ra[MOhm*cm]
+    phys_tree.setPhysiology(lambda x: 1. if x < .1 else 2., # Cm [uF/cm^2]
+                            100./1e6, # Ra[MOhm*cm]
                             )
 
     # channels present in tree

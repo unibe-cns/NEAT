@@ -1,22 +1,29 @@
-from ..channels import channels_branco
+from .channels import channels_branco
 
 from neat import PhysTree
+
+
 
 
 def getL23PyramidPas():
     """
     Return a passive model of the L2/3 pyramidal cell
     """
-    phys_tree = PhysTree('../morphologies/L23PyrBranco.swc', types=[1,2,3,4])
+    cm = 1.             # uF / cm^2
+    rm = 10000.         # Ohm * cm^2
+    ri = 150.           # Ohm * cm
+    el = -75.           # mV
+
+    phys_tree = PhysTree('models/morphologies/L23PyrBranco.swc', types=[1,2,3,4])
 
     # set specific membrane capacitance and axial resistance
-    phys_tree.setPhysiology(1. # Cm [uF/cm^2]
-                            150./1e6 # Ra[MOhm*cm]
+    phys_tree.setPhysiology(cm, # Cm [uF/cm^2]
+                            ri/1e6, # Ra[MOhm*cm]
                             )
 
     # passive membrane conductance
-    phys_tree.setLeakCurrent(1e6/150., -75.)
-    phys_tree.setLeakCurrent(0.02*1e6, -75., node_arg='axonal')
+    phys_tree.setLeakCurrent(1e6/10000., el)
+    phys_tree.setLeakCurrent(0.02*1e6, el, node_arg='axonal')
 
     return phys_tree
 
@@ -26,14 +33,16 @@ def getL23PyramidNaK():
     Return a model of the L2/3 pyramidal cell with somatic and basal Na- and
     K-channels
     """
-    tadj = 3.21
-    rm = 10000. # Ohm * cm^2
+    cm = 1.             # uF / cm^2
+    rm = 10000.         # Ohm * cm^2
+    ri = 150.           # Ohm * cm
     el = -75.           # mV
+    tadj = 3.21
 
-    phys_tree = PhysTree('../morphologies/L23PyrBranco.swc')
+    phys_tree = PhysTree('models/morphologies/L23PyrBranco.swc')
 
-    phys_tree.setPhysiology(1.       # Cm [uF/cm^2]
-                            150./1e6 # Ra[MOhm*cm]
+    phys_tree.setPhysiology(cm,     # Cm [uF/cm^2]
+                            ri/1e6, # Ra[MOhm*cm]
                             )
 
     # channels
@@ -61,18 +70,25 @@ def getL23Pyramid():
     Return a model of the L2/3 pyramidal cell with somatic and basal Na-, K- and
     Ca-channels
     """
-        cm = 1.             # uF / cm^2
-        rm = 10000.         # Ohm * cm^2
-        ri = 150.           # Ohm * cm
-        el = -75.           # mV
-        g_axon = 0.02       # S /cm^2
-        tadj = 3.21
+    cm = 1.             # uF / cm^2
+    rm = 10000.         # Ohm * cm^2
+    ri = 150.           # Ohm * cm
+    el = -75.           # mV
+    tadj = 3.21
 
-    phys_tree = PhysTree('../morphologies/L23PyrBranco.swc')
+    phys_tree = PhysTree('models/morphologies/L23PyrBranco.swc')
 
-    phys_tree.setPhysiology(1.       # Cm [uF/cm^2]
-                            150./1e6 # Ra[MOhm*cm]
+    phys_tree.setPhysiology(cm ,    # Cm [uF/cm^2]
+                            ri/1e6, # Ra[MOhm*cm]
                             )
+
+    # channels
+    Na   = channels_branco.Na()
+    K_v  = channels_branco.K_v()
+    K_m  = channels_branco.K_m()
+    K_ca = channels_branco.K_ca()
+    Ca_H = channels_branco.Ca_H()
+    Ca_T = channels_branco.Ca_T()
 
     # somatic channels
     phys_tree.addCurrent(Na,   tadj*1500.*1e2, 60., node_arg=[phys_tree[1]]) # pS/um^2 -> uS/cm^2
