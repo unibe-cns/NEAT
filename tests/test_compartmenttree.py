@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 import pytest
 import random
@@ -8,6 +9,9 @@ import copy
 from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
 from neat.channels.channelcollection import channelcollection
+
+
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 
 class TestCompartmentTree():
@@ -21,7 +25,7 @@ class TestCompartmentTree():
                 1
         """
         print('>>> loading T-tree <<<')
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
         self.tree.setCompTree()
@@ -132,7 +136,7 @@ class TestCompartmentTree():
         assert all([loc == loc_ for loc, loc_ in zip(locs_equiv, [(0, .5), (2, .5), (1, .5)])])
 
     def loadBallAndStick(self):
-        self.greens_tree = GreensTree(file_n='test_morphologies/ball_and_stick.swc')
+        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.greens_tree.setPhysiology(0.8, 100./1e6)
         self.greens_tree.setLeakCurrent(100., -75.)
         self.greens_tree.setCompTree()
@@ -291,7 +295,7 @@ class TestCompartmentTree():
                            np.ones(len(self.ctree)) * np.max(1e-3/np.abs(alphas)))
 
     def loadBall(self):
-        self.greens_tree = GreensTree(file_n='test_morphologies/ball.swc')
+        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.greens_tree.setPhysiology(0.8, 100./1e6)
         # ion channels

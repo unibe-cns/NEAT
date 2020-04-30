@@ -51,7 +51,7 @@ class CompartmentNode(SNode):
         variables of the ion channel around which to compute the linearizations
     """
     def __init__(self, index, loc_ind=None, ca=1., g_c=0., g_l=1e-2, e_eq=-75.):
-        super(CompartmentNode, self).__init__(index)
+        super().__init__(index)
         # location index this node corresponds to
         self._loc_ind = loc_ind
         # compartment params
@@ -76,9 +76,9 @@ class CompartmentNode(SNode):
     loc_ind = property(getLocInd, setLocInd)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super(CompartmentNode, self).__str__()
+        node_string = super().__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
+            node_string += ', Parent: ' + super().__str__()
         node_string += ' --- (g_c = %.12f uS, '%self.g_c + \
                        ', '.join(['g_' + cname + ' = %.12f uS'%cpar[0] \
                             for cname, cpar in self.currents.items()]) + \
@@ -387,7 +387,7 @@ class CompartmentTree(STree):
     parameters to impedance matrices
     """
     def __init__(self, root=None):
-        super(CompartmentTree, self).__init__(root=root)
+        super().__init__(root=root)
         self.channel_storage = {}
         # for fitting the model
         self.resetFitData()

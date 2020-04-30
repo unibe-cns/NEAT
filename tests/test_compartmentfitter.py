@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 import pytest
 import random
@@ -15,6 +16,9 @@ from neat.channels.channelcollection import channelcollection
 import neat.tools.fittools.compartmentfitter as compartmentfitter
 
 
+MORPHOLOGIES_PATH_PREFIX = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__))), 'test_morphologies')
+
+
 class TestCompartmentFitter():
     def loadTTree(self):
         '''
@@ -26,7 +30,7 @@ class TestCompartmentFitter():
                 1
         '''
         print('>>> loading T-tree <<<')
-        fname = 'test_morphologies/Tsovtree.swc'
+        fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = PhysTree(fname, types=[1,3,4])
         self.tree.setPhysiology(0.8, 100./1e6)
         self.tree.fitLeakCurrent(-75., 10.)
@@ -38,7 +42,7 @@ class TestCompartmentFitter():
 
         1--4
         '''
-        self.tree = PhysTree(file_n='test_morphologies/ball_and_stick.swc')
+        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.tree.setPhysiology(0.8, 100./1e6)
         self.tree.setLeakCurrent(100., -75.)
         self.tree.setCompTree()
@@ -47,7 +51,7 @@ class TestCompartmentFitter():
         '''
         Load point neuron model
         '''
-        self.tree = PhysTree(file_n='test_morphologies/ball.swc')
+        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         # ion channels
@@ -66,8 +70,8 @@ class TestCompartmentFitter():
         '''
         Load point neuron model
         '''
-        self.tree = PhysTree(file_n='test_morphologies/Ttree_segments.swc')
-        # self.tree = PhysTree(file_n='test_morphologies/L23PyrBranco.swc')
+        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'))
+        # self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'L23PyrBranco.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         # ion channels

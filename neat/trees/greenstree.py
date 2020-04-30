@@ -28,7 +28,7 @@ class GreensNode(PhysNode):
         Stores ion channel expansion points for this segment.
     '''
     def __init__(self, index, p3d):
-        super(GreensNode, self).__init__(index, p3d)
+        super().__init__(index, p3d)
         self.expansion_points = {}
 
     def _rescaleLengthRadius(self):
@@ -201,7 +201,7 @@ class GreensNode(PhysNode):
 
 class SomaGreensNode(GreensNode):
     def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
-        z_m = super(SomaGreensNode, self)._calcMembraneImpedance(freqs, channel_storage,
+        z_m = super()._calcMembraneImpedance(freqs, channel_storage,
                                                                 use_conc=use_conc)
         # rescale for soma surface instead of cylinder radius
         # return z_m / (2. * self.R_)
@@ -243,7 +243,7 @@ class GreensTree(PhysTree):
         Frequencies at which impedances are evaluated
     """
     def __init__(self, file_n=None, types=[1,3,4]):
-        super(GreensTree, self).__init__(file_n=file_n, types=types)
+        super().__init__(file_n=file_n, types=types)
         self.freqs = None
 
     def _createCorrespondingNode(self, node_index, p3d=None):

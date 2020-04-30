@@ -66,11 +66,6 @@ class Na_Ta(IonChannel):
         # temperature factor for time-scale
         self.q10 = 2.95
 
-        # # temperature factor for time-scales
-        # self.q10 = '2.3**((temp - 23.)/10.)'
-        # # default parameters
-        # self.temp = 36. # [deg Celsius]
-        # self.e = 50. # [mV]
 
 class Kv3_1(IonChannel):
     def define(self):
@@ -112,8 +107,3 @@ class h(IonChannel):
         self.tauinf['hs'] = '300.'
         # default reversal
         self.e = -43.
-
-
-
-
-
