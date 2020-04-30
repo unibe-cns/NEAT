@@ -23,7 +23,6 @@ class TestPhysTree():
                 1
         """
         if not hasattr(self, 'tree') or reinitialize:
-            print('>>> loading T-tree <<<')
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
             self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
 

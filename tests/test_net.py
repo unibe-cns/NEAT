@@ -109,13 +109,7 @@ class TestNET():
         assert isinstance(net.calcIZ([4, 5]), float)
         # test impedance matrix calculation
         z_mat_control = np.array([[4., 2.], [2., 3.]])
-        print(net_reduced.calcImpMat())
         assert np.allclose(net_reduced.calcImpMat(), z_mat_control)
-        # run print commands
-        print('\n>>> original net <<<')
-        print(net)
-        print('\n>>> reduced net <<<')
-        print(net_reduced)
 
     def testCompartmentalization(self):
         self.loadTree()

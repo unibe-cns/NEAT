@@ -39,7 +39,6 @@ class TestNeuron():
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.fitLeakCurrent(v_eq, 10.)
@@ -66,7 +65,6 @@ class TestNeuron():
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
-        print('>>> loading T-tree <<<')
         h_chan = channelcollection.h()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
@@ -95,14 +93,11 @@ class TestNeuron():
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
-        print('>>> loading T-tree <<<')
         test_chan = channelcollection.TestChannel2()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(test_chan, 50., -23.)
         self.greenstree.fitLeakCurrent(v_eq, 10.)
-        for node in self.greenstree:
-            print(node)
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
@@ -126,15 +121,11 @@ class TestNeuron():
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
-        print('>>> loading T-tree <<<')
         test_chan = channelcollection.TestChannel2()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(test_chan, 50., 23., node_arg=[self.greenstree[1]])
         self.greenstree.fitLeakCurrent(v_eq, 10.)
-        # for node in self.greenstree:
-        #     print node.getGTot(channel_storage=self.greenstree.channel_storage)
-        #     print node.currents
         self.greenstree.setCompTree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
@@ -434,9 +425,7 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5)])
-        # assert np.allclose(z_mat_sim, z_mat_comp, atol=1e-2)
 
         # create the three compartmental model
         self.loadThreeCompartmentModel()
@@ -447,9 +436,7 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5)])
-        # assert np.allclose(z_mat_sim, z_mat_comp)
 
         # create the T compartmental model
         self.loadTModel()
@@ -460,7 +447,6 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
@@ -473,7 +459,6 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
@@ -577,7 +562,6 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp, atol=1e-2)
 
@@ -590,7 +574,6 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
@@ -603,7 +586,6 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
@@ -616,7 +598,6 @@ class TestReducedNeuron():
         sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=2)
-        # sim_tree.initModel(pprint=True)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 

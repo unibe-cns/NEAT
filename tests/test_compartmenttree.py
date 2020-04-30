@@ -24,7 +24,6 @@ class TestCompartmentTree():
                 |
                 1
         """
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
@@ -305,7 +304,6 @@ class TestCompartmentTree():
         self.greens_tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
         self.greens_tree.fitLeakCurrent(-75., 10.)
-        print(self.greens_tree)
         # set computational tree
         self.greens_tree.setCompTree()
         # set the impedances
@@ -500,7 +498,6 @@ class TestCompartmentTree():
         g4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
         i4 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'])
         # check if correct
-        print(g1, g2)
         assert np.abs(g1 - g2) < 1e-10
         assert np.abs(g1 - g3) < 1e-10
         assert np.abs(g1 - g4) < 1e-10
@@ -523,11 +520,9 @@ class TestCompartmentTree():
 
 class TestCompartmentTreePlotting():
     def _initTree1(self):
-        """
-        1   2
-         \ /
-          0
-        """
+        # 1   2
+        #  \ /
+        #   0
         croot = CompartmentNode(0, loc_ind=0)
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
@@ -539,15 +534,13 @@ class TestCompartmentTreePlotting():
         self.ctree = ctree
 
     def _initTree2(self):
-        """
-        3
-        |
-        2
-        |
-        1
-        |
-        0
-        """
+        # 3
+        # |
+        # 2
+        # |
+        # 1
+        # |
+        # 0
         croot = CompartmentNode(0, loc_ind=0)
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
@@ -561,14 +554,12 @@ class TestCompartmentTreePlotting():
         self.ctree = ctree
 
     def _initTree3(self):
-        """
-        4 5 6 7   8
-         \|/   \ /
-          1  2  3
-           \ | /
-            \|/
-             0
-        """
+        # 4 5 6 7   8
+        #  \|/   \ /
+        #   1  2  3
+        #    \ | /
+        #     \|/
+        #      0
         cns = [CompartmentNode(ii, loc_ind=ii) for ii in range(9)]
 
         ctree = CompartmentTree(root=cns[0])

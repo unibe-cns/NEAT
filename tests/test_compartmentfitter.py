@@ -29,7 +29,6 @@ class TestCompartmentFitter():
                 |
                 1
         '''
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = PhysTree(fname, types=[1,3,4])
         self.tree.setPhysiology(0.8, 100./1e6)
@@ -566,8 +565,6 @@ class TestCompartmentFitter():
     def testPickling(self):
         self.loadBall()
 
-        # pickling of tree works
-        print('\n--- testing pickling ---')
         # of PhysTree
         ss = pickle.dumps(self.tree)
         pt_ = pickle.loads(ss)
@@ -602,7 +599,6 @@ class TestCompartmentFitter():
         locs = [(nn.index,0.5) for nn in self.tree.nodes[:30]]
         cm = CompartmentFitter(self.tree)
 
-        print('\n--- testing parallel ---')
         ctree_cm = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
         # ctree_cm_ = cm.fitModel(locs, parallel=True, use_all_chans_for_passive=True)
 
