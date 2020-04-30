@@ -62,7 +62,6 @@ class NeuronSimNode(PhysNode):
         compartment.cm = self.c_m # uF/cm^2
         compartment.Ra = self.r_a*1e6 # MOhm*cm --> Ohm*cm
         # insert membrane currents
-        print(mechname, self.currents.keys())
         for key, current in self.currents.items():
             if current[0] > 1e-10:
                 compartment.insert(mechname[key])
