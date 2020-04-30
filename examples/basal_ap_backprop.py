@@ -288,7 +288,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     ax4.set_xticks(xb)
     ax4.set_xticklabels([])
     ax4.set_ylim(50.,110.)
-    ax4.set_yticks([0., 80.])
+    ax4.set_yticks([50., 80.])
 
     myLegend(ax4, add_frame=False, loc='lower center', bbox_to_anchor=[.5, 1.05], fontsize=ticksize,
                         labelspacing=.1, handlelength=1., handletextpad=.2, columnspacing=.5)
