@@ -396,7 +396,7 @@ class CompartmentFitter(object):
         self.tree.storeLocs(locs, name='fit locs')
         # create the reduced compartment tree
         self.ctree = self.tree.createCompartmentTree(locs)
-        # add currents to compartmental model
+        # # add currents to compartmental model
         for c_name, channel in self.tree.channel_storage.items():
             e_revs = []
             for node in self.tree:
@@ -916,7 +916,7 @@ class CompartmentFitter(object):
         sim_tree_biophys = self.tree.__copy__(new_tree=neurm.NeuronSimTree())
         # compute equilibrium potentials
         sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.storeLocs(locs, 'rec locs')
+        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
         res_biophys = sim_tree_biophys.run(t_max)
         sim_tree_biophys.deleteModel()
         return np.array([v_m[-1] for v_m in res_biophys['v_m']])

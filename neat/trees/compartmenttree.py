@@ -476,15 +476,6 @@ class CompartmentTree(STree):
             for node, ep in zip(self, eps):
                 node.setExpansionPoint(channel_name, ep)
 
-
-            # elif isinstance(expansion_point, np.ndarray):
-            #     if expansion_point.ndim == 3:
-            #         svs = np.array(expansion_point)
-            #     elif expansion_point.ndim == 2:
-            #         svs = np.array([expansion_point for _ in self])
-            # for node, sv in zip(self, svs[to_tree_inds]):
-            #     node.setExpansionPoint(channel_name, statevar=sv)
-
     def removeExpansionPoints(self):
         for node in self:
             node.expansion_points = {}
