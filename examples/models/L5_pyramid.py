@@ -1,3 +1,5 @@
+import numpy as np
+
 from .channels import channels_hay
 
 from neat import PhysTree
@@ -11,9 +13,13 @@ def getL5Pyramid():
     phys_tree = PhysTree('models/morphologies/cell1_simplified.swc')
 
     # set specific membrane capacitance and axial resistance
-    phys_tree.setPhysiology(lambda x: 1. if x < .1 else 2., # Cm [uF/cm^2]
+    phys_tree.setPhysiology(1., # Cm [uF/cm^2]
                             100./1e6, # Ra[MOhm*cm]
-                            )
+                            node_arg=[phys_tree[1]])
+    # set specific membrane capacitance and axial resistance
+    phys_tree.setPhysiology(2., # Cm [uF/cm^2]
+                            100./1e6, # Ra[MOhm*cm]
+                            node_arg=[n for n in phys_tree if not phys_tree.isRoot(n)])
 
     # channels present in tree
     Kv3_1  = channels_hay.Kv3_1()

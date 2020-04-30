@@ -509,8 +509,6 @@ class CompartmentFitter(object):
         """
         Compute the matrices needed to fit the channel
         """
-        # self.GLOB_INT += 1
-        # print('>>>', self.GLOB_INT)
         e_h = fit_tree.root.e_eq
         c_name = list(fit_tree.channel_storage.keys())[0]
         sv_h = fit_tree.root.expansion_points[c_name]

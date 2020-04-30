@@ -13,43 +13,14 @@ import dill
 D_NAME_BRANCO = 'backprop_branco'
 D_NAME_HAY = 'backprop_hay'
 # soma nodes branco
-# SLOCS_BRANCO = [(1, .5), (20, 1.), (120, 1.), (223, 1.), (446,1.)]
-SLOCS_BRANCO = [(1, .5), (22, 1.), (122, 1.), (225, 1.), (448,1.)]
-# SLOCS_BRANCO = [(1, .5), (91, .5), (444, .5), (38, .5), (32, .5)]
-# SLOCS_BRANCO = [(1, .5)]
-# SLOCS_HAY_ = [(1, .5)]
-SLOCS_HAY_ = [(1, .5), (124, 1.), (6, 1.)]
-SLOCS_HAY = [(1, .5), (146, 1.), (88, 1.), (50, 1.), (156, 1.)]
-# SLOCS_HAY = [(1, .5), (124, 1.), (6, 1.)]
+SLOCS_BRANCO = [(1, .5)]
 # loc params
 D2S_BASAL = np.array([50., 100., 150.])
-# DX_APICAL = np.array([50., 100., 150., 200., 250., 300., 350., 400., 450., 500.])
-DX_APICAL = np.array([100., 200., 300., 400., 500.])
-# DX_APICAL = np.array([100.])
-# D2SS_CASPIKE = [np.array([785.]), np.array([685., 785., 885.]), np.array([685., 735., 785., 835., 885.]), np.array([660., 685., 710., 735., 760., 785., 810., 835., 860., 885.])]
-# D2SS_CASPIKE = [np.array([785.]), np.array([685., 785., 885., 985.]), np.array([685., 735., 785., 835., 885., 935., 985.])]
-# D2SS_CASPIKE = [np.array([785.])]
-D2SS_CASPIKE = [np.array([685., 785., 885., 985.])]
-# D2SS_CASPIKE = [np.array([685., 735., 785., 835., 885., 935., 985.])]
-# D2S_APIC = np.array([])
-D2S_APIC = np.array([85., 185., 285., 385., 485., 585.])
-# D2SS_CASPIKE = [np.array([660., 685., 710., 735., 760., 785., 810., 835., 860., 885.])]
-CA_LOC = (224, 0.86)
-PL_LOC = (251, 1.)
 # soma stimulus params
 STIM_PARAMS_BRANCO = {'amp': 3., # nA
                       't_onset': 5., # ms
                       't_dur': 1. # ms
                      }
-STIM_PARAMS_HAY = {'amp': 1.5, # nA
-                   't_onset': 5., # ms
-                   't_dur': 5. # ms
-                  }
-STIM_PARAMS_CASPIKE = {'amp': 1., # nA
-                       't_onset': 5., # ms
-                       't_rise': 4., # ms
-                       't_decay': 5. # ms
-                      }
 # simulation parameters
 DT = 0.025
 T_MAX = 300.
@@ -104,8 +75,6 @@ def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur'
 
     simtree.initModel(dt=DT, t_calibrate=TC, factor_lambda=1.)
     simtree.addIClamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
-    # simtree.addDoubleExpSynapse(soma_loc, .2, 3., 0.)
-    # simtree.setSpikeTrain(0, G_SYN, spks)
     simtree.storeLocs([soma_loc] + locs, 'rec locs')
 
     res = simtree.run(40., record_from_iclamps=True)
@@ -308,7 +277,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     ax4.set_xticks(xb)
     ax4.set_xticklabels([])
     ax4.set_ylim(50.,110.)
-    ax4.set_yticks([50., 80.])
+    ax4.set_yticks([0., 80.])
 
     myLegend(ax4, add_frame=False, loc='lower center', bbox_to_anchor=[.5, 1.05], fontsize=ticksize,
                         labelspacing=.1, handlelength=1., handletextpad=.2, columnspacing=.5)
