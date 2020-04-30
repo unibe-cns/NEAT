@@ -10,7 +10,6 @@ import dill
 
 
 ## Parameters ##################################################################
-D_NAME_HAY = 'backprop_hay'
 # sites for simplification
 D2S_CASPIKE = np.array([685., 785., 885., 985.])
 D2S_APIC = np.array([85., 185., 285., 385., 485., 585.])
@@ -25,6 +24,14 @@ CMAP_MORPH = mcolors.ListedColormap(vals)
 
 
 def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False):
+    """
+    Uses `neat.CompartmentFitter` to derive a `neat.CompartmentTree` for the
+    given `locs`. The simplified tree is stored under `f_name`. If the
+    simplified tree exists, it is loaded by default in memory (unless
+    `recompute_ctree` is ``True``). The impedances for efficient impedance
+    matrix evaluation are also stored, and are by default reloaded if they exist
+    (unless `recompute_biophys` is ``True``).
+    """
     try:
         if recompute_ctree:
             raise IOError
@@ -56,6 +63,10 @@ def runCaCoinc(sim_tree, locs,
                                record_from_vclamps=False, record_from_channels=False,
                                record_v_deriv=False),
                pprint=True):
+    """
+    Runs the BAC-firing protocol to elicit an AP burst in response to coincident
+    somatic and dendritic input
+    """
     # initialize the NEURON model
     sim_tree.initModel(dt=dt, t_calibrate=t_calibrate, factor_lambda=10.)
     sim_tree.storeLocs(locs, 'rec locs')
@@ -89,10 +100,10 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
     # compartmentfitter object
     cfit = CompartmentFitter(phys_tree, name='bac_firing', path='data/')
 
-    # branch for single branch initiation zone
+    # single branch initiation zone
     branch = sim_tree.pathToRoot(sim_tree[236])[::-1]
     locs_sb = sim_tree.distributeLocsOnNodes(D2S_CASPIKE, node_arg=branch, name='single branch')
-    # abpical locations
+    # abpical trunk locations
     apic = sim_tree.pathToRoot(sim_tree[221])[::-1]
     locs_apic = sim_tree.distributeLocsOnNodes(D2S_APIC, node_arg=apic, name='apic connection')
 

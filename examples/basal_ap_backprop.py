@@ -10,14 +10,12 @@ import dill
 
 
 ## Parameters ##################################################################
-D_NAME_BRANCO = 'backprop_branco'
-D_NAME_HAY = 'backprop_hay'
 # soma nodes branco
-SLOCS_BRANCO = [(1, .5)]
+SLOCS = [(1, .5)]
 # loc params
 D2S_BASAL = np.array([50., 100., 150.])
 # soma stimulus params
-STIM_PARAMS_BRANCO = {'amp': 3., # nA
+STIM_PARAMS = {'amp': 3., # nA
                       't_onset': 5., # ms
                       't_dur': 1. # ms
                      }
@@ -35,6 +33,14 @@ CMAP_MORPH = mcolors.ListedColormap(vals)
 
 
 def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False):
+    """
+    Uses `neat.CompartmentFitter` to derive a `neat.CompartmentTree` for the
+    given `locs`. The simplified tree is stored under `f_name`. If the
+    simplified tree exists, it is loaded by default in memory (unless
+    `recompute_ctree` is ``True``). The impedances for efficient impedance
+    matrix evaluation are also stored, and are by default reloaded if they exist
+    (unless `recompute_biophys` is ``True``).
+    """
     try:
         if recompute_ctree:
             raise IOError
@@ -57,6 +63,10 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
 
 
 def calcAmpDelayWidth(res):
+    """
+    Compute a number of AP amplitude, delay compared to start of simulation,
+    delay of backpropagating AP compared to soma AP, and halfwidth
+    """
     dt = res['t'][1] - res['t'][0]
     # amplitude of peak
     res['amp'] = np.max(res['v_m'], axis=1) - res['v_m'][:,0]
@@ -70,6 +80,9 @@ def calcAmpDelayWidth(res):
 
 
 def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur':1.}):
+    """
+    Runs simulation to inject somatic current in order to elicit AP
+    """
     global DT, T_MAX, TC
     global T_DUR, G_SYN, N_INP
 
@@ -84,8 +97,7 @@ def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur'
 
 
 def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, pshow=True):
-    global STIM_PARAMS_BRANCO, D2S_BASAL, SLOCS_BRANCO
-    global D_NAME_BRANCO
+    global STIM_PARAMS, D2S_BASAL, SLOCS
     global CMAP_MORPH
 
     rc, rb  = recompute_ctree, recompute_biophys
@@ -124,20 +136,20 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     cfit = CompartmentFitter(phys_tree, name='basal_bAP', path='data/')
 
     # create reduced tree
-    ctree, clocs = getCTree(cfit, [SLOCS_BRANCO[0]] + locs, 'data/ctree_basal_bAP_3loc',
+    ctree, clocs = getCTree(cfit, [SLOCS[0]] + locs, 'data/ctree_basal_bAP_3loc',
                             recompute_ctree=rc, recompute_biophys=rb)
     csimtree = createReducedNeuronModel(ctree)
     print(ctree)
 
     # run the simulation of he full tree
-    res = runSim(sim_tree, locs, SLOCS_BRANCO[0], stim_params=STIM_PARAMS_BRANCO)
+    res = runSim(sim_tree, locs, SLOCS[0], stim_params=STIM_PARAMS)
     calcAmpDelayWidth(res)
 
     amp_diffs_biop[:] = res['amp'][1:]
     delay_diffs_biop[:] = res['delay'][1:]
 
     # run the simulation of the reduced tree
-    cres = runSim(csimtree, clocs[1:], clocs[0], stim_params=STIM_PARAMS_BRANCO)
+    cres = runSim(csimtree, clocs[1:], clocs[0], stim_params=STIM_PARAMS)
     calcAmpDelayWidth(cres)
 
     amp_diffs_3loc[:] = cres['amp'][1:]
@@ -147,13 +159,13 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     creslist = []
     for jj, loc in enumerate(locs):
         # create reduced tree with all 1 single dendritic site locs
-        ctree, clocs = getCTree(cfit, [SLOCS_BRANCO[0]] + [loc], 'data/ctree_basal_bAP_1loc%d'%jj,
+        ctree, clocs = getCTree(cfit, [SLOCS[0]] + [loc], 'data/ctree_basal_bAP_1loc%d'%jj,
                                 recompute_ctree=rc, recompute_biophys=False)
         csimtree = createReducedNeuronModel(ctree)
         print(ctree)
 
         # run the simulation of the reduced tree
-        cres_ss = runSim(csimtree, [clocs[1]], clocs[0], stim_params=STIM_PARAMS_BRANCO)
+        cres_ss = runSim(csimtree, [clocs[1]], clocs[0], stim_params=STIM_PARAMS)
         calcAmpDelayWidth(cres_ss)
         creslist.append(cres_ss)
 
@@ -235,7 +247,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
         cinds = [n.index for n in cnodes]
         cs = {node.index: 1 if node.index in cinds else 0 for node in sim_tree}
     # mark example locations
-    plocs = [SLOCS_BRANCO[0]] + locs
+    plocs = [SLOCS[0]] + locs
     markers = [{'marker': 's', 'c': cfl[0], 'mec': 'k', 'ms': markersize}] + \
               [{'marker': 's', 'c': cfl[1], 'mec': 'k', 'ms': markersize} for _ in plocs[1:]]
     # plot morphology
@@ -244,9 +256,9 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
                                 marklocs=plocs, locargs=markers, lims_margin=0.01)
 
     # plot compartment tree schematic
-    ctree_3l = cfit.setCTree([SLOCS_BRANCO[0]] + locs)
+    ctree_3l = cfit.setCTree([SLOCS[0]] + locs)
     ctree_3l = cfit.ctree
-    ctree_1l = cfit.setCTree([SLOCS_BRANCO[0]] + locs[0:1])
+    ctree_1l = cfit.setCTree([SLOCS[0]] + locs[0:1])
     ctree_1l = cfit.ctree
 
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}
