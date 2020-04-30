@@ -204,11 +204,11 @@ class TestCompartmentFitter():
         svs = []; e_eqs_ = []
         na_chan = greens_tree_na.channel_storage['Na_Ta']
         for e_eq1 in e_eqs:
-            sv1 = na_chan.computeVarInf(e_eq1)
+            sv1 = na_chan.computeVarinf(e_eq1)
             for e_eq2 in e_eqs:
-                e_eqs_.append(e_eq1)
-                sv2 = na_chan.computeVarInf(e_eq2)
-                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+                e_eqs_.append(e_eq2)
+                sv2 = na_chan.computeVarinf(e_eq2)
+                svs.append({'m': sv2['m'], 'h': sv1['h']})
 
         # compute sodium impedance matrices
         z_mats_na = []
@@ -483,11 +483,12 @@ class TestCompartmentFitter():
         svs = []; e_eqs_ = []
         na_chan = greens_tree_na.channel_storage['Na_Ta']
         for e_eq1 in e_eqs:
-            e_eqs_.append(e_eq1)
-            sv1 = na_chan.computeVarInf(e_eq1)
+            sv1 = na_chan.computeVarinf(e_eq1)
             for e_eq2 in e_eqs:
-                sv2 = na_chan.computeVarInf(e_eq2)
-                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+                e_eqs_.append(e_eq2)
+                sv2 = na_chan.computeVarinf(e_eq2)
+                svs.append({'m': sv2['m'], 'h': sv1['h']})
+
         # compute sodium impedance matrices
         z_mats_na = []
         for ii, sv in enumerate(svs):
@@ -626,10 +627,10 @@ if __name__ == '__main__':
     tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
-    # tcf.testChannelFitMats()
+    tcf.testChannelFitMats()
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
     # tcf.testPickling()
-    tcf.testParallel(w_benchmark=True)
+    # tcf.testParallel(w_benchmark=True)

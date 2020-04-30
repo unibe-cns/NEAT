@@ -210,10 +210,10 @@ class TestNeuron():
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # create simulation tree
-        self.neurontree.initModel(t_calibrate=100., factor_lambda=10.)
+        self.neurontree.initModel(t_calibrate=10., factor_lambda=10.)
         self.neurontree.storeLocs(locs, name='rec locs')
         # run test simulation
-        res = self.neurontree.run(10., record_from_channels=True)
+        res = self.neurontree.run(1., record_from_channels=True)
         # check if results are stored correctly
         assert set(res['chan']['TestChannel2'].keys()) == {'a00', 'a01', 'a10', 'a11', 'p_open'}
         # check if values are correct
