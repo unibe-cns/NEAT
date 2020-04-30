@@ -24,15 +24,14 @@ class Na_Ta(IonChannel):
     """
     def define(self):
         self.ion = 'na'
-        # define channel open probability
         self.p_open = 'h * m ** 3'
-        # define activation functions
+        # activation functions
         self.alpha, self.beta = {}, {}
         self.alpha['m'] =  '0.182 * (v + 38.) / (1. - exp(-(v + 38.) / 6.))' # 1/ms
         self.beta['m']  = '-0.124 * (v + 38.) / (1. - exp( (v + 38.) / 6.))' # 1/ms
         self.alpha['h'] = '-0.015 * (v + 66.) / (1. - exp( (v + 66.) / 6.))' # 1/ms
         self.beta['h']  =  '0.015 * (v + 66.) / (1. - exp(-(v + 66.) / 6.))' # 1/ms
-        # temperature factor for time-scale
+
         self.q10 = 2.95
 
 
@@ -43,7 +42,6 @@ class Na_p(IonChannel):
     '''
     def define(self):
         self.ion = 'na'
-        # channel open probability
         self.p_open = 'm**3 * h'
         # activation functions
         self.varinf = {'m': '1. / (1. + exp(-(v + 52.6) / 4.6))',
@@ -57,7 +55,7 @@ class Na_p(IonChannel):
         beta['h']  =   6.94e-6 * (v + 64.4) / (1. - sp.exp(-(v + 64.4) / 2.63, evaluate=False)) #1/ms
         self.tauinf = {'m': 6./(alpha['m'] + beta['m']),
                        'h': 1./(alpha['h'] + beta['h'])}
-        # temperature factor
+
         self.q10 = 2.95
 
 
@@ -68,9 +66,8 @@ class Kv3_1(IonChannel):
     '''
     def define(self):
         self.ion = 'k'
-        # define channel open probability
         self.p_open = 'm'
-        # define activation functions
+        # activation functions
         self.varinf = {'m': '1. / (1. + exp(-(v - 18.70) /  9.70))'}
         self.tauinf = {'m': '4. / (1. + exp(-(v + 46.56) / 44.14))'} # ms
 
@@ -116,6 +113,7 @@ class m(IonChannel):
         # activation functions
         self.alpha = {'m': '3.3e-3 * exp( 2.5 * 0.04 * (v + 35.))'}
         self.beta  = {'m': '3.3e-3 * exp(-2.5 * 0.04 * (v + 35.))'}
+
         self.q10 = 2.95
 
 
@@ -127,7 +125,6 @@ class SK(IonChannel):
     def define(self):
         self.ion = 'k'
         self.conc = ['ca']
-        # define channel open probability
         self.p_open = 'z'
         # activation functions
         self.varinf = {'z': '1. / (1. + (0.00043 / ca)**4.8)'}

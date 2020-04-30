@@ -23,7 +23,7 @@ class Na(IonChannel):
                        'h': 1. / (1. + sp.exp((v + 65.) / 6.2, evaluate=False))}
         self.tauinf = {'m': 1. / (alpha['m'] + beta['m']),
                        'h': 1. / (alpha['h'] + beta['h'])} # 1/ms
-        # temperature factor
+
         self.q10 = 3.21
 
 
@@ -47,7 +47,7 @@ class Na_shift(IonChannel):
                        'h': 1. / (1. + sp.exp((v-15. + 65.) / 6.2, evaluate=False))}
         self.tauinf = {'m': 1. / (alpha['m'] + beta['m']),
                        'h': 1. / (alpha['h'] + beta['h'])} # 1/ms
-        # temperature factor
+
         self.q10 = 3.21
 
 
@@ -61,6 +61,7 @@ class K_v(IonChannel):
         # activation functions
         self.alpha = {'n': '  0.02 * (v - 25.) / (1. - exp(-(v - 25.) / 9.))'}
         self.beta  = {'n': '-0.002 * (v - 25.) / (1. - exp( (v - 25.) / 9.))'}
+
         self.q10 = 3.21
 
 class K_v_shift(IonChannel):
@@ -99,6 +100,7 @@ class K_m35(IonChannel):
         # activation functions
         self.alpha = {'n': ' 0.001 * (v + 30.) / (1. - exp(-(v + 30.) / 9.))'}
         self.beta  = {'n': '-0.001 * (v + 30.) / (1. - exp( (v + 30.) / 9.))'}
+
         self.q10 = 2.71
 
 
@@ -113,6 +115,7 @@ class K_ca(IonChannel):
         # activation functions
         self.alpha = {'n': '0.01 * ca'}
         self.beta  = {'n': '0.02'}
+
         self.q10 = 3.21
 
 
@@ -123,7 +126,7 @@ class K_ir(IonChannel):
     def define(self):
         self.ion = 'k'
         self.p_open = 'm'
-        # asomptotic state variable functions
+        # activation functions
         self.varinf = {'m': '1. / (1. + exp((v + 82.) / 13.))'}
         self.tauinf = {'m': '6.*2.'}
 
@@ -134,7 +137,7 @@ class H_distal(IonChannel):
     '''
     def define(self):
         self.p_open = 'l'
-        # state variables
+        # activation functions
         self.varinf = {'l': '1. / 1. + exp((v + 81.) / 8.)'}
         self.tauinf = {'l': '(exp(0.0378 * 2.2 * .4 * (v + 75.))) / (1.82 * 0.011 * (1. + (exp(0.0378 * 2.2 * (v + 75.)))))'}
 
@@ -167,6 +170,7 @@ class Ca_H(IonChannel):
         self.beta['m']  = '0.94 * exp(-(75. + v) / 17.)'  #1/ms
         self.alpha['h'] = '0.000457 * exp(-(13. + v) / 50.)'   #1/ms
         self.beta['h']  = '0.0065 / (exp(-(v + 15.)/28.) + 1.)'   #1/ms
+
         self.q10 = 3.21
 
 class Ca_R(IonChannel):
