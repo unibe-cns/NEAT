@@ -335,6 +335,20 @@ Defining ion channels
 
 .. autoclass:: neat.IonChannel
 
+.. autosummary::
+   :toctree: generated/
+
+   IonChannel.setDefaultParams
+   IonChannel.computePOpen
+   IonChannel.computeDerivatives
+   IonChannel.computeDerivativesConc
+   IonChannel.computeVarinf
+   IonChannel.computeTauinf
+   IonChannel.computeLinear
+   IonChannel.computeLinearConc
+   IonChannel.computeLinSum
+   IonChannel.computeLinConc
+
 
 Neural evaluation tree simulator
 ================================
