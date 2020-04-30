@@ -59,7 +59,7 @@ class TestNET():
         assert np.allclose(k2(t_arr), np.array([44., 0.]))
         assert np.allclose(k3(t_arr), np.array([1., 0.]))
         # frequency kernel
-        s_arr = np.array([0., np.infty]) * 1j
+        s_arr = np.array([0. * 1j, np.infty * 1j])
         assert np.allclose(k1.ft(s_arr), np.array([4. + 0j, np.nan * 1j]), equal_nan=True)
         assert np.allclose(k2.ft(s_arr), np.array([8. + 0j, np.nan * 1j]), equal_nan=True)
         assert np.allclose(k3.ft(s_arr), np.array([1. + 0j, np.nan * 1j]), equal_nan=True)
