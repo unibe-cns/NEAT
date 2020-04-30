@@ -524,7 +524,7 @@ class CompartmentFitter(object):
                         all_channel_names=self.channel_names, action='return')
         # compute open probability to weigh fit matrices
         channel = self.tree.channel_storage[c_name]
-        po_h = channel.computePOpen(e_h, statevars=sv_h)
+        po_h = channel.computePOpen(e_h, **sv_h)
         w_f = 1. / po_h
 
         return m_f, v_t, w_f

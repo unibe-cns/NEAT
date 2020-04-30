@@ -75,7 +75,7 @@ def runCaCoinc(sim_tree, locs,
     return res
 
 
-def runCalciumCoinc(recompute_ctree=True, recompute_biophys=True, axdict=None, pshow=True):
+def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None, pshow=True):
     global D2S_CASPIKE, D2S_APIC
     global CA_LOC
 
@@ -105,6 +105,10 @@ def runCalciumCoinc(recompute_ctree=True, recompute_biophys=True, axdict=None, p
     # obtain the simplified tree
     ctree, clocs = getCTree(cfit, fit_locs, 'data/ctree_bac_firing',
             recompute_biophys=recompute_biophys, recompute_ctree=recompute_ctree)
+
+    # print(ctree)
+    print('--- ctree nodes currents')
+    print('\n'.join([str(n.currents) for n in ctree]))
 
     reslist, creslist_sb, creslist_sb_ = [], [], []
     locindslist_sb, locindslist_apic_sb = [], []

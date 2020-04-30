@@ -83,7 +83,6 @@ def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur'
     return res
 
 
-
 def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, pshow=True):
     global STIM_PARAMS_BRANCO, D2S_BASAL, SLOCS_BRANCO
     global D_NAME_BRANCO

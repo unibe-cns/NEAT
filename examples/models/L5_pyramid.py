@@ -30,7 +30,7 @@ def getL5Pyramid():
 
     # soma ion channels [uS/cm^2]
     phys_tree.addCurrent(Kv3_1,  0.766    *1e6, -85., node_arg=[phys_tree[1]])
-    phys_tree.addCurrent(Na_Ta,  0.0211   *1e6,  50., node_arg=[phys_tree[1]])
+    phys_tree.addCurrent(Na_Ta,  1.71     *1e6,  50., node_arg=[phys_tree[1]])
     phys_tree.addCurrent(Ca_LVA, 0.00432  *1e6,  50., node_arg=[phys_tree[1]])
     phys_tree.addCurrent(Ca_HVA, 0.000567 *1e6,  50., node_arg=[phys_tree[1]])
     phys_tree.addCurrent(h_HAY,  0.0002   *1e6, -45., node_arg=[phys_tree[1]])
