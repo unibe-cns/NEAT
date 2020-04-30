@@ -604,9 +604,9 @@ class TestReducedNeuron():
 
 if __name__ == '__main__':
     tn = TestNeuron()
-    # tn.testPassive(pplot=True)
+    tn.testPassive(pplot=True)
     # tn.testActive()
-    tn.testChannelRecording()
+    # tn.testChannelRecording()
 
     # trn = TestReducedNeuron()
     # trn.testGeometry1()
