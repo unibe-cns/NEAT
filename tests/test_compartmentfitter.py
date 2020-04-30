@@ -102,8 +102,9 @@ class TestCompartmentFitter():
         # input paradigm 1
         cm.setCTree(fit_locs1, extend_w_bifurc=True)
         fl1_a = cm.tree.getLocs('fit locs')
-        cm.setCTree(fit_locs1, extend_w_bifurc=False)
-        fl1_b = cm.tree.getLocs('fit locs')
+        with pytest.warns(UserWarning):
+            cm.setCTree(fit_locs1, extend_w_bifurc=False)
+            fl1_b = cm.tree.getLocs('fit locs')
         assert len(fl1_a) == len(fl1_b)
         for fla, flb in zip(fl1_a, fl1_b): assert fla == flb
         # input paradigm 2
@@ -600,10 +601,6 @@ class TestCompartmentFitter():
         cm = CompartmentFitter(self.tree)
 
         ctree_cm = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
-        # ctree_cm_ = cm.fitModel(locs, parallel=True, use_all_chans_for_passive=True)
-
-        # self._checkPasCaProps(ctree_cm, ctree_cm_)
-        # self._checkAllCurrProps(ctree_cm, ctree_cm_)
 
         if w_benchmark:
             from timeit import default_timer as timer
@@ -623,10 +620,10 @@ if __name__ == '__main__':
     tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
-    tcf.testChannelFitMats()
+    # tcf.testChannelFitMats()
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
     # tcf.testPickling()
-    # tcf.testParallel(w_benchmark=True)
+    tcf.testParallel(w_benchmark=True)

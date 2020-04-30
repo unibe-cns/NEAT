@@ -2042,7 +2042,6 @@ class MorphTree(STree):
         bnodes = self.getBifurcationNodes(nodes)
         blocs = [MorphLoc((bnode.index, 1.), self) for bnode in bnodes]
         # retain unique locs
-        # all_locs = locs + blocs
         all_locs = self.uniqueLocs(locs + blocs)
         # store the locations
         if name != 'dont save': self.storeLocs(all_locs, name=name)
@@ -2066,7 +2065,7 @@ class MorphTree(STree):
             the bifurcation locs
         """
         locs = self._parseLocArg(loc_arg)
-        locs_ =  reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
+        locs_ = reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
 
         if name != 'dont save': self.storeLocs(locs_, name=name)
         return locs_

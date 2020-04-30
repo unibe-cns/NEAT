@@ -1236,17 +1236,21 @@ class CompartmentTree(STree):
 
         Parameters
         ----------
-        alphas: np.ndarray (shape=(K,))
+        alphas: np.ndarray of float or complex (shape=(K,))
             The eigenmode inverse timescales (1/s)
-        phimat: np.ndarray (shape=(K,C))
+        phimat: np.ndarray of float or complex (shape=(K,C))
             The eigenmode vectors (C the number of compartments)
         weights: np.ndarray (shape=(K,)) or None
             The weights given to each eigenmode in the fit
         """
-        # np.set_printoptions(precision=2)
+        alphas = alphas.real
+        phimat = phimat.real
         n_c, n_a = len(self), len(alphas)
         assert phimat.shape == (n_a, n_c)
-        if weights is None: weights = np.ones_like(alphas)
+        if weights is None:
+            weights = np.ones_like(alphas)
+        else:
+            weights = weights.real
         # construct the passive conductance matrix
         g_mat = - self.calcSystemMatrix(freqs=0., channel_names=['L'],
                                         with_ca=False, indexing='tree')
