@@ -1,3 +1,10 @@
+"""
+Sequence discrimination
+=================
+
+.. image:: ../../../../figures/sequence_discrimination.png
+"""
+
 import numpy as np
 import neuron
 from neuron import h

@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # Trick to get the jupyter nbs to the documentation
 import shutil
 project_root = '..'
-print("Copy example notebooks into docs/_tutorials")
+print("Copy tutorial notebooks into docs/_tutorials")
 
 
 def all_but_ipynb(dir, contents):
@@ -52,6 +52,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
+    "sphinx_gallery.gen_gallery",
     "nb2plots",
     "texext",
     "nbsphinx"
@@ -126,6 +127,11 @@ release = "0.1"
 add_module_names = False
 
 # show_authors = True
+
+sphinx_gallery_conf = {
+    'examples_dirs': '../examples',   # path to your example scripts
+    'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
+}
 
 # The name of the Pygments (syntax highlighting) style to use.
 # pygments_style = 'friendly'

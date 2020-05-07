@@ -1,6 +1,11 @@
-import os
+"""
+Plotutil
+========
+"""
+
+import sys
 import matplotlib
-if os.uname()[0] == 'Linux' and (os.uname()[1] == 'pc59' or os.uname()[1] == 'pc58'):
+if sys.platform == 'Linux':
     matplotlib.use("Agg")
 
 import matplotlib.pyplot as pl

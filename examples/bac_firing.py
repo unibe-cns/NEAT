@@ -1,3 +1,10 @@
+"""
+Bac firing
+=================
+
+.. image:: ../../../../figures/bac_firing.png
+"""
+
 import numpy as np
 
 from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel

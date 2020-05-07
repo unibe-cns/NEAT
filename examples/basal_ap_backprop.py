@@ -1,3 +1,10 @@
+"""
+Basal AP Backprop
+=================
+
+.. image:: ../../../../figures/ap_backpropagation.png
+"""
+
 import numpy as np
 
 from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
