@@ -123,6 +123,7 @@ Documentation
    citing
    bibliography
    auto_examples/index
+   glossary
 
 Indices and tables
 ------------------
@@ -130,4 +131,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-* glossary
