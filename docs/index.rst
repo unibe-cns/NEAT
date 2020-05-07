@@ -89,7 +89,7 @@ Free software
 -------------
 
 NEAT is free software; you can redistribute it and/or modify it under the
-terms of the :doc:`GNU General Public License`.  We welcome contributions.
+terms of the `GNU General Public License`.  We welcome contributions.
 Join us on `GitHub <https://github.com/unibe-cns/NEAT>`_.
 
 History
@@ -130,4 +130,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-* :ref:`glossary`
+* glossary

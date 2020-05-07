@@ -54,7 +54,7 @@ def computationalTreetypeDecorator(fun):
     """
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
-        if self._computational_root == None:
+        if self._computational_root is None:
             raise AttributeError('No computational tree has been defined, ' + \
                                   'and this function requires one. Use ' + \
                                   '`MorphTree.setCompTree()` or its ' + \

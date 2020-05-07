@@ -6,16 +6,16 @@ import os
 import copy
 import warnings
 
-CONC_DICT = {'na': 10., # mM
-             'k': 54.4, # mM
-             'ca': 1e-4, # 1e-4
-            }
+CONC_DICT = {'na': 10.,  # mM
+             'k': 54.4,  # mM
+             'ca': 1e-4,  # 1e-4
+             }
 
 TEMP_DEFAULT = 36.
 
 E_ION_DICT = {'na': 50.,
-             'k': -85.,
-             'ca': 50.,
+              'k': -85.,
+              'ca': 50.,
             }
 
 
