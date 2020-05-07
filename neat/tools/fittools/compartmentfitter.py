@@ -18,18 +18,18 @@ from ...trees.netree import NET, NETNode, Kernel
 
 from ...tools import kernelextraction as ke
 
-try:
-    from ...tools.simtools.neuron import neuronmodel as neurm
-except ModuleNotFoundError:
-    warnings.warn('NEURON not available', UserWarning)
-
 import warnings
 import copy
 import concurrent.futures
 import contextlib
 import multiprocessing
 
+try:
+    from ...tools.simtools.neuron import neuronmodel as neurm
+except ModuleNotFoundError:
+    warnings.warn('NEURON not available', UserWarning)
 
+    
 def cpu_count(use_hyperthreading=True):
     """
     Return number of available cores.
