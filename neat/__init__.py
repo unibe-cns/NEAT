@@ -41,6 +41,5 @@ except ModuleNotFoundError:
 from .tools.kernelextraction import FourrierTools
 
 from .channels.ionchannels import IonChannel
-from .channels.ionchannels_simplified import IonChannelSimplified
 
 from .tools.fittools.compartmentfitter import CompartmentFitter

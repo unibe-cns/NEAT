@@ -49,19 +49,18 @@ class GreensNode(PhysNode):
         ----------
         channel_name: string
             the name of the ion channel
-        statevar: `np.ndarray`
-            Should be of the same shape as the ion channels' state variables array
-        channel_storage: dict of ion channels (optional)
-            The ion channels that have been initialized already. If not
-            provided, a new channel is initialized
+        statevar: dict
+            The expansion points for each of the ion channel state variables
         """
+        if statevar is None:
+            statevar = {}
         self.expansion_points[channel_name] = statevar
 
     def getExpansionPoint(self, channel_name):
         try:
             return self.expansion_points[channel_name]
         except KeyError:
-            self.expansion_points[channel_name] = None
+            self.expansion_points[channel_name] = {}
             return self.expansion_points[channel_name]
 
     def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
@@ -93,11 +92,11 @@ class GreensNode(PhysNode):
             if g > 1e-10:
                 # create the ionchannel object
                 channel = channel_storage[channel_name]
-                if len(channel.concentrations) == 0:
+                if len(channel.conc) == 0:
                     # check if needs to be computed around expansion point
                     sv = self.getExpansionPoint(channel_name)
                     # add channel contribution to membrane impedance
-                    g_ = g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
+                    g_ = g * channel.computeLinSum(self.e_eq, freqs, e, **sv)
                     g_m_aux -= g_
                     if use_conc:
                         g_m_ions[channel.ion] += g_
@@ -108,13 +107,13 @@ class GreensNode(PhysNode):
             if g > 1e-10:
                 # create the ionchannel object
                 channel = channel_storage[channel_name]
-                if len(channel.concentrations) > 0:
+                if len(channel.conc) > 0:
                     # check if needs to be computed around expansion point
                     sv = self.getExpansionPoint(channel_name)
                     # add channel contribution to membrane impedance
-                    g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, statevars=sv)
+                    g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, **sv)
                     if use_conc:
-                        for ion in channel.concentrations:
+                        for ion in channel.conc:
                             g_m_aux -= g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
                                        self.concmechs[ion].computeLinear(freqs) * \
                                        g_m_ions[ion]

@@ -1,8 +1,5 @@
-import concurrent.futures
-import contextlib
-import multiprocessing
 import numpy as np
-import warnings
+import dill
 
 import matplotlib.patheffects as patheffects
 import matplotlib.patches as patches
@@ -21,15 +18,18 @@ from ...trees.netree import NET, NETNode, Kernel
 
 from ...tools import kernelextraction as ke
 
+import warnings
+import copy
+import concurrent.futures
+import contextlib
+import multiprocessing
+
 try:
     from ...tools.simtools.neuron import neuronmodel as neurm
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
-   
-import warnings
-import copy
 
-
+    
 def cpu_count(use_hyperthreading=True):
     """
     Return number of available cores.
@@ -68,33 +68,41 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
 
     Returns
     -------
-    sv_hs: list of np.ndarray
+    sv_hs: list of dict
         Each entry is a state variable expansion point
     e_hs: list of float
         The holding potentials corresponding to each entry in ``sv_hs``
     """
     e_hs = list(e_hs)
-    if channel.statevars.size == 1 or only_e_h:
-        sv_hs = [channel.computeVarInf(e_h) for e_h in e_hs]
-    elif channel.statevars.size == 2:
+    if len(channel.statevars) == 1 or only_e_h:
+        sv_hs = [channel.computeVarinf(e_h) for e_h in e_hs]
+    elif len(channel.statevars) == 2:
         # evaluate at the holding potentials
-        sv_aux = [channel.computeVarInf(e_h) for e_h in e_hs]
-        # evaluate different combinations
-        ind0 = (0,0)
-        ind1 = (0,1) if channel.statevars.shape[0] == 1 else (1,0)
+        sv_aux = [channel.computeVarinf(e_h) for e_h in e_hs]
+
+        # check which variable is activation
+        sv = channel.computeVarinf(np.array([-43.22, -32.22]))
+        sind_act = None
+        for ii, svar in enumerate(channel.ordered_statevars):
+            if sv[svar][1] > sv[svar][0]:
+                sind_act = 'ii' if ii == 0 else 'jj'
+
+        # evaluate at combinations of holding potentials
         sv_hs_extra, e_hs_extra = [], []
-        for i0, sv0 in enumerate(sv_aux):
-            for i1, sv1 in enumerate(sv_aux):
-                sv_extra = np.zeros_like(sv0)
-                sv_extra[ind0] = sv0[ind0]
-                sv_extra[ind1] = sv1[ind1]
-                sv_hs_extra.append(sv_extra)
-                e_hs_extra.append(e_hs[i0])
+        sv_o = channel.ordered_statevars
+        for ii, sv_1 in enumerate(sv_aux):
+            for jj, sv_2 in enumerate(sv_aux):
+                sv_hs_extra.append({str(sv_o[0]): sv_1[sv_o[0]],
+                                    str(sv_o[1]): sv_2[sv_o[1]]})
+                # follow holding potential of activation state variable
+                e_hs_extra.append(eval('e_hs[%s]'%sind_act))
+
         sv_hs = sv_aux + sv_hs_extra
         e_hs = e_hs + e_hs_extra
     else:
         raise Exception('Method only implemented for channels with two ' + \
                         'or less state variables')
+
     return sv_hs, e_hs
 
 
@@ -205,9 +213,9 @@ class FitTreeGF(GreensTree):
             cname_string += '_' + c_name + '_'
             try:
                 sv_h = self.root.expansion_points[c_name]
-                for ind, varname in np.ndenumerate(channel.varnames):
-                    sv = sv_h[ind]
-                    cname_string += varname + '=%.8f'%sv
+                for svar in channel.ordered_statevars:
+                    sv = sv_h[str(svar)]
+                    cname_string += str(svar) + '=%.8f'%sv
             except (KeyError, TypeError):
                 pass
 
@@ -230,10 +238,6 @@ class FitTreeGF(GreensTree):
             self.setImpedance(freqs, pprint=pprint)
 
             if not 'dont save' in self.name:
-                # clear the stuff that isn't impedances and unnecessary
-                # IonChannel objects cause problems with pickling
-                self.clearLocs()
-                self.channel_storage = {}
                 # store the impedance tree
                 file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
@@ -327,123 +331,10 @@ class FitTreeSOV(SOVTree):
             # compute SOV factorisation
             self.calcSOVEquations(maxspace_freq=maxspace_freq, pprint=False)
             if not 'dont save' in self.name:
-                # remove all locations and stored ion channel objects
-                self.clearLocs()
-                self.channel_storage = {}
                 # store the tree
                 file = open(self.path + file_name, 'wb')
                 dill.dump(self, file)
                 file.close()
-
-
-# class ChannelEvaluator:
-#     def __init__(self):
-#         # number of currently used cores
-#         self._n_occupied_cores = 0
-
-#     @property
-#     def _n_free_cores(self):
-#         """Returns number of currently unused cores"""
-#         return multiprocessing.cpu_count() - self._n_occupied_cores
-
-#     @contextlib.contextmanager
-#     def reserve_cores(self, n):
-#         """ContextManager to manage CPU resources. Occupies and frees cores."""
-#         self._occupy_cores(n)
-#         yield
-#         self._free_cores(n)
-
-#     def _occupy_cores(self, n):
-#         """Marks n more cores as occupied"""
-#         self._n_occupied_cores += n
-
-#     def _free_cores(self, n):
-#         """Marks n fewer cores as occupied"""
-#         self._n_occupied_cores -= n
-
-#     def evaluate(self, cfit, recompute=False, parallel=False, pprint=False):
-#         tree = cfit.tree # full tree model
-#         ctree = cfit.ctree # reduced tree model
-#         freqs = cfit.freqs
-#         locs = tree.getLocs('fit locs')
-#         channel_names = list(tree.channel_storage.keys())
-
-#         args_list = []
-#         chan_name_map = []
-
-#         for channel_name in channel_names:
-#             channel = tree.channel_storage[channel_name]
-
-#             # compute the expansion points for this channel
-#             sv_hs, e_hs = getExpansionPoints(cfit.e_hs, channel)
-
-#             # create the trees with only a single channel
-#             # evaluated at a given expansion point
-#             fit_tree = cfit.createTreeGF([channel_name])
-#             fit_tree.setName(cfit.name, cfit.path)
-#             for sv_h, e_h in zip(sv_hs, e_hs):
-#                 ftree = fit_tree.__copy__(new_tree=FitTreeGF())
-#                 ftree.storeLocs(locs, name='fit locs')
-#                 ftree.setExpansionPointsForFit({channel_name: sv_h}, e_h)
-#                 # append to the argument list
-#                 args_list.append([ftree, ctree, channel_names, freqs, recompute, pprint])
-#                 chan_name_map.append(channel_name)
-
-#         n_tree = len(args_list)
-
-#         # compute the fit matrices
-#         if parallel:
-#             max_workers = min(n_tree, self._n_free_cores)
-#             args_list_ = zip(*args_list)
-#             with self.reserve_cores(max_workers):
-#                 with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-#                     fit_mats = list(pool.map(self._calcFitMatrices, *args_list_))
-#         else:
-#             fit_mats = [self._calcFitMatrices(*args) for args in args_list]
-
-#         # renormalize fit matrices
-#         for channel, channel_name in tree.channel_storage.items():
-#             # compute the weight norm
-#             w_norm = 1. / np.sum([w_f for ii, (_,_,w_f) in enumerate(fit_mats) \
-#                                       if chan_name_map[ii] == channel_name])
-#             # normalize weights by weight norm
-#             for ii, (_,_,w_f) in enumerate(fit_mats):
-#                 w_f /= w_norm
-
-#         # store all fit matrices on the reduced tree
-#         for m_f, v_t, w_f in fit_mats:
-#             if not (np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()):
-#                 ctree._fitResAction('store', m_f, v_t, w_f,
-#                                              channel_names=channel_names)
-
-#         # run the fit
-#         cfit.ctree.runFit()
-
-
-#     def _calcFitMatrices(self, fit_tree, ctree, channel_names, freqs, recompute, pprint):
-#         """
-#         Compute the matrices needed to fit the channel
-#         """
-#         e_h = fit_tree.root.e_eq
-#         c_name = list(fit_tree.channel_storage.keys())[0]
-#         sv_h = fit_tree.root.expansion_points[c_name]
-
-#         # set the impedances in the tree
-#         fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
-#         # compute the impedance matrix for this acitvation level
-#         z_mat = fit_tree.calcImpedanceMatrix('fit locs')
-
-#         # compute the fit matrices
-#         m_f, v_t = ctree.computeGSingleChanFromImpedance(c_name, z_mat, e_h, freqs,
-#                         sv=sv_h, other_channel_names=['L'],
-#                         all_channel_names=channel_names, action='return')
-#         # compute open probability to weigh fit matrices
-#         channel = fit_tree.channel_storage[c_name]
-#         po_h = channel.computePOpen(e_h, statevars=sv_h)
-#         w_f = 1. / po_h
-
-#         return m_f, v_t, w_f
-
 
 
 class CompartmentFitter(object):
@@ -505,7 +396,7 @@ class CompartmentFitter(object):
         self.tree.storeLocs(locs, name='fit locs')
         # create the reduced compartment tree
         self.ctree = self.tree.createCompartmentTree(locs)
-        # add currents to compartmental model
+        # # add currents to compartmental model
         for c_name, channel in self.tree.channel_storage.items():
             e_revs = []
             for node in self.tree:
@@ -618,8 +509,6 @@ class CompartmentFitter(object):
         """
         Compute the matrices needed to fit the channel
         """
-        # self.GLOB_INT += 1
-        # print('>>>', self.GLOB_INT)
         e_h = fit_tree.root.e_eq
         c_name = list(fit_tree.channel_storage.keys())[0]
         sv_h = fit_tree.root.expansion_points[c_name]
@@ -635,7 +524,7 @@ class CompartmentFitter(object):
                         all_channel_names=self.channel_names, action='return')
         # compute open probability to weigh fit matrices
         channel = self.tree.channel_storage[c_name]
-        po_h = channel.computePOpen(e_h, statevars=sv_h)
+        po_h = channel.computePOpen(e_h, **sv_h)
         w_f = 1. / po_h
 
         return m_f, v_t, w_f
@@ -1027,7 +916,7 @@ class CompartmentFitter(object):
         sim_tree_biophys = self.tree.__copy__(new_tree=neurm.NeuronSimTree())
         # compute equilibrium potentials
         sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.storeLocs(locs, 'rec locs')
+        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
         res_biophys = sim_tree_biophys.run(t_max)
         sim_tree_biophys.deleteModel()
         return np.array([v_m[-1] for v_m in res_biophys['v_m']])

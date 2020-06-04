@@ -7,7 +7,3 @@ dill>=0.3.1.1
 pathos>=0.2.5
 pytest>=4.3.0
 scikit_learn>=0.22.2.post1
-
-# documentation
-sphinx>=2.4.3
-nbsphinx>=0.5.1

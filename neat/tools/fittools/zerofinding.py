@@ -93,16 +93,17 @@ def pf_winding_number(point, poly):
 
     return wn
 
+
 class contour(object):
     def __init__(self, N_eval=1e3):
-        self.curves  = [lambda x:               np.exp(2.*np.pi*1j*x)]
+        self.curves =  [lambda x:               np.exp(2.*np.pi*1j*x)]
         self.dcurves = [lambda x: 2.*np.pi*1j * np.exp(2.*np.pi*1j*x)]
         self.N_eval = [N_eval]
         self.make_arrays = False
 
     def construct_arrays(self):
         self.ts = [np.linspace(0., 1., int(N)) for N in self.N_eval]
-        self.curve_arrs  = [ curve(self.ts[i]) for i,  curve in enumerate(self.curves )]
+        self.curve_arrs = [curve(self.ts[i]) for i, curve in enumerate(self.curves)]
         self.dcurve_arrs = [dcurve(self.ts[i]) for i, dcurve in enumerate(self.dcurves)]
         self.make_arrays = True
 

@@ -24,7 +24,6 @@ class TestCompartmentTree():
                 |
                 1
         """
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
@@ -305,7 +304,6 @@ class TestCompartmentTree():
         self.greens_tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
         self.greens_tree.fitLeakCurrent(-75., 10.)
-        print(self.greens_tree)
         # set computational tree
         self.greens_tree.setCompTree()
         # set the impedances
@@ -352,11 +350,11 @@ class TestCompartmentTree():
         svs = []; e_eqs_ = []
         na_chan = greens_tree_na.channel_storage['Na_Ta']
         for e_eq1 in e_eqs:
-            e_eqs_.append(e_eq1)
-            sv1 = na_chan.computeVarInf(e_eq1)
+            sv1 = na_chan.computeVarinf(e_eq1)
             for e_eq2 in e_eqs:
-                sv2 = na_chan.computeVarInf(e_eq2)
-                svs.append(np.array([[sv1[0,0], sv2[0,1]]]))
+                e_eqs_.append(e_eq2)
+                sv2 = na_chan.computeVarinf(e_eq2)
+                svs.append({'m': sv2['m'], 'h': sv1['h']})
         # compute sodium impedance matrices
         z_mats_na = []
         for ii, sv in enumerate(svs):
@@ -484,7 +482,7 @@ class TestCompartmentTree():
 
         # test total current, conductance
         sv = svs[-1]
-        p_open = sv[0,0]**3 * sv[0,1]
+        p_open = sv['m']**3 * sv['h']
         # with p_open given
         g1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
         i1 = ctree[0].getGTot(ctree.channel_storage, channel_names=['L', 'Na_Ta'], p_open_channels={'Na_Ta': p_open})
@@ -522,11 +520,9 @@ class TestCompartmentTree():
 
 class TestCompartmentTreePlotting():
     def _initTree1(self):
-        """
-        1   2
-         \ /
-          0
-        """
+        # 1   2
+        #  \ /
+        #   0
         croot = CompartmentNode(0, loc_ind=0)
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
@@ -538,15 +534,13 @@ class TestCompartmentTreePlotting():
         self.ctree = ctree
 
     def _initTree2(self):
-        """
-        3
-        |
-        2
-        |
-        1
-        |
-        0
-        """
+        # 3
+        # |
+        # 2
+        # |
+        # 1
+        # |
+        # 0
         croot = CompartmentNode(0, loc_ind=0)
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
@@ -560,14 +554,12 @@ class TestCompartmentTreePlotting():
         self.ctree = ctree
 
     def _initTree3(self):
-        """
-        4 5 6 7   8
-         \|/   \ /
-          1  2  3
-           \ | /
-            \|/
-             0
-        """
+        # 4 5 6 7   8
+        #  \|/   \ /
+        #   1  2  3
+        #    \ | /
+        #     \|/
+        #      0
         cns = [CompartmentNode(ii, loc_ind=ii) for ii in range(9)]
 
         ctree = CompartmentTree(root=cns[0])
