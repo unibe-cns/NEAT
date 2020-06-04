@@ -143,11 +143,11 @@ class IonChannel(object):
 
     with $c_1, ..., c_n$ the (optional) set of concentrations the ion channel
     depends on. There are two canonical ways to define $f_i$, either based on
-    reaction rates :math:`\alpha` and :math:`\beta`:
+    reaction rates :math:`\\alpha` and :math:`\\beta`:
 
     .. math:: \dot{x}_i = \\alpha_i(v) \, (1 - x_i) - \\beta_i{v} \, x_i,
 
-    or based on an asymtotic value :math:`x_i^{\infty}`  and time-scale :math:`\tau_i`
+    or based on an asymptotic value :math:`x_i^{\infty}`  and time-scale :math:`\\tau_i`
 
     .. math:: \dot{x}_i = \\frac{x_i^{\infty}(v) - x_i}{\tau_i(v)}.
 
