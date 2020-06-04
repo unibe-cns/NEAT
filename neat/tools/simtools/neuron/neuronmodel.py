@@ -62,7 +62,6 @@ class NeuronSimNode(PhysNode):
         compartment.cm = self.c_m # uF/cm^2
         compartment.Ra = self.r_a*1e6 # MOhm*cm --> Ohm*cm
         # insert membrane currents
-        print(mechname, self.currents.keys())
         for key, current in self.currents.items():
             if current[0] > 1e-10:
                 compartment.insert(mechname[key])
@@ -746,7 +745,7 @@ class NeuronSimTree(PhysTree):
                 self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
                                v_init=self.v_init, factor_lambda=self.factor_lambda)
                 self.addIClamp(loc0, i_amp, 0., t_dur)
-                self.storeLocs([loc0, loc1], 'rec locs')
+                self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_dur)
                 # voltage deflections
@@ -778,7 +777,7 @@ class NeuronSimTree(PhysTree):
                 self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
                                v_init=self.v_init, factor_lambda=self.factor_lambda)
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
-                self.storeLocs([loc0, loc1], 'rec locs')
+                self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_max)
                 # voltage deflections

@@ -21,7 +21,6 @@ class TestGreensTree():
                 |
                 1
         """
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
@@ -33,7 +32,6 @@ class TestGreensTree():
 
         5---1---4
         """
-        print('>>> loading validation tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
@@ -48,7 +46,6 @@ class TestGreensTree():
                 |
                 1
         """
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
         self.sovtree.fitLeakCurrent(-75., 10.)
@@ -61,7 +58,6 @@ class TestGreensTree():
 
         5---1---4
         """
-        print('>>> loading validation tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
         self.sovtree.fitLeakCurrent(-75., 10.)
@@ -82,8 +78,6 @@ class TestGreensTree():
         self.tree.storeLocs(locs_1, '1')
         self.tree.storeLocs(locs_2, '2')
         # compute impedance matrices
-        print(ft.ind_0s)
-        print(self.tree.calcImpedanceMatrix('0'))
         z_mat_0 = self.tree.calcImpedanceMatrix('0')[ft.ind_0s]
         z_mat_1 = self.tree.calcImpedanceMatrix('1')[ft.ind_0s]
         z_mat_2 = self.tree.calcImpedanceMatrix('2')[ft.ind_0s]
@@ -132,8 +126,6 @@ class TestGreensTree():
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
         self.tree.setImpedance(ft.s)
-        print('!!! ', ft.ind_0s)
-        # sets of location
         # sets of location
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         self.tree.storeLocs(locs, 'locs')
@@ -143,8 +135,6 @@ class TestGreensTree():
         z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
         z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
-        print('> z_gf =\n', z_gf)
-        print('> z_gf2 =\n', z_gf2)
         assert np.allclose(z_gf2, z_gf, atol=5e-6)
         zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
         zf_gf = self.tree.calcImpedanceMatrix('locs')
@@ -174,48 +164,6 @@ class TestGreensTree():
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
         zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
         assert np.allclose(zf_gf2, zf_gf, atol=5e-6)
-
-        # print z_sov
-        # print z_gf
-
-        # self.tree.treetype = 'computational'
-        # for node in self.tree:
-        #     print node
-        #     if not self.tree.isRoot(node):
-        #         print 'z_p', node.z_proximal[ft.ind_0s]
-        #         print 'z_d', node.z_distal[ft.ind_0s]
-        #         print 'z_c', node.z_c[ft.ind_0s]
-        #         print 'z_a', node.z_a
-        #         print 'z_m', node.z_m[ft.ind_0s]
-        #         print 'gamma', node.gamma[ft.ind_0s]
-        #     else:
-        #         # pass
-        #         print node.z_soma[ft.ind_0s]
-
-
-        # import morphologyReader as morphR
-        # distr = {'L': {'type': 'fit', 'param': [-65., 10.], 'E': -65.}}
-        # fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
-        # gt = morphR.greensTree(fname, ionc_distr=distr, soma_distr=distr, cnodesdistr='all')
-        # # gt.set_changenodes()
-        # gt.set_impedance(ft.s)
-
-        # for node in gt.tree.get_nodes():
-        #     if morphR.is_changenode(node):
-        #         imp = node.get_content()['impedance']
-        #         print node
-        #         if node._index != 1:
-        #             print 'z_p', imp.z_0[ft.ind_0s]
-        #             print 'z_d', imp.z_1[ft.ind_0s]
-        #             print 'z_c', imp.z_c[ft.ind_0s]
-        #             print 'z_a', imp.z_a
-        #             print 'z_m', imp.z_m[ft.ind_0s]
-        #             print 'gamma', imp.gamma[ft.ind_0s]
-        #         else:
-        #             # pass
-        #             print imp.z_soma[ft.ind_0s]
-
-
 
 
 if __name__ == '__main__':

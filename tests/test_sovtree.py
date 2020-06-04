@@ -20,7 +20,6 @@ class TestSOVTree():
                 |
                 1
         """
-        print('>>> loading T-tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
@@ -32,7 +31,6 @@ class TestSOVTree():
 
         5---1---4
         """
-        print('>>> loading validation tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
@@ -57,14 +55,6 @@ class TestSOVTree():
         # compare analytical and computed time scales
         assert np.allclose(alphas[:20], alphas_test)
         # compute the spatial mode functions analytically
-        # import matplotlib.pyplot as pl
-        # self.tree.distributeLocsUniform(dx=4., name='NET_eval')
-        # alphas, gammas = self.tree.getSOVMatrices(self.tree.getLocs(name='NET_eval'))
-        # for kk in range(5):
-        #     print 'tau_' + str(kk) + ' =', -1./alphas[kk].real
-        #     pl.plot(range(gammas.shape[1]), gammas[kk,:])
-        #     pl.plot(range(gammas.shape[1]), g)
-        # pl.show()
         ## TODO
 
         # test basic identities
@@ -104,8 +94,6 @@ class TestSOVTree():
         # test Fourrier impedance matrix
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         z_mat_ft = self.tree.calcImpedanceMatrix(locarg='1', eps=1e-10, freqs=ft.s)
-        print(z_mat_ft[ft.ind_0s,:,:])
-        print(z_mat_a)
         assert np.allclose(z_mat_ft[ft.ind_0s,:,:].real, \
                            z_mat_a, atol=1e-1) # check steady state
         assert np.allclose(z_mat_ft - np.transpose(z_mat_ft, axes=(0,2,1)), \
@@ -119,7 +107,6 @@ class TestSOVTree():
         """
         Load point neuron model
         """
-        print('>>> loading validation tree <<<')
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc')
         self.btree = SOVTree(fname, types=[1,3,4])
         self.btree.fitLeakCurrent(-75., 10.)
@@ -153,7 +140,6 @@ class TestSOVTree():
         self.tree.calcSOVEquations()
         # construct the NET
         net = self.tree.constructNET()
-        # print str(net)
         # initialize
         self.loadTTree()
         self.tree.calcSOVEquations()

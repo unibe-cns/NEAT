@@ -1119,7 +1119,7 @@ class MorphTree(STree):
             return L
 
     @originalTreetypeDecorator
-    def storeLocs(self, locs, name):
+    def storeLocs(self, locs, name, warn=True):
         """
         Store locations under a specified name
 
@@ -1129,11 +1129,10 @@ class MorphTree(STree):
                 the locations to be stored
             name: string
                 name under which these locations are stored
-
-        Raises
-        ------
-            ValueError
-                If multiple locations are on the soma.
+            warn: bool (default ``True``)
+                raise a `UserWarning` if two or more locations in `locs` refer
+                to the soma. Choose ``False`` if this is desired to remove
+                the warning.
         """
         # copy list and store in MorphLoc if necessary
         locs_ = []
@@ -1141,7 +1140,7 @@ class MorphTree(STree):
         for loc in locs:
             locs_.append(MorphLoc(loc, self))
             if locs_[-1]['node'] == 1: n1 += 1
-        if n1 > 1:
+        if n1 > 1 and warn:
             warnings.warn('There are multiple locations on the soma in this set ' + \
                           'locations, this can cause issues in certain functions', UserWarning)
 
@@ -2042,7 +2041,6 @@ class MorphTree(STree):
         bnodes = self.getBifurcationNodes(nodes)
         blocs = [MorphLoc((bnode.index, 1.), self) for bnode in bnodes]
         # retain unique locs
-        # all_locs = locs + blocs
         all_locs = self.uniqueLocs(locs + blocs)
         # store the locations
         if name != 'dont save': self.storeLocs(all_locs, name=name)
@@ -2066,7 +2064,7 @@ class MorphTree(STree):
             the bifurcation locs
         """
         locs = self._parseLocArg(loc_arg)
-        locs_ =  reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
+        locs_ = reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
 
         if name != 'dont save': self.storeLocs(locs_, name=name)
         return locs_

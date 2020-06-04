@@ -41,7 +41,6 @@ class TestMorphTree():
                 1
         """
         if not hasattr(self, 'tree') or reinitialize:
-            print('>>> loading T-tree <<<')
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
             self.tree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
 
@@ -487,7 +486,6 @@ class TestMorphTree():
         for (loc, checkloc) in zip(locs, checklocs):
             assert loc == checkloc
         locs = self.tree.distributeLocsUniform(50., node_arg=self.tree[5])
-        for loc in locs: print(loc)
         checklocs = [{'node': 5, 'x': 1.}, {'node': 6, 'x': 1.}]
         for (loc, checkloc) in zip(locs, checklocs):
             assert loc == checkloc
@@ -649,7 +647,6 @@ class TestMorphTree():
         self.tree[4].R += 1e-2
         self.tree.setCompTree()
         self.tree.treetype = 'computational'
-        for node in self.tree: print(node.index)
         for node in self.tree: assert node.index in [1,5,8,10,12]
 
 

@@ -5,19 +5,15 @@ import pytest
 
 class TestSTree():
     def createTree(self, reinitialize=0):
-        """
-        Create a simple tree structure
+        # Create a simple tree structure
 
-         2     3
-          \   /
-           \ /
-            1
-            |
-            |
-            0
-
-        """
-        print('>>> creating tree <<<')
+        #  2     3
+        #   \   /
+        #    \ /
+        #     1
+        #     |
+        #     |
+        #     0
         # create the four nodes
         node0 = SNode(0)
         node1 = SNode(1)
@@ -32,22 +28,18 @@ class TestSTree():
         self.tree.addNodeWithParent(node3, node1)
 
     def createTree2(self, reinitialize=0):
-        """
-        Create a simple tree structure
+        # Create a simple tree structure
 
-          4     5     6
-           \   /     /
-            \ /     /
-             2     3
-              \   /
-               \ /
-                1
-                |
-                |
-                0
-
-        """
-        print('>>> creating tree <<<')
+        #   4     5     6
+        #    \   /     /
+        #     \ /     /
+        #      2     3
+        #       \   /
+        #        \ /
+        #         1
+        #         |
+        #         |
+        #         0
         # create the nodes
         node0 = SNode(0)
         node1 = SNode(1)
