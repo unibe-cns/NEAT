@@ -95,7 +95,6 @@ s_ = setup(
         'build_ext': BuildExtCommand,
     },
     include_package_data=True,
-    package_data={'': ['*.mod']},
     author='Willem Wybo, Jakob Jordan, Benjamin Ellenberger',
     classifiers=['Development Status :: 3 - Alpha',
                  'Programming Language :: Python :: 3.7',
