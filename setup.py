@@ -14,8 +14,6 @@ from setuptools.command.install import install
 
 import os, subprocess, shutil, sys
 
-import numpy
-
 from __version__ import version as pversion
 
 
@@ -61,6 +59,12 @@ def read_requirements():
     return requirements
 
 
+class DelayedNumPyInclude:
+    def __iter__(self):
+        import numpy
+        return iter([numpy.get_include()])
+
+
 ext = Extension("netsim",
                 ["neat/tools/simtools/net/netsim.pyx",
                  "neat/tools/simtools/net/NETC.cc",
@@ -69,8 +73,7 @@ ext = Extension("netsim",
                  "neat/tools/simtools/net/Tools.cc"],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
-                include_dirs=[numpy.get_include()])
-
+                include_dirs=DelayedNumPyInclude())
 
 s_ = setup(
     name='neat',
