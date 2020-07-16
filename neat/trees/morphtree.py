@@ -38,6 +38,7 @@ def originalTreetypeDecorator(fun):
         res = fun(self, *args, **kwargs)
         self.treetype = current_treetype
         return res
+    wrapped.__doc__ = fun.__doc__
     return wrapped
 
 def computationalTreetypeDecorator(fun):
@@ -65,6 +66,7 @@ def computationalTreetypeDecorator(fun):
         res = fun(self, *args, **kwargs)
         self.treetype = current_treetype
         return res
+    wrapped.__doc__ = fun.__doc__
     return wrapped
 
 
