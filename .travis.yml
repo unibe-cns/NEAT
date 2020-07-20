@@ -14,8 +14,10 @@ before_install:
   - pip install --upgrade pip
   - wget https://neuron.yale.edu/ftp/neuron/versions/v7.7/nrn-7.7.x86_64-linux.deb
   - sudo dpkg -i ./nrn-7.7.x86_64-linux.deb
-install:
+  - export PATH=$PATH:/usr/local/nrn/x86_64/bin
+  - export PYTHONPATH=$PYTHONPATH:/usr/local/nrn/lib/python/
   - pip install -r requirements.txt
+install:
   - pip install .
 script:
   - compilechannels default
