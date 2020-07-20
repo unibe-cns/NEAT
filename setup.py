@@ -76,7 +76,7 @@ ext = Extension("netsim",
                 include_dirs=DelayedNumPyInclude())
 
 s_ = setup(
-    name='neat',
+    name='neatdend',
     version=pversion,
     scripts=['neat/channels/compilechannels'],
     packages=['neat',
@@ -105,5 +105,6 @@ s_ = setup(
     license='GPLv3',
     url='https://github.com/unibe-cns/NEAT',
     long_description=open('README.rst').read(),
+    long_description_content_type="text/x-rst",
     install_requires=read_requirements(),
 )
