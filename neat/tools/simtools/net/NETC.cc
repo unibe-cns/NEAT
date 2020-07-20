@@ -801,7 +801,7 @@ void NETSimulator::advanceConvolutions(double dt){
 NETNode* NETSimulator::findSomaLeaf(){
     // search for the somatic leaf node
     auto leaf_it = m_leafs.begin();
-    while((*leaf_it)->m_loc_indices[0] != 0 and leaf_it != m_leafs.end()){
+    while((*leaf_it)->m_loc_indices[0] != 0 && leaf_it != m_leafs.end()){
         leaf_it ++;
     }
     return *leaf_it;
