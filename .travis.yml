@@ -18,7 +18,7 @@ before_install:
   - export PYTHONPATH=$PYTHONPATH:/usr/local/nrn/lib/python/
   - pip install -r requirements.txt
 install:
-  - pip install .
+  - pip install . -v
 script:
   - compilechannels default
   - pytest
