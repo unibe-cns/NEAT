@@ -12,8 +12,8 @@ before_install:
   - conda create --yes -n myenv python=$TRAVIS_PYTHON_VERSION
   - source activate myenv
   - pip install --upgrade pip
-  - sudo apt update -y
-  - sudo apt install -y neuron neuron-dev
+  - wget https://neuron.yale.edu/ftp/neuron/versions/v7.7/nrn-7.7.x86_64-linux.deb
+  - sudo dpkg -i ./nrn-7.7.x86_64-linux.deb
 install:
   - pip install -r requirements.txt
   - pip install .
