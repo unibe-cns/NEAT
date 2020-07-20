@@ -6,6 +6,7 @@ NEAT (NEural Analysis Toolkit)
 Author: W. Wybo
 """
 
+import re
 from setuptools import setup
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
@@ -14,7 +15,12 @@ from setuptools.command.install import install
 
 import os, subprocess, shutil, sys
 
-from __version__ import version as pversion
+
+def read_version():
+    with open("./neat/__version__.py") as f:
+        line = f.read()
+        match = re.findall(r"[0-9]+\.[0-9]+\.[0-9]+", line)
+        return match[0]
 
 
 class DevelopCommand(develop):
@@ -77,7 +83,7 @@ ext = Extension("netsim",
 
 s_ = setup(
     name='neatdend',
-    version=pversion,
+    version=read_version(),
     scripts=['neat/channels/compilechannels'],
     packages=['neat',
               'neat.trees',

@@ -43,3 +43,5 @@ from .tools.kernelextraction import FourrierTools
 from .channels.ionchannels import IonChannel
 
 from .tools.fittools.compartmentfitter import CompartmentFitter
+
+from .__version__ import __version__
