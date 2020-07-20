@@ -27,11 +27,8 @@ def loadNEATCorrectPath():
 
     return neat
 
-
-
 neat = loadNEATCorrectPath()
 from neat import IonChannel
-
 
 path_neat = neat.__path__[0]
 path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/mech/')
@@ -51,7 +48,6 @@ def resetDefaultMech():
 
     # copy default mechanisms
     shutil.copytree(path_default_mech, path_for_mod_files)
-
 
 if sys.argv[1] == 'default':
     resetDefaultMech()
