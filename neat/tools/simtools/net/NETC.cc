@@ -69,7 +69,7 @@ inline void NETNode::gatherInput(double xx, double yy){
 }
 inline void NETNode::gatherInput(IODat in){
     m_xx += in.g_val; m_yy += in.f_val;
-    if(m_soma_flag == 0 or m_soma_flag == 1){
+    if(m_soma_flag == 0 || m_soma_flag == 1){
         m_lxx += in.lg_val; m_lyy += in.lf_val;
     }
 }
@@ -132,7 +132,7 @@ inline double NETNode::calcV(double v_in, int sign){
 inline double NETNode::calcV(double v_in){
     // reset recursion variables
     m_xx = 0.0; m_yy = 0.0;
-    if(m_soma_flag == 0 or m_soma_flag == 1){
+    if(m_soma_flag == 0 || m_soma_flag == 1){
         m_lxx = 0.0; m_lyy = 0.0;
         m_soma_denom = 1.0;
     }
@@ -284,7 +284,7 @@ void NETSimulator::addNodeFromPython(int node_index, int parent_index,
 
 void NETSimulator::addLinTermFromPython(int loc_index,
                                         double* alphas, double* gammas, int n_exp){
-    if(loc_index < 0 or loc_index > m_n_loc) cerr << "'loc_index' out of range" << endl;
+    if(loc_index < 0 || loc_index > m_n_loc) cerr << "'loc_index' out of range" << endl;
     LinTerm lin_term;
     arr2vec(lin_term.m_alphas, alphas, n_exp);
     arr2vec(lin_term.m_gammas, gammas, n_exp);
@@ -293,7 +293,7 @@ void NETSimulator::addLinTermFromPython(int loc_index,
 
 void NETSimulator::addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev,
                                            bool instantaneous, double* vs, int v_size){
-    if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
+    if(loc_ind < 0 || loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
     if(g_bar < 0.) cerr << "'g_bar' must be positive" << endl;
     // create the ion channel
     IonChannel* chan = m_ccreate->createInstance(channel_name);
@@ -305,7 +305,7 @@ void NETSimulator::addIonChannelFromPython(string channel_name, int loc_ind, dou
 };
 
 void NETSimulator::addSynapseFromType(int loc_ind, int syn_type){
-    if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
+    if(loc_ind < 0 || loc_ind > m_n_loc) cerr << "'loc_ind' out of range" << endl;
     if(syn_type == 0){
         DrivingForce* syn = new DrivingForce(0.0);
         m_v_dep[loc_ind].push_back(syn);
@@ -331,7 +331,7 @@ void NETSimulator::addSynapseFromType(int loc_ind, int syn_type){
 };
 void NETSimulator::addSynapseFromParams(int loc_ind, double e_r,
                                             double *params, int p_size){
-    if(loc_ind < 0 or loc_ind > m_n_loc) cerr << "'loc_ind out of range" << endl;
+    if(loc_ind < 0 || loc_ind > m_n_loc) cerr << "'loc_ind out of range" << endl;
     DrivingForce* syn = new DrivingForce(e_r);
     m_v_dep[loc_ind].push_back(syn);
     if(p_size == 1){
@@ -349,9 +349,9 @@ void NETSimulator::addSynapseFromParams(int loc_ind, double e_r,
 }
 
 void NETSimulator::removeSynapseFromIndex(int loc_ind, int syn_ind){
-    if(loc_ind < 0 or loc_ind > m_n_loc)
+    if(loc_ind < 0 || loc_ind > m_n_loc)
         cerr << "'loc_ind' out of range" << endl;
-    if(syn_ind < 0 or syn_ind > (int)m_v_dep[loc_ind].size())
+    if(syn_ind < 0 || syn_ind > (int)m_v_dep[loc_ind].size())
         cerr << "'syn_ind' out of range" << endl;
     VoltageDependence* v_dep_ptr = m_v_dep[loc_ind][syn_ind];
     m_v_dep[loc_ind].erase(m_v_dep[loc_ind].begin() + syn_ind);
@@ -687,7 +687,7 @@ void NETSimulator::solveMatrixDownSweep(NETNode* node_ptr,
         // gather input from child layers
         pnode_ptr->gatherInput(output);
         // store denominator if necessary for linear terms
-        if(m_integ_mode == 1 and !m_lin_terms.empty() and node_ptr->m_soma_flag == 1)
+        if(m_integ_mode == 1 && !m_lin_terms.empty() && node_ptr->m_soma_flag == 1)
             pnode_ptr->multiplyToDenom(output.denom);
         // move on to next nodes
         pnode_ptr->pass();
@@ -708,7 +708,7 @@ void NETSimulator::solveMatrixUpSweep(NETNode& node, double vv, int det_sign){
     if(m_integ_mode == 0){
         vv = node.calcV(vv, det_sign);
     } else {
-        if(!m_lin_terms.empty() and node.m_soma_flag == 1)
+        if(!m_lin_terms.empty() && node.m_soma_flag == 1)
             // add linear terms to node voltage
             calcLinTerms(node, node);
         vv = node.calcV(vv);
