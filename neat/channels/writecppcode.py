@@ -37,7 +37,7 @@ def write():
     fh.write('    void init(double g_bar, double e_rev){m_g_bar = g_bar; m_e_rev = e_rev;};' + '\n')
     fh.write('    void setInstantaneous(bool b){m_instantaneous = b;};' + '\n')
     fh.write('    virtual void calcFunStatevar(double v){};' + '\n')
-    fh.write('    virtual double calcPOpen(){};' + '\n')
+    fh.write('    virtual double calcPOpen(){return 0.0;};' + '\n')
     fh.write('    virtual void setPOpen(){};' + '\n')
     fh.write('    virtual void setPOpenEQ(double v){};' + '\n')
     fh.write('    virtual void advance(double dt){};' + '\n')

@@ -26,7 +26,7 @@ public:
 	virtual void setParams(double tau_r, double tau_d){};
 	virtual void reset(){};
 	virtual void feedSpike(double g_max, int n_spike){};
-	virtual double advance(double dt){};
+	virtual double advance(double dt){return 0.0;};
 	virtual double getSurface(){return 0.0;};
 	double getCond(){return m_g;};
 };
