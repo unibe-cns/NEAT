@@ -723,8 +723,8 @@ class MorphTree(STree):
 
             # add soma
             self._root.R = s_node_1.R
-            self.addNodeWithParent(s_node_1,self._root)
-            self.addNodeWithParent(s_node_2,self._root)
+            self.addNodeWithParent(s_node_1, self._root)
+            self.addNodeWithParent(s_node_2, self._root)
 
             # add the other points
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
@@ -748,22 +748,29 @@ class MorphTree(STree):
         return self
 
     def _makeSomaFromCylinders(self, soma_cylinders, all_nodes):
-        # Construct 3-point soma
-        # Step 1: calculate surface of all cylinders
-        # Step 2: make 3-point representation with the same surface
+        """
+        Construct 3-point soma
+        Step 1: calculate surface of all cylinders
+        Step 2: make 3-point representation with the same surface
+        """
         total_surf = 0
         for (node, parent_index) in soma_cylinders:
+            parent = self[parent_index]
+
             nxyz = node.xyz
-            pxyz = all_nodes[parent_index][1].xyz
-            H = np.sqrt(np.sum((nxyz-pxyz)**2))
-            surf = 2*np.pi*p.radius*H
-            total_surf = total_surf+surf
+            pxyz = parent.xyz
+
+            H = np.sqrt(np.sum( (nxyz - pxyz)**2 ))
+
+            surf = 2 * np.pi * parent.radius * H
+            total_surf += surf
 
         # define apropriate radius
-        radius = np.sqrt(total_surf/(4*np.pi))
+        radius = np.sqrt(total_surf / (4.*np.pi))
         rp = self.root.xyz
-        rp1 = np.array([rp.x, rp.y - radius, rp.z])
-        rp2 = np.array([rp.x, rp.y + radius, rp.z])
+        rp1 = np.array([rp[0], rp[1] - radius, rp[2]])
+        rp2 = np.array([rp[0], rp[1] + radius, rp[2]])
+
         # create the soma nodes
         s_node_1 = self._createCorrespondingNode(2, (rp1, radius, 1))
         s_node_2 = self._createCorrespondingNode(3, (rp2, radius, 1))
@@ -784,7 +791,8 @@ class MorphTree(STree):
         -------
         soma_type: int
             Integer indicating one of the su[pported SWC soma formats.
-            1: Default three-point soma, 2: multiple cylinder description,
+            1: Default three-point soma,
+            2: multiple cylinder description,
             3: otherwise [not suported in btmorph]
         """
         file = open(file_n, 'r')
