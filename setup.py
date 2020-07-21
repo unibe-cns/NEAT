@@ -65,10 +65,14 @@ def read_requirements():
     return requirements
 
 
-class DelayedNumPyInclude:
+class DelayedIncludeDirs:
+    """Delay importing of numpy until extension is built. This allows pip
+    to install numpy if it's not available.
+
+    """
     def __iter__(self):
         import numpy
-        return iter([numpy.get_include()])
+        return iter([numpy.get_include(), "neat/tools/simtools/net/*.h"])
 
 
 ext = Extension("netsim",
@@ -79,7 +83,7 @@ ext = Extension("netsim",
                  "neat/tools/simtools/net/Tools.cc"],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
-                include_dirs=DelayedNumPyInclude())
+                include_dirs=DelayedIncludeDirs())
 
 s_ = setup(
     name='neatdend',
