@@ -762,7 +762,7 @@ class MorphTree(STree):
 
             H = np.sqrt(np.sum( (nxyz - pxyz)**2 ))
 
-            surf = 2 * np.pi * parent.radius * H
+            surf = 2 * np.pi * parent.R * H
             total_surf += surf
 
         # define apropriate radius
