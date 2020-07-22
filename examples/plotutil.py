@@ -24,6 +24,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 from matplotlib.offsetbox import AnchoredText
+import matplotlib.image as mpimg
 
 import numpy as np
 
@@ -252,3 +253,12 @@ class TransformedCMap(mcolors.Colormap):
     def __call__(self, x, alpha=None, bytes=False):
         return self.cmap(self.func(x), alpha=alpha, bytes=bytes)
 
+
+def plotStoredImg(img_path):
+    pl.figure()
+    ax = noFrameAx(pl.gca())
+
+    img = mpimg.imread(img_path)
+    ax.imshow(img)
+
+    pl.show()
