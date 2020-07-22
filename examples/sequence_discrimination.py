@@ -5,6 +5,7 @@ Sequence discrimination
 .. image:: ../../../../figures/sequence_discrimination.png
 """
 
+import sys
 import numpy as np
 import warnings
 
@@ -13,14 +14,14 @@ from models.L23_pyramid import getL23PyramidPas
 
 from plotutil import *
 
-SIM_FLAG = 1
 try:
     import neuron
     from neuron import h
     from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
-    SIM_FLAG = 0
+    plotStoredImg('../docs/figures/sequence_discrimination.png')
+    sys.exit('NEURON not available, plotting stored image')
 
 
 ## Parameters ##################################################################
@@ -279,8 +280,4 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
 
 
 if __name__ == '__main__':
-    if SIM_FLAG == 1:
-        plotSim(delta_ts=[0.,4.,8.])
-    else:
-        plotStoredImg('../docs/figures/sequence_discrimination.png')
-
+    plotSim(delta_ts=[0.,4.,8.])
