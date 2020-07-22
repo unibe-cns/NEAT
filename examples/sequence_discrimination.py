@@ -6,6 +6,7 @@ Sequence discrimination
 """
 
 import numpy as np
+import warnings
 
 from neat import MorphLoc, CompartmentFitter
 from models.L23_pyramid import getL23PyramidPas
