@@ -21,7 +21,7 @@ try:
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     plotStoredImg('../docs/figures/sequence_discrimination.png')
-    sys.exit('NEURON not available, plotting stored image')
+    sys.exit(0)
 
 
 ## Parameters ##################################################################
