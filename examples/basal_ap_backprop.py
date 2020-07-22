@@ -17,7 +17,7 @@ import dill
 SIM_FLAG = 1
 try:
     from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
-except ModuleNotFoundError:
+except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
 
