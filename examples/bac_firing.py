@@ -6,6 +6,7 @@ Bac firing
 """
 
 import numpy as np
+import warnings
 
 from neat import MorphLoc, CompartmentFitter
 from models.L5_pyramid import getL5Pyramid
