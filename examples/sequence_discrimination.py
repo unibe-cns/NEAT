@@ -9,11 +9,17 @@ import numpy as np
 import neuron
 from neuron import h
 
-from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
 from neat import MorphLoc, CompartmentFitter
 from models.L23_pyramid import getL23PyramidPas
 
 from plotutil import *
+
+SIM_FLAG = 1
+try:
+    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+except ModuleNotFoundError:
+    warnings.warn('NEURON not available, plotting stored image', UserWarning)
+    SIM_FLAG = 0
 
 
 ## Parameters ##################################################################
@@ -272,5 +278,8 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
 
 
 if __name__ == '__main__':
-    plotSim(delta_ts=[0.,4.,8.])
+    if SIM_FLAG == 1:
+        plotSim(delta_ts=[0.,4.,8.])
+    else:
+        plotStoredImg('../docs/figures/sequence_discrimination.png')
 
