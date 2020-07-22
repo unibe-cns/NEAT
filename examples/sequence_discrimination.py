@@ -6,8 +6,6 @@ Sequence discrimination
 """
 
 import numpy as np
-import neuron
-from neuron import h
 
 from neat import MorphLoc, CompartmentFitter
 from models.L23_pyramid import getL23PyramidPas
@@ -16,8 +14,10 @@ from plotutil import *
 
 SIM_FLAG = 1
 try:
+    import neuron
+    from neuron import h
     from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
-except ModuleNotFoundError:
+except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
 
