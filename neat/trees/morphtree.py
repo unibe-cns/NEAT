@@ -793,7 +793,6 @@ class MorphTree(STree):
         """
         total_surf = 0
         for (node, parent_index) in soma_cylinders:
-            print(node, parent_index, all_nodes[parent_index][1])
 
             parent = all_nodes[parent_index][1]
 
