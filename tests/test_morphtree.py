@@ -652,7 +652,16 @@ class TestMorphTree():
 
     def testMultiCylinderSoma(self):
         mtree = MorphTree('test_morphologies/multicylinder_soma.swc')
-        print(mtree)
+
+        for n, idx in zip(mtree, [1,7,8,9,10]):
+            assert n.index == idx
+
+        s_radius = np.sqrt(2.*np.pi*10. * 5. / (4.*np.pi))
+
+        print (mtree[1].R, s_radius)
+        assert mtree[1].R == s_radius
+
+
 
 
 
