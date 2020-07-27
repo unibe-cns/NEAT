@@ -132,6 +132,14 @@ Morphology Tree
 
 .. autoclass:: neat.MorphTree
 
+Read a morphology from an SWC file
+
+.. autosummary::
+   :toctree: generated/
+
+   MorphTree.readSWCTreeFromFile
+   MorphTree.determineSomaType
+
 .. autosummary::
    :toctree: generated/
 

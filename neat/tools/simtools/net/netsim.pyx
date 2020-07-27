@@ -669,7 +669,7 @@ cdef class NETSim:
 
         if pprint:
             print('\n>>> Integrating NET model for ' + str(tmax) + ' ms. <<<')
-            start = time.clock()
+            start = time.process_time()
 
         # cython loop
         cdef int ss = 0 # spike counter
@@ -705,7 +705,7 @@ cdef class NETSim:
                 mm += 1
 
         if pprint:
-            stop = time.clock()
+            stop = time.process_time()
             print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<\n')
 
         #return the result

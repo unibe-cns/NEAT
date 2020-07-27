@@ -660,9 +660,14 @@ class MorphTree(STree):
         On the NeuroMorpho.org website, 5 types of somadescriptions are
         considered (http://neuromorpho.org/neuroMorpho/SomaFormat.html).
         The "3-point soma" is the standard and most files are converted
-        to this format during a curation step. btmorph follows this default
-        specification and the *internal structure of btmorph implements
-        the 3-point soma*.
+        to this format during a curation step. `neat` follows this default
+        specification and the *internal structure of `neat` implements
+        the 3-point soma*. Additionally multi-cylinder descriptions with more
+        than three nodes are also supported, but are converted to the standard
+        three point description.
+
+        Additionally, the root node of the tree must have ``index == 1``,
+        ``swc_type == 1`` and occur first in the SWC file.
 
         Parameters
         -----------
@@ -670,9 +675,47 @@ class MorphTree(STree):
             name of the file to open
         types: list of ints
             NeuroMorpho.org segment types to be loaded
+
+        Examples
+        --------
+        The three point description is
+        >>> 1 1 x y   z r -1
+        >>> 1 1 x y-r z r 1
+        >>> 1 1 x y+r z r 1
+        with `x,y,z` the coordinates of the soma center and `r` the soma radius
+
+        This is a valid three point desciption
+        >>> # start of file
+        >>> 1 1 45.3625 18.6775 -50.25 10.1267403895 -1
+        >>> 2 1 45.3625 8.55075961052 -50.25 10.1267403895 1
+        >>> 3 1 45.3625 28.8042403895 -50.25 10.1267403895 1
+        >>> # dendrite nodes
+        >>> 4 3 37.76 12.99 -46.08 0.29 1
+        >>> 5 3 26.7068019951 8.26344199599 -36.9426896493 0.795614809475 4
+        >>> # ...
+
+        This is a valid multi-cylinder descirption
+        >>> # start of file
+        >>> 1 1 1066.38 399.67 157.0 4.9215 -1
+        >>> 2 1 1071.3 399.67 157.0 4.9215 1
+        >>> 3 1 1076.22 399.67 157.0 4.9215 2
+        >>> 4 1 1066.5 402.83 157.0 11.494 2
+        >>> 5 1 1062.4 405.5 157.0 15.308 4
+        >>> 6 1 1056.6 410.25 158.0 20.536 5
+        >>> 7 1 1056.6 410.25 158.0 20.536 6
+        >>> 8 1 1070.0 427.75 161.0 2.305 7
+        >>> # dendrite nodes
+        >>> 9 3 1070.0 427.75 161.0 0.886 8
+        >>> # ...
+
+        Raises
+        ------
+        ValueError
+            If the SWC file is not consistent with the aforementioned conventions
+
         """
         # check soma-representation: 3-point soma or a non-standard representation
-        soma_type = self._determineSomaType(file_n)
+        soma_type = self.determineSomaType(file_n)
 
         file = open(file_n,'r')
         all_nodes = dict()
@@ -692,6 +735,11 @@ class MorphTree(STree):
                     node = self._createCorrespondingNode(index, p3d)
                     all_nodes[index] = (swc_type, node, parent_index)
 
+        # check if node with index 1 is soma node (swc_type == 1)
+        if all_nodes[1][0] != 1:
+            raise ValueError('Node with index 1 should be soma-type, i.e. swc_type == 1')
+
+        # standard three point soma representation
         if soma_type == 1:
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
                 if index == 1:
@@ -704,11 +752,22 @@ class MorphTree(STree):
                 else:
                     parent_node = all_nodes[parent_index][1]
                     self.addNodeWithParent(node, parent_node)
+
+            # check if soma follows three point convention
+            radius_arr = np.array([all_nodes[1][1].R,
+                                   all_nodes[2][1].R,
+                                   all_nodes[3][1].R,
+                                   np.linalg.norm(all_nodes[2][1].xyz - all_nodes[1][1].xyz),
+                                   np.linalg.norm(all_nodes[3][1].xyz - all_nodes[1][1].xyz)])
+            if not np.allclose(np.abs(radius_arr - radius_arr[0]),
+                               np.zeros_like(radius_arr)):
+                raise ValueError('Soma radii not consistent with three-point convention')
+
         # IF multiple cylinder soma representation
         elif soma_type == 2:
             self.setRoot(all_nodes[1][1])
 
-            # get all some info
+            # get all soma info
             soma_cylinders = []
             connected_to_root = []
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
@@ -718,13 +777,13 @@ class MorphTree(STree):
                         connected_to_root.append(index)
 
             # make soma
-            s_node_1, s_node_2 = \
+            s_node_2, s_node_3 = \
                     self._makeSomaFromCylinders(soma_cylinders, all_nodes)
 
             # add soma
-            self._root.R = s_node_1.R
-            self.addNodeWithParent(s_node_1,self._root)
-            self.addNodeWithParent(s_node_2,self._root)
+            self.root.R = s_node_2.R
+            self.addNodeWithParent(s_node_2, self.root)
+            self.addNodeWithParent(s_node_3, self.root)
 
             # add the other points
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
@@ -748,32 +807,50 @@ class MorphTree(STree):
         return self
 
     def _makeSomaFromCylinders(self, soma_cylinders, all_nodes):
-        # Construct 3-point soma
-        # Step 1: calculate surface of all cylinders
-        # Step 2: make 3-point representation with the same surface
+        """
+        Construct 3-point soma
+        Step 1: calculate surface of all cylinders
+        Step 2: make 3-point representation with the same surface
+        """
         total_surf = 0
+        xyz_sum = self.root.xyz
         for (node, parent_index) in soma_cylinders:
+
+            parent = all_nodes[parent_index][1]
+
             nxyz = node.xyz
-            pxyz = all_nodes[parent_index][1].xyz
-            H = np.sqrt(np.sum((nxyz-pxyz)**2))
-            surf = 2*np.pi*p.radius*H
-            total_surf = total_surf+surf
+            pxyz = parent.xyz
+
+            H = np.sqrt(np.sum( (nxyz - pxyz)**2 ))
+
+            surf = 2 * np.pi * parent.R * H
+            total_surf += surf
+
+            xyz_sum += node.xyz
 
         # define apropriate radius
-        radius = np.sqrt(total_surf/(4*np.pi))
-        rp = self.root.xyz
-        rp1 = np.array([rp.x, rp.y - radius, rp.z])
-        rp2 = np.array([rp.x, rp.y + radius, rp.z])
+        radius = np.sqrt(total_surf / (4.*np.pi))
+        rp = xyz_sum / (len(soma_cylinders)+1.)
+        rp2 = np.array([rp[0], rp[1] - radius, rp[2]])
+        rp3 = np.array([rp[0], rp[1] + radius, rp[2]])
+
+        self.root.xyz = rp
         # create the soma nodes
-        s_node_1 = self._createCorrespondingNode(2, (rp1, radius, 1))
-        s_node_2 = self._createCorrespondingNode(3, (rp2, radius, 1))
+        s_node_2 = self._createCorrespondingNode(2, (rp2, radius, 1))
+        s_node_3 = self._createCorrespondingNode(3, (rp3, radius, 1))
 
-        return s_node_1, s_node_2
+        return s_node_2, s_node_3
 
-    def _determineSomaType(self, file_n):
+    def determineSomaType(self, file_n):
         """
-        Costly method to determine the soma type used in the SWC file.
+        Determine the soma type used in the SWC file.
         This method searches the whole file for soma entries.
+
+        Only tbe standard three-point soma type and a multi-cylinder description
+        are supported.
+
+        Furthermore, the root node of the tree must have ``index == 1``,
+        ``swc_type == 1`` and occur first in the SWC file.
 
         Parameters
         ----------
@@ -784,8 +861,13 @@ class MorphTree(STree):
         -------
         soma_type: int
             Integer indicating one of the su[pported SWC soma formats.
-            1: Default three-point soma, 2: multiple cylinder description,
-            3: otherwise [not suported in btmorph]
+            1: Default three-point soma,
+            2: multiple cylinder description
+
+        Raises
+        ------
+        ValueError
+            If soma type is not supported (less than three nodes have soma)
         """
         file = open(file_n, 'r')
         somas = 0
@@ -800,7 +882,7 @@ class MorphTree(STree):
         if somas == 3:
             return 1
         elif somas < 3:
-            return 3
+            raise ValueError('Soma description not supported, use 3-point or multi-cylinder description')
         else:
             return 2
 

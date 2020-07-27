@@ -1,5 +1,5 @@
 import os
-import posix
+import time
 import copy
 
 import numpy as np
@@ -667,9 +667,9 @@ class NeuronSimTree(PhysTree):
 
         # simulate
         if pprint: print('>>> Simulating the NEURON model for ' + str(t_max) + ' ms. <<<')
-        start = posix.times()[0]
+        start = time.process_time()
         neuron.run(t_max + self.t_calibrate)
-        stop = posix.times()[0]
+        stop = time.process_time()
         if pprint: print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')
         runtime = stop-start
 
