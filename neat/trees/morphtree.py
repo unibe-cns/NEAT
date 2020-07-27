@@ -661,7 +661,7 @@ class MorphTree(STree):
         considered (http://neuromorpho.org/neuroMorpho/SomaFormat.html).
         The "3-point soma" is the standard and most files are converted
         to this format during a curation step. `neat` follows this default
-        specification and the *internal structure of btmorph implements
+        specification and the *internal structure of `neat` implements
         the 3-point soma*. Additionally multi-cylinder descriptions with more
         than three nodes are also supported, but are converted to the standard
         three point description.
@@ -678,6 +678,12 @@ class MorphTree(STree):
 
         Examples
         --------
+        The three point description is
+        >>> 1 1 x y   z r -1
+        >>> 1 1 x y-r z r 1
+        >>> 1 1 x y+r z r 1
+        with `x,y,z` the coordinates of the soma center and `r` the soma radius
+
         This is a valid three point desciption
         >>> # start of file
         >>> 1 1 45.3625 18.6775 -50.25 10.1267403895 -1
@@ -702,6 +708,10 @@ class MorphTree(STree):
         >>> 9 3 1070.0 427.75 161.0 0.886 8
         >>> # ...
 
+        Raises
+        ------
+        ValueError
+            If the SWC file is not consistent with the aforementioned conventions
 
         """
         # check soma-representation: 3-point soma or a non-standard representation
@@ -742,11 +752,22 @@ class MorphTree(STree):
                 else:
                     parent_node = all_nodes[parent_index][1]
                     self.addNodeWithParent(node, parent_node)
+
+            # check if soma follows three point convention
+            radius_arr = np.array([all_nodes[1][1].R,
+                                   all_nodes[2][1].R,
+                                   all_nodes[3][1].R,
+                                   np.linalg.norm(all_nodes[2][1].xyz - all_nodes[1][1].xyz),
+                                   np.linalg.norm(all_nodes[3][1].xyz - all_nodes[1][1].xyz)])
+            if not np.allclose(np.abs(radius_arr - radius_arr[0]),
+                               np.zeros_like(radius_arr)):
+                raise ValueError('Soma radii not consistent with three-point convention')
+
         # IF multiple cylinder soma representation
         elif soma_type == 2:
             self.setRoot(all_nodes[1][1])
 
-            # get all some info
+            # get all soma info
             soma_cylinders = []
             connected_to_root = []
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
@@ -784,6 +805,7 @@ class MorphTree(STree):
             node.setLength(L)
 
         return self
+
 
     def _makeSomaFromCylinders(self, soma_cylinders, all_nodes):
         """
