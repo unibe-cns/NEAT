@@ -650,14 +650,20 @@ class TestMorphTree():
         for node in self.tree: assert node.index in [1,5,8,10,12]
 
 
+    def testMultiCylinderSoma(self):
+        mtree = MorphTree('test_morphologies/multicylinder_soma.swc')
+        print(mtree)
+
+
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
     # tmt.testPlotting(pshow=True)
     # tmt.testCompTree0()
     # tmt.testInputArgConversion()
-    tmt.testLocFunctionality()
+    # tmt.testLocFunctionality()
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()
     # tmt.testCompTree()
+    tmt.testMultiCylinderSoma()
 
