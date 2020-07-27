@@ -649,6 +649,21 @@ class TestMorphTree():
         self.tree.treetype = 'computational'
         for node in self.tree: assert node.index in [1,5,8,10,12]
 
+    def testThreePointSoma(self):
+        mtree = MorphTree('test_morphologies/threepoint_soma.swc')
+
+        for n, idx in zip(mtree, [1,4,5]):
+            assert n.index == idx
+
+        idxs = [1,2,3,4,5]
+        for ii, n in enumerate(mtree.__iter__(skip_inds=[])):
+            assert n.index == idxs[ii]
+
+        s_surface = 2. * np.pi * 5. * 5. + \
+                    2. * np.pi * 5. * 5.
+        s_radius = np.sqrt(s_surface / (4.*np.pi))
+
+        assert mtree[1].R == s_radius
 
     def testMultiCylinderSoma(self):
         mtree = MorphTree('test_morphologies/multicylinder_soma.swc')
@@ -656,13 +671,17 @@ class TestMorphTree():
         for n, idx in zip(mtree, [1,7,8,9,10]):
             assert n.index == idx
 
+        idxs = [1,2,3,7,8,9,10]
+        for ii, n in enumerate(mtree.__iter__(skip_inds=[])):
+            assert n.index == idxs[ii]
+
         s_radius = np.sqrt(2.*np.pi*10. * 5. / (4.*np.pi))
 
-        print (mtree[1].R, s_radius)
         assert mtree[1].R == s_radius
 
-
-
+    def testWrongSoma(self):
+        with pytest.raises(ValueError):
+            mtree = MorphTree('test_morphologies/wrong_soma.swc')
 
 
 if __name__ == '__main__':
@@ -674,5 +693,8 @@ if __name__ == '__main__':
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()
     # tmt.testCompTree()
-    tmt.testMultiCylinderSoma()
+
+    # tmt.testMultiCylinderSoma()
+    # tmt.testThreePointSoma()
+    tmt.testWrongSoma()
 
