@@ -679,6 +679,8 @@ class TestMorphTree():
 
         assert mtree[1].R == s_radius
 
+        assert np.allclose(mtree[1].xyz, np.array([0.,2.5,0.]))
+
     def testWrongSoma(self):
         with pytest.raises(ValueError):
             mtree = MorphTree('test_morphologies/wrong_soma.swc')
@@ -694,7 +696,7 @@ if __name__ == '__main__':
     # tmt.testNearestNeighbours()
     # tmt.testCompTree()
 
-    # tmt.testMultiCylinderSoma()
+    tmt.testMultiCylinderSoma()
     # tmt.testThreePointSoma()
-    tmt.testWrongSoma()
+    # tmt.testWrongSoma()
 

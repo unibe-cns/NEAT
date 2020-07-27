@@ -806,7 +806,6 @@ class MorphTree(STree):
 
         return self
 
-
     def _makeSomaFromCylinders(self, soma_cylinders, all_nodes):
         """
         Construct 3-point soma
@@ -814,6 +813,7 @@ class MorphTree(STree):
         Step 2: make 3-point representation with the same surface
         """
         total_surf = 0
+        xyz_sum = self.root.xyz
         for (node, parent_index) in soma_cylinders:
 
             parent = all_nodes[parent_index][1]
@@ -826,12 +826,15 @@ class MorphTree(STree):
             surf = 2 * np.pi * parent.R * H
             total_surf += surf
 
+            xyz_sum += node.xyz
+
         # define apropriate radius
         radius = np.sqrt(total_surf / (4.*np.pi))
-        rp = self.root.xyz
+        rp = xyz_sum / (len(soma_cylinders)+1.)
         rp2 = np.array([rp[0], rp[1] - radius, rp[2]])
         rp3 = np.array([rp[0], rp[1] + radius, rp[2]])
 
+        self.root.xyz = rp
         # create the soma nodes
         s_node_2 = self._createCorrespondingNode(2, (rp2, radius, 1))
         s_node_3 = self._createCorrespondingNode(3, (rp3, radius, 1))
