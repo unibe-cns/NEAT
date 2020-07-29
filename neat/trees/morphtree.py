@@ -679,9 +679,11 @@ class MorphTree(STree):
         Examples
         --------
         The three point description is
-        >>> 1 1 x y   z r -1
-        >>> 1 1 x y-r z r 1
-        >>> 1 1 x y+r z r 1
+        .. code-block:: python
+             1 1 x y   z r -1
+             1 1 x y-r z r 1
+             1 1 x y+r z r 1
+        
         with `x,y,z` the coordinates of the soma center and `r` the soma radius
 
         This is a valid three point desciption
