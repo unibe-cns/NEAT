@@ -679,7 +679,9 @@ class MorphTree(STree):
         Examples
         --------
         The three point description is
+        
         .. code-block:: python
+        
              1 1 x y   z r -1
              1 1 x y-r z r 1
              1 1 x y+r z r 1
