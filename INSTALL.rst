@@ -8,15 +8,22 @@ Note: The following instructions are for Linux and Max OSX systems and only use
 command line tools. Please follow the appropriate manuals for Windows systems or
 tools with graphical interfaces.
 
+You can install the latest release via pip:
 
-Install using `setup.py` (requires `git <https://git-scm.com>`_):
-::
+   .. code-block:: shell
 
-    git clone https://github.com/unibe-cns/NEAT
-    cd NEAT
-    python setup.py install
+      pip install neatdend
+
+The adventurous can install the most recent development version directly from our master branch (don't use this in production unless there are good reasons!):
+
+.. code-block:: shell
+
+   git clone git@github.com:unibe-cns/NEAT.git
+   cd NEAT
+   pip install .
 
 Post-Install
+------------
 
 To use NEAT with `NEURON <https://neuron.yale.edu/neuron/>`_, make sure NEURON
 is properly installed with its Python interface, and compile and install the

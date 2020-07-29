@@ -6,6 +6,7 @@ NEAT (NEural Analysis Toolkit)
 Author: W. Wybo
 """
 
+import re
 from setuptools import setup
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
@@ -14,7 +15,12 @@ from setuptools.command.install import install
 
 import os, subprocess, shutil, sys
 
-from __version__ import version as pversion
+
+def read_version():
+    with open("./neat/__version__.py") as f:
+        line = f.read()
+        match = re.findall(r"[0-9]+\.[0-9]+\.[0-9]+", line)
+        return match[0]
 
 
 class DevelopCommand(develop):
@@ -59,10 +65,14 @@ def read_requirements():
     return requirements
 
 
-class DelayedNumPyInclude:
+class DelayedIncludeDirs:
+    """Delay importing of numpy until extension is built. This allows pip
+    to install numpy if it's not available.
+
+    """
     def __iter__(self):
         import numpy
-        return iter([numpy.get_include()])
+        return iter([numpy.get_include(), "neat/tools/simtools/net/*.h"])
 
 
 ext = Extension("netsim",
@@ -73,11 +83,11 @@ ext = Extension("netsim",
                  "neat/tools/simtools/net/Tools.cc"],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
-                include_dirs=DelayedNumPyInclude())
+                include_dirs=DelayedIncludeDirs())
 
 s_ = setup(
-    name='neat',
-    version=pversion,
+    name='neatdend',
+    version=read_version(),
     scripts=['neat/channels/compilechannels'],
     packages=['neat',
               'neat.trees',
@@ -105,5 +115,6 @@ s_ = setup(
     license='GPLv3',
     url='https://github.com/unibe-cns/NEAT',
     long_description=open('README.rst').read(),
+    long_description_content_type="text/x-rst",
     install_requires=read_requirements(),
 )
