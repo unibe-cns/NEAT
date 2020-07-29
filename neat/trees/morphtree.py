@@ -1040,7 +1040,7 @@ class MorphTree(STree):
         Parameters
         ----------
         locarg: list of dictionaries, tuples or `neat.MorphLoc`, or string
-            * If list, entries should be valued arguments to initialize a `neat.MorphLoc`
+            * If list, entries should be valid arguments to initialize a `neat.MorphLoc`
             * If string, should be the name of a list of locations stored in `self`
 
         Returns
