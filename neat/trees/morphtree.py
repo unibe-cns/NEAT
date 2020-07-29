@@ -1066,11 +1066,10 @@ class MorphTree(STree):
 
         Parameters
         ----------
-        node_arg: None, `neat.MorphNode`, {'apical', 'basal', 'axonal'} or iterable collection of instances of `neat.MorphNode`
-            * `None` returns all nodes
-            * `neat.MorphNode` returns nodes in the subtree of the given node
-            * {'apical', 'basal', 'axonal'} nodes in the apical, basal or axonal
-                subtree that will be returned
+        node_arg: ``None``, `neat.MorphNode`, {'apical', 'basal', 'axonal'} or iterable collection of instances of `neat.MorphNode`
+            * `None`: returns all nodes
+            * `neat.MorphNode`: returns nodes in the subtree of the given node
+            * {'apical', 'basal', 'axonal'}: nodes in the apical, basal or axonal subtree that will be returned
             * iterable collection of `neat.MorphNode`: returns a list of nodes
                 If an iterable collection of original nodes is given, and the treetype
                 is computational, a reduced list is returned where only the corresponding
@@ -1082,7 +1081,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            list of `neat.MorphNode`
+        list of `neat.MorphNode`
         """
         # convert the input argument to a list of nodes
         if node_arg == None:
