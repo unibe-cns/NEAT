@@ -1035,15 +1035,13 @@ class MorphTree(STree):
 
     def _convertLocArgToLocs(self, locarg):
         """
-        Converts locations argument to list of `neat.MorphLoc`. Locations can
-        be specified as list of dictionaries, tuples or :class:`MorphLocs`
-        instances. The argument can also be a string, then it refers to a list
-        of locs stored on the morphology
+        Converts locations argument to list of `neat.MorphLoc`.
 
         Parameters
         ----------
-        locarg: list of (i) dictionaries, (ii) tuples or (iii) list of
-            `neat.MorphLoc` or string
+        locarg: list of dictionaries, tuples or `neat.MorphLoc`, or string
+            * If list, entries should be valued arguments to initialize a `neat.MorphLoc`
+            * If string, should be the name of a list of locations stored in `self`
 
         Returns
         -------
