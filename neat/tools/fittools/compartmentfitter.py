@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 
-    
+
 def cpu_count(use_hyperthreading=True):
     """
     Return number of available cores.
@@ -348,7 +348,8 @@ class CompartmentFitter(object):
     name: str (default 'dont save')
         name of files in which intermediate trees required for the fit are
         stored. Can contain a path. Details about what is in the actual pickle
-        files are appended as a suffix to `name`
+        files are appended as a suffix to `name`. Default is to not store
+        intermediate files.
     e_hs: np.array of float
         The holding potentials for which quasi active expansions are computed
     freqs: np.array of float or complex (default is ``np.array([0.])``)
@@ -674,7 +675,7 @@ class CompartmentFitter(object):
 
         Returns
         -------
-        `neat.PhysTree`
+        `neat.tools.fittools.compartmentfitter.FitTreeSOV`
 
         """
         # create new tree and empty channel storage

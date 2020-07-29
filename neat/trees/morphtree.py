@@ -1064,22 +1064,21 @@ class MorphTree(STree):
         Converts a node argument to a list of nodes. Behaviour depends on the
         type of argument.
 
-        If an iterable collection of original nodes is given, and the treetype
-        is computational, a reduced list is returned where only the corresponding
-        computational nodes are included. If an iterable collection of
-        computational nodes is given, and the treetype is original, a list of
-        corresponding original nodes is given, but the in between nodes are not
-        added.
-
         Parameters
         ----------
-            node_arg: (i) None, (ii) `neat.MorphNode`, (iii) string or (iv) an
-                iterable collection of instances of `neat.MorphNode`
-                - (i) returns all nodes
-                - (ii) returns nodes in the subtree of the given node
-                - (iii) string can be 'apical', 'basal' or 'axonal', specifying
-                    the subtree that will be returned
-                - (iv) returns the same list of nodes
+        node_arg: None, `neat.MorphNode`, {'apical', 'basal', 'axonal'} or iterable collection of instances of `neat.MorphNode`
+            * `None` returns all nodes
+            * `neat.MorphNode` returns nodes in the subtree of the given node
+            * {'apical', 'basal', 'axonal'} nodes in the apical, basal or axonal
+                subtree that will be returned
+            * iterable collection of `neat.MorphNode`: returns a list of nodes
+                If an iterable collection of original nodes is given, and the treetype
+                is computational, a reduced list is returned where only the corresponding
+                computational nodes are included. If an iterable collection of
+                computational nodes is given, and the treetype is original, a list of
+                corresponding original nodes is given, but the in between nodes are not
+                added.
+
 
         Returns
         -------

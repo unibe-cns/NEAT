@@ -457,6 +457,9 @@ class SOVTree(PhysTree):
                 specifies in which order the modes are returned. If 'timescale',
                 modes are sorted in order of decreasing time-scale, if
                 'importance', modes are sorted in order of decreasing importance.
+            return_importance: bool
+                if ``True``, returns the importance metric associated with each
+                mode
 
         Returns
         -------
@@ -466,6 +469,8 @@ class SOVTree(PhysTree):
                 the spatial function associated with each mode, evaluated at
                 each locations. Dimension 0 is number of modes and dimension 1
                 number of locations
+            importance: np.ndarray (`shape` matches `alphas`, only if `return_importance` is ``True``)
+                value of importance metric for each mode
         """
         if locarg is not None:
             locs = self._parseLocArg(locarg)
