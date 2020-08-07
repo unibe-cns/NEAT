@@ -331,7 +331,7 @@ Simulate NEURON models
 .. autoclass:: neat.NeuronCompartmentTree
    :toctree: generated/
 
-.. autofunction:: neat.createReducedCompartmentTree
+.. autofunction:: neat.createReducedNeuronModel
    :toctree: generated/
 
 
