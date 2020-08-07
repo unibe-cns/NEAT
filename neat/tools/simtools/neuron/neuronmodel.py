@@ -7,8 +7,13 @@ import numpy as np
 from ....trees.morphtree import MorphLoc
 from ....trees.phystree import PhysTree, PhysNode
 
-import neuron
-from neuron import h
+try:
+    import neuron
+    from neuron import h
+except ModuleNotFoundError:
+    warnings.warn('NEURON not available', UserWarning)
+
+
 h.load_file("stdlib.hoc") # contains the lambda rule
 h.nrn_load_dll(os.path.join(os.path.dirname(__file__),
                             'x86_64/.libs/libnrnmech.so')) # load all mechanisms
