@@ -121,6 +121,16 @@ Neural Evaluation Tree
    Kernel.ft
 
 
+Simulated reduced compartmental models
+======================================
+
+.. autoclass:: neat.NeuronCompartmentTree
+   :toctree: generated/
+
+.. autofunction:: neat.createReducedNeuronModel
+   :toctree: generated/
+
+
 *******************
 Morphological Trees
 *******************
@@ -326,14 +336,6 @@ Simulate NEURON models
    NeuronSimTree.setSpikeTrain
    NeuronSimTree.run
    NeuronSimTree.calcEEq
-   NeuronSimTree.
-
-.. autoclass:: neat.NeuronCompartmentTree
-   :toctree: generated/
-
-.. autofunction:: neat.createReducedNeuronModel
-   :toctree: generated/
-
 
 
 *************
