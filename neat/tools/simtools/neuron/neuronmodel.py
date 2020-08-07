@@ -13,6 +13,7 @@ try:
     from neuron import h
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
+    import fakeh as h
 
 
 h.load_file("stdlib.hoc") # contains the lambda rule
@@ -48,7 +49,7 @@ class NeuronSimNode(PhysNode):
         super().__init__(index, p3d)
 
     def _makeSection(self, factorlambda=1., pprint=False):
-        compartment = neuron.h.Section(name=str(self.index))
+        compartment = h.Section(name=str(self.index))
         compartment.push()
         # create the compartment
         if self.index == 1:
