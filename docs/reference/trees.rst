@@ -121,7 +121,7 @@ Neural Evaluation Tree
    Kernel.ft
 
 
-Simulated reduced compartmental models
+Simulate reduced compartmental models
 ======================================
 
 .. autoclass:: neat.NeuronCompartmentTree
