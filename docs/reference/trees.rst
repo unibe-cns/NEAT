@@ -125,9 +125,13 @@ Simulate reduced compartmental models
 ======================================
 
 .. autoclass:: neat.tools.simtools.neuron.NeuronCompartmentTree
+
+.. autosummary::
    :toctree: generated/
 
 .. autofunction:: neat.tools.simtools.neuron.createReducedNeuronModel
+
+.. autosummary::
    :toctree: generated/
 
 
@@ -317,6 +321,8 @@ Simulate NEURON models
 ======================
 
 .. autoclass:: neat.tools.simtools.neuron.NeuronSimTree
+
+.. autosummary::
    :toctree: generated/
 
    NeuronSimTree.initModel
