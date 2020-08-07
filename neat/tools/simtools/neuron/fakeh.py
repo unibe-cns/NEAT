@@ -2,7 +2,7 @@
 
 def load_file(ss): pass
 def nrn_load_dll(ss): pass
-def Section(name=ss): return None
+def Section(name='ss'): return None
 def lambda_f(ff): return None
 def pop_section(): return None
 def Shunt(cc): return None

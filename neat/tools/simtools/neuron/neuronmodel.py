@@ -12,7 +12,7 @@ try:
     import neuron
     from neuron import h
 except ModuleNotFoundError:
-    warnings.warn('NEURON not available', UserWarning)
+    warnings.warn('NEURON not available, importing non-functional h module only for doc generation', UserWarning)
     import fakeh as h
 
 
