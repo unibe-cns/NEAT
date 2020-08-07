@@ -303,6 +303,39 @@ Greens Tree
     GreensNode.setExpansionPoint
 
 
+Simulate NEURON models
+======================
+
+.. autoclass:: neat.NeuronSimTree
+   :toctree: generated/
+
+   NeuronSimTree.initModel
+   NeuronSimTree.deleteModel
+   NeuronSimTree.addShunt
+   NeuronSimTree.addDoubleExpCurrent
+   NeuronSimTree.addExpSynapse
+   NeuronSimTree.addDoubleExpSynapse
+   NeuronSimTree.addNMDASynapse
+   NeuronSimTree.addDoubleExpNMDASynapse
+   NeuronSimTree.addIClamp
+   NeuronSimTree.addSinClamp
+   NeuronSimTree.addOUClamp
+   NeuronSimTree.addOUconductance
+   NeuronSimTree.addOUReversal
+   NeuronSimTree.addVClamp
+   NeuronSimTree.setSpikeTrain
+   NeuronSimTree.run
+   NeuronSimTree.calcEEq
+   NeuronSimTree.
+
+.. autoclass:: neat.NeuronCompartmentTree
+   :toctree: generated/
+
+.. autofunction:: neat.createReducedNeuronModel
+   :toctree: generated/
+
+
+
 *************
 Other Classes
 *************
