@@ -95,6 +95,62 @@ class NeuronSimNode(PhysNode):
 
 
 class NeuronSimTree(PhysTree):
+    """
+    Tree class to define NEURON (Carnevale & Hines, 2004) based on `neat.PhysTree`.
+
+    Attributes
+    ----------
+    sections: dict of hoc sections
+        Storage for hoc sections. Keys are node indices.
+    shunts: list of hoc mechanisms
+        Storage container for shunts
+    syns: list of hoc mechanisms
+        Storage container for synapses
+    iclamps: list of hoc mechanisms
+        Storage container for current clamps
+    vclamps: lis of hoc mechanisms
+        Storage container for voltage clamps
+    vecstims: list of hoc mechanisms
+        Storage container for vecstim objects
+    netcons: list of hoc mechanisms
+        Storage container for netcon objects
+    vecs: list of hoc vectors
+        Storage container for hoc spike vectors
+    dt: float
+        timestep of the simulator ``[ms]``
+    t_calibrate: float
+        Time for the model to equilibrate``[ms]``. Not counted as part of the
+        simulation.
+    factor_lambda : int or float
+        If int, the number of segments per section. If float, multiplies the
+        number of segments given by the standard lambda rule (Carnevale, 2004)
+        to give the number of compartments simulated (default value 1. gives
+        the number given by the lambda rule)
+    v_init: float
+        The initial voltage at which the model is initialized ``[mV]``
+
+    A `NeuronSimTree` can be extended easily with custom point process mechanisms.
+    Just make sure that you store the point process in an existing appropriate
+    storage container or in a custom storage container, since if all references
+    to the hocobject disappear, the object itself will be deleted as well.
+
+    .. code-block:: python
+        class CustomSimTree(NeuronSimTree):
+            def addCustomPointProcessMech(self, loc, **kwargs):
+                loc = MorphLoc(loc, self)
+
+                # create the point process
+                pp = h.custom_point_process(self.sections[loc['node']](loc['x']))
+                pp.arg1 = kwargs['arg1']
+                pp.arg2 = kwargs['arg2']
+                ...
+
+                self.storage_container_for_point_process.append(pp)
+
+    If you define a custom storage container, make sure that you overwrite the
+    `__init__()` and `deleteModel()` functions to make sure it is created and
+    deleted properly.
+    """
     def __init__(self, file_n=None, types=[1,3,4],
                        factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.):
         super().__init__(file_n=file_n, types=types)
@@ -232,7 +288,7 @@ class NeuronSimTree(PhysTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addExpSyn(self, loc, tau, e_r):
+    def addExpSynapse(self, loc, tau, e_r):
         """
         Adds a single-exponential conductance-based synapse
 
@@ -838,6 +894,11 @@ class NeuronCompartmentNode(NeuronSimNode):
 
 
 class NeuronCompartmentTree(NeuronSimTree):
+    """
+    Subclass of `NeuronSimTree` where sections are defined so that they are
+    effectively single compartments. Should be created from a
+    `neat.CompartmentTree` using `neat.createReducedCompartmentModel()`
+    """
     def __init__(self, t_calibrate=0., dt=0.025, v_init=-75.):
         super().__init__(file_n=None, types=[1,3,4],
                          t_calibrate=t_calibrate, dt=dt, v_init=v_init)
@@ -885,6 +946,27 @@ class NeuronCompartmentTree(NeuronSimTree):
 
 
 def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
+    """
+    Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
+    models from a `neat.CompartmentTree`.
+
+    Parameters
+    ----------
+    ctree: `neat.CompartmentTree`
+        The tree containing the parameters of the reduced compartmental model
+        to be simulated
+
+    Returns
+    -------
+    `neat.NeuronCompartmentTree`
+
+    Notes
+    -----
+    The function `ctree.getEquivalentLocs()` can be used to obtain 'fake'
+    locations corresponding to each compartment, which in turn can be used to
+    insert hoc point process at the compartments using the same functions
+    definitions as for as for a morphological `neat.NeuronSimTree`
+    """
     # calculate geometry that will lead to correct constants
     arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                  factor_r_a=1e-6, delta=1e-10,
