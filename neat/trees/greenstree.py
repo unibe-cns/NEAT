@@ -240,7 +240,7 @@ class GreensTree(PhysTree):
     Attributes
     ----------
     freqs: np.array of complex
-        Frequencies at which impedances are evaluated
+        Frequencies at which impedances are evaluated ``[Hz]``
     """
     def __init__(self, file_n=None, types=[1,3,4]):
         super().__init__(file_n=file_n, types=types)
@@ -275,7 +275,7 @@ class GreensTree(PhysTree):
         Parameters
         ----------
         freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
-            frequencies at which the impedances will be evaluated [Hz]
+            frequencies at which the impedances will be evaluated ``[Hz]``
         use_conc: bool
             whether or not to incorporate concentrations in the calculation
         pprint: bool (default ``False``)
@@ -335,7 +335,7 @@ class GreensTree(PhysTree):
         Returns
         -------
         nd.ndarray (dtype = complex, ndim = 1)
-            The transfer impedance as a function of frequency
+            The transfer impedance ``[MOhm]`` as a function of frequency
         """
         # cast to morphlocs
         loc1 = MorphLoc(loc1, self)
@@ -391,7 +391,7 @@ class GreensTree(PhysTree):
         `np.ndarray` (``dtype = self.freqs.dtype``, ``ndim = 3``)
             the impedance matrix, first dimension corresponds to the
             frequency, second and third dimensions contain the impedance
-            matrix at that frequency
+            matrix ``[MOhm]`` at that frequency
         """
         if isinstance(locarg, list):
             locs = [MorphLoc(loc, self) for loc in locarg]

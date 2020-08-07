@@ -679,19 +679,19 @@ class MorphTree(STree):
         Examples
         --------
         The three point description is
-        
+
         .. code-block:: python
-        
+
              1 1 x y   z r -1
              1 1 x y-r z r 1
              1 1 x y+r z r 1
-        
+
         with `x,y,z` the coordinates of the soma center and `r` the soma radius
 
         This is a valid three point desciption
-        
+
         .. code-block:: python
-        
+
             # start of file
             1 1 45.3625 18.6775 -50.25 10.1267403895 -1
             2 1 45.3625 8.55075961052 -50.25 10.1267403895 1
@@ -702,9 +702,9 @@ class MorphTree(STree):
             # ...
 
         This is a valid multi-cylinder descirption
-        
+
         .. code-block:: python
-        
+
             # start of file
             1 1 1066.38 399.67 157.0 4.9215 -1
             2 1 1071.3 399.67 157.0 4.9215 1
@@ -770,7 +770,7 @@ class MorphTree(STree):
                                    np.linalg.norm(all_nodes[2][1].xyz - all_nodes[1][1].xyz),
                                    np.linalg.norm(all_nodes[3][1].xyz - all_nodes[1][1].xyz)])
             if not np.allclose(np.abs(radius_arr - radius_arr[0]),
-                               np.zeros_like(radius_arr)):
+                               np.zeros_like(radius_arr), atol=2e-2):
                 raise ValueError('Soma radii not consistent with three-point convention')
 
         # IF multiple cylinder soma representation

@@ -464,7 +464,7 @@ class SOVTree(PhysTree):
         Returns
         -------
             alphas: np.ndarray of complex (ndim = 1)
-                the reciprocals of mode time-scales
+                the reciprocals of mode time-scales ``[kHz]``
             gammas: np.ndarray of complex (ndim = 2)
                 the spatial function associated with each mode, evaluated at
                 each locations. Dimension 0 is number of modes and dimension 1
@@ -528,7 +528,7 @@ class SOVTree(PhysTree):
             np.ndarray of floats (ndim = 2 or 3)
                 the impedance matrix, steady state if `freqs` is ``None``, the
                 frequency dependent impedance matrix if `freqs` is given, with
-                the frequency dependence at the first dimension
+                the frequency dependence at the first dimension ``[MOhm ]``
         """
         if locarg is not None:
             locs = self._parseLocArg(locarg)
