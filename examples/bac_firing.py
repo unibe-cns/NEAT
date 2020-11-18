@@ -6,14 +6,21 @@ Bac firing
 """
 
 import numpy as np
+import warnings
 
-from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
 from neat import MorphLoc, CompartmentFitter
 from models.L5_pyramid import getL5Pyramid
 
 from plotutil import *
 
 import dill
+
+SIM_FLAG = 1
+try:
+    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+except ImportError:
+    warnings.warn('NEURON not available, plotting stored image', UserWarning)
+    SIM_FLAG = 0
 
 
 ## Parameters ##################################################################
@@ -215,5 +222,8 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
 
 
 if __name__ == '__main__':
-    runCalciumCoinc()
+    if SIM_FLAG:
+        runCalciumCoinc()
+    else:
+        plotStoredImg('../docs/figures/bac_firing.png')
 

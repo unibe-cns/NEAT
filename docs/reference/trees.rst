@@ -121,6 +121,20 @@ Neural Evaluation Tree
    Kernel.ft
 
 
+Simulate reduced compartmental models
+======================================
+
+.. autoclass:: neat.tools.simtools.neuron.NeuronCompartmentTree
+
+.. autosummary::
+   :toctree: generated/
+
+.. autofunction:: neat.tools.simtools.neuron.createReducedNeuronModel
+
+.. autosummary::
+   :toctree: generated/
+
+
 *******************
 Morphological Trees
 *******************
@@ -131,6 +145,14 @@ Morphology Tree
 
 
 .. autoclass:: neat.MorphTree
+
+Read a morphology from an SWC file
+
+.. autosummary::
+   :toctree: generated/
+
+   MorphTree.readSWCTreeFromFile
+   MorphTree.determineSomaType
 
 .. autosummary::
    :toctree: generated/
@@ -293,6 +315,33 @@ Greens Tree
    :toctree: generated/
 
     GreensNode.setExpansionPoint
+
+
+Simulate NEURON models
+======================
+
+.. autoclass:: neat.tools.simtools.neuron.NeuronSimTree
+
+.. autosummary::
+   :toctree: generated/
+
+   NeuronSimTree.initModel
+   NeuronSimTree.deleteModel
+   NeuronSimTree.addShunt
+   NeuronSimTree.addDoubleExpCurrent
+   NeuronSimTree.addExpSynapse
+   NeuronSimTree.addDoubleExpSynapse
+   NeuronSimTree.addNMDASynapse
+   NeuronSimTree.addDoubleExpNMDASynapse
+   NeuronSimTree.addIClamp
+   NeuronSimTree.addSinClamp
+   NeuronSimTree.addOUClamp
+   NeuronSimTree.addOUconductance
+   NeuronSimTree.addOUReversal
+   NeuronSimTree.addVClamp
+   NeuronSimTree.setSpikeTrain
+   NeuronSimTree.run
+   NeuronSimTree.calcEEq
 
 
 *************

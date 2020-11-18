@@ -6,8 +6,8 @@ Basal AP Backprop
 """
 
 import numpy as np
+import warnings
 
-from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
 from neat import MorphLoc, CompartmentFitter
 from models.L23_pyramid import getL23PyramidNaK
 
@@ -15,6 +15,12 @@ from plotutil import *
 
 import dill
 
+SIM_FLAG = 1
+try:
+    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+except ImportError:
+    warnings.warn('NEURON not available, plotting stored image', UserWarning)
+    SIM_FLAG = 0
 
 ## Parameters ##################################################################
 # soma nodes branco
@@ -315,4 +321,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
 
 
 if __name__ == '__main__':
-    basalAPBackProp()
+    if SIM_FLAG:
+        basalAPBackProp()
+    else:
+        plotStoredImg('../docs/figures/ap_backpropagation.png')

@@ -145,11 +145,11 @@ class IonChannel(object):
     depends on. There are two canonical ways to define $f_i$, either based on
     reaction rates :math:`\\alpha` and :math:`\\beta`:
 
-    .. math:: \dot{x}_i = \\alpha_i(v) \, (1 - x_i) - \\beta_i{v} \, x_i,
+    .. math:: \dot{x}_i = \\alpha_i(v) \, (1 - x_i) - \\beta_i(v) \, x_i,
 
     or based on an asymptotic value :math:`x_i^{\infty}`  and time-scale :math:`\\tau_i`
 
-    .. math:: \dot{x}_i = \\frac{x_i^{\infty}(v) - x_i}{\tau_i(v)}.
+    .. math:: \dot{x}_i = \\frac{x_i^{\infty}(v) - x_i}{\\tau_i(v)}.
 
     `IonChannel` accepts handles either description. For the former description,
     dicts `self.alpha` and `self.beta` must be defined with as keys the names
