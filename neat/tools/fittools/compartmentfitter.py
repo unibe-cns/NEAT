@@ -401,7 +401,7 @@ class CompartmentFitter(object):
         self.tree.storeLocs(locs, name='fit locs')
         # create the reduced compartment tree
         self.ctree = self.tree.createCompartmentTree(locs)
-        # # add currents to compartmental model
+        # add currents to compartmental model
         for c_name, channel in self.tree.channel_storage.items():
             e_revs = []
             for node in self.tree:
@@ -736,6 +736,8 @@ class CompartmentFitter(object):
         alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
                                             sort_type='importance', eps=1e-12,
                                             return_importance=True)
+        alphas = alphas.real
+        phimat = phimat.real
         # fit the capacitances from SOV time-scales
         self.ctree.computeC(-alphas[inds]*1e3, phimat[inds,:],
                             weights=importance[inds])
@@ -857,7 +859,7 @@ class CompartmentFitter(object):
         nn = len(fit_locs)
 
         if t_arr is None:
-            t_arr = np.linspace(0.,200.,1e3)
+            t_arr = np.linspace(0.,200.,int(1e3))
 
         # compute eigenvalues
         alphas_comp, phimat_comp, phimat_inv_comp = \
