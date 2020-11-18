@@ -787,7 +787,7 @@ class CompartmentFitter(object):
             taus_m_orig, taus_m_fit = calcTauM()
             # if fit was not sane, revert to more basic membrane timescale match
             for ii, node in enumerate(self.ctree):
-                node.ca = node.currents['L'][0] / taus_m_orig[ii]
+                node.ca = node.currents['L'][0] * taus_m_orig[ii] * 1e-3
 
             warnings.warn('No sane capacitance fit achieved for this configuragion,' + \
                           'reverted to more basic membrane time scale matching.')
@@ -887,13 +887,16 @@ class CompartmentFitter(object):
                 ax.set_title(pstring, pad=-10)
 
     def checkPassive(self, loc_arg, alpha_inds=[0], recompute=False, n_modes=5,
-                           use_all_chans_for_passive=True):
+                           use_all_chans_for_passive=True, force_tau_m_fit=False):
         self.setCTree(loc_arg)
         # fit the passive steady state model
         self.fitPassive(recompute=recompute, use_all_channels=use_all_chans_for_passive,
                         pprint=True)
         # fit the capacitances
-        self.fitCapacitance(inds=alpha_inds, recompute=recompute, pprint=True, pplot=True)
+        self.fitCapacitance(inds=alpha_inds, recompute=recompute,
+                            use_all_channels=use_all_chans_for_passive,
+                            force_tau_m_fit=force_tau_m_fit,
+                            pprint=True, pplot=True)
 
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
