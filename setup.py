@@ -84,6 +84,7 @@ ext = Extension("netsim",
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
                 include_dirs=DelayedIncludeDirs())
+ext.cython_directives = {'language_level': "3"}
 
 s_ = setup(
     name='neatdend',
