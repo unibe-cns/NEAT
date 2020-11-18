@@ -345,15 +345,19 @@ class CompartmentFitter(object):
     ----------
     tree: `neat.PhysTree()`
         The full tree based on which reductions are made
-    name: str (default 'dont save')
-        name of files in which intermediate trees required for the fit are
-        stored. Can contain a path. Details about what is in the actual pickle
-        files are appended as a suffix to `name`. Default is to not store
-        intermediate files.
     e_hs: np.array of float
         The holding potentials for which quasi active expansions are computed
     freqs: np.array of float or complex (default is ``np.array([0.])``)
         The frequencies at which impedance matrices are evaluated
+    name: str (default 'dont save')
+        name of files in which intermediate trees required for the fit are
+        stored. Details about what is in the actual pickle
+        files are appended as a suffix to `name`. Default is to not store
+        intermediate files.
+    path: str (default '')
+        specify a path under which the intermediate files are saved (only if
+        `name` is specified). Default is empty string, which means that
+        intermediate files are stored in the working directory.
     """
 
     def __init__(self, phys_tree,
@@ -880,8 +884,8 @@ class CompartmentFitter(object):
                 pstring = '%d $\leftrightarrow$ %d'%(ii,jj)
                 ax.set_title(pstring, pad=-10)
 
-    def checkPassive(self, locs, alpha_inds=[0], recompute=False, n_modes=5):
-        self.setFitLocs(locs)
+    def checkPassive(self, loc_arg, alpha_inds=[0], recompute=False, n_modes=5):
+        self.setCTree(loc_arg)
         # fit the passive steady state model
         self.fitPassive(recompute=recompute, pprint=True)
         # fit the capacitances
