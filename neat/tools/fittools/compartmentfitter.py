@@ -345,15 +345,19 @@ class CompartmentFitter(object):
     ----------
     tree: `neat.PhysTree()`
         The full tree based on which reductions are made
-    name: str (default 'dont save')
-        name of files in which intermediate trees required for the fit are
-        stored. Can contain a path. Details about what is in the actual pickle
-        files are appended as a suffix to `name`. Default is to not store
-        intermediate files.
     e_hs: np.array of float
         The holding potentials for which quasi active expansions are computed
     freqs: np.array of float or complex (default is ``np.array([0.])``)
         The frequencies at which impedance matrices are evaluated
+    name: str (default 'dont save')
+        name of files in which intermediate trees required for the fit are
+        stored. Details about what is in the actual pickle
+        files are appended as a suffix to `name`. Default is to not store
+        intermediate files.
+    path: str (default '')
+        specify a path under which the intermediate files are saved (only if
+        `name` is specified). Default is empty string, which means that
+        intermediate files are stored in the working directory.
     """
 
     def __init__(self, phys_tree,
@@ -397,7 +401,7 @@ class CompartmentFitter(object):
         self.tree.storeLocs(locs, name='fit locs')
         # create the reduced compartment tree
         self.ctree = self.tree.createCompartmentTree(locs)
-        # # add currents to compartmental model
+        # add currents to compartmental model
         for c_name, channel in self.tree.channel_storage.items():
             e_revs = []
             for node in self.tree:
@@ -732,6 +736,8 @@ class CompartmentFitter(object):
         alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
                                             sort_type='importance', eps=1e-12,
                                             return_importance=True)
+        alphas = alphas.real
+        phimat = phimat.real
         # fit the capacitances from SOV time-scales
         self.ctree.computeC(-alphas[inds]*1e3, phimat[inds,:],
                             weights=importance[inds])
@@ -781,7 +787,7 @@ class CompartmentFitter(object):
             taus_m_orig, taus_m_fit = calcTauM()
             # if fit was not sane, revert to more basic membrane timescale match
             for ii, node in enumerate(self.ctree):
-                node.ca = node.currents['L'][0] / taus_m_orig[ii]
+                node.ca = node.currents['L'][0] * taus_m_orig[ii] * 1e-3
 
             warnings.warn('No sane capacitance fit achieved for this configuragion,' + \
                           'reverted to more basic membrane time scale matching.')
@@ -853,7 +859,7 @@ class CompartmentFitter(object):
         nn = len(fit_locs)
 
         if t_arr is None:
-            t_arr = np.linspace(0.,200.,1e3)
+            t_arr = np.linspace(0.,200.,int(1e3))
 
         # compute eigenvalues
         alphas_comp, phimat_comp, phimat_inv_comp = \
@@ -880,12 +886,17 @@ class CompartmentFitter(object):
                 pstring = '%d $\leftrightarrow$ %d'%(ii,jj)
                 ax.set_title(pstring, pad=-10)
 
-    def checkPassive(self, locs, alpha_inds=[0], recompute=False, n_modes=5):
-        self.setFitLocs(locs)
+    def checkPassive(self, loc_arg, alpha_inds=[0], recompute=False, n_modes=5,
+                           use_all_chans_for_passive=True, force_tau_m_fit=False):
+        self.setCTree(loc_arg)
         # fit the passive steady state model
-        self.fitPassive(recompute=recompute, pprint=True)
+        self.fitPassive(recompute=recompute, use_all_channels=use_all_chans_for_passive,
+                        pprint=True)
         # fit the capacitances
-        self.fitCapacitance(inds=alpha_inds, recompute=recompute, pprint=True, pplot=True)
+        self.fitCapacitance(inds=alpha_inds, recompute=recompute,
+                            use_all_channels=use_all_chans_for_passive,
+                            force_tau_m_fit=force_tau_m_fit,
+                            pprint=True, pplot=True)
 
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
