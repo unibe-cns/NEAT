@@ -884,10 +884,12 @@ class CompartmentFitter(object):
                 pstring = '%d $\leftrightarrow$ %d'%(ii,jj)
                 ax.set_title(pstring, pad=-10)
 
-    def checkPassive(self, loc_arg, alpha_inds=[0], recompute=False, n_modes=5):
+    def checkPassive(self, loc_arg, alpha_inds=[0], recompute=False, n_modes=5,
+                           use_all_chans_for_passive=True):
         self.setCTree(loc_arg)
         # fit the passive steady state model
-        self.fitPassive(recompute=recompute, pprint=True)
+        self.fitPassive(recompute=recompute, use_all_channels=use_all_chans_for_passive,
+                        pprint=True)
         # fit the capacitances
         self.fitCapacitance(inds=alpha_inds, recompute=recompute, pprint=True, pplot=True)
 
