@@ -92,7 +92,7 @@ source_encoding = "utf-8"
 master_doc = "index"
 
 # Do not include release announcement template
-exclude_patterns = ["release/release_template.rst", "neat/fittools", "simtools/neuron", '_build', '**.ipynb_checkpoints']
+exclude_patterns = ["release/release_template.rst", "neat/fittools", '_build', '**.ipynb_checkpoints']
 
 # General substitutions.
 project = "NEAT"
