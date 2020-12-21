@@ -13,7 +13,26 @@ try:
     from neuron import h
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, importing non-functional h module only for doc generation', UserWarning)
-    import fakeh as h
+    # universal iterable mock object
+    class H(object):
+        def __init__(self):
+            pass
+
+        def __getattr__(self,attr):
+            try:
+                return super(H, self).__getattr__(attr)
+            except AttributeError:
+                return self.__global_handler
+
+        def __global_handler(self, *args, **kwargs):
+            return H()
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return 0
+    h = H()
 
 
 h.load_file("stdlib.hoc") # contains the lambda rule
