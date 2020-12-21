@@ -320,7 +320,7 @@ Greens Tree
 Simulate NEURON models
 ======================
 
-.. autoclass:: neat.tools.simtools.neuron.NeuronSimTree
+.. autoclass:: neat.tools.simtools.neuron.neuronmodel.NeuronSimTree
 
 .. autosummary::
    :toctree: generated/

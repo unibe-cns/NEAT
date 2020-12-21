@@ -27,12 +27,31 @@ except ModuleNotFoundError:
         def __global_handler(self, *args, **kwargs):
             return H()
 
-        def __iter__(self):
+        def __iter__(self):  # make iterable
             return self
 
         def __next__(self):
-            return 0
+            raise StopIteration
+
+        def __mul__(self, other):  # make multipliable
+            return 1.0
+
+        def __rmul__(self, other):
+            return self * other
+
+        def __call__(self, *args, **kwargs): # make callable 
+            return H()
     h = H()
+    neuron = H()
+    np_array = np.array
+    def array(*args, **kwargs):
+        if isinstance(args[0], H):
+            print(args)
+            print(kwargs)
+            return np.eye(2)
+        else:
+            return np_array(*args, **kwargs)
+    np.array = array
 
 
 h.load_file("stdlib.hoc") # contains the lambda rule
@@ -1042,7 +1061,4 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
             sim_node.R = radii[comp_node.index]*1e4    # convert to [um]
             sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
     return sim_tree
-
-
-
 
