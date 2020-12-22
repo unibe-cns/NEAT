@@ -1,9 +1,6 @@
 import sympy as sp
 import numpy as np
-import scipy.optimize as so
-
 import os
-import copy
 import warnings
 
 CONC_DICT = {'na': 10.,  # mM
@@ -16,7 +13,7 @@ TEMP_DEFAULT = 36.
 E_ION_DICT = {'na': 50.,
               'k': -85.,
               'ca': 50.,
-            }
+             }
 
 
 class _func(object):
@@ -233,7 +230,8 @@ class IonChannel(object):
         # temperature factor, if it exist
         if not hasattr(self, 'q10'):
             self.q10 = '1.'
-        self.q10 = sp.sympify(self.q10, evaluate=False)
+        self.q10 = self.convertToRational(self.q10)
+        
         # sympy temperature symbols
         assert len(self.q10.free_symbols) <= 1
         self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
@@ -250,8 +248,8 @@ class IonChannel(object):
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
             for svar in self.statevars:
                 key = str(svar)
-                self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
-                self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
+                self.alpha[svar] = self.convertToRational(self.alpha[key])
+                self.beta[svar] = self.convertToRational(self.beta[key])
             # convert to internal representation
             self.varinf, self.tauinf = {}, {}
             for svar in self.statevars:
@@ -261,8 +259,8 @@ class IonChannel(object):
         elif 'tauinf' in self.__dict__ and 'varinf' in self.__dict__:
             for svar in self.statevars:
                 key = str(svar)
-                self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
-                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False) / self.q10
+                self.varinf[svar] = self.convertToRational(self.varinf[key])
+                self.tauinf[svar] = self.convertToRational(self.tauinf[key]) / self.q10
                 del self.varinf[key]
                 del self.tauinf[key]
         else:
@@ -945,4 +943,24 @@ class IonChannel(object):
 
         fh.close()
         fcc.close()
+
+    @staticmethod
+    def convertToRational(expr):
+        """
+        Converts a valid expression a rational expression.
+
+        Converting to rational expression increases numerical stability
+        because it has the effect of preventing evaluation of
+        Addition inside of the exp() function (See github issue 81)
+
+        Parameters
+        ----------
+        expr: arbitrary expression
+
+        Returns
+        -------
+        rational SymPy expression
+        """
+        expr = sp.sympify(expr, evaluate=False)
+        return sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), rational_conversion='exact')
 
