@@ -947,11 +947,11 @@ class IonChannel(object):
     @staticmethod
     def convertToRational(expr):
         """
-        Converts a valid expression a rational expression.
+        Converts a valid expression into a rational expression.
 
         Converting to rational expression increases numerical stability
         because it has the effect of preventing evaluation of
-        Addition inside of the exp() function (See github issue 81)
+        addition inside of the exp() function (See github issue 81)
 
         Parameters
         ----------
