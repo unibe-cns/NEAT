@@ -121,6 +121,42 @@ class BroadcastFunc(object):
             return res
 
 
+def _convertToRational(expr):
+    """
+    Converts a valid expression into a rational expression.
+
+    Converting to rational expression increases numerical stability
+    because it has the effect of preventing evaluation of
+    addition inside of the exp() function (See github issue 81)
+
+    Parameters
+    ----------
+    expr: str
+        arbitrary expression
+
+    Returns
+    -------
+    rational SymPy expression
+    """
+    # expr_ = expr
+    return sp.sympify(expr, evaluate=False)
+    # print('\n!!!')
+    # print('i')
+    # print(str(expr))
+    # print('ii')
+    # print(sp.ccode(expr))
+    # print('iii')
+    # print(sp.parse_expr(sp.ccode(expr), evaluate=False))
+    # print('iv')
+    # print(sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), tolerance=1e-15, rational_conversion='base10'))
+    # print('v')
+    # print(sp.nsimplify(sp.parse_expr(str(expr), evaluate=False), tolerance=1e-15, rational_conversion='base10'))
+    # print('!!!\n')
+    # return sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), tolerance=1e-15, rational_conversion='base10')
+    # return sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), rational_conversion='exact')
+    # return sp.nsimplify(expr, tolerance=1e-15, rational_conversion='base10')
+
+
 class IonChannel(object):
     """
     Base ion channel class that implements linearization and code generation for
@@ -230,8 +266,8 @@ class IonChannel(object):
         # temperature factor, if it exist
         if not hasattr(self, 'q10'):
             self.q10 = '1.'
-        self.q10 = self.convertToRational(self.q10)
-        
+        self.q10 = sp.sympify(self.q10, evaluate=False)
+
         # sympy temperature symbols
         assert len(self.q10.free_symbols) <= 1
         self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
@@ -248,8 +284,8 @@ class IonChannel(object):
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
             for svar in self.statevars:
                 key = str(svar)
-                self.alpha[svar] = self.convertToRational(self.alpha[key])
-                self.beta[svar] = self.convertToRational(self.beta[key])
+                self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
+                self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
             # convert to internal representation
             self.varinf, self.tauinf = {}, {}
             for svar in self.statevars:
@@ -259,8 +295,8 @@ class IonChannel(object):
         elif 'tauinf' in self.__dict__ and 'varinf' in self.__dict__:
             for svar in self.statevars:
                 key = str(svar)
-                self.varinf[svar] = self.convertToRational(self.varinf[key])
-                self.tauinf[svar] = self.convertToRational(self.tauinf[key]) / self.q10
+                self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
+                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False) / self.q10
                 del self.varinf[key]
                 del self.tauinf[key]
         else:
@@ -785,6 +821,11 @@ class IonChannel(object):
                 expr = expr.subs(ion, sp.symbols(prefix + str(ion) + suffix))
             return expr
 
+        def _replaceConc(expr_str, prefix='', suffix=''):
+            for ion, conc in self.conc.items():
+                expr_str = expr_str.replace(str(ion), prefix + str(ion) + suffix)
+            return expr_str
+
         # open header and cc files
         fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
         fh = open(os.path.join(path, 'Ionchannels.h'), 'a')
@@ -822,8 +863,8 @@ class IonChannel(object):
             varinf = self._substituteDefaults(self.varinf[svar])
             tauinf = self._substituteDefaults(self.tauinf[svar])
             sv = str(svar)
-            vi = sp.printing.ccode(_substituteConc(varinf, prefix='m_'))
-            ti = sp.printing.ccode(_substituteConc(tauinf, prefix='m_'))
+            vi = _replaceConc(sp.printing.ccode(varinf), prefix='m_')
+            ti = _replaceConc(sp.printing.ccode(tauinf), prefix='m_')
             fcc.write('    m_%s_inf = %s;\n'%(sv, vi))
             # if self.varinf.shape[1] == 2 and ind == (0,0):
             if sv == 'm':
@@ -890,9 +931,12 @@ class IonChannel(object):
         p_o = self.p_open
         for svar in self.statevars:
             sv = 'v_' + str(svar)
-            # substitute voltage symbol in the activation
-            vi = self._substituteDefaults(self.varinf[svar]).subs(self.sp_v, sp.symbols(sv))
-            vi = _substituteConc(vi, prefix='m_')
+            # substitute default parameters
+            vi = self._substituteDefaults(self.varinf[svar])
+            # write ccode and substitute variable names
+            vi_ccode = sp.printing.ccode(vi)
+            vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
+            vi_ccode = _replaceConc(vi_ccode, prefix='m_')
             # assign dynamic or fixed voltage to the activation
             fcc.write('    double %s;\n'%(sv))
             fcc.write('    if(m_%s > 1000.){\n'%sv)
@@ -900,7 +944,7 @@ class IonChannel(object):
             fcc.write('    } else{\n')
             fcc.write('        %s = m_%s;\n'%(sv, sv))
             fcc.write('    }' + '\n')
-            fcc.write('    double %s = %s;\n'%(str(svar), sp.printing.ccode(vi)))
+            fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
 
         fcc.write('    return (m_e_rev - v) * (%s - m_p_open_eq);\n'%sp.printing.ccode(self.p_open))
         fcc.write('}\n')
@@ -916,21 +960,30 @@ class IonChannel(object):
         for svar in self.statevars:
             sv = 'v_' + str(svar)
             v_var = sp.symbols(sv)
-            # substitute voltage symbol in the activation
-            vi = self._substituteDefaults(self.varinf[svar]).subs(self.sp_v, v_var)
-            vi = _substituteConc(vi, prefix='m_')
-            dvi_dv = sp.diff(vi, v_var, 1)
+
+            # substitute default parameters
+            vi = self._substituteDefaults(self.varinf[svar])
+            # write ccode and substitute variable names
+            vi_ccode = sp.printing.ccode(vi)
+            vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
+            vi_ccode = _replaceConc(vi_ccode, prefix='m_')
+            # compute voltage derivatives
+            dvi_dv = sp.diff(vi, self.sp_v, 1)
+            dvi_dv_ccode = sp.printing.ccode(dvi_dv)
+            dvi_dv_ccode = dvi_dv_ccode.replace(str(self.sp_v), sv)
+            dvi_dv_ccode = _replaceConc(dvi_dv_ccode, prefix='m_')
+
             # compute derivative
             fcc.write('    double %s;\n'%sv)
             fcc.write('    double d%s_dv;\n'%str(svar))
             fcc.write('    if(m_%s > 1000.){\n'%sv)
             fcc.write('        %s = v;\n'%sv)
-            fcc.write('        d%s_dv = %s;\n'%(str(svar), sp.printing.ccode(dvi_dv)))
+            fcc.write('        d%s_dv = %s;\n'%(str(svar), dvi_dv_ccode))
             fcc.write('    } else{\n')
             fcc.write('        %s = m_%s;\n'%(sv, sv))
             fcc.write('        d%s_dv = 0;\n'%str(svar))
             fcc.write('    }\n')
-            fcc.write('    double %s = %s;\n'%(str(svar), sp.printing.ccode(vi)))
+            fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
 
         expr_str = ' + '.join(['%s * d%s_dv'%(sp.printing.ccode(dp_o[svar]), str(svar)) \
                                for svar in self.statevars])
@@ -943,24 +996,4 @@ class IonChannel(object):
 
         fh.close()
         fcc.close()
-
-    @staticmethod
-    def convertToRational(expr):
-        """
-        Converts a valid expression into a rational expression.
-
-        Converting to rational expression increases numerical stability
-        because it has the effect of preventing evaluation of
-        addition inside of the exp() function (See github issue 81)
-
-        Parameters
-        ----------
-        expr: arbitrary expression
-
-        Returns
-        -------
-        rational SymPy expression
-        """
-        expr = sp.sympify(expr, evaluate=False)
-        return sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), rational_conversion='exact')
 
