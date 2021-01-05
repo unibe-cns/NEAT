@@ -121,42 +121,6 @@ class BroadcastFunc(object):
             return res
 
 
-def _convertToRational(expr):
-    """
-    Converts a valid expression into a rational expression.
-
-    Converting to rational expression increases numerical stability
-    because it has the effect of preventing evaluation of
-    addition inside of the exp() function (See github issue 81)
-
-    Parameters
-    ----------
-    expr: str
-        arbitrary expression
-
-    Returns
-    -------
-    rational SymPy expression
-    """
-    # expr_ = expr
-    return sp.sympify(expr, evaluate=False)
-    # print('\n!!!')
-    # print('i')
-    # print(str(expr))
-    # print('ii')
-    # print(sp.ccode(expr))
-    # print('iii')
-    # print(sp.parse_expr(sp.ccode(expr), evaluate=False))
-    # print('iv')
-    # print(sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), tolerance=1e-15, rational_conversion='base10'))
-    # print('v')
-    # print(sp.nsimplify(sp.parse_expr(str(expr), evaluate=False), tolerance=1e-15, rational_conversion='base10'))
-    # print('!!!\n')
-    # return sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), tolerance=1e-15, rational_conversion='base10')
-    # return sp.nsimplify(sp.parse_expr(sp.ccode(expr), evaluate=False), rational_conversion='exact')
-    # return sp.nsimplify(expr, tolerance=1e-15, rational_conversion='base10')
-
-
 class IonChannel(object):
     """
     Base ion channel class that implements linearization and code generation for
@@ -816,11 +780,6 @@ class IonChannel(object):
             p_open_m = p_open_m.subs(svar, sp.symbols('m_' + str(svar)))
             p_open_m_inf = p_open_m_inf.subs(svar, sp.symbols('m_' + str(svar) + '_inf'))
         # substitue concentrations in expression
-        def _substituteConc(expr, prefix='', suffix=''):
-            for ion, conc in self.conc.items():
-                expr = expr.subs(ion, sp.symbols(prefix + str(ion) + suffix))
-            return expr
-
         def _replaceConc(expr_str, prefix='', suffix=''):
             for ion, conc in self.conc.items():
                 expr_str = expr_str.replace(str(ion), prefix + str(ion) + suffix)
@@ -950,12 +909,8 @@ class IonChannel(object):
         fcc.write('}\n')
 
         fcc.write('double %s::DfDvNewton(double v){\n'%c_name)
-        # p_o = self.p_open
-        # compute partial derivatives
-        # dp_o = np.zeros_like(self.statevars)
-        # for ind, varname in np.ndenumerate(self.statevars):
-        #     dp_o[ind] = sp.diff(p_o, varname, 1)
         dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.statevars}
+
         # print derivatives
         for svar in self.statevars:
             sv = 'v_' + str(svar)
