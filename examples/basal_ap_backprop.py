@@ -64,7 +64,7 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
     except (IOError, EOFError) as err:
         print('\n>>>> (re-)deriving model %s'%f_name)
         ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
-                                     use_all_chans_for_passive=False,
+                                     use_all_channels_for_passive=False,
                                      recompute=recompute_biophys)
         clocs = ctree.getEquivalentLocs()
         print('>>>> writing file %s'%f_name)
@@ -123,7 +123,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
         ax4, ax5 = myAx(ax4), myAx(ax5)
         pl.figure(figsize=(5,5))
         gs = GridSpec(2,2)
-        ax_morph, ax_red1, ax_red2 = pl.subplot(gs[:,0]), pl.subplot(gs[1,0]), pl.subplot(gs[1,1])
+        ax_morph, ax_red1, ax_red2 = pl.subplot(gs[0,:]), pl.subplot(gs[1,0]), pl.subplot(gs[1,1])
     else:
         ax1, ax2, ax3 = axes['trace']
         ax4, ax5 = axes['amp-delay']
