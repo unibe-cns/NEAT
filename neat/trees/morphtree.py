@@ -2657,9 +2657,14 @@ class MorphTree(STree):
             else:
                 cb.ax.yaxis.set_ticks_position('right')
             cb.set_label(cb_label, **textargs)
-        ax.axes.get_xaxis().set_visible(0)
-        ax.axes.get_yaxis().set_visible(0)
-        ax.axison = 0
+        ax.spines['top'].set_color('none')
+        ax.spines['bottom'].set_color('none')
+        ax.spines['right'].set_color('none')
+        ax.spines['left'].set_color('none')
+        ax.draw_frame = False
+
+        ax.set_xticks([])
+        ax.set_yticks([])
 
     def _plotLoc(self, ax, ind, xval, yval, locargs, marklabels, labelargs):
         """
