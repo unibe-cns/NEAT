@@ -903,7 +903,6 @@ class CompartmentFitter(object):
 
         return k_orig, k_comp
 
-
     def getKernels(self, recompute=False, pprint=False):
         """
         Returns the impedance kernels as a double nested list of "neat.Kernel".

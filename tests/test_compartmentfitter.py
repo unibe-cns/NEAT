@@ -369,14 +369,14 @@ class TestCompartmentFitter():
         cm.setCTree(fit_locs)
         # test fitting
         cm.fitPassive(use_all_channels=False)
-        cm.fitCapacitance(use_all_channels=False)
+        cm.fitCapacitance()
         cm.fitEEq()
         self._checkPasCondProps(ctree_leak, cm.ctree)
         self._checkPasCaProps(ctree_leak, cm.ctree)
         with pytest.raises(AssertionError):
             self._checkEL(cm.ctree, self.tree[1].currents['L'][1])
         cm.fitPassive(use_all_channels=True)
-        cm.fitCapacitance(use_all_channels=True)
+        cm.fitCapacitance()
         cm.fitEEq()
         self._checkPasCondProps(ctree_all, cm.ctree)
         self._checkPasCaProps(ctree_all, cm.ctree)
@@ -559,8 +559,8 @@ class TestCompartmentFitter():
         self.fitBall()
         locs = [(1, 0.5)]
         cm = CompartmentFitter(self.tree)
-        ctree_cm_1 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=False)
-        ctree_cm_2 = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
+        ctree_cm_1 = cm.fitModel(locs, parallel=False, use_all_channels_for_passive=False)
+        ctree_cm_2 = cm.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
 
         self._checkAllCurrProps(self.ctree, ctree_cm_1)
         self._checkAllCurrProps(self.ctree, ctree_cm_2)
@@ -602,7 +602,7 @@ class TestCompartmentFitter():
         locs = [(nn.index,0.5) for nn in self.tree.nodes[:30]]
         cm = CompartmentFitter(self.tree)
 
-        ctree_cm = cm.fitModel(locs, parallel=False, use_all_chans_for_passive=True)
+        ctree_cm = cm.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
 
         if w_benchmark:
             from timeit import default_timer as timer
