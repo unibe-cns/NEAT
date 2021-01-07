@@ -818,12 +818,20 @@ class CompartmentFitter(object):
             lambdas = None
 
         if pplot:
-            lambdas, _, _ = self.ctree.calcEigenvalues()
-            self.plotSOV(alphas, phimat, importance, n_mode=len(lambdas), alphas2=lambdas)
+            # lambdas, _, _ = self.ctree.calcEigenvalues()
+            # self.plotSOV(alphas, phimat, importance, n_mode=len(lambdas), alphas2=lambdas)
             self.plotKernels(alphas, phimat)
             # pl.show()
 
-    def plotSOV(self, alphas, phimat, importance, n_mode=8, alphas2=None):
+    def plotSOV(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
+        fit_locs = self.tree.getLocs('fit locs')
+
+        if alphas is None or phimat is None or importance is None:
+            alphas, phimat, importance, _ = self._calcSOVMats(fit_locs,
+                                            recompute=False, pprint=False)
+        if alphas2 is None:
+            alphas2, _, _ = self.ctree.calcEigenvalues()
+
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
@@ -894,9 +902,6 @@ class CompartmentFitter(object):
         alphas_comp, phimat_comp, phimat_inv_comp = \
                                 self.ctree.calcEigenvalues(indexing='locs')
 
-        # compute eigenvalues
-        alphas_comp, phimat_comp, phimat_inv_comp = \
-                                self.ctree.calcEigenvalues(indexing='locs')
         # get the kernels
         k_orig = self._constructKernels(alphas, np.einsum('ik,kj->kij', phimat.T, phimat))
         k_comp = self._constructKernels(-alphas_comp, np.einsum('ik,kj->kij', phimat_comp, phimat_inv_comp))
@@ -928,8 +933,8 @@ class CompartmentFitter(object):
     def plotKernels(self, alphas=None, phimat=None, t_arr=None,
                           recompute=False, pprint=False):
         """
-        Plots the impedance kernels as a double nested list of "neat.Kernel".
-        The element at the position i,j represents the transfer impedance kernel
+        Plots the impedance kernels.
+        The kernel at the position i,j represents the transfer impedance kernel
         between compartments i and j.
 
         Parameters
@@ -958,7 +963,7 @@ class CompartmentFitter(object):
         fit_locs = self.tree.getLocs('fit locs')
         nn = len(fit_locs)
 
-        k_orig, k_comp = self._getKernels(alphas=phimat, phimat=phimat)
+        k_orig, k_comp = self._getKernels(alphas=alphas, phimat=phimat)
 
         if t_arr is None:
             t_arr = np.linspace(0.,200.,int(1e3))
@@ -983,7 +988,7 @@ class CompartmentFitter(object):
 
     def checkPassive(self, loc_arg, alpha_inds=[0], n_modes=5,
                            use_all_channels_for_passive=True, force_tau_m_fit=False,
-                           recompute=False):
+                           recompute=False, pprint=False):
         """
         Checks the impedance kernels of the passive model.
 
@@ -998,18 +1003,21 @@ class CompartmentFitter(object):
             Indices of all mode time-scales to be included in the fit
         use_all_channels_for_passive: bool
             Uses all channels in the tree to compute coupling conductances
+        force_tau_m_fit: bool
+            Force using the local membrane time-scale for capacitance fit
         recompute: bool
             whether to force recomputing the impedances
+        pprint: bool
+            is verbose if ``True``
         """
         self.setCTree(loc_arg)
         # fit the passive steady state model
         self.fitPassive(recompute=recompute, use_all_channels=use_all_channels_for_passive,
-                        pprint=True)
+                        pprint=pprint)
         # fit the capacitances
         self.fitCapacitance(inds=alpha_inds, recompute=recompute,
-                            use_all_channels=use_all_chans_for_passive,
                             force_tau_m_fit=force_tau_m_fit,
-                            pprint=True, pplot=True)
+                            pprint=pprint, pplot=True)
 
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
