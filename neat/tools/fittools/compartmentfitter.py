@@ -375,8 +375,8 @@ class CompartmentFitter(object):
         self.name = name
         self.path = path
 
-        # boolean flag that is initiallized the first time `self.fitPassive` is called
-        self.use_all_channels_for_passive = None
+        # boolean flag that is reset the first time `self.fitPassive` is called
+        self.use_all_channels_for_passive = True
 
     def setCTree(self, loc_arg, extend_w_bifurc=True):
         """
@@ -741,8 +741,6 @@ class CompartmentFitter(object):
             capacitances are set to mach membrane time scale
         force_tau_m_fit: bool (optional, default ``False``)
             force capacitance fit through membrance time scale matching
-        use_all_channels_for_passive: bool (optional, default ``True``)
-            Uses all channels in the tree to compute coupling conductances
         recompute: bool (optional, defaults to ``False``)
             whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
@@ -818,10 +816,7 @@ class CompartmentFitter(object):
             lambdas = None
 
         if pplot:
-            # lambdas, _, _ = self.ctree.calcEigenvalues()
-            # self.plotSOV(alphas, phimat, importance, n_mode=len(lambdas), alphas2=lambdas)
             self.plotKernels(alphas, phimat)
-            # pl.show()
 
     def plotSOV(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
         fit_locs = self.tree.getLocs('fit locs')
@@ -997,10 +992,10 @@ class CompartmentFitter(object):
         loc_arg: list of locations or string (see documentation of
                 :func:`MorphTree._convertLocArgToLocs` for details)
             The compartment locations
-        n_modes: int
-            The number of eigen modes that are shown
         alpha_inds: list of ints
             Indices of all mode time-scales to be included in the fit
+        n_modes: int
+            The number of eigen modes that are shown
         use_all_channels_for_passive: bool
             Uses all channels in the tree to compute coupling conductances
         force_tau_m_fit: bool
@@ -1009,6 +1004,10 @@ class CompartmentFitter(object):
             whether to force recomputing the impedances
         pprint: bool
             is verbose if ``True``
+
+        Returns
+        -------
+        ``None``
         """
         self.setCTree(loc_arg)
         # fit the passive steady state model
