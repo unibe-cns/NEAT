@@ -1,5 +1,4 @@
 import numpy as np
-import dill
 
 import matplotlib.patheffects as patheffects
 import matplotlib.patches as patches
@@ -20,6 +19,7 @@ from ...tools import kernelextraction as ke
 
 import warnings
 import copy
+import pickle
 import concurrent.futures
 import contextlib
 import multiprocessing
@@ -227,7 +227,7 @@ class FitTreeGF(GreensTree):
             if recompute:
                 raise IOError
             file = open(self.path + file_name, 'rb')
-            tree = dill.load(file)
+            tree = pickle.load(file)
             self.__dict__.update(tree.__dict__)
             file.close()
             del tree
@@ -240,7 +240,7 @@ class FitTreeGF(GreensTree):
             if not 'dont save' in self.name:
                 # store the impedance tree
                 file = open(self.path + file_name, 'wb')
-                dill.dump(self, file)
+                pickle.dump(self, file)
                 file.close()
 
     def calcNETSteadyState(self, root_loc=None, dx=5., dz=5.):
@@ -319,7 +319,7 @@ class FitTreeSOV(SOVTree):
             if recompute:
                 raise IOError
             file = open(self.path + file_name, 'rb')
-            tree = dill.load(file)
+            tree = pickle.load(file)
             self.__dict__.update(tree.__dict__)
             file.close()
             del tree
@@ -333,7 +333,7 @@ class FitTreeSOV(SOVTree):
             if not 'dont save' in self.name:
                 # store the tree
                 file = open(self.path + file_name, 'wb')
-                dill.dump(self, file)
+                pickle.dump(self, file)
                 file.close()
 
 
