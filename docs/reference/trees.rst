@@ -361,6 +361,16 @@ To implement the default methodology.
    CompartmentFitter.setCTree
    CompartmentFitter.fitModel
 
+To check the faithfullness of the passive reduction, the following functions
+implement vizualisation of impedance kernels.
+
+.. autosummary::
+   :toctree: generated/
+
+   CompartmentFitter.checkPassive
+   CompartmentFitter.getKernels
+   CompartmentFitter.plotKernels
+
 Individual fit functions.
 
 .. autosummary::

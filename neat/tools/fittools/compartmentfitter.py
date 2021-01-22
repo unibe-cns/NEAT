@@ -375,6 +375,9 @@ class CompartmentFitter(object):
         self.name = name
         self.path = path
 
+        # boolean flag that is reset the first time `self.fitPassive` is called
+        self.use_all_channels_for_passive = True
+
     def setCTree(self, loc_arg, extend_w_bifurc=True):
         """
         Store an initial `neat.CompartmentTree`, providing a tree
@@ -594,6 +597,8 @@ class CompartmentFitter(object):
             whether to print information
 
         """
+        self.use_all_channels_for_passive = use_all_channels
+
         # get equilibirum potentials
         v_eqs_tree = self.getEEq('tree')
         v_eqs_fit = self.getEEq('fit')
@@ -667,7 +672,7 @@ class CompartmentFitter(object):
             # restore defaults
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
-    def createTreeSOV(self, use_all_channels=False, eps=1.):
+    def createTreeSOV(self, eps=1.):
         """
         Create a `SOVTree` copy of the old tree
 
@@ -684,12 +689,12 @@ class CompartmentFitter(object):
         """
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeSOV())
-        if use_all_channels:
+        if self.use_all_channels_for_passive:
             tree.setName(self.name + '_allchans_', self.path)
         else:
             tree.setName(self.name, self.path)
 
-        if not use_all_channels:
+        if not self.use_all_channels_for_passive:
             tree.channel_storage = {}
 
             for node, node_orig in zip(tree, self.tree):
@@ -703,8 +708,24 @@ class CompartmentFitter(object):
 
         return tree
 
+    def _calcSOVMats(self, locs, recompute=False, pprint=False):
+        """
+        Use a `neat.SOVTree` to compute SOV matrices for fit
+        """
+        # create an SOV tree
+        sov_tree = self.createTreeSOV()
+        # compute the SOV expansion for this tree
+        sov_tree.setSOVInTree(recompute=recompute, pprint=pprint)
+        # get SOV constants
+        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
+                                            sort_type='importance', eps=1e-12,
+                                            return_importance=True)
+        alphas = alphas.real
+        phimat = phimat.real
+
+        return alphas, phimat, importance, sov_tree
+
     def fitCapacitance(self, inds=[0], check_fit=True, force_tau_m_fit=False,
-                             use_all_channels=True,
                              recompute=False, pprint=False, pplot=False):
         """
         Fit the capacitances of the model to the largest SOV time scale
@@ -727,34 +748,14 @@ class CompartmentFitter(object):
         pplot: bool (optional, defaults to ``False``)
             whether to plot the eigenmode timescales
         """
+        # compute SOV matrices for fit
         locs = self.tree.getLocs('fit locs')
-        # create an SOV tree
-        sov_tree = self.createTreeSOV(use_all_channels=use_all_channels)
-        # compute the SOV expansion for this tree
-        sov_tree.setSOVInTree(recompute=recompute, pprint=pprint)
-        # get SOV constants
-        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
-                                            sort_type='importance', eps=1e-12,
-                                            return_importance=True)
-        alphas = alphas.real
-        phimat = phimat.real
+        alphas, phimat, importance, sov_tree = \
+                self._calcSOVMats(locs, recompute=recompute, pprint=pprint)
+
         # fit the capacitances from SOV time-scales
         self.ctree.computeC(-alphas[inds]*1e3, phimat[inds,:],
                             weights=importance[inds])
-
-        # fit capacitances vector fit
-        # # greens_tree = self.createTreeGF()
-        # channel_names = list(self.tree.channel_storage.keys())
-        # greens_tree = self.createTreeGF(channel_names)
-        # v_eqs_tree = self.getEEq('tree')
-        # greens_tree.setEEq(v_eqs_tree)
-        # greens_tree.asPassiveMembrane()
-        # greens_tree.setName(self.name + '_atRest_')
-
-        # greens_tree.setImpedancesInTree(many_freqs=True, recompute=False)
-        # z_mat = greens_tree.calcImpedanceMatrix(locs)
-        # # run the vector fit
-        # self.ctree.computeCVF(greens_tree.freqs, z_mat)
 
         def calcTau():
             nm = len(locs)
@@ -815,12 +816,17 @@ class CompartmentFitter(object):
             lambdas = None
 
         if pplot:
-            lambdas, _, _ = self.ctree.calcEigenvalues()
-            self.plotSOV(alphas, phimat, importance, n_mode=len(lambdas), alphas2=lambdas)
             self.plotKernels(alphas, phimat)
-            # pl.show()
 
-    def plotSOV(self, alphas, phimat, importance, n_mode=8, alphas2=None):
+    def plotSOV(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
+        fit_locs = self.tree.getLocs('fit locs')
+
+        if alphas is None or phimat is None or importance is None:
+            alphas, phimat, importance, _ = self._calcSOVMats(fit_locs,
+                                            recompute=False, pprint=False)
+        if alphas2 is None:
+            alphas2, _, _ = self.ctree.calcEigenvalues()
+
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
@@ -850,23 +856,112 @@ class CompartmentFitter(object):
         ax3.set_ylabel(r'$\phi_k(x_i)$')
         ax3.legend(loc=0)
 
-    def _getKernels(self, a, c):
+    def _constructKernels(self, a, c):
         nn = len(self.tree.getLocs('fit locs'))
         return [[Kernel((a, c[:,ii,jj])) for ii in range(nn)] for jj in range(nn)]
 
-    def plotKernels(self, alphas, phimat, t_arr=None):
-        fit_locs = self.tree.getLocs('fit locs')
-        nn = len(fit_locs)
+    def _getKernels(self, alphas=None, phimat=None,
+                          recompute=False, pprint=False):
+        """
+        Returns the impedance kernels as a double nested list of "neat.Kernel".
+        The element at the position i,j represents the transfer impedance kernel
+        between compartments i and j.
 
-        if t_arr is None:
-            t_arr = np.linspace(0.,200.,int(1e3))
+        If one of the arguments is not given, the SOV matrices are computed
+
+        Parameters
+        ----------
+        alphas: np.array
+            The exponential coefficients, as follows from the SOV expansion
+        phimat: np.ndarray (dim=2)
+            The matrix to compute the exponential prefactors, as follows from
+            the SOV expansion
+        recompute: bool
+            Force recomputing the SOV expansion if ``True`` (only if `alphas` or
+            `phimat` are ``None``)
+        pprint: bool
+            Is verbose if ``True``
+
+        Returns
+        -------
+        k_orig: list of list of `neat.Kernel`
+            The kernels of the full model
+        k_comp: list of list of `neat.Kernel`
+            The kernels of the reduced model
+        """
+        fit_locs = self.tree.getLocs('fit locs')
+        if alphas is None or phimat is None:
+            alphas, phimat, _, _ = self._calcSOVMats(fit_locs, recompute=recompute, pprint=pprint)
 
         # compute eigenvalues
         alphas_comp, phimat_comp, phimat_inv_comp = \
                                 self.ctree.calcEigenvalues(indexing='locs')
+
         # get the kernels
-        k_orig = self._getKernels(alphas, np.einsum('ik,kj->kij', phimat.T, phimat))
-        k_comp = self._getKernels(-alphas_comp, np.einsum('ik,kj->kij', phimat_comp, phimat_inv_comp))
+        k_orig = self._constructKernels(alphas, np.einsum('ik,kj->kij', phimat.T, phimat))
+        k_comp = self._constructKernels(-alphas_comp, np.einsum('ik,kj->kij', phimat_comp, phimat_inv_comp))
+
+        return k_orig, k_comp
+
+    def getKernels(self, recompute=False, pprint=False):
+        """
+        Returns the impedance kernels as a double nested list of "neat.Kernel".
+        The element at the position i,j represents the transfer impedance kernel
+        between compartments i and j.
+
+        Parameters
+        ----------
+        recompute: bool
+            Force recomputing the SOV expansion if ``True``
+        pprint: bool
+            Is verbose if ``True``
+
+        Returns
+        -------
+        k_orig: list of list of `neat.Kernel`
+            The kernels of the full model
+        k_comp: list of list of `neat.Kernel`
+            The kernels of the reduced model
+        """
+        return self._getKernels(recompute=recompute, pprint=pprint)
+
+    def plotKernels(self, alphas=None, phimat=None, t_arr=None,
+                          recompute=False, pprint=False):
+        """
+        Plots the impedance kernels.
+        The kernel at the position i,j represents the transfer impedance kernel
+        between compartments i and j.
+
+        Parameters
+        ----------
+        alphas: np.array
+            The exponential coefficients, as follows from the SOV expansion
+        phimat: np.ndarray (dim=2)
+            The matrix to compute the exponential prefactors, as follows from
+            the SOV expansion
+        t_arr: np.array
+            The time-points at which the to be plotted kernels are evaluated.
+            Default is ``np.linspace(0.,200.,int(1e3))``
+        recompute: bool
+            Force recomputing the SOV expansion if ``True`` (only if `alphas` or
+            `phimat` are ``None``)
+        pprint: bool
+            Is verbose if ``True``
+
+        Returns
+        -------
+        k_orig: list of list of `neat.Kernel`
+            The kernels of the full model
+        k_comp: list of list of `neat.Kernel`
+            The kernels of the reduced model
+        """
+        fit_locs = self.tree.getLocs('fit locs')
+        nn = len(fit_locs)
+
+        k_orig, k_comp = self._getKernels(alphas=alphas, phimat=phimat)
+
+        if t_arr is None:
+            t_arr = np.linspace(0.,200.,int(1e3))
 
         pl.figure('Kernels', figsize=(2.*nn, 1.5*nn))
         gs = GridSpec(nn, nn)
@@ -886,17 +981,42 @@ class CompartmentFitter(object):
                 pstring = '%d $\leftrightarrow$ %d'%(ii,jj)
                 ax.set_title(pstring, pad=-10)
 
-    def checkPassive(self, loc_arg, alpha_inds=[0], recompute=False, n_modes=5,
-                           use_all_chans_for_passive=True, force_tau_m_fit=False):
+    def checkPassive(self, loc_arg, alpha_inds=[0], n_modes=5,
+                           use_all_channels_for_passive=True, force_tau_m_fit=False,
+                           recompute=False, pprint=False):
+        """
+        Checks the impedance kernels of the passive model.
+
+        Parameters
+        ----------
+        loc_arg: list of locations or string (see documentation of
+                :func:`MorphTree._convertLocArgToLocs` for details)
+            The compartment locations
+        alpha_inds: list of ints
+            Indices of all mode time-scales to be included in the fit
+        n_modes: int
+            The number of eigen modes that are shown
+        use_all_channels_for_passive: bool
+            Uses all channels in the tree to compute coupling conductances
+        force_tau_m_fit: bool
+            Force using the local membrane time-scale for capacitance fit
+        recompute: bool
+            whether to force recomputing the impedances
+        pprint: bool
+            is verbose if ``True``
+
+        Returns
+        -------
+        ``None``
+        """
         self.setCTree(loc_arg)
         # fit the passive steady state model
-        self.fitPassive(recompute=recompute, use_all_channels=use_all_chans_for_passive,
-                        pprint=True)
+        self.fitPassive(recompute=recompute, use_all_channels=use_all_channels_for_passive,
+                        pprint=pprint)
         # fit the capacitances
         self.fitCapacitance(inds=alpha_inds, recompute=recompute,
-                            use_all_channels=use_all_chans_for_passive,
                             force_tau_m_fit=force_tau_m_fit,
-                            pprint=True, pplot=True)
+                            pprint=pprint, pplot=True)
 
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
@@ -1003,7 +1123,7 @@ class CompartmentFitter(object):
         self.ctree.setEEq(v_eqs)
         self.ctree.fitEL()
 
-    def fitModel(self, loc_arg, alpha_inds=[0], use_all_chans_for_passive=True,
+    def fitModel(self, loc_arg, alpha_inds=[0], use_all_channels_for_passive=True,
                        recompute=False, pprint=False, parallel=False):
         """
         Runs the full fit for a set of locations (the location are automatically
@@ -1014,15 +1134,15 @@ class CompartmentFitter(object):
         loc_arg: list of locations or string (see documentation of
                 :func:`MorphTree._convertLocArgToLocs` for details)
             The compartment locations
-        alpha_inds: list of ints (optional, default to ``[0]``)
+        alpha_inds: list of ints
             Indices of all mode time-scales to be included in the fit
-        use_all_chans_for_passive: bool (optional, default ``True``)
+        use_all_channels_for_passive: bool (optional, default ``True``)
             Uses all channels in the tree to compute coupling conductances
-        recompute: bool (optional, defaults to ``False``)
+        recompute: bool
             whether to force recomputing the impedances
-        pprint:  bool (optional, defaults to ``False``)
+        pprint:  bool
             whether to print information
-        parallel:  bool (optional, defaults to ``False``)
+        parallel:  bool
             whether the models are evaluated in parallel
 
         Returns
@@ -1033,12 +1153,12 @@ class CompartmentFitter(object):
         self.setCTree(loc_arg)
         # fit the passive steady state model
         self.fitPassive(recompute=recompute, pprint=pprint,
-                        use_all_channels=use_all_chans_for_passive)
+                        use_all_channels=use_all_channels_for_passive)
         # fit the capacitances
-        self.fitCapacitance(inds=alpha_inds, use_all_channels=use_all_chans_for_passive,
+        self.fitCapacitance(inds=alpha_inds,
                             recompute=recompute, pprint=pprint, pplot=False)
         # refit with only leak
-        if use_all_chans_for_passive:
+        if use_all_channels_for_passive:
             self.fitPassiveLeak(recompute=recompute, pprint=pprint)
 
         # fit the ion channel
