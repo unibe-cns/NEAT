@@ -60,7 +60,7 @@ def write_ionchannel_header_and_cpp_file():
 
 
 def read_requirements():
-    with open('./requirements.txt') as fp:
+    with open('./requirements/requirements.txt') as fp:
         requirements = fp.read()
     return requirements
 
