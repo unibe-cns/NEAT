@@ -1,6 +1,5 @@
 import sympy as sp
 import numpy as np
-import scipy.optimize as so
 
 import os
 import copy
