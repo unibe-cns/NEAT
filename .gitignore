@@ -4,3 +4,5 @@ __version__.pyc
 build/
 neat/tools/simtools/netsim.cpp
 tests/__pycache__/
+.DS_Store
+*__pycache__
