@@ -13,7 +13,7 @@ from models.L5_pyramid import getL5Pyramid
 
 from plotutil import *
 
-import dill
+import pickle
 
 SIM_FLAG = 1
 try:
@@ -52,8 +52,8 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
             raise IOError
         print('\n>>>> loading file %s'%f_name)
         file = open(f_name + '.p', 'rb')
-        ctree = dill.load(file)
-        clocs = dill.load(file)
+        ctree = pickle.load(file)
+        clocs = pickle.load(file)
     except (IOError, EOFError) as err:
         print('\n>>>> (re-)deriving model %s'%f_name)
         ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
@@ -62,8 +62,8 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
         clocs = ctree.getEquivalentLocs()
         print('>>>> writing file %s'%f_name)
         file = open(f_name + '.p', 'wb')
-        dill.dump(ctree, file)
-        dill.dump(clocs, file)
+        pickle.dump(ctree, file)
+        pickle.dump(clocs, file)
     file.close()
     return ctree, clocs
 
