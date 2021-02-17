@@ -2,7 +2,6 @@ import sympy as sp
 import numpy as np
 
 import os
-import copy
 import warnings
 
 CONC_DICT = {'na': 10.,  # mM
@@ -15,7 +14,7 @@ TEMP_DEFAULT = 36.
 E_ION_DICT = {'na': 50.,
               'k': -85.,
               'ca': 50.,
-            }
+             }
 
 
 class _func(object):
@@ -233,6 +232,7 @@ class IonChannel(object):
         if not hasattr(self, 'q10'):
             self.q10 = '1.'
         self.q10 = sp.sympify(self.q10, evaluate=False)
+
         # sympy temperature symbols
         assert len(self.q10.free_symbols) <= 1
         self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
@@ -781,10 +781,10 @@ class IonChannel(object):
             p_open_m = p_open_m.subs(svar, sp.symbols('m_' + str(svar)))
             p_open_m_inf = p_open_m_inf.subs(svar, sp.symbols('m_' + str(svar) + '_inf'))
         # substitue concentrations in expression
-        def _substituteConc(expr, prefix='', suffix=''):
+        def _replaceConc(expr_str, prefix='', suffix=''):
             for ion, conc in self.conc.items():
-                expr = expr.subs(ion, sp.symbols(prefix + str(ion) + suffix))
-            return expr
+                expr_str = expr_str.replace(str(ion), prefix + str(ion) + suffix)
+            return expr_str
 
         # open header and cc files
         fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
@@ -823,8 +823,8 @@ class IonChannel(object):
             varinf = self._substituteDefaults(self.varinf[svar])
             tauinf = self._substituteDefaults(self.tauinf[svar])
             sv = str(svar)
-            vi = sp.printing.ccode(_substituteConc(varinf, prefix='m_'))
-            ti = sp.printing.ccode(_substituteConc(tauinf, prefix='m_'))
+            vi = _replaceConc(sp.printing.ccode(varinf), prefix='m_')
+            ti = _replaceConc(sp.printing.ccode(tauinf), prefix='m_')
             fcc.write('    m_%s_inf = %s;\n'%(sv, vi))
             # if self.varinf.shape[1] == 2 and ind == (0,0):
             if sv == 'm':
@@ -891,9 +891,12 @@ class IonChannel(object):
         p_o = self.p_open
         for svar in self.statevars:
             sv = 'v_' + str(svar)
-            # substitute voltage symbol in the activation
-            vi = self._substituteDefaults(self.varinf[svar]).subs(self.sp_v, sp.symbols(sv))
-            vi = _substituteConc(vi, prefix='m_')
+            # substitute default parameters
+            vi = self._substituteDefaults(self.varinf[svar])
+            # write ccode and substitute variable names
+            vi_ccode = sp.printing.ccode(vi)
+            vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
+            vi_ccode = _replaceConc(vi_ccode, prefix='m_')
             # assign dynamic or fixed voltage to the activation
             fcc.write('    double %s;\n'%(sv))
             fcc.write('    if(m_%s > 1000.){\n'%sv)
@@ -901,37 +904,42 @@ class IonChannel(object):
             fcc.write('    } else{\n')
             fcc.write('        %s = m_%s;\n'%(sv, sv))
             fcc.write('    }' + '\n')
-            fcc.write('    double %s = %s;\n'%(str(svar), sp.printing.ccode(vi)))
+            fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
 
         fcc.write('    return (m_e_rev - v) * (%s - m_p_open_eq);\n'%sp.printing.ccode(self.p_open))
         fcc.write('}\n')
 
         fcc.write('double %s::DfDvNewton(double v){\n'%c_name)
-        # p_o = self.p_open
-        # compute partial derivatives
-        # dp_o = np.zeros_like(self.statevars)
-        # for ind, varname in np.ndenumerate(self.statevars):
-        #     dp_o[ind] = sp.diff(p_o, varname, 1)
         dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.statevars}
+
         # print derivatives
         for svar in self.statevars:
             sv = 'v_' + str(svar)
             v_var = sp.symbols(sv)
-            # substitute voltage symbol in the activation
-            vi = self._substituteDefaults(self.varinf[svar]).subs(self.sp_v, v_var)
-            vi = _substituteConc(vi, prefix='m_')
-            dvi_dv = sp.diff(vi, v_var, 1)
+
+            # substitute default parameters
+            vi = self._substituteDefaults(self.varinf[svar])
+            # write ccode and substitute variable names
+            vi_ccode = sp.printing.ccode(vi)
+            vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
+            vi_ccode = _replaceConc(vi_ccode, prefix='m_')
+            # compute voltage derivatives
+            dvi_dv = sp.diff(vi, self.sp_v, 1)
+            dvi_dv_ccode = sp.printing.ccode(dvi_dv)
+            dvi_dv_ccode = dvi_dv_ccode.replace(str(self.sp_v), sv)
+            dvi_dv_ccode = _replaceConc(dvi_dv_ccode, prefix='m_')
+
             # compute derivative
             fcc.write('    double %s;\n'%sv)
             fcc.write('    double d%s_dv;\n'%str(svar))
             fcc.write('    if(m_%s > 1000.){\n'%sv)
             fcc.write('        %s = v;\n'%sv)
-            fcc.write('        d%s_dv = %s;\n'%(str(svar), sp.printing.ccode(dvi_dv)))
+            fcc.write('        d%s_dv = %s;\n'%(str(svar), dvi_dv_ccode))
             fcc.write('    } else{\n')
             fcc.write('        %s = m_%s;\n'%(sv, sv))
             fcc.write('        d%s_dv = 0;\n'%str(svar))
             fcc.write('    }\n')
-            fcc.write('    double %s = %s;\n'%(str(svar), sp.printing.ccode(vi)))
+            fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
 
         expr_str = ' + '.join(['%s * d%s_dv'%(sp.printing.ccode(dp_o[svar]), str(svar)) \
                                for svar in self.statevars])
