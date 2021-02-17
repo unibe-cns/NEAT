@@ -54,8 +54,16 @@ The adventurous can install the most recent development version directly from ou
 **Post-Install**
 
 To use NEAT with `NEURON <https://neuron.yale.edu/neuron/>`_, make sure NEURON
-is properly installed with its Python interface, and compile and install the
-default NEURON mechanisms by running
+is properly installed with its Python interface. The easiest way to install NEURON
+on Linux and macOS platform is via pip:
+
+.. code-block:: shell
+
+    pip install neuron
+
+See detailed install instructions `here <https://github.com/neuronsimulator/nrn/blob/master/INSTALL.md>`_.
+
+You can test it by compiling and installing the default NEURON mechanisms by running
 
 .. code-block:: shell
 
