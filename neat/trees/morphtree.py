@@ -15,11 +15,9 @@ import matplotlib.patches as patches
 import matplotlib.cm as cm
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.mplot3d import Axes3D
 
 import warnings
 import copy
-from collections import Counter
 from functools import reduce
 
 from .stree import SNode, STree

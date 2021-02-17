@@ -15,7 +15,6 @@ import matplotlib.pyplot as pl
 from .stree import STree, SNode
 
 import copy
-import itertools
 
 
 class Kernel(object):

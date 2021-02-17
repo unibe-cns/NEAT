@@ -39,7 +39,7 @@ except ModuleNotFoundError:
         def __rmul__(self, other):
             return self * other
 
-        def __call__(self, *args, **kwargs): # make callable 
+        def __call__(self, *args, **kwargs): # make callable
             return H()
     h = H()
     neuron = H()
@@ -57,9 +57,6 @@ except ModuleNotFoundError:
 h.load_file("stdlib.hoc") # contains the lambda rule
 h.nrn_load_dll(os.path.join(os.path.dirname(__file__),
                             'x86_64/.libs/libnrnmech.so')) # load all mechanisms
-# neuron.load_mechanisms(os.path.join(os.path.dirname(__file__),
-#                             'x86_64/.libs/libnrnmech.so')) # load all mechanisms
-# mechanism_name_translation NEURON
 
 
 class MechName(object):
@@ -71,14 +68,6 @@ class MechName(object):
             return self.names[key]
         else:
             return 'I' + key
-            # 'TestChannel': 'ITestChannel', 'TestChannel2': 'ITestChannel2',
-            # 'h': 'Ih', 'h_HAY': 'Ih_HAY',
-            # 'Na': 'INa', 'Na_p': 'INa_p', 'Na_Ta': 'INa_Ta', 'Na_Ta2': 'INa_Ta2',
-            # 'K': 'IK', 'Klva': 'IKlva', 'KA': 'IKA', 'm': 'Im', 'Kpst': 'IKpst', 'Ktst': 'IKtst', 'Kv3_1': 'IKv3_1', 'SK': 'ISK',
-            # 'Ca_LVA': 'ICa_LVA', 'Ca_HVA': 'ICa_HVA',
-            # 'NaP': 'INaP', 'NaF': 'INaF',
-            # 'CaE': 'ICaE', 'CaP': 'ICaP', 'CaP2': 'ICaP2', 'CaT': 'ICaT',
-            # 'K23': 'IK23', 'KC3': 'IKC3', 'KA': 'IKA', 'KD': 'IKD', 'KM': 'IKM', 'Kh': 'IKh', 'Khh': 'IKhh',
 mechname = MechName()
 
 

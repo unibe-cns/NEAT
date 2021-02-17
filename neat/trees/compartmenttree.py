@@ -11,10 +11,8 @@ Author: W. Wybo
 import numpy as np
 import scipy.linalg as la
 import scipy.optimize as so
-import sympy as sp
 
 from .stree import SNode, STree
-from ..channels import channelcollection
 from ..tools import kernelextraction as ke
 
 import copy
@@ -341,10 +339,7 @@ class CompartmentNode(SNode):
     def getDynamicDrive_(self, channel_name, v, dt, channel_storage=None):
         # assert p_open.shape == v.shape
         _, e = self.currents[channel_name]
-        if channel_storage is not None:
-            channel = channel_storage[channel_name]
-        else:
-            channel = eval('channelcollection.' + channel_name + '()')
+        channel = channel_storage[channel_name]
         # storage
         p_open = np.zeros_like(v)
         # initialize

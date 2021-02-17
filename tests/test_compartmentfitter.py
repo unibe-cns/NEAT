@@ -7,8 +7,6 @@ import random
 import copy
 import pickle
 
-import dill
-
 from neat import MorphLoc
 from neat import PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
@@ -579,21 +577,17 @@ class TestCompartmentFitter():
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
 
-        ss = dill.dumps(greens_tree)
-        gt_ = dill.loads(ss)
+        ss = pickle.dumps(greens_tree)
+        gt_ = pickle.loads(ss)
         self._checkPhysTrees(greens_tree, gt_)
 
         # of SOVTree
         sov_tree = self.tree.__copy__(new_tree=SOVTree())
         sov_tree.calcSOVEquations()
 
-        # fails with pickle (lambda functions)
-        with pytest.raises(AttributeError):
-            ss = pickle.dumps(sov_tree)
-
-        # works with dill
-        ss = dill.dumps(sov_tree)
-        st_ = dill.loads(ss)
+        # works with pickle
+        ss = pickle.dumps(sov_tree)
+        st_ = pickle.loads(ss)
         self._checkPhysTrees(sov_tree, st_)
 
 

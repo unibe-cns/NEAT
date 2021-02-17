@@ -47,46 +47,47 @@ class SOVNode(PhysNode):
         self.tau_0      = tau_0 # s
         self.z_a        = self.r_a / (np.pi * self.R_sov**2) # MOhm/cm
         self.g_inf_m    = 1. / (self.z_a * self.lambda_m) # uS
-        # function for SOV approach
-        self.q_m        = lambda x: np.sqrt(self.eps_m*x**2 - 1.)
-        self.dq_dp_m    = lambda x: -self.tau_m / (2.*self.q_m(x))
-        self.mu_m       = lambda x: 0. # has to be set recursively
-        self.dmu_dp_m   = lambda x: 0. # has to be set recursively
-        self.kappa_m    = lambda x: 0. # has to be set recursively
-        # segment amplitude information
+        # # segment amplitude information
         self.kappa_m    = np.NaN
         self.mu_vals_m  = np.NaN
         self.q_vals_m   = np.NaN
 
-    def _setMuFunctions(self):
-        if len(self.child_nodes) == 0:
-            self.mu_m     = lambda x: self.z_a * self.lambda_m / self.q_m(x) * self.g_shunt
-            self.dmu_dp_m = lambda x: -self.dq_dp_m(x) * self.mu_m(x) / self.q_m(x)
+    def q_m(self, x):
+        return np.sqrt(self.eps_m*x**2 - 1.)
+
+    def dq_dp_m(self, x):
+        return -self.tau_m / (2.*self.q_m(x))
+
+    def mu_m(self, x):
+        cns = self.child_nodes
+        if len(cns) == 0:
+            return self.z_a * self.lambda_m / self.q_m(x) * self.g_shunt
         else:
-            cns = self.child_nodes
-            def fun(x):
-                x = zf._to_complex(x)
-                mu_ds = [cn.mu_m(x) for cn in cns]
-                q_ds  = [cn.q_m(x) for cn in cns]
-                return ( self.g_shunt - np.sum([ \
-                                cn.g_inf_m*q_ds[i] * \
-                                ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) \
-                                for i, cn in enumerate(cns)], 0) ) / (self.g_inf_m * self.q_m(x))
-            self.mu_m = fun
-            def dfun(x):
-                x = zf._to_complex(x)
-                mu_ds = [cn.mu_m(x) for cn in cns]
-                dmu_dp_ds = [cn.dmu_dp_m(x) for cn in cns]
-                q_ds  = [cn.q_m(x) for cn in cns]
-                dq_dp_ds = [cn.dq_dp_m(x) for cn in cns]
-                return (-self.dq_dp_m(x) * self.mu_m(x) - np.sum([ cn.g_inf_m * ( \
-                                dq_dp_ds[i] * \
-                                ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) + \
-                                q_ds[i] * \
-                                ( (1.+mu_ds[i]**2) * dq_dp_ds[i] * cn.L_sov/cn.lambda_m - dmu_dp_ds[i] ) / \
-                                ( np.cos(q_ds[i]*cn.L_sov/cn.lambda_m) + mu_ds[i]*np.sin(q_ds[i]*cn.L_sov/cn.lambda_m) )**2 \
-                                ) for i, cn in enumerate(cns)], 0) / self.g_inf_m ) / self.q_m(x)
-            self.dmu_dp_m = dfun
+            x = zf._to_complex(x)
+            mu_ds = [cn.mu_m(x) for cn in cns]
+            q_ds  = [cn.q_m(x) for cn in cns]
+            return ( self.g_shunt - np.sum([ \
+                            cn.g_inf_m*q_ds[i] * \
+                            ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) \
+                            for i, cn in enumerate(cns)], 0) ) / (self.g_inf_m * self.q_m(x))
+
+    def dmu_dp_m(self, x):
+        cns = self.child_nodes
+        if len(cns) == 0:
+            return -self.dq_dp_m(x) * self.mu_m(x) / self.q_m(x)
+        else:
+            x = zf._to_complex(x)
+            mu_ds = [cn.mu_m(x) for cn in cns]
+            dmu_dp_ds = [cn.dmu_dp_m(x) for cn in cns]
+            q_ds  = [cn.q_m(x) for cn in cns]
+            dq_dp_ds = [cn.dq_dp_m(x) for cn in cns]
+            return (-self.dq_dp_m(x) * self.mu_m(x) - np.sum([ cn.g_inf_m * ( \
+                            dq_dp_ds[i] * \
+                            ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) + \
+                            q_ds[i] * \
+                            ( (1.+mu_ds[i]**2) * dq_dp_ds[i] * cn.L_sov/cn.lambda_m - dmu_dp_ds[i] ) / \
+                            ( np.cos(q_ds[i]*cn.L_sov/cn.lambda_m) + mu_ds[i]*np.sin(q_ds[i]*cn.L_sov/cn.lambda_m) )**2 \
+                            ) for i, cn in enumerate(cns)], 0) / self.g_inf_m ) / self.q_m(x)
 
     def _setKappaFactors(self, xzeros):
         xzeros = zf._to_complex(xzeros)
@@ -152,6 +153,7 @@ class SOVNode(PhysNode):
         zf.find_zeros_on_segment(p1, pm1, 0., xval, f, dfdx, lpoles, lpmultiplicities, pprint=pprint)
         self.poles = np.concatenate((p1, poles)).real; self.pmultiplicities = np.concatenate((pm1, pmultiplicities)).real
 
+
 class SomaSOVNode(SOVNode):
     """
     Subclass of SOVNode to threat the special case of the soma
@@ -181,37 +183,33 @@ class SomaSOVNode(SOVNode):
         self.g_s        = self.g_m*self.A + self.g_shunt # uS
         self.c_s        = self.c_m*self.A # uF
         self.tau_0      = tau_0  # s
-        # functions for the SOV approach
-        self.f_transc   = lambda x: 0.
-        self.dN_dp      = lambda x: 0.
         # segment amplitude factors
         self.kappa_m = 1.
 
-    def _setMuFunctions(self):
+    def f_transc(self, x):
         cns = self.child_nodes
-        def fun(x):
-            x = zf._to_complex(x)
-            mu_ds = [cn.mu_m(x) for cn in cns]
-            q_ds  = [cn.q_m(x) for cn in cns]
-            return self.g_s * (1.-self.eps_m*x**2) - np.sum([ \
-                         cn.g_inf_m*q_ds[i] * \
-                        ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) \
-                        for i, cn in enumerate(cns)], 0)
-        self.f_transc = fun
-        def dfun(x):
-            x = zf._to_complex(x)
-            mu_ds = [cn.mu_m(x) for cn in cns]
-            dmu_dp_ds = [cn.dmu_dp_m(x) for cn in cns]
-            q_ds  = [cn.q_m(x) for cn in cns]
-            dq_dp_ds = [cn.dq_dp_m(x) for cn in cns]
-            return self.c_s - np.sum([ cn.g_inf_m * ( \
-                                dq_dp_ds[i] * \
-                                ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) + \
-                                q_ds[i] * \
-                                ( (1.+mu_ds[i]**2) * dq_dp_ds[i] * cn.L_sov/cn.lambda_m - dmu_dp_ds[i] ) / \
-                                ( np.cos(q_ds[i]*cn.L_sov/cn.lambda_m) + mu_ds[i]*np.sin(q_ds[i]*cn.L_sov/cn.lambda_m) )**2 \
-                                ) for i, cn in enumerate(cns)], 0)
-        self.dN_dp = dfun
+        x = zf._to_complex(x)
+        mu_ds = [cn.mu_m(x) for cn in cns]
+        q_ds  = [cn.q_m(x) for cn in cns]
+        return self.g_s * (1.-self.eps_m*x**2) - np.sum([ \
+                     cn.g_inf_m*q_ds[i] * \
+                    ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) \
+                    for i, cn in enumerate(cns)], 0)
+
+    def dN_dp(self, x):
+        cns = self.child_nodes
+        x = zf._to_complex(x)
+        mu_ds = [cn.mu_m(x) for cn in cns]
+        dmu_dp_ds = [cn.dmu_dp_m(x) for cn in cns]
+        q_ds  = [cn.q_m(x) for cn in cns]
+        dq_dp_ds = [cn.dq_dp_m(x) for cn in cns]
+        return self.c_s - np.sum([ cn.g_inf_m * ( \
+                            dq_dp_ds[i] * \
+                            ( 1.-mu_ds[i]/np.tan(q_ds[i]*cn.L_sov/cn.lambda_m) ) / ( 1./np.tan(q_ds[i]*cn.L_sov/cn.lambda_m)+mu_ds[i]) + \
+                            q_ds[i] * \
+                            ( (1.+mu_ds[i]**2) * dq_dp_ds[i] * cn.L_sov/cn.lambda_m - dmu_dp_ds[i] ) / \
+                            ( np.cos(q_ds[i]*cn.L_sov/cn.lambda_m) + mu_ds[i]*np.sin(q_ds[i]*cn.L_sov/cn.lambda_m) )**2 \
+                            ) for i, cn in enumerate(cns)], 0)
 
     def _setZerosPoles(self, maxspace_freq=500, pprint=False):
         # find the poles of cot(qL/l) + mu
@@ -363,7 +361,7 @@ class SOVTree(PhysTree):
         # the recursion has passed node, the mu functions can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            node._setMuFunctions()
+            # node._setMuFunctions()
             node._setZerosPoles(maxspace_freq=maxspace_freq)
             if not self.isRoot(node):
                 self._SOVFromLeaf(pnode, leafs, count=count+1,
@@ -415,17 +413,13 @@ class SOVTree(PhysTree):
             gammas = sov_data[1]
         else:
             raise IOError('One of the kwargs `locarg` or `sov_data` must not be ``None``')
+
         if importance_type == 'simple':
             absolute_importance = np.sum(np.abs(gammas), 1) / np.abs(alphas)
         elif importance_type == 'full':
             absolute_importance = np.zeros(len(alphas))
             for kk, (alpha, phivec) in enumerate(zip(alphas, gammas)):
                 absolute_importance[kk] = np.sqrt(np.sum(np.abs(np.dot(phivec[:,None], phivec[None,:]))) / np.abs(alpha))
-
-        # if importance_type == 'absolute':
-        #     return absolute_importance
-        # elif importance_type =='relative':
-        #     return absolute_importance / np.max(absolute_importance)
         else:
             raise ValueError('`importance_type` argument can be \'simple\' or \
                               \'full\'')
