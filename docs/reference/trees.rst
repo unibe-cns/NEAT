@@ -51,9 +51,6 @@ Basic tree
    STree.__copy__
 
 
-.. note:: This is a subset of the methods of STree, which I chose to show how we can document public as well
-          private methods of STree while leaving the others in the dark.
-
 .. autoclass:: neat.SNode
 
 

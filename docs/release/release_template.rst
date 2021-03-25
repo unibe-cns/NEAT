@@ -3,7 +3,7 @@ Announcement: NEAT 0.X
 
 We're happy to announce the release of NEAT 0.!
 
-For more information, please visit our `website <http://neat.github.io/>`_.
+Visit our `github page <http://github.com/unibe-cns/NEAT>`_.
 
 Highlights
 ----------
