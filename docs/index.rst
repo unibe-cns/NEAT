@@ -39,7 +39,7 @@ electrical parameters.
 
 NEAT furthermore has a number of other classes, notably to implement ion
 channels (`neat.IonChannel`) and to provide a high-level API for the
-simplification method described in [Wybo2020]_ (`neat.CompartmentFitter`).
+simplification method described in [Wybo2021]_ (`neat.CompartmentFitter`).
 
 .. figure:: figures/neat_overview.png
    :height: 380 px

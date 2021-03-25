@@ -3,11 +3,8 @@ Citing
 
 To cite NEAT please use the following publication:
 
-Willem A.M. Wybo, Jakob Jordan, Benjamin Ellenberger, Ulisses M. Mengual, Thomas Nevian & Walter Senn,
-`"Data-driven reduction of dendritic morphologies with preserved dendro-somatic responses",
-in
-`bioRxiv` (2020), doi `10.1101/2020.04.06.028183 <https://doi.org/10.1101/2020.04.06.028183>`_
+Wybo, Willem A.M. et al. (2021) *Data-driven reduction of dendritic morphologies with preserved dendro-somatic responses*, eLife, 10:e60936, pp. 1--26, doi `10.7554/eLife.60936 <https://doi.org/10.7554/eLife.60936>`_
 
 .. only:: html
 
-   `PDF <https://www.biorxiv.org/content/10.1101/2020.04.06.028183v1>`_
+   `PDF <https://elifesciences.org/articles/60936>`_
