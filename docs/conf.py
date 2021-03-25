@@ -102,13 +102,12 @@ copyright = f"2020-{date.today().year}, NEAT Developers"
 # other places throughout the built documents.
 #
 # The short X.Y version.
-#import neat
+import neat
 
-#version = neat.__version__
-version = '0.1'
+version = neat.__version__
+
 # The full version, including dev info
-#release = neat.__version__.replace("_", "")
-release = "0.1"
+release = neat.__version__
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
