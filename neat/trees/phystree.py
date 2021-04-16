@@ -235,6 +235,7 @@ class PhysTree(MorphTree):
         """
         for node in self._convertNodeArgToNodes(node_arg):
             node.asPassiveMembrane(self.channel_storage)
+        self.channel_storage = {}
 
     def _distr2Float(self, distr, node, argname=''):
         if isinstance(distr, float):
