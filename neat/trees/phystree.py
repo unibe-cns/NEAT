@@ -208,7 +208,7 @@ class PhysTree(MorphTree):
     to set them across the morphology. Initialized in the same way as
     `neat.MorphTree`
 
-    Function for setting ion channels densities are applied to the original tree,
+    Functions for setting ion channels densities are applied to the original tree,
     which can cause the computational tree to be out of sync. To avoid this, the
     computational tree is always removed by these functions. It can be set
     afterwards with `PhysTree.setCompTree()`
