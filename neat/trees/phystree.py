@@ -23,10 +23,8 @@ def originalTreeModificationDecorator(fun):
     """
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
-        current_treetype = self.treetype
         self.treetype = 'original'
         res = fun(self, *args, **kwargs)
-        self.treetype = current_treetype
         self._computational_root = None
         return res
     wrapped.__doc__ = fun.__doc__

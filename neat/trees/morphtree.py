@@ -624,7 +624,7 @@ class MorphTree(STree):
             self._treetype = treetype
             self.root = self._original_root
         elif treetype == 'computational':
-            if self._computational_root != None:
+            if self._computational_root is not None:
                 self._treetype = treetype
                 self.root = self._computational_root
             else:
