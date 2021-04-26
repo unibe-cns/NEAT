@@ -638,6 +638,16 @@ class MorphTree(STree):
 
     treetype = property(getTreetype, setTreetype)
 
+    def setComputationalRoot(self, node):
+        if node is None:
+            self._treetype = 'original'
+        self.__computational_root = node
+
+    def getComputationalRoot(self):
+        return self.__computational_root
+
+    _computational_root = property(getComputationalRoot, setComputationalRoot)
+
     def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
