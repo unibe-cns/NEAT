@@ -23,6 +23,7 @@ import pickle
 import concurrent.futures
 import contextlib
 import multiprocessing
+import os
 
 try:
     from ...tools.simtools.neuron import neuronmodel as neurm
@@ -239,6 +240,8 @@ class FitTreeGF(GreensTree):
 
             if not 'dont save' in self.name:
                 # store the impedance tree
+                if not os.path.isdir(self.path):
+                    os.makedirs(self.path)
                 file = open(self.path + file_name, 'wb')
                 pickle.dump(self, file)
                 file.close()
