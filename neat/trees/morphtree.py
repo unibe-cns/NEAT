@@ -624,7 +624,7 @@ class MorphTree(STree):
             self._treetype = treetype
             self.root = self._original_root
         elif treetype == 'computational':
-            if self._computational_root != None:
+            if self._computational_root is not None:
                 self._treetype = treetype
                 self.root = self._computational_root
             else:
@@ -637,6 +637,16 @@ class MorphTree(STree):
         return self._treetype
 
     treetype = property(getTreetype, setTreetype)
+
+    def setComputationalRoot(self, node):
+        if node is None:
+            self._treetype = 'original'
+        self.__computational_root = node
+
+    def getComputationalRoot(self):
+        return self.__computational_root
+
+    _computational_root = property(getComputationalRoot, setComputationalRoot)
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """

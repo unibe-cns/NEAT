@@ -16,6 +16,21 @@ from .morphtree import MorphNode, MorphTree
 from ..channels import concmechs, ionchannels
 
 
+def originalTreeModificationDecorator(fun):
+    """
+    Decorator that provides the safety that the treetype is set to
+    'original' inside the functions, and that the computational tree is removed.
+    """
+    # wrapper to access self
+    def wrapped(self, *args, **kwargs):
+        self.treetype = 'original'
+        res = fun(self, *args, **kwargs)
+        self._computational_root = None
+        return res
+    wrapped.__doc__ = fun.__doc__
+    return wrapped
+
+
 class PhysNode(MorphNode):
     """
     Node associated with `neat.PhysTree`. Stores the physiological parameters
@@ -193,6 +208,11 @@ class PhysTree(MorphTree):
     to set them across the morphology. Initialized in the same way as
     `neat.MorphTree`
 
+    Functions for setting ion channels densities are applied to the original tree,
+    which can cause the computational tree to be out of sync. To avoid this, the
+    computational tree is always removed by these functions. It can be set
+    afterwards with `PhysTree.setCompTree()`
+
     Attributes
     ----------
     channel_storage: dict {str: `neat.IonChannel`}
@@ -218,7 +238,7 @@ class PhysTree(MorphTree):
         """
         return PhysNode(node_index, p3d=p3d)
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def asPassiveMembrane(self, node_arg=None):
         """
         Makes the membrane act as a passive membrane (for the nodes in
@@ -235,6 +255,7 @@ class PhysTree(MorphTree):
         """
         for node in self._convertNodeArgToNodes(node_arg):
             node.asPassiveMembrane(self.channel_storage)
+        self.channel_storage = {}
 
     def _distr2Float(self, distr, node, argname=''):
         if isinstance(distr, float):
@@ -249,7 +270,7 @@ class PhysTree(MorphTree):
                             'or a callable')
         return val
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def setEEq(self, e_eq_distr, node_arg=None):
         """
         Set the equilibrium potentials throughout the tree
@@ -263,7 +284,7 @@ class PhysTree(MorphTree):
             e = self._distr2Float(e_eq_distr, node, argname='`e_eq_distr`')
             node.setEEq(e)
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
         """
         Set specifice membrane capacitance, axial resistance and (optionally)
@@ -292,7 +313,7 @@ class PhysTree(MorphTree):
                   g_s_distr is not None else 0.
             node.setPhysiology(c_m, r_a, g_s)
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def setLeakCurrent(self, g_l_distr, e_l_distr, node_arg=None):
         """
         Set the parameters of the leak current. At each node, leak is stored
@@ -323,7 +344,7 @@ class PhysTree(MorphTree):
             e_l = self._distr2Float(e_l_distr, node, argname='`e_l_distr`')
             node._addCurrent('L', g_l, e_l)
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def addCurrent(self, channel, g_max_distr, e_rev_distr, node_arg=None):
         """
         Adds a channel to the morphology. At each node, the channel is stored
@@ -375,7 +396,7 @@ class PhysTree(MorphTree):
         """
         return list(self.channel_storage.keys())
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def addConcMech(self, ion, params={}, node_arg=None):
         """
         Add a concentration mechanism to the tree
@@ -393,7 +414,7 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             node.addConcMech(ion, params=params)
 
-    @morphtree.originalTreetypeDecorator
+    @originalTreeModificationDecorator
     def fitLeakCurrent(self, e_eq_target_distr, tau_m_target_distr, node_arg=None):
         """
         Fits the leak current to fix equilibrium potential and membrane time-
