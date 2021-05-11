@@ -650,7 +650,7 @@ class TestMorphTree():
         for node in self.tree: assert node.index in [1,5,8,10,12]
 
     def testThreePointSoma(self):
-        mtree = MorphTree('test_morphologies/threepoint_soma.swc')
+        mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
 
         for n, idx in zip(mtree, [1,4,5]):
             assert n.index == idx
@@ -666,7 +666,7 @@ class TestMorphTree():
         assert mtree[1].R == s_radius
 
     def testMultiCylinderSoma(self):
-        mtree = MorphTree('test_morphologies/multicylinder_soma.swc')
+        mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'multicylinder_soma.swc'))
 
         for n, idx in zip(mtree, [1,7,8,9,10]):
             assert n.index == idx
@@ -683,7 +683,7 @@ class TestMorphTree():
 
     def testWrongSoma(self):
         with pytest.raises(ValueError):
-            mtree = MorphTree('test_morphologies/wrong_soma.swc')
+            MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'wrong_soma.swc'))
 
 
 if __name__ == '__main__':
