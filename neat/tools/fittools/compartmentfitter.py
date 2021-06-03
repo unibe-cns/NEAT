@@ -14,6 +14,7 @@ from ...trees.phystree import PhysTree
 from ...trees.greenstree import GreensTree
 from ...trees.sovtree import SOVTree
 from ...trees.netree import NET, NETNode, Kernel
+from ...channels.ionchannels import SPDict
 
 from ...tools import kernelextraction as ke
 
@@ -74,37 +75,32 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
     e_hs: list of float
         The holding potentials corresponding to each entry in ``sv_hs``
     """
-    e_hs = list(e_hs)
     if len(channel.statevars) == 1 or only_e_h:
-        sv_hs = [channel.computeVarinf(e_h) for e_h in e_hs]
-    elif len(channel.statevars) == 2:
-        # evaluate at the holding potentials
-        sv_aux = [channel.computeVarinf(e_h) for e_h in e_hs]
+        sv_hs = channel.computeVarinf(e_hs)
+        sv_hs['v'] = e_hs
+    else :
+        v_test = np.array([-43.22, -32.22])
 
-        # check which variable is activation
-        sv = channel.computeVarinf(np.array([-43.22, -32.22]))
-        sind_act = None
-        for ii, svar in enumerate(channel.ordered_statevars):
-            if sv[svar][1] > sv[svar][0]:
-                sind_act = 'ii' if ii == 0 else 'jj'
+        # create different combinations of combinations of holding potentials
+        e_hs_aux_act   = list(e_hs)
+        e_hs_aux_inact = list(e_hs)
+        for ii, e_h1 in enumerate(e_hs):
+            for jj, e_h2 in enumerate(e_hs):
+                e_hs_aux_act.append(e_h1)
+                e_hs_aux_inact.append(e_h2)
+        e_hs_aux_act   = np.array(e_hs_aux_act)
+        e_hs_aux_inact = np.array(e_hs_aux_inact)
 
-        # evaluate at combinations of holding potentials
-        sv_hs_extra, e_hs_extra = [], []
-        sv_o = channel.ordered_statevars
-        for ii, sv_1 in enumerate(sv_aux):
-            for jj, sv_2 in enumerate(sv_aux):
-                sv_hs_extra.append({str(sv_o[0]): sv_1[sv_o[0]],
-                                    str(sv_o[1]): sv_2[sv_o[1]]})
-                # follow holding potential of activation state variable
-                e_hs_extra.append(eval('e_hs[%s]'%sind_act))
+        sv_hs = SPDict(v=e_hs_aux_act)
+        for svar, f_inf in channel.f_varinf.items():
+            # check if variable is activation
+            sv_test = f_inf(v_test)
+            if sv_test[0] < sv_test[1]: # variable is activation
+                sv_hs[str(svar)] = f_inf(e_hs_aux_act)
+            else: # variable is inactivation
+                sv_hs[str(svar)] = f_inf(e_hs_aux_inact)
 
-        sv_hs = sv_aux + sv_hs_extra
-        e_hs = e_hs + e_hs_extra
-    else:
-        raise Exception('Method only implemented for channels with two ' + \
-                        'or less state variables')
-
-    return sv_hs, e_hs
+    return sv_hs
 
 
 def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
@@ -149,7 +145,7 @@ class FitTreeGF(GreensTree):
         super().__init__(*args, **kwargs)
         self.setName('dont save', '')
 
-    def setExpansionPointsForFit(self, sv_h, e_h):
+    def setExpansionPointsForFit(self, sv_h):
         """
         Set the holding potentials and expansion points for the fit
 
@@ -158,11 +154,8 @@ class FitTreeGF(GreensTree):
         sv_hs: dict of {string: np.ndarray}
             Keys are the channel names and values are numpy arrays that contain
             the expansion point for each ion channel
-        e_h: float
-            the holding potential
         """
         for node in self:
-            node.setEEq(e_h)
             for c_name, sv in sv_h.items():
                 node.setExpansionPoint(c_name, statevar=sv)
 
@@ -484,17 +477,18 @@ class CompartmentFitter(object):
         locs = self.tree.getLocs('fit locs')
         # find the expansion point parameters for the channel
         channel = self.tree.channel_storage[channel_name]
-        sv_hs, e_hs = getExpansionPoints(self.e_hs, channel)
-        n_tree = len(e_hs)
+        sv_h = getExpansionPoints(self.e_hs, channel)
 
-        # create the trees with only a single channel
+        # create the trees with only a single channel and multiple expansion points
         fit_tree = self.createTreeGF([channel_name])
         fit_tree.setName(self.name, self.path)
-        fit_trees = []
-        for sv_h, e_h in zip(sv_hs, e_hs):
-            ftree = fit_tree.__copy__(new_tree=FitTreeGF())
-            ftree.setExpansionPointsForFit({channel_name: sv_h}, e_h)
-            fit_trees.append(ftree)
+        fit_tree.setExpansionPointsForFit({channel_name: sv_h})
+
+        # set the impedances in the tree
+        fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
+        # compute the impedance matrix for this activation level
+        z_mats = fit_tree.calcImpedanceMatrix(locs)
+
 
         # compute the impedance matrices for different activation levels
         args_list = [fit_trees,

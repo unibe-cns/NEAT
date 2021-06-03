@@ -612,16 +612,37 @@ class TestCompartmentFitter():
             print('Parallel: %.8f s'%(t1-t0))
 
 
+def test_expansionpoints():
+    kv3_1 = channelcollection.Kv3_1()
+    na_ta = channelcollection.Na_Ta()
 
+    e_hs = np.array([-75., -15.])
+
+    # test expansion point for channel with 1 state variable
+    sv_hs = compartmentfitter.getExpansionPoints(e_hs, kv3_1)
+    for svar, f_inf in kv3_1.f_varinf.items():
+        assert np.allclose(f_inf(e_hs), sv_hs[svar])
+    assert np.allclose(sv_hs['v'], e_hs)
+
+    # test expansion point for channel with 2 state variables
+    sv_hs = compartmentfitter.getExpansionPoints(e_hs, na_ta)
+    v_act = np.array([-75.,-15.,-75.,-75.,-15.,-15.])
+    v_inact = np.array([-75.,-15.,-75.,-15.,-75.,-15.])
+
+    assert np.allclose(na_ta.f_varinf['m'](v_act), sv_hs['m'])
+    assert np.allclose(na_ta.f_varinf['h'](v_inact), sv_hs['h'])
+    assert not np.allclose(na_ta.f_varinf['h'](v_act), sv_hs['h'])
+    assert np.allclose(v_act, sv_hs['v'])
 
 if __name__ == '__main__':
-    tcf = TestCompartmentFitter()
+    # tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
     # tcf.testChannelFitMats()
-    tcf.testPassiveFit()
+    # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
     # tcf.testPickling()
     # tcf.testParallel(w_benchmark=True)
+    test_expansionpoints()

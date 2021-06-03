@@ -95,7 +95,7 @@ class SPDict(dict):
                 return super(SPDict, self).__getitem__(sp.symbols(key))
 
 
-class CallDict(dict):
+class CallDict(SPDict):
     """
     Callable dictionary, items are supposed to be callables
     that all accept an identical argument list
