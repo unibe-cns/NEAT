@@ -664,13 +664,14 @@ class IonChannel(object):
         return (e - v) * self.computeLinearConc(v, freqs, ion, **kwargs)
 
 
-    def writeModFile(self, path, g=0., e=0.):
+    def writeModFile(self, path, g=0., e=None):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.statevars]
         cs = [str(conc) for conc in self.conc]
+        e = self._getReversal()
 
         modname = 'I' + cname + '.mod'
         fname = os.path.join(path, modname)
@@ -766,6 +767,82 @@ class IonChannel(object):
         file.close()
 
         return modname
+
+    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'functions'], g=0., e=None):
+        cname =  self.__class__.__name__
+        sv = [str(svar) for svar in self.statevars]
+        cs = [str(conc) for conc in self.conc]
+        sv_suff = [sv_ + '_' +cname for sv_ in sv]
+        e = self._getReversal(e)
+
+        blocks_dict = {block: '' for block in blocks}
+
+        if 'state' in blocks:
+            state_str = '\n' + \
+                        '    # state variables %s\n'%cname
+            for sv_ in sv_suff:
+                state_str += '    %s real\n'%sv_
+
+            blocks_dict['state'] += state_str
+
+        if 'parameters' in blocks:
+            param_str = '\n' + \
+                        '    # parameters %s\n'%cname + \
+                        '    g_%s real = %.2f\n'%(cname, g) + \
+                        '    e_%s real = %.2f\n'%(cname, e)
+
+            blocks_dict['parameters'] += param_str
+
+        if 'equations' in blocks:
+            # reformulate open probability in terms of suffixed variables
+            p_open_ = self.p_open
+            for svar, sv_ in zip(self.statevars, sv_suff):
+                p_open_ = p_open_.subs(svar, sp.symbols(sv_))
+
+            eq_str = '\n' + \
+                     '    # equations %s\n'%cname + \
+                     '    inline cm_p_open_%s real = %s\n'%(cname, str(p_open_))
+
+            blocks_dict['equations'] += eq_str
+
+        def _customsimplify(expr):
+            return sp.logcombine(sp.powsimp(sp.expand(expr)))
+
+        if 'functions' in blocks:
+            func_str = '\n' + \
+                       '# functions %s\n'%cname
+            print('\n\n>>>', cname)
+            for svar, sv_, sv_suff_ in zip(self.statevars, sv, sv_suff):
+                # substitute possible default values and concentrations
+                varinf_func = self._substituteDefaults(self.varinf[svar])
+                for ckey, cval in self.conc.items():
+                    varinf_func = varinf_func.subs(ckey, cval)
+                # print activation function to nestml file
+                varinf_func = varinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
+                varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+                print('')
+                print(varinf_func)
+                print(sp.cse(varinf_func))
+                # varinf_func =  sp.simplify(varinf_func)
+                func_str += 'function %s_inf_%s (v_comp real) real:\n'%(sv_, cname) + \
+                            '    return %s\n'%str(varinf_func) + \
+                            'end\n'
+
+                # substitute possible default values and concentrations
+                tauinf_func = self._substituteDefaults(self.tauinf[svar])
+                for ckey, cval in self.conc.items():
+                    tauinf_func = tauinf_func.subs(ckey, cval)
+
+                tauinf_func = tauinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
+                tauinf_func = tauinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+                func_str += 'function tau_%s_%s (v_comp real) real:\n'%(sv_, cname) + \
+                            '    return %s\n'%str(tauinf_func) + \
+                            'end\n'
+
+            blocks_dict['functions'] += func_str
+
+        return blocks_dict
+
 
     def writeCPPCode(self, path):
         """
