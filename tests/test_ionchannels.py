@@ -157,7 +157,7 @@ def test_broadcasting():
                            [l_[0,ii,0], l_[1,ii,1], l_[2,ii,2]])
 
 if __name__ == '__main__':
-    # tcns = TestChannels()
-    # tcns.testBasic()
-    # test_ionchannel_simplified()
+    tcns = TestChannels()
+    tcns.testBasic()
+    test_ionchannel_simplified()
     test_broadcasting()
