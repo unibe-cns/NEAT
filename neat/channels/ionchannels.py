@@ -447,10 +447,6 @@ class IonChannel(object):
             The derivatives
         """
         args = self._argsAsList(v, **kwargs)
-        try:
-            print([a.shape for a in args])
-        except AttributeError:
-            print('float val encountered')
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
     def computeDerivativesConc(self, v, **kwargs):

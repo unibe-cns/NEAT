@@ -206,9 +206,9 @@ class TestCompartmentFitter():
         for e_eq1 in e_eqs:
             sv1 = na_chan.computeVarinf(e_eq1)
             for e_eq2 in e_eqs:
-                e_eqs_.append(e_eq2)
+                e_eqs_.append(e_eq1)
                 sv2 = na_chan.computeVarinf(e_eq2)
-                svs.append({'m': sv2['m'], 'h': sv1['h']})
+                svs.append({'m': sv1['m'], 'h': sv2['h']})
 
         # compute sodium impedance matrices
         z_mats_na = []
@@ -257,6 +257,8 @@ class TestCompartmentFitter():
         fit_mats_cm_na = cm.evalChannel('Na_Ta', parallel=False)
         fit_mats_cm_k = cm.evalChannel('Kv3_1', parallel=False)
         fit_mats_control_na, fit_mats_control_k = self.reduceExplicit()
+
+
         # test whether potassium fit matrices agree
         for fm_cm, fm_control in zip(fit_mats_cm_k, fit_mats_control_k):
             assert np.allclose(np.sum(fm_cm[0]), fm_control[0][0,0]) # feature matrices
@@ -635,14 +637,14 @@ def test_expansionpoints():
     assert np.allclose(v_act, sv_hs['v'])
 
 if __name__ == '__main__':
-    # tcf = TestCompartmentFitter()
+    tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
-    # tcf.testChannelFitMats()
+    tcf.testChannelFitMats()
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
     # tcf.testPickling()
     # tcf.testParallel(w_benchmark=True)
-    test_expansionpoints()
+    # test_expansionpoints()

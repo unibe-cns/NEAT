@@ -97,12 +97,13 @@ class GreensNode(PhysNode):
                 sv = self.getExpansionPoint(channel_name).copy()
                 v = sv.pop('v', self.e_eq)
                 # add channel contribution to membrane impedance
-                g_m_aux -= g * channel.computeLinSum(v, freqs, e, **sv)
+                g_m_aux = g_m_aux - g * channel.computeLinSum(v, freqs, e, **sv)
                 if use_conc:
                     for ion in channel.conc:
-                        g_m_aux -= g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
-                                   self.concmechs[ion].computeLinear(freqs) * \
-                                   g_m_ions[ion]
+                        g_m_aux = g_m_aux - \
+                                  g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
+                                  self.concmechs[ion].computeLinear(freqs) * \
+                                  g_m_ions[ion]
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
@@ -119,9 +120,13 @@ class GreensNode(PhysNode):
         Set the boundary condition at the distal end of the segment
         """
         if len(self.child_nodes) == 0:
-            self.z_distal = np.infty*np.ones(len(self.z_m)) if self.g_shunt < 1e-10 else \
+            self.z_distal = np.infty*np.ones_like(self.z_m) if self.g_shunt < 1e-10 else \
                             1. / self.g_shunt
         else:
+            print('!!!')
+            for cnode in self.child_nodes:
+                print(cnode._collapseBranchToRoot().shape)
+
             self.z_distal = 1. / (np.sum([1. / cnode._collapseBranchToRoot() \
                                          for cnode in self.child_nodes], 0) + \
                                   self.g_shunt)
@@ -329,7 +334,7 @@ class GreensTree(PhysTree):
         # the path between the nodes
         path = self.pathBetweenNodes(self[loc1['node']], self[loc2['node']])
         # compute the kernel
-        z_f = np.ones_like(self.freqs)
+        z_f = np.ones_like(self.root.z_soma)
         if len(path) == 1:
             # both locations are on same node
             z_f *= path[0]._calcZF(loc1['x'], loc2['x'])
@@ -355,6 +360,10 @@ class GreensTree(PhysTree):
                 ll += 1
 
         return z_f
+
+    def _createEmptyImpMat(self, n_loc, z_f_example):
+        return np.zeros((n_loc, n_loc) + z_f_example.shape,
+                        dtype=z_f_example.dtype)
 
     @morphtree.computationalTreetypeDecorator
     def calcImpedanceMatrix(self, locarg, explicit_method=True):
@@ -385,34 +394,39 @@ class GreensTree(PhysTree):
             locs = self.getLocs(locarg)
         else:
             raise IOError('`locarg` should be list of locs or string')
-        z_mat = np.zeros((len(self.freqs), len(locs), len(locs)),
-                         dtype=self.freqs.dtype)
+
+        n_loc = len(locs)
+        z_mat = np.zeros((n_loc, n_loc) + self.root.z_soma.shape,
+                         dtype=self.root.z_soma.dtype)
 
         if explicit_method:
             for ii, loc0 in enumerate(locs):
+                # diagonal elements
+                z_f = self.calcZF(loc0, loc0)
+                z_mat[ii,ii] = z_f
+
+                # off-diagonal elements
                 jj = 0
                 while jj < ii:
                     loc1 = locs[jj]
                     z_f = self.calcZF(loc0, loc1)
-                    z_mat[:,ii,jj] = z_f
-                    z_mat[:,jj,ii] = z_f
+                    z_mat[ii,jj] = z_f
+                    z_mat[jj,ii] = z_f
                     jj += 1
-                z_f = self.calcZF(loc0, loc0)
-                z_mat[:,ii,ii] = z_f
-
         else:
             for ii in range(len(locs)):
                 self._calcImpedanceMatrixFromNode(ii, locs, z_mat)
 
-        return z_mat
+        return np.moveaxis(z_mat, [0, 1], [-1, -2])
 
     def _calcImpedanceMatrixFromNode(self, ii, locs, z_mat):
         node = self[locs[ii]['node']]
         for jj, loc in enumerate(locs):
             if loc['node'] == node.index and jj >= ii:
                 z_new = node._calcZF(locs[ii]['x'],loc['x'])
-                z_mat[:,ii,jj] = z_new
-                z_mat[:,jj,ii] = z_new
+                z_mat[ii,jj] = z_new
+                z_mat[jj,ii] = z_new
+
         # move down
         for c_node in node.child_nodes:
             z_new = node._calcZF(locs[ii]['x'], 1.)
@@ -432,8 +446,8 @@ class GreensTree(PhysTree):
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
                 z_new = z_0 / z_in * node._calcZF(1.,loc['x'])
-                z_mat[:,ii,jj] = z_new
-                z_mat[:,jj,ii] = z_new
+                z_mat[ii,jj] = z_new
+                z_mat[jj,ii] = z_new
 
         if node.parent_node is not None:
             z_new = z_0 / z_in * node._calcZF(0., 1.)
@@ -450,8 +464,8 @@ class GreensTree(PhysTree):
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
                 z_new = z_0 / z_in * node._calcZF(0., loc['x'])
-                z_mat[:,ii,jj] = z_new
-                z_mat[:,jj,ii] = z_new
+                z_mat[ii,jj] = z_new
+                z_mat[jj,ii] = z_new
 
         # recurse to child nodes
         z_new = z_0 / z_in * node._calcZF(0., 1.)
