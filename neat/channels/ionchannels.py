@@ -107,21 +107,6 @@ class CallDict(dict):
         return SPDict({str(k): f(*args) for k, f in self.items()})
 
 
-class BroadcastFunc(object):
-    def __init__(self, func):
-        self.func = func
-
-    def __call__(self, *args):
-        """
-        Broadcast the result of `self.func` call to shape of first `arg`
-        """
-        res = self.func(*args)
-        if isinstance(args[0], np.ndarray):
-            return np.broadcast_to(res, args[0].shape)
-        else:
-            return res
-
-
 class IonChannel(object):
     """
     Base ion channel class that implements linearization and code generation for
@@ -361,7 +346,7 @@ class IonChannel(object):
         args_ = [self.sp_v] + self.sp_c
 
         # lambdified open probability
-        self.f_p_open = BroadcastFunc(sp.lambdify(args, self.p_open))
+        self.f_p_open = sp.lambdify(args, self.p_open)
         # storatestate variable function
         self.f_statevar = CallDict()
         self.f_varinf, self.f_tauinf = CallDict(), CallDict()
@@ -375,28 +360,24 @@ class IonChannel(object):
             tauinf = self._substituteDefaults(self.tauinf[svar])
 
             # state variable function
-            self.f_statevar = BroadcastFunc(sp.lambdify(args, f_svar))
+            self.f_statevar = sp.lambdify(args, f_svar)
 
             # state variable activation & timescale
-            self.f_varinf[svar] = BroadcastFunc(sp.lambdify(args_, varinf))
-            self.f_tauinf[svar] = BroadcastFunc(sp.lambdify(args_, tauinf))
+            self.f_varinf[svar] = sp.lambdify(args_, varinf)
+            self.f_tauinf[svar] = sp.lambdify(args_, tauinf)
 
             # derivatives of open probability to state variables
-            self.dp_dx[svar] = BroadcastFunc(
-                                sp.lambdify(args, sp.diff(self.p_open, svar, 1)))
+            self.dp_dx[svar] = sp.lambdify(args, sp.diff(self.p_open, svar, 1))
 
             # derivatives of state variable function to voltage
-            self.df_dv[svar] = BroadcastFunc(
-                                sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1)))
+            self.df_dv[svar] = sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1))
 
             # derivatives of state variable function to state variable
-            self.df_dx[svar] = BroadcastFunc(
-                                sp.lambdify(args, sp.diff(f_svar, svar, 1)))
+            self.df_dx[svar] = sp.lambdify(args, sp.diff(f_svar, svar, 1))
 
             # derivatives of state variable function to concentrations
             self.df_dc[svar] = \
-                CallDict({c: BroadcastFunc(
-                                sp.lambdify(args, sp.diff(f_svar, c, 1))) \
+                CallDict({c: sp.lambdify(args, sp.diff(f_svar, c, 1)) \
                           for c in self.sp_c})
 
     def _argsAsList(self, v, w_statevar=True, **kwargs):
@@ -468,6 +449,10 @@ class IonChannel(object):
             The derivatives
         """
         args = self._argsAsList(v, **kwargs)
+        try:
+            print([a.shape for a in args])
+        except AttributeError:
+            print('float val encountered')
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
     def computeDerivativesConc(self, v, **kwargs):
@@ -549,11 +534,11 @@ class IonChannel(object):
         """
         dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
 
-        # broadcast frequencies
-        if isinstance(freqs, np.ndarray) and isinstance(v, np.ndarray):
-            freqs.reshape(freqs.shape+tuple([1]*v.ndim))
+        # determine the output shape according to numpy broadcasting rules
+        args_aux = [freqs] + self._argsAsList(v, **kwargs)
+        out_shape = np.broadcast(*args_aux).shape
 
-        lin_f = np.zeros_like(freqs)
+        lin_f = np.zeros(out_shape, dtype=np.array(freqs).dtype)
         for svar, dp_dx_ in dp_dx.items():
             df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
             df_dx_ = df_dx[svar] * 1e3 # convert to 1 / s
@@ -587,11 +572,11 @@ class IonChannel(object):
         dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
         df_dc = self.computeDerivativesConc(v, **kwargs)
 
-        # broadcast frequencies
-        if isinstance(freqs, np.ndarray) and isinstance(v, np.ndarray):
-            freqs.reshape(freqs.shape+tuple([1]*v.ndim))
+        # determine the output shape according to numpy broadcasting rules
+        args_aux = [freqs] + self._argsAsList(v, **kwargs)
+        out_shape = np.broadcast(*args_aux).shape
 
-        lin_f = np.zeros_like(freqs)
+        lin_f = np.zeros(out_shape, dtype=np.array(freqs).dtype)
         for svar, dp_dx_ in dp_dx.items():
             df_dc_ = df_dc[svar][ion] * 1e3 # convert to 1 / s
             df_dx_ = df_dx[svar]      * 1e3 # convert to 1 / s
