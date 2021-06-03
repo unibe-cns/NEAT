@@ -416,9 +416,8 @@ class IonChannel(object):
         ----------
         v: float or `np.ndarray` of float
             The voltage at which to evaluate the open probability
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -439,9 +438,8 @@ class IonChannel(object):
         ----------
         v: float or `np.ndarray`
             The voltage at which to evaluate the open probability
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -463,9 +461,8 @@ class IonChannel(object):
         ----------
         v: float or `np.ndarray`
             The voltage at which to evaluate the open probability
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -522,9 +519,8 @@ class IonChannel(object):
             The voltage ``[mV]`` at which to evaluate the open probability
         freqs float, complex, or `np.ndarray` of float or complex:
             The frequencies ``[Hz]`` at which to evaluate the linearized contribution
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -559,9 +555,8 @@ class IonChannel(object):
             The frequencies ``[Hz]`` at which to evaluate the linearized contribution
         ion: str
             The ion name for which to compute the linearized contribution
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -606,9 +601,8 @@ class IonChannel(object):
         e: float or `None`
             The reversal potential of the channel. Defaults to the value stored
             in `self.default_params['e']` if not provided.
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
@@ -635,9 +629,8 @@ class IonChannel(object):
         e: float or `None`
             The reversal potential of the channel. Defaults to the value stored
             in `self.default_params['e']` if not provided.
-        **kwargs
+        **kwargs: float or `np.ndarray`
             Optional values for the state variables and concentrations.
-            Broadcastable to `v` if provided
 
         Returns
         -------
