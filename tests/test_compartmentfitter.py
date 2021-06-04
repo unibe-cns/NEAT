@@ -100,48 +100,6 @@ class TestCompartmentFitter():
         # input paradigm 1
         cm.setCTree(fit_locs1, extend_w_bifurc=True)
 
-
-        # fl1_a = cm.tree.getLocs('fit locs')
-        # with pytest.warns(UserWarning):
-        #     cm.setCTree(fit_locs1, extend_w_bifurc=False)
-        #     fl1_b = cm.tree.getLocs('fit locs')
-        # assert len(fl1_a) == len(fl1_b)
-        # for fla, flb in zip(fl1_a, fl1_b): assert fla == flb
-        # # input paradigm 2
-        # cm.tree.storeLocs(fit_locs1, 'fl1')
-        # cm.setCTree('fl1', extend_w_bifurc=True)
-        # fl1_a = cm.tree.getLocs('fit locs')
-        # assert len(fl1_a) == len(fl1_b)
-        # for fla, flb in zip(fl1_a, fl1_b): assert fla == flb
-        # # test tree structure
-        # assert len(cm.ctree) == 3
-        # for cn in cm.ctree: assert len(cn.child_nodes) <= 1
-
-        # # test fit_locs2, a bifurcation should be added
-        # with pytest.warns(UserWarning):
-        #     cm.setCTree(fit_locs2, extend_w_bifurc=False)
-        # fl2_b = cm.tree.getLocs('fit locs')
-        # cm.setCTree(fit_locs2, extend_w_bifurc=True)
-        # fl2_a = cm.tree.getLocs('fit locs')
-        # assert len(fl2_a) == len(fl2_b) + 1
-        # for fla, flb in zip(fl2_a, fl2_b): assert fla == flb
-        # assert fl2_a[-1] == (4,1.)
-        # # test tree structure
-        # assert len(cm.ctree) == 5
-        # for cn in cm.ctree:
-        #     assert len(cn.child_nodes) <= 1 if cn.loc_ind != 4 else \
-        #            len(cn.child_nodes) == 2
-
-        # # test fit_locs2, no bifurcation should be added as it is already present
-        # cm.setCTree(fit_locs3, extend_w_bifurc=True)
-        # fl3 = cm.tree.getLocs('fit locs')
-        # for fl_, fl3 in zip(fit_locs3, fl3): assert fl_ == fl3
-        # # test tree structure
-        # assert len(cm.ctree) == 4
-        # for cn in cm.ctree:
-        #     assert len(cn.child_nodes) <= 1 if cn.loc_ind != 1 else \
-        #            len(cn.child_nodes) == 2
-
     def _checkChannels(self, tree, channel_names):
         assert isinstance(tree, compartmentfitter.FitTreeGF)
         assert set(tree.channel_storage.keys()) == set(channel_names)
