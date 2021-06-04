@@ -120,16 +120,21 @@ class GreensNode(PhysNode):
         Set the boundary condition at the distal end of the segment
         """
         if len(self.child_nodes) == 0:
-            self.z_distal = np.infty*np.ones_like(self.z_m) if self.g_shunt < 1e-10 else \
-                            1. / self.g_shunt
-        else:
-            print('!!!')
-            for cnode in self.child_nodes:
-                print(cnode._collapseBranchToRoot().shape)
+            z_aux = np.ones(self.z_m.shape, dtype=float)
 
-            self.z_distal = 1. / (np.sum([1. / cnode._collapseBranchToRoot() \
-                                         for cnode in self.child_nodes], 0) + \
-                                  self.g_shunt)
+            if self.g_shunt > 1e-10:
+                z_aux /= self.g_shunt
+            else:
+                z_aux *= np.infty
+
+            self.z_distal = z_aux.astype(self.z_m.dtype)
+        else:
+            g_aux = np.ones_like(self.z_m) * self.g_shunt
+
+            for cnode in self.child_nodes:
+                g_aux = g_aux +  1. / cnode._collapseBranchToRoot()
+
+            self.z_distal = 1. / g_aux
 
     def _setImpedanceProximal(self):
         """
@@ -209,7 +214,7 @@ class SomaGreensNode(GreensNode):
     def _setImpedanceArrays(self):
         val = 1. / self.z_soma
         for node in self.child_nodes:
-            val += 1. / node._collapseBranchToRoot()
+            val = val + 1. / node._collapseBranchToRoot()
         self.z_in = 1. / val
 
     def _calcZF(self, x1, x2):
@@ -298,8 +303,8 @@ class GreensTree(PhysTree):
         # the recursion has passed node, the distal impedance can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            node._setImpedanceDistal()
             if not self.isRoot(node):
+                node._setImpedanceDistal()
                 self._impedanceFromLeaf(pnode, leafs, pprint=pprint)
         elif len(leafs) > 0:
                 self._impedanceFromLeaf(leafs[0], leafs[1:], pprint=pprint)

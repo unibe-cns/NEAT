@@ -506,53 +506,11 @@ class CompartmentFitter(object):
 
             fit_mats.append([m_f, v_t, w_f])
 
-        ### old from here ...
-
-        # # compute the impedance matrices for different activation levels
-        # args_list = [fit_trees,
-        #              [locs for _ in range(n_tree)],
-        #              [recompute for _ in range(n_tree)],
-        #              [pprint for _ in range(n_tree)]]
-        # # compute the impedance matrices
-        # if parallel:
-        #     if max_workers is None:
-        #         raise ValueError('need to provide number of workers if parallel is True')
-        #     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-        #         fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
-        # else:
-        #     fit_mats = [self._calcFitMatrices(*args) for args in zip(*args_list)]
-
-        ### ... old from here
-
         # fit the model for this channel
         w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         for _, _, w_f in fit_mats: w_f /= w_norm
 
         return fit_mats
-
-    # def _calcFitMatrices(self, fit_tree, locs, recompute, pprint):
-    #     """
-    #     Compute the matrices needed to fit the channel
-    #     """
-    #     e_h = fit_tree.root.e_eq
-    #     c_name = list(fit_tree.channel_storage.keys())[0]
-    #     sv_h = fit_tree.root.expansion_points[c_name]
-    #     freqs = self.freqs
-    #     # set the impedances in the tree
-    #     fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
-    #     # compute the impedance matrix for this acitvation level
-    #     z_mat = fit_tree.calcImpedanceMatrix(locs)
-
-    #     # compute the fit matrices
-    #     m_f, v_t = self.ctree.computeGSingleChanFromImpedance(c_name, z_mat, e_h, freqs,
-    #                     sv=sv_h, other_channel_names=['L'],
-    #                     all_channel_names=self.channel_names, action='return')
-    #     # compute open probability to weigh fit matrices
-    #     channel = self.tree.channel_storage[c_name]
-    #     po_h = channel.computePOpen(e_h, **sv_h)
-    #     w_f = 1. / po_h
-
-    #     return m_f, v_t, w_f
 
     def fitChannels(self, recompute=False, pprint=False, parallel=True):
         """
