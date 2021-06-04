@@ -366,10 +366,6 @@ class GreensTree(PhysTree):
 
         return z_f
 
-    def _createEmptyImpMat(self, n_loc, z_f_example):
-        return np.zeros((n_loc, n_loc) + z_f_example.shape,
-                        dtype=z_f_example.dtype)
-
     @morphtree.computationalTreetypeDecorator
     def calcImpedanceMatrix(self, locarg, explicit_method=True):
         """
