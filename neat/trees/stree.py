@@ -360,10 +360,7 @@ class STree(object):
         ----------
             node: `neat.SNode`
         """
-        if node.getParentNode() is not None:
-            return False
-        else:
-            return True
+        return node.getParentNode is None
 
     def isLeaf(self, node):
         """
@@ -373,10 +370,7 @@ class STree(object):
         ----------
             node: `neat.SNode`
         """
-        if len(node.getChildNodes()) == 0:
-            return True
-        else:
-            return False
+        return len(node.getChildNodes()) == 0
 
     def _createCorrespondingNode(self, node_index):
         """
