@@ -12,7 +12,8 @@ import numpy as np
 import warnings
 
 from . import morphtree
-from .morphtree import MorphNode, MorphTree
+from .morphtree import MorphNode, MorphTree, MorphLoc
+from .compartmenttree import CompartmentNode, CompartmentTree
 from ..channels import concmechs, ionchannels
 
 
@@ -487,6 +488,52 @@ class PhysTree(MorphTree):
             rbool = node.g_shunt > 0.001*eps
 
         return rbool
+
+    def createFiniteDifferenceTree(self, dx_max=15., add_midpoints=False, name='dont store'):
+        set_as_comploc = self.treetype == 'computational'
+
+        mp = 2 if add_midpoints else 1
+
+        locs = []
+        for node in tree:
+            if tree.isRoot(node):
+                locs.append(MorphLoc((node.index, .5), tree))
+
+            else:
+                n_comp = mp * (int(node.L / (mp*dx_max)) + 1)
+
+                for cc in range(1,n_comp):
+                    new_loc = MorphLoc((node.index, cc/n_comp), tree,
+                                       set_as_comploc=set_as_comploc)
+                    locs.append(new_loc)
+
+            tree = tree.createNewTree(locs)
+
+        if name is not 'dont store':
+            self.storeLocs(locs, name)
+
+        # create compartment tree
+        comptree = tree.__copy__(new_tree=CompartmentTree())
+        for compnode, node in zip(comptree, tree):
+            if tree.isRoot(node):
+                # for the soma we apply the spherical approximation
+                surf = 4.*np.pi*node.R**2
+            else:
+                # for other nodes we apply the cylindrical approximation
+                surf = 2. * np.pi * node.R * node.L / 2.
+
+            compnode.ca = surf * node.c_m
+            compnode.currents = {key: [surf * value[0], value[1]] \
+                                 for key, value in node.currents.items()}
+            compnode.g_c = np.pi * node.R**2 / (node.r_a * node.L)
+
+            if not tree.isRoot()
+                compnode.parent_node.ca += surf * node.c_m
+                compnode.currents = {key: [surf * value[0], value[1]] \
+                                     for key, value in node.currents.items()}
+
+        return comptree, locs
+
 
     # @morphtree.originalTreetypeDecorator
     # def _calcFdMatrix(self, dx=10.):
