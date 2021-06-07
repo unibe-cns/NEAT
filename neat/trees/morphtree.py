@@ -2767,7 +2767,7 @@ class MorphTree(STree):
         return roots[rootind]
 
     @originalTreetypeDecorator
-    def createNewTree(self, name, fake_soma=False, store_loc_inds=False):
+    def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -2776,23 +2776,31 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            name: string
-                the name under which the locations are stored that should be
-                used to create the new tree
-            fake_soma: bool (default `False`)
-                if `True`, finds the common root of the set of locations and
-                uses that as the soma of the new tree. If `False`, the real soma
-                is used.
-            store_loc_inds: bool (default `False`)
-                store the index of each location in the `content` attribute of the
-                new node (under the key 'loc ind')
+        loc_arg: list of `neat.MorphLoc` or string
+            the locations. If list of locs, they will be stored under the name
+            `new_tree`
+        fake_soma: bool (default `False`)
+            if `True`, finds the common root of the set of locations and
+            uses that as the soma of the new tree. If `False`, the real soma
+            is used.
+        store_loc_inds: bool (default `False`)
+            store the index of each location in the `content` attribute of the
+            new node (under the key 'loc ind')
 
         Returns
         -------
             `neat.MorphTree`
                 The new tree.
         """
-        self._tryName(name)
+        ## TODO: make sure the stored variables are copied
+
+        if isinstance(loc_arg, str):
+            name = loc_arg
+            self._tryName(name)
+        else:
+            name = 'new tree'
+            self.storeLocs(locs, name)
+
         nids = self.getNodeIndices(name)
         # create new tree
         new_tree = self.__class__()
