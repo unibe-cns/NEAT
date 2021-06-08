@@ -360,7 +360,7 @@ class STree(object):
         ----------
             node: `neat.SNode`
         """
-        return node.getParentNode is None
+        return node.getParentNode() is None
 
     def isLeaf(self, node):
         """
