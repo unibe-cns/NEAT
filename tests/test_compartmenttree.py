@@ -518,6 +518,60 @@ class TestCompartmentTree():
         assert np.abs(ctree[0].currents['L'][1] - self.greens_tree[1].currents['L'][1]) < 1e-10
 
 
+    def testEEqCalculation(self):
+        self.loadTTree()
+        self.tree.fitLeakCurrent(-65., 20.)
+        k_chan = channelcollection.Kv3_1()
+        self.tree.addCurrent(k_chan, 0.766*1e6, -85., [self.tree[1]])
+        # self.tree.addCurrent(k_chan, 2.0*1e6, -85., [self.tree[1]])
+        na_chan = channelcollection.Na_Ta()
+        self.tree.addCurrent(na_chan, 1.71*1e6, 50., [self.tree[1]])
+
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=5., add_midpoints=True)
+        e_eq = ctree_fd.calcEEq()
+
+        e_eq_mp = []
+        for e_val, loc in zip(e_eq, locs_fd):
+            if np.abs(loc['x'] - .5) < 1e-5:
+                e_eq_mp.append(e_val)
+
+        print(e_eq_mp)
+
+        # fit a compartmenttree to the same locations
+        from neat import CompartmentFitter
+        cfit = CompartmentFitter(self.tree)
+        ctree_fit = cfit.fitModel(locs_fd)
+        e_eq = ctree_fit.calcEEq()
+
+        e_eq_mp = []
+        for e_val, loc in zip(e_eq, locs_fd):
+            if np.abs(loc['x'] - .5) < 1e-5:
+                e_eq_mp.append(e_val)
+        print(e_eq_mp)
+
+
+
+        try:
+            from neat import NeuronSimTree
+            dt, t_max = .1, 1.
+            factor_lambda = 20.
+            t_calibrate = 1000.
+            # create a biophysical simulation model
+            sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+            # compute equilibrium potentials
+            sim_tree.initModel(dt=dt, factor_lambda=factor_lambda, t_calibrate=t_calibrate)
+            sim_tree.storeLocs([(node.index, .5) for node in self.tree], 'rec locs')
+            res = sim_tree.run(t_max)
+            sim_tree.deleteModel()
+            v_eqs = [v_m[-1] for v_m in res['v_m']]
+
+            print(v_eqs)
+        except ModuleNotFoundError:
+            warnings.warn('NEURON not available, full testsuite can not be run',
+                          UserWarning)
+
+
+
 class TestCompartmentTreePlotting():
     def _initTree1(self):
         # 1   2
@@ -611,7 +665,8 @@ if __name__ == '__main__':
     # tcomp.testGSSFit()
     # tcomp.testCFit()
     # tcomp.testPasFunctionality()
-    tcomp.testChannelFit()
+    # tcomp.testChannelFit()
+    tcomp.testEEqCalculation()
 
     # tcomp.testGChanFitDynamic()
     # tcomp.testGChanFitDynamicComp()

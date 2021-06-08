@@ -400,7 +400,11 @@ class CompartmentTree(STree):
 
     def setEEq(self, e_eq, indexing='locs'):
         """
-        Set the equilibrium potential at all nodes on the compartment tree
+        Set the equilibrium potential at all nodes on the compartment tree.
+
+        Note that this potential can a-priori have any value, it is simply the
+        expansion point around which various parameters are evaluated. Compute
+        the true equilibrium point with `neat.CompartmentTree.calcEEq()`.
 
         Parameters
         ----------
@@ -423,6 +427,10 @@ class CompartmentTree(STree):
         """
         Get the equilibrium potentials at each node.
 
+        Note that this potential can a-priori have any value, it is simply the
+        expansion point around which various parameters are evaluated. Compute
+        the true equilibrium point with `neat.CompartmentTree.calcEEq()`.
+
         Parameters
         ----------
         indexing: 'locs' or 'tree'
@@ -430,11 +438,95 @@ class CompartmentTree(STree):
             in the order of the list of locations to which the tree is fitted.
             If 'tree', returns the array in the order in which nodes appear
             during iteration
+
+        Returns
+        -------
+        np.array
+            The equilibrium potentials
         """
         e_eq = np.array([node.e_eq for node in self])
         if indexing == 'locs':
             e_eq = self._permuteToLocs(e_eq)
         return e_eq
+
+    def calcEEq(self, indexing='locs'):
+        """
+        Compute the equilibrium potential at each node. This function computes
+        the true equilibrium potential at each node, i.e. the potential for which
+        $\dot{v} = 0$
+
+        Parameters
+        ----------
+        indexing: 'locs' or 'tree'
+            The ordering of the returned array. If 'locs', returns the array
+            in the order of the list of locations to which the tree is fitted.
+            If 'tree', returns the array in the order in which nodes appear
+            during iteration
+
+        Returns
+        -------
+        np.array
+            The equilibrium potentials
+        """
+        g_l = np.array([node.currents['L'][0] for node in self])
+        e_l = np.array([node.currents['L'][1] for node in self])
+
+        g_chans = {cname: np.array([node.currents[cname][0] \
+                          if cname in node.currents else 0.
+                          for node in self]) \
+                          for cname in self.channel_storage}
+        e_chans = {cname: np.array([node.currents[cname][1] \
+                          if cname in node.currents else 0.
+                          for node in self]) \
+                          for cname in self.channel_storage}
+
+        g_mat = self.calcSystemMatrix(channel_names=['L'],
+                                      with_ca=False, indexing='tree')
+
+        # define auxiliary fucntions `func` and `jac` for newton iteration
+        def func(v):
+            f_val = g_mat @ v - g_l * e_l
+            for cname in self.channel_storage:
+                f_val += g_chans[cname] * \
+                         self.channel_storage[cname].computePOpen(v) * \
+                         (v - e_chans[cname])
+
+            return f_val
+
+        def jac(v):
+            j_val = copy.deepcopy(g_mat)
+            for cname in self.channel_storage:
+                j_val += np.diag(g_chans[cname] * \
+                                 self.channel_storage[cname].computePOpen(v))
+
+            return j_val
+
+        # solve for the equilibrium potential
+        e_eq = self._solveNewton(func, jac)
+        if indexing == 'locs':
+            e_eq = self._permuteToLocs(e_eq)
+        return e_eq
+
+    def _solveNewton(self, func, jac, v_0=None, v_eps=.01, n_max=100, n_iter=0):
+        # initial voltage vector
+        if v_0 is None:
+            v_0 = np.array([node.e_eq for node in self])
+        print(v_0)
+        # compute next iteration
+        v_new = v_0 - np.linalg.solve(jac(v_0), func(v_0))
+
+        # check convergens
+        if np.linalg.norm(v_new - v_0) > v_eps:
+            if n_iter < n_max:
+                # no convergence yet, move on to next step
+                v_new = self._solveNewton(func, jac,
+                                          v_0=v_new, n_iter=n_iter+1,
+                                          v_eps=v_eps, n_max=n_max)
+            else:
+                warnings.warn('Newton solver failed to converge')
+                return np.array([np.nan for _ in self])
+
+        return v_new
 
     def setExpansionPoints(self, expansion_points):
         """

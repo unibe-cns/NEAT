@@ -504,7 +504,9 @@ class PhysTree(MorphTree):
             and thus one node in the comparment tree. If the length of a node
             exceeds `dx_max`, there will be the smallest possible number of
             equally spaced comparments so that the distance between them does
-            not exceed `dx_max`
+            not exceed `dx_max`. Note that if the computational tree is active,
+            the computational nodes will be taken as a reference for placing
+            the compartment locations.
         add_midpoints: bool
             If ``True``, ensures that the midpoints of each node (i.e. the
             locations for which $x = 0.5$) are also added as compartments. Note
@@ -581,5 +583,8 @@ class PhysTree(MorphTree):
 
                 for key, value in fd_node.currents.items():
                     compnode.parent_node.currents[key][0] += surf * value[0]
+
+        # reset the indices to the order they appear in a depth-first iteration
+        comptree.resetIndices()
 
         return comptree, locs
