@@ -74,9 +74,9 @@ class CompartmentNode(SNode):
     loc_ind = property(getLocInd, setLocInd)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super().__str__()
+        node_string = super(CompartmentNode, self).__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super().__str__()
+            node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
         node_string += ' --- (g_c = %.12f uS, '%self.g_c + \
                        ', '.join(['g_' + cname + ' = %.12f uS'%cpar[0] \
                             for cname, cpar in self.currents.items()]) + \

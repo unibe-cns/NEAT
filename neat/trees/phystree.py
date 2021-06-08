@@ -10,6 +10,7 @@ Author: W. Wybo
 import numpy as np
 
 import warnings
+import copy
 
 from . import morphtree
 from .morphtree import MorphNode, MorphTree, MorphLoc
@@ -193,9 +194,9 @@ class PhysNode(MorphNode):
         self.fitLeakCurrent(channel_storage, e_eq_target=v, tau_m_target=t_m)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super().__str__()
+        node_string = super(PhysNode, self).__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super().__str__()
+            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
         node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
                        ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
                             for cname, cpar in self.currents.items()]) + \
@@ -492,113 +493,65 @@ class PhysTree(MorphTree):
     def createFiniteDifferenceTree(self, dx_max=15., add_midpoints=False, name='dont store'):
         set_as_comploc = self.treetype == 'computational'
 
+        # to ensure the midpoints of every segment will be added
         mp = 2 if add_midpoints else 1
 
+        # create the list of compartment locations for FD approximation
         locs = []
-        for node in tree:
-            if tree.isRoot(node):
-                locs.append(MorphLoc((node.index, .5), tree))
+        for node in self:
+            if self.isRoot(node):
+                locs.append(MorphLoc((node.index, .5), self))
 
             else:
-                n_comp = mp * (int(node.L / (mp*dx_max)) + 1)
+                n_comp = mp * np.ceil(node.L / (mp*dx_max)).astype(int)
 
-                for cc in range(1,n_comp):
-                    new_loc = MorphLoc((node.index, cc/n_comp), tree,
+                for cc in range(1,n_comp+1):
+                    new_loc = MorphLoc((node.index, cc/n_comp), self,
                                        set_as_comploc=set_as_comploc)
                     locs.append(new_loc)
 
-            tree = tree.createNewTree(locs)
+        fd_tree = self.createNewTree(locs)
 
-        if name is not 'dont store':
+        # set physiology parameters in the new tree to match the `self`
+        fd_tree.channel_storage = copy.deepcopy(self.channel_storage)
+        for fd_node, loc in zip(fd_tree, locs):
+            node = self[loc['node']]
+            fd_node.currents = copy.deepcopy(node.currents)
+
+        if name != 'dont store':
             self.storeLocs(locs, name)
 
         # create compartment tree
-        comptree = tree.__copy__(new_tree=CompartmentTree())
-        for compnode, node in zip(comptree, tree):
-            if tree.isRoot(node):
+        comptree = fd_tree.__copy__(new_tree=CompartmentTree(),
+                                    skip_hidden_soma_nodes=True)
+        # implement the finite difference values for conductances and capacitance
+        for compnode, fd_node in zip(comptree, fd_tree):
+            isroot = fd_tree.isRoot(fd_node)
+
+            # unit conversion [um] -> [cm]
+            R_ = fd_node.R * 1e-4
+            L_ = fd_node.L * 1e-4
+
+            if isroot:
                 # for the soma we apply the spherical approximation
-                surf = 4.*np.pi*node.R**2
+                surf = 4. * np.pi * R_**2
             else:
                 # for other nodes we apply the cylindrical approximation
-                surf = 2. * np.pi * node.R * node.L / 2.
+                surf = 2. * np.pi * R_ * L_ / 2.
 
-            compnode.ca = surf * node.c_m
+            # set finite difference values
+            compnode.ca = surf * fd_node.c_m
             compnode.currents = {key: [surf * value[0], value[1]] \
-                                 for key, value in node.currents.items()}
-            compnode.g_c = np.pi * node.R**2 / (node.r_a * node.L)
+                                 for key, value in fd_node.currents.items()}
+            if not isroot:
+                compnode.g_c = np.pi * R_**2 / (fd_node.r_a * L_)
 
-            if not tree.isRoot()
-                compnode.parent_node.ca += surf * node.c_m
-                compnode.currents = {key: [surf * value[0], value[1]] \
-                                     for key, value in node.currents.items()}
+                compnode.parent_node.ca += surf * fd_node.c_m
+
+                for key, value in fd_node.currents.items():
+                    compnode.parent_node.currents[key][0] += surf * value[0]
 
         return comptree, locs
-
-
-    # @morphtree.originalTreetypeDecorator
-    # def _calcFdMatrix(self, dx=10.):
-    #     matdict = {}
-    #     locs = [{'node': 1, 'x': 0.}]
-    #     # set the first element
-    #     soma = self.tree.root
-    #     matdict[(0,0)] = 4.0*np.pi*soma.R**2 * soma.G
-    #     # recursion
-    #     cnodes = root.getChildNodes()[2:]
-    #     numel_l = [1]
-    #     for cnode in cnodes:
-    #         if not is_changenode(cnode):
-    #             cnode = find_previous_changenode(cnode)[0]
-    #         self._fdMatrixFromRoot(cnode, root, 0, numel_l, locs, matdict, dx=dx)
-    #     # create the matrix
-    #     FDmat = np.zeros((len(locs), len(locs)))
-    #     for ind in matdict:
-    #         FDmat[ind] = matdict[ind]
-
-    #     return FDmat, locs # caution, not the reduced locs yet
-
-    # def _fdMatrixFromRoot(self, node, pnode, ibranch, numel_l, locs, matdict, dx=10.*1e-4):
-    #     numel = numel_l[0]
-    #     # distance between the two nodes and radius of the cylinder
-    #     radius *= node.R*1e-4; length *= node.L*1e-4
-    #     num = np.around(length/dx)
-    #     xvals = np.linspace(0.,1.,max(num+1,2))
-    #     dx_ = xvals[1]*length
-    #     # set the first element
-    #     matdict[(ibranch,numel)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(ibranch,ibranch)] += np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(numel,numel)] = 2.*np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(numel,ibranch)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #     locs.append({'node': node._index, 'x': xvals[1]})
-    #     # set the other elements
-    #     if len(xvals) > 2:
-    #         i = 0; j = 0
-    #         if len(xvals) > 3:
-    #             for x in xvals[2:-1]:
-    #                 j = i+1
-    #                 matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #                 matdict[(numel+j,numel+j)] = 2. * np.pi*radius**2 / (node.r_a*dx_)
-    #                                            # + 2.*np.pi*radius*dx_*node.G
-    #                 matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #                 locs.append({'node': node._index, 'x': x})
-    #                 i += 1
-    #         # set the last element
-    #         j = i+1
-    #         matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         locs.append({'node': node._index, 'x': 1.})
-    #     numel_l[0] = numel+len(xvals)-1
-    #     # assert numel_l[0] == len(locs)
-    #     # if node is leaf, then implement other bc
-    #     if len(xvals) > 2:
-    #         ibranch = numel+j
-    #     else:
-    #         ibranch = numel
-    #     # move on the further elements
-    #     for cnode in node.child_nodes:
-    #         self._fdMatrixFromRoot(cnode, node, ibranch, numel_l, locs, matdict, dx=dx)
-
-
 
 
 
