@@ -490,7 +490,35 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    def createFiniteDifferenceTree(self, dx_max=15., add_midpoints=False, name='dont store'):
+    def createFiniteDifferenceTree(self,
+                    dx_max=15., add_midpoints=False, name='dont store'):
+        """
+        Create a ::class::`neat.CompartmentTree` whose parameters implement the
+        second order finite difference approximation for the morphology.
+
+        Parameters
+        ----------
+        dx_max: float
+            Maximum distance step between compartments (in [um]). By default,
+            each node of this tree will correspond to at least one compartment,
+            and thus one node in the comparment tree. If the length of a node
+            exceeds `dx_max`, there will be the smallest possible number of
+            equally spaced comparments so that the distance between them does
+            not exceed `dx_max`
+        add_midpoints: bool
+            If ``True``, ensures that the midpoints of each node (i.e. the
+            locations for which $x = 0.5$) are also added as compartments. Note
+        name: string
+            If given, stores the compartment locations in this tree
+
+        Returns
+        -------
+        comptree: ::class::`neat.CompartmentTree`
+            The compartment tree
+        locs: list of ::class::`neat.MorphLoc`
+            The location corresponding to the compartments of the finite
+            difference approximation
+        """
         set_as_comploc = self.treetype == 'computational'
 
         # to ensure the midpoints of every segment will be added
@@ -514,7 +542,7 @@ class PhysTree(MorphTree):
 
         # set physiology parameters in the new tree to match the `self`
         fd_tree.channel_storage = copy.deepcopy(self.channel_storage)
-        for fd_node, loc in zip(fd_tree, locs):
+        for ii, (fd_node, loc) in enumerate(zip(fd_tree, locs)):
             node = self[loc['node']]
             fd_node.currents = copy.deepcopy(node.currents)
 
@@ -525,8 +553,11 @@ class PhysTree(MorphTree):
         comptree = fd_tree.__copy__(new_tree=CompartmentTree(),
                                     skip_hidden_soma_nodes=True)
         # implement the finite difference values for conductances and capacitance
-        for compnode, fd_node in zip(comptree, fd_tree):
+        for ii, (compnode, fd_node) in enumerate(zip(comptree, fd_tree)):
             isroot = fd_tree.isRoot(fd_node)
+            # set the location index in `locs` to which the compartment
+            # corresponds
+            compnode._loc_ind = ii
 
             # unit conversion [um] -> [cm]
             R_ = fd_node.R * 1e-4
@@ -552,7 +583,3 @@ class PhysTree(MorphTree):
                     compnode.parent_node.currents[key][0] += surf * value[0]
 
         return comptree, locs
-
-
-
-

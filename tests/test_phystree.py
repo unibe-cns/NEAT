@@ -277,11 +277,13 @@ class TestPhysTree():
                 xvals = [loc['x'] for loc in locs_fd if loc['node'] == node.index]
                 assert np.allclose(np.sort(xvals), np.array([.25, .5, .75, 1.]))
 
-
         # create finite difference for conductance values test
         ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=10.)
         assert len(ctree_fd) == len(locs_fd)
         assert len(ctree_fd) == 91 # soma + 9 segments with 10 compartments each
+        # check whether the location indices are properly stored
+        for node, loc in zip(ctree_fd, locs_fd):
+            assert locs_fd[node._loc_ind] == loc
 
         # fit a compartmenttree to the same locations
         cfit = CompartmentFitter(self.tree)
@@ -301,6 +303,7 @@ class TestPhysTree():
                 g_fd = node_fd.currents[key][0]
                 g_fit = node_fit.currents[key][0]
                 assert np.abs(g_fd - g_fit) < rtol * np.max([g_fd, g_fit])
+
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
