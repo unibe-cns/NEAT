@@ -600,14 +600,14 @@ class STree(object):
                 and last node is the root
         """
         nodes = []
-        self._goUpFrom(node, nodes)
+        self._goToRootFrom(node, nodes)
         return nodes
 
-    def _goUpFrom(self, node, nodes):
+    def _goToRootFrom(self, node, nodes):
         nodes.append(node)
         pnode = node.getParentNode()
         if pnode != None :
-            self._goUpFrom(pnode, nodes)
+            self._goToRootFrom(pnode, nodes)
 
     def pathBetweenNodes(self, from_node, to_node):
         """
@@ -694,7 +694,7 @@ class STree(object):
     def sisterLeafs(self, node):
         """
         Find the leafs that are in the subtree of the nearest bifurcation node
-        up from the input node.
+        on the path from input node to root.
 
         Parameters
         ----------
@@ -717,32 +717,32 @@ class STree(object):
             element in ``sister_leafs``
         """
         sleafs = [node]; cchildren = []
-        snode = self._goUpUntil(node, None, sl=sleafs, cc=cchildren)
+        snode = self._goToRootUntil(node, None, sl=sleafs, cc=cchildren)
         return snode, sleafs, cchildren
 
-    def _goUpUntil(self, node, c_node, sl=[], cc=[]):
+    def _goToRootUntil(self, node, c_node, sl=[], cc=[]):
         c_nodes = node.getChildNodes()
         if (c_node != None and len(c_nodes) > 1) or self.isRoot(node):
             cc.append(c_node)
             for c_node_ in set(c_nodes) - {c_node}:
-                self._goDownUntil(c_node_, sl=sl)
+                self._goFromRootUntil(c_node_, sl=sl)
                 cc.append(c_node_)
         else:
             p_node = node.getParentNode()
-            node = self._goUpUntil(p_node, node, sl=sl, cc=cc)
+            node = self._goToRootUntil(p_node, node, sl=sl, cc=cc)
         return node
 
-    def _goDownUntil(self, node, sl=[]):
+    def _goFromRootUntil(self, node, sl=[]):
         c_nodes = node.getChildNodes()
         if len(c_nodes) == 0:
             sl.append(node)
         else:
             for c_node in c_nodes:
-                self._goDownUntil(c_node, sl=sl)
+                self._goFromRootUntil(c_node, sl=sl)
 
-    def upBifurcationNode(self, node, cnode=None):
+    def bifurcationNodeToRoot(self, node, cnode=None):
         """
-        Find the nearest bifurcation node up (towards root) from the input node.
+        Find the nearest bifurcation node towards root from the input node.
 
         Parameters
         ----------
@@ -762,12 +762,12 @@ class STree(object):
         if cnode == None or len(node.getChildNodes()) <= 1:
             pnode = node.getParentNode()
             if pnode != None:
-                node, cnode = self.upBifurcationNode(pnode, cnode=node)
+                node, cnode = self.bifurcationNodeToRoot(pnode, cnode=node)
         return node, cnode
 
-    def downBifurcationNode(self, node):
+    def bifurcationNodeFromRoot(self, node):
         """
-        Find the nearest bifurcation node down (towards leafs) from the input node.
+        Find the nearest bifurcation node towards leaf from the input node.
 
         Parameters
         ----------
@@ -784,7 +784,7 @@ class STree(object):
         elif len(node.child_nodes) == 0:
             return None
         else:
-            self.downBifurcationNode(node.child_nodes[0])
+            self.bifurcationNodeFromRoot(node.child_nodes[0])
 
     def getBifurcationNodes(self, nodes):
         """
@@ -852,28 +852,28 @@ class STree(object):
             list in which nearest neighbours of ``node`` are sought
         """
         nns = []
-        self._searchNNUp(node, nodes, nns)
-        self._searchNNDown(node, nodes, nns)
+        self._searchNNToRoot(node, nodes, nns)
+        self._searchNNFromRoot(node, nodes, nns)
         return nns
 
-    def _searchNNUp(self, node, nodes, nns):
+    def _searchNNToRoot(self, node, nodes, nns):
         p_node = node.parent_node
         if p_node is not None:
             # up direction
             if p_node in nodes:
                 nns.append(p_node)
             else:
-                self._searchNNUp(p_node, nodes, nns)
+                self._searchNNToRoot(p_node, nodes, nns)
                 # down direction
                 for c_node in set(p_node.child_nodes) - {node}:
-                    self._searchNNDown(c_node, nodes, nns)
+                    self._searchNNFromRoot(c_node, nodes, nns)
 
-    def _searchNNDown(self, node, nodes, nns):
+    def _searchNNFromRoot(self, node, nodes, nns):
         for c_node in node.child_nodes:
             if c_node in nodes:
                 nns.append(c_node)
             else:
-                self._searchNNDown(c_node, nodes, nns)
+                self._searchNNFromRoot(c_node, nodes, nns)
 
     def __copy__(self, new_tree=None):
         """

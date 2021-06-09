@@ -195,18 +195,18 @@ class TestSTree():
         assert sisterLeafs == [self.nodelist[1]]
         assert corresponding_children == [self.nodelist[1]]
 
-    def testUpBifurcationSearch(self):
+    def testBifurcationSearchToRoot(self):
         self.createTree()
         # normal case
-        bnode, cnode = self.tree.upBifurcationNode(self.nodelist[2])
+        bnode, cnode = self.tree.bifurcationNodeToRoot(self.nodelist[2])
         assert bnode == self.nodelist[1]
         assert cnode == self.nodelist[2]
         # node is bifurcation node case
-        bnode, cnode = self.tree.upBifurcationNode(self.nodelist[1])
+        bnode, cnode = self.tree.bifurcationNodeToRoot(self.nodelist[1])
         assert bnode == self.nodelist[0]
         assert cnode == self.nodelist[1]
         # node is root node case
-        bnode, cnode = self.tree.upBifurcationNode(self.nodelist[0])
+        bnode, cnode = self.tree.bifurcationNodeToRoot(self.nodelist[0])
         assert bnode == self.nodelist[0]
         assert cnode == None
 
