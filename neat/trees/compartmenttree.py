@@ -493,7 +493,7 @@ class CompartmentTree(STree):
                          self.channel_storage[cname].computePOpen(v) * \
                          (v - e_chans[cname])
 
-            return f_val
+            return -f_val
 
         def jac(v):
             j_val = copy.deepcopy(g_mat)
@@ -501,7 +501,7 @@ class CompartmentTree(STree):
                 j_val += np.diag(g_chans[cname] * \
                                  self.channel_storage[cname].computePOpen(v))
 
-            return j_val
+            return -j_val
 
         # solve for the equilibrium potential
         e_eq = self._solveNewton(func, jac)
@@ -509,7 +509,7 @@ class CompartmentTree(STree):
             e_eq = self._permuteToLocs(e_eq)
         return e_eq
 
-    def _solveNewton(self, func, jac, v_0=None, v_eps=.01, n_max=100, n_iter=0):
+    def _solveNewton(self, func, jac, v_0=None, v_eps=.01, n_max=50, n_iter=0):
         # initial voltage vector
         if v_0 is None:
             v_0 = np.array([node.e_eq for node in self])
@@ -524,10 +524,30 @@ class CompartmentTree(STree):
                                           v_0=v_new, n_iter=n_iter+1,
                                           v_eps=v_eps, n_max=n_max)
             else:
-                warnings.warn('Newton solver failed to converge')
-                return np.array([np.nan for _ in self])
+                # Newton solver failed to converge, try integration with
+                # NEURON
+                return self._integrate()
 
         return v_new
+
+    def _integrate(self, t_max=500., dt=0.1, factor_lambda=10.):
+        try:
+            from ..tools.simtools.neuron import neuronmodel as neurm
+        except ModuleNotFoundError as e:
+            e.args = ("Newton solver for 'e_eq' calculation failed to converge, " + \
+                      "tried to use NEURON, but NEURON is not available",
+                      *e.args)
+            raise
+
+        sim_tree = neurm.createReducedNeuronModel(self)
+        # compute equilibrium potentials
+        sim_tree.initModel(dt=dt, factor_lambda=factor_lambda)
+        sim_tree.storeLocs([(node.index, 0.5) for node in self], 'rec locs', warn=False)
+        res = sim_tree.run(t_max)
+        sim_tree.deleteModel()
+        v_eq = np.array([v_m[-1] for v_m in res['v_m']])
+
+        return v_eq
 
     def setExpansionPoints(self, expansion_points):
         """
