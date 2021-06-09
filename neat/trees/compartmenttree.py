@@ -403,8 +403,9 @@ class CompartmentTree(STree):
         Set the equilibrium potential at all nodes on the compartment tree.
 
         Note that this potential can a-priori have any value, it is simply the
-        expansion point around which various parameters are evaluated. Compute
-        the true equilibrium point with `neat.CompartmentTree.calcEEq()`.
+        expansion point around which the ion channels are evaluated. Compute
+        the true equilibrium point, i.e. the resting membrane potential in the
+        absence of external input, with `neat.CompartmentTree.calcEEq()`.
 
         Parameters
         ----------
@@ -428,8 +429,9 @@ class CompartmentTree(STree):
         Get the equilibrium potentials at each node.
 
         Note that this potential can a-priori have any value, it is simply the
-        expansion point around which various parameters are evaluated. Compute
-        the true equilibrium point with `neat.CompartmentTree.calcEEq()`.
+        expansion point around which the ion channels are evaluated. Compute
+        the true equilibrium point, i.e. the resting membrane potential in the
+        absence of external input, with `neat.CompartmentTree.calcEEq()`.
 
         Parameters
         ----------
@@ -511,11 +513,10 @@ class CompartmentTree(STree):
         # initial voltage vector
         if v_0 is None:
             v_0 = np.array([node.e_eq for node in self])
-        print(v_0)
         # compute next iteration
         v_new = v_0 - np.linalg.solve(jac(v_0), func(v_0))
 
-        # check convergens
+        # check convergence
         if np.linalg.norm(v_new - v_0) > v_eps:
             if n_iter < n_max:
                 # no convergence yet, move on to next step

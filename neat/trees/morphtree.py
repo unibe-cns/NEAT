@@ -1576,7 +1576,8 @@ class MorphTree(STree):
                 name under which the reference list is stored
             direction: int
                 flag to indicate whether to search in both directions (0), only
-                in the up direction (1) or in the down direction (2).
+                in the direction of the root (1) or in the direction away from
+                the root (2).
 
         Returns
         -------

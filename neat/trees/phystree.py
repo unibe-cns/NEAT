@@ -277,6 +277,11 @@ class PhysTree(MorphTree):
         """
         Set the equilibrium potentials throughout the tree
 
+        Note that this potential can a-priori have any value, it is simply the
+        expansion point around which the ion channels are evaluated. Compute
+        the true equilibrium point, i.e. the resting membrane potential in the
+        absence of external input, with `neat.CompartmentTree.calcEEq()`.
+
         Parameters
         ----------
         e_eq_distr: float, dict or :func:`float -> float`
@@ -285,6 +290,62 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             e = self._distr2Float(e_eq_distr, node, argname='`e_eq_distr`')
             node.setEEq(e)
+
+    def calcEEq(self, loc_arg=None):
+        """
+        Compute the equilibrium potential at the midpoint of each node.
+        This function computes the true equilibrium potential, i.e. the
+        potential for which$\dot{v} = 0$
+
+        Parameters
+        ----------
+        loc_arg: optional, list of locations or string (see documentation of
+                :func:`MorphTree._convertLocArgToLocs` for details)
+            The extra locations where to calculate the equilibirum potential
+
+        Returns
+        -------
+        e_eq_mp: dict
+            The equilibrium potentials at the midpoints of the nodes of
+            the pysiological tree (`self.tree`), keys are node indices of
+            `self.tree`.
+        e_eq_locs: np.array
+            The equilibrium potentials at the location specified by `loc_arg`.
+            Only if `loc_arg` is not ``None``.
+        """
+
+        # create finite difference compartment tree and compute the equilibrium
+        # potentials
+        fd_tree, fd_locs = self.createFiniteDifferenceTree(
+                           dx_max=15., add_midpoints=True, name='fd locs')
+        e_eq = fd_tree.calcEEq()
+
+        # select the values equilibrium potentials at the segment midpoints
+        e_eq_mp = {loc['node']: e
+                   for e, loc in zip(e_eq, fd_locs) \
+                   if loc['node'] == 1 or np.abs(loc['x'] - .5) < 1e-10}
+
+        if loc_arg is not None:
+            locs = self._convertLocArgToLocs(loc_arg)
+            # compute the equilibrium potentials at `locs`
+            e_eq_locs = []
+            locinds1 = self.getNearestLocinds(locs, 'fd locs', direction=1)
+            locinds2 = self.getNearestLocinds(locs, 'fd locs', direction=2)
+            for loc, locidx1, locidx2 in zip(locs, locinds1, locinds2):
+                d1 = self.pathLength(loc, fd_locs[locidx1])
+                d2 = self.pathLength(loc, fd_locs[locidx2])
+                dtot = d1 + d2
+                # equilibrium potential by interpolations between 2 nearest locations
+                if dtot < 1e-8:
+                    e_val = e_eq[locidx1]
+                else:
+                    e_val = (d1 / dtot) * e_eq[locidx1] + (d2 / dtot) * e_eq[locidx2]
+                e_eq_locs.append(e_val)
+
+            return e_eq_mp, np.array(e_eq_locs)
+
+        else:
+            return e_eq_mp
 
     @originalTreeModificationDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):

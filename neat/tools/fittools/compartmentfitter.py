@@ -25,11 +25,6 @@ import contextlib
 import multiprocessing
 import os
 
-try:
-    from ...tools.simtools.neuron import neuronmodel as neurm
-except ModuleNotFoundError:
-    warnings.warn('NEURON not available', UserWarning)
-
 
 def cpu_count(use_hyperthreading=True):
     """
@@ -126,15 +121,7 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
         -------
         `neat.PhysTree()`
         """
-        dt, t_max = .1, 1.
-        # create a biophysical simulation model
-        sim_tree = phys_tree.__copy__(new_tree=neurm.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree.initModel(dt=dt, factor_lambda=factor_lambda, t_calibrate=t_calibrate)
-        sim_tree.storeLocs([(node.index, .5) for node in phys_tree], 'rec locs')
-        res = sim_tree.run(t_max)
-        sim_tree.deleteModel()
-        v_eqs = [v_m[-1] for v_m in res['v_m']]
+        v_eqs = phys_tree.calcEEq()
         # store the equilbirum potential distribution
         phys_tree.setEEq(v_eqs)
         phys_tree.asPassiveMembrane(node_arg='basal')
@@ -1046,17 +1033,7 @@ class CompartmentFitter(object):
 
         return net_reduced
 
-    def calcEEq(self, locs, t_max=500., dt=0.1, factor_lambda=10.):
-        # create a biophysical simulation model
-        sim_tree_biophys = self.tree.__copy__(new_tree=neurm.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
-        res_biophys = sim_tree_biophys.run(t_max)
-        sim_tree_biophys.deleteModel()
-        return np.array([v_m[-1] for v_m in res_biophys['v_m']])
-
-    def setEEq(self, t_max=500., dt=0.1, factor_lambda=10.):
+    def setEEq(self):
         """
         Set equilibrium potentials, measured from neuron simulation. Sets the
         `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
@@ -1074,14 +1051,8 @@ class CompartmentFitter(object):
             multiplies the number of segments given by the lambda rule with this
             number
         """
-        tree_locs = [MorphLoc((n.index, .5), self.tree) for n in self.tree]
-        fit_locs = self.tree.getLocs('fit locs')
         # compute equilibrium potentials
-        v_eqs = self.calcEEq(tree_locs + fit_locs,
-                             t_max=t_max, dt=dt, factor_lambda=factor_lambda)
-        # store the equilibrium potentials
-        self.v_eqs_tree = {n.index: v for n, v in zip(self.tree, v_eqs)}
-        self.v_eqs_fit = v_eqs[len(tree_locs):]
+        self.v_eqs_tree, self.v_eqs_fit = self.tree.calcEEq('fit locs')
 
     def getEEq(self, e_eqs_type, **kwargs):
         """
@@ -1184,19 +1155,15 @@ class CompartmentFitter(object):
 
         # compute equilibirum potentials
         all_locs = [(n.index, .5) for n in self.tree]
-        e_eqs = self.calcEEq(all_locs + locs)
+        e_eqs_mp, e_eqs_locs = self.tree.calcEEq(locs)
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
         greens_tree.setName(self.name + '_atRest_', self.path)
-        for ii, node in enumerate(greens_tree):
-            node.setEEq(e_eqs[ii])
+        for node in greens_tree:
+            node.setEEq(e_eqs_mp[node.index])
         greens_tree.setImpedancesInTree(recompute=recompute, pprint=False)
         # compute the impedance matrix of the synapse locations
         z_mat = greens_tree.calcImpedanceMatrix(locs, explicit_method=False)[0].real
-
-        # get the reversal potentials of the synapse locations
-        n_all = len(self.tree)
-        e_eqs = e_eqs[n_all:]
 
         # compute the ZG matrix
         gd_mat = np.diag(g_syns)
@@ -1256,13 +1223,12 @@ class CompartmentFitter(object):
         comp_inds, g_syns, e_revs = np.array(comp_inds), np.array(g_syns), np.array(e_revs)
 
         # compute equilibirum potentials
-        all_locs = [(n.index, .5) for n in self.tree]
-        e_eqs = self.calcEEq(all_locs + cs_locs)
+        e_eqs_mp, e_eqs_cs = self.tree.calcEEq(cs_locs)
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
         greens_tree.setName(self.name + '_atRest_', self.path)
-        for ii, node in enumerate(greens_tree):
-            node.setEEq(e_eqs[ii])
+        for node in greens_tree:
+            node.setEEq(e_eqs_mp[node.index])
         greens_tree.setImpedancesInTree(recompute=recompute, pprint=False)
         # compute the impedance matrix of the synapse locations
         z_mat = greens_tree.calcImpedanceMatrix(cs_locs, explicit_method=False)[0].real
@@ -1270,8 +1236,8 @@ class CompartmentFitter(object):
 
         # get the reversal potentials of the synapse locations
         n_all = len(self.tree)
-        e_cs = e_eqs[n_all:n_all+n_comp]
-        e_ss = e_eqs[-n_syn:]
+        e_cs = e_eqs_cs[:n_comp]
+        e_ss = e_eqs_cs[-n_syn:]
 
         # compute the ZG matrix
         gd_mat = np.diag(cg_syns)

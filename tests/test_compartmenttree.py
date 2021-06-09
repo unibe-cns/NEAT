@@ -527,29 +527,35 @@ class TestCompartmentTree():
         na_chan = channelcollection.Na_Ta()
         self.tree.addCurrent(na_chan, 1.71*1e6, 50., [self.tree[1]])
 
+        print('i')
+
         ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=5., add_midpoints=True)
         e_eq = ctree_fd.calcEEq()
 
-        e_eq_mp = []
+        e_eq_fd = []
         for e_val, loc in zip(e_eq, locs_fd):
             if np.abs(loc['x'] - .5) < 1e-5:
-                e_eq_mp.append(e_val)
-
-        print(e_eq_mp)
-
-        # fit a compartmenttree to the same locations
-        from neat import CompartmentFitter
-        cfit = CompartmentFitter(self.tree)
-        ctree_fit = cfit.fitModel(locs_fd)
-        e_eq = ctree_fit.calcEEq()
-
-        e_eq_mp = []
-        for e_val, loc in zip(e_eq, locs_fd):
-            if np.abs(loc['x'] - .5) < 1e-5:
-                e_eq_mp.append(e_val)
-        print(e_eq_mp)
+                e_eq_fd.append(e_val)
 
 
+        print('ii')
+
+        # # fit a compartmenttree to the same locations
+        # from neat import CompartmentFitter
+        # cfit = CompartmentFitter(self.tree)
+        # ctree_fit = cfit.fitModel(locs_fd)
+        # ctree_fit.setEEq(-65. )
+        # e_eq = ctree_fit.calcEEq()
+
+        # e_eq_fit = []
+        # for e_val, loc in zip(e_eq, locs_fd):
+        #     if np.abs(loc['x'] - .5) < 1e-5:
+        #         e_eq_fit.append(e_val)
+
+        # assert np.allclose(e_eq_fit, e_eq_fd, atol=3e-1)
+
+
+        print('iii')
 
         try:
             from neat import NeuronSimTree
@@ -565,7 +571,8 @@ class TestCompartmentTree():
             sim_tree.deleteModel()
             v_eqs = [v_m[-1] for v_m in res['v_m']]
 
-            print(v_eqs)
+            assert np.allclose(v_eqs, e_eq_fd, atol=3e-1)
+
         except ModuleNotFoundError:
             warnings.warn('NEURON not available, full testsuite can not be run',
                           UserWarning)
