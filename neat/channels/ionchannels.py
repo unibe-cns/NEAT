@@ -788,7 +788,7 @@ class IonChannel(object):
         if 'parameters' in blocks:
             param_str = '\n' + \
                         '    # parameters %s\n'%cname + \
-                        '    g_%s real = %.2f\n'%(cname, g) + \
+                        '    gbar_%s real = %.2f\n'%(cname, g) + \
                         '    e_%s real = %.2f\n'%(cname, e)
 
             blocks_dict['parameters'] += param_str
@@ -800,8 +800,8 @@ class IonChannel(object):
                 p_open_ = p_open_.subs(svar, sp.symbols(sv_))
 
             eq_str = '\n' + \
-                     '    # equations %s\n'%cname + \
-                     '    inline cm_p_open_%s real = %s\n'%(cname, str(p_open_))
+                     '    # equation %s\n'%cname + \
+                     '    inline %s real = gbar_%s * (%s) * (e_%s - v_comp)\n'%(cname, cname, str(p_open_), cname)
 
             blocks_dict['equations'] += eq_str
 

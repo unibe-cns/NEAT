@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
-import os, glob, sys, inspect, shutil, subprocess
+import os, glob, sys, inspect, shutil, subprocess, argparse
+
+"""
+Default behaviour (without options): compile neuron
+with --NEST: compile NEST only
+with --NEURON: compile NEURON only
+with --NEST --NEURON: compile both NEST and NEURON
+"""
+parser = argparse.ArgumentParser()
+parser.add_argument('--NEURON', dest='neuron', action=argparse.BooleanOptionalAction,
+                    default=argparse.SUPPRESS, help='compile channel for neuron simulator')
+parser.add_argument('--NEST', dest='nest', action=argparse.BooleanOptionalAction,
+                    default=False, help='compile channel for neuron simulator')
+# parse the arguments, behaviour for --NEURON depends on whether --NEST was present
+args = parser.parse_args()
+if (not args.nest) and ('neuron' not in vars(args)):
+    args.neuron = True
+elif args.nest and ('neuron' not in vars(args)):
+    args.neuron = False
+# set compile flags
+compile_nest = args.nest
+compile_neuron = args.neuron
 
 
 def loadNEATCorrectPath():
@@ -32,7 +53,9 @@ from neat import IonChannel
 
 path_neat = neat.__path__[0]
 path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/mech/')
-path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/')
+path_for_neuron_compilation = os.path.join(path_neat, 'tools/simtools/neuron/')
+path_for_nestml = os.path.join(path_neat, 'tools/simtools/nest/')
+path_for_nestml_compilation = os.path.join(path_neat, 'tools/simtools/nest/tmp/')
 
 
 def resetDefaultMech():
@@ -50,11 +73,13 @@ def resetDefaultMech():
     shutil.copytree(path_default_mech, path_for_mod_files)
 
 if sys.argv[1] == 'default':
-    resetDefaultMech()
+    if compile_neuron: resetDefaultMech()
     path_for_channels = os.path.join(path_neat, 'channels/channelcollection/')
+    nestml_name = 'default'
 else:
-    resetDefaultMech()
+    if compile_neuron: resetDefaultMech()
     path_for_channels = sys.argv[1]
+    nestml_name = os.path.basename(os.path.normpath(path_for_channels))
 
 print('--- writing channels from \n' + path_for_channels + '\nto \n' + path_for_mod_files)
 
@@ -66,31 +91,74 @@ def allBaseClasses(cls):
     return [cls.__base__] + allBaseClasses(cls.__base__) if cls is not None else []
 
 
-if not os.path.exists(path_for_mod_files):
-        os.makedirs(path_for_mod_files)
+if compile_neuron:
+    if not os.path.exists(path_for_mod_files):
+            os.makedirs(path_for_mod_files)
 
-sys.path.insert(0, path_for_channels)
-for channel_module in glob.glob(os.path.join(path_for_channels, '*.py')):
-    # import channel modules
-    # convert names from glob to something susceptible to python import
-    channel_module = os.path.split(channel_module)[1]
-    channel_module = channel_module.replace('.py', '')
-    print('Reading channels from:', channel_module)
-    exec('import ' + channel_module + ' as chans')
+    sys.path.insert(0, path_for_channels)
+    for channel_module in glob.glob(os.path.join(path_for_channels, '*.py')):
+        # import channel modules
+        # convert names from glob to something susceptible to python import
+        channel_module = os.path.split(channel_module)[1]
+        channel_module = channel_module.replace('.py', '')
+        print('Reading channels from:', channel_module)
+        exec('import ' + channel_module + ' as chans')
 
-    for name, obj in inspect.getmembers(chans):
-        # if an object is a class and inheriting from IonChannel, write its mod-file
-        if inspect.isclass(obj) and IonChannel in allBaseClasses(obj):
-            chan = obj()
-            print(' - write .mod file for:', chan.__class__.__name__)
-            chan.writeModFile(path_for_mod_files)
+        for name, obj in inspect.getmembers(chans):
+            # if an object is a class and inheriting from IonChannel, write its mod-file
+            if inspect.isclass(obj) and IonChannel in allBaseClasses(obj):
+                chan = obj()
+                print(' - write .mod file for:', chan.__class__.__name__)
+                chan.writeModFile(path_for_mod_files)
 
-# copy the mod-files within the source directory to the compile directory
-for mod_file in glob.glob(os.path.join(path_for_channels, '*.mod')):
-    shutil.copy2(mod_file, path_for_mod_files)
+    # copy the mod-files within the source directory to the compile directory
+    for mod_file in glob.glob(os.path.join(path_for_channels, '*.mod')):
+        shutil.copy2(mod_file, path_for_mod_files)
 
-# change to directory where 'mech/' folder is located and compile the mechanisms
-os.chdir(path_for_compilation)
-if os.path.exists("x86_64/"):  # delete old compiled files if exist
-    shutil.rmtree("x86_64/")
-subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
+    # change to directory where 'mech/' folder is located and compile the mechanisms
+    os.chdir(path_for_neuron_compilation)
+    if os.path.exists("x86_64/"):  # delete old compiled files if exist
+        shutil.rmtree("x86_64/")
+    subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
+
+
+if compile_nest:
+    from ..tools.simtools.nest import resources_nestml
+
+    blocks = resources_nestml.blocks_default_syns
+
+    sys.path.insert(0, path_for_channels)
+    for channel_module in glob.glob(os.path.join(path_for_channels, '*.py')):
+        # import channel modules
+        # convert names from glob to something susceptible to python import
+        channel_module = os.path.split(channel_module)[1]
+        channel_module = channel_module.replace('.py', '')
+        print('Reading channels from:', channel_module)
+        exec('import ' + channel_module + ' as chans')
+
+        for name, obj in inspect.getmembers(chans):
+            # if an object is a class and inheriting from IonChannel, write its mod-file
+            if inspect.isclass(obj) and IonChannel in allBaseClasses(obj):
+                chan = obj()
+                print(' - write .nestml blocks for:', chan.__class__.__name__)
+                blocks_ = chan.writeNestmlBlocks()
+                del chan
+
+                for block, blockstr in blocks_.items():
+                    blocks[block] += blockstr
+
+    # write the nestml file
+    nestml_file_path = resources_nestml.writeNestmlBlocks(blocks, path_for_nestml, nestml_name)
+
+    from pynestml.frontend.pynestml_frontend import to_nest, install_nest
+    import nest
+    nest_path = nest.ll_api.sli_func("statusdict/prefix ::")
+
+    if not os.path.exists(path_for_nestml_compilation):
+        os.makedirs(path_for_nestml_compilation)
+
+    to_nest(input_path=nestml_file_path,
+            target_path=path_for_nestml_compilation,
+            module_name="neatmodule_" + nestml_name,
+            logging_level="ERROR")
+    install_nest(path_for_nestml_compliation, nest_path)
