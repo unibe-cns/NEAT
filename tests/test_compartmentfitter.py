@@ -350,6 +350,7 @@ class TestCompartmentFitter():
         # make ball model with leak based on all channels
         tree = self.tree.__copy__()
         tree.asPassiveMembrane()
+        tree.setCompTree()
         greens_tree = tree.__copy__(new_tree=GreensTree())
         greens_tree.setCompTree()
         freqs = np.array([0.])
@@ -358,6 +359,7 @@ class TestCompartmentFitter():
         ctree_all = greens_tree.createCompartmentTree(fit_locs)
         ctree_all.computeGMC(z_mat)
         sov_tree = tree.__copy__(new_tree=SOVTree())
+        sov_tree.setCompTree()
         sov_tree.calcSOVEquations()
         alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
         ctree_all.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
@@ -614,10 +616,10 @@ class TestCompartmentFitter():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    tcf.testTreeStructure()
+    # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
     # tcf.testChannelFitMats()
-    # tcf.testPassiveFit()
+    tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()

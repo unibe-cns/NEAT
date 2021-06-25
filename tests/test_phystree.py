@@ -185,6 +185,10 @@ class TestPhysTree():
         # test if fit was correct
         for node in tree:
             assert np.abs(node.currents['L'][0] - g_pas) < 1e-10
+        # test if channels storage is empty
+        assert len(tree.channel_storage) == 0
+        # test if computational root was removed
+        assert tree._computational_root is None
 
     def testCompTree(self):
         self.loadTree(reinitialize=1, segments=True)
