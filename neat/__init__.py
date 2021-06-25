@@ -38,6 +38,11 @@ try:
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 
+try:
+    from .tools.simtools.nest.nestmodel import createNestModel
+except ModuleNotFoundError:
+    warnings.warn('NEURON not available', UserWarning)
+
 from .tools.kernelextraction import FourrierTools
 
 from .channels.ionchannels import IonChannel

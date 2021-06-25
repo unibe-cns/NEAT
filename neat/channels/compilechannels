@@ -7,21 +7,22 @@ with --NEST: compile NEST only
 with --NEURON: compile NEURON only
 with --NEST --NEURON: compile both NEST and NEURON
 """
-parser = argparse.ArgumentParser()
-parser.add_argument('--NEURON', dest='neuron', action=argparse.BooleanOptionalAction,
-                    default=argparse.SUPPRESS, help='compile channel for neuron simulator')
-parser.add_argument('--NEST', dest='nest', action=argparse.BooleanOptionalAction,
-                    default=False, help='compile channel for neuron simulator')
-# parse the arguments, behaviour for --NEURON depends on whether --NEST was present
-args = parser.parse_args()
-if (not args.nest) and ('neuron' not in vars(args)):
-    args.neuron = True
-elif args.nest and ('neuron' not in vars(args)):
-    args.neuron = False
-# set compile flags
-compile_nest = args.nest
-compile_neuron = args.neuron
-
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--NEURON', dest='neuron', action=argparse.BooleanOptionalAction,
+#                     default=argparse.SUPPRESS, help='compile channel for neuron simulator')
+# parser.add_argument('--NEST', dest='nest', action=argparse.BooleanOptionalAction,
+#                     default=False, help='compile channel for neuron simulator')
+# # parse the arguments, behaviour for --NEURON depends on whether --NEST was present
+# args = parser.parse_args()
+# if (not args.nest) and ('neuron' not in vars(args)):
+#     args.neuron = True
+# elif args.nest and ('neuron' not in vars(args)):
+#     args.neuron = False
+# # set compile flags
+# compile_nest = args.nest
+# compile_neuron = args.neuron
+compile_nest = True
+compile_neuron = False
 
 def loadNEATCorrectPath():
     """
@@ -123,7 +124,7 @@ if compile_neuron:
 
 
 if compile_nest:
-    from ..tools.simtools.nest import resources_nestml
+    from neat.tools.simtools.nest import resources_nestml
 
     blocks = resources_nestml.blocks_default_syns
 
@@ -141,24 +142,26 @@ if compile_nest:
             if inspect.isclass(obj) and IonChannel in allBaseClasses(obj):
                 chan = obj()
                 print(' - write .nestml blocks for:', chan.__class__.__name__)
-                blocks_ = chan.writeNestmlBlocks()
+                blocks_ = chan.writeNestmlBlocks(v_comp=-75.)
                 del chan
 
                 for block, blockstr in blocks_.items():
                     blocks[block] += blockstr
 
+    # create directory to install nestml files
+    if not os.path.exists(path_for_nestml_compilation):
+        os.makedirs(path_for_nestml_compilation)
     # write the nestml file
-    nestml_file_path = resources_nestml.writeNestmlBlocks(blocks, path_for_nestml, nestml_name)
+    nestml_file_path = resources_nestml.writeNestmlBlocks(blocks, path_for_nestml_compilation, nestml_name, v_comp=-75.)
+
 
     from pynestml.frontend.pynestml_frontend import to_nest, install_nest
     import nest
+    # get the path to the nest installation
     nest_path = nest.ll_api.sli_func("statusdict/prefix ::")
-
-    if not os.path.exists(path_for_nestml_compilation):
-        os.makedirs(path_for_nestml_compilation)
-
+    # compile and install the nest extension module
     to_nest(input_path=nestml_file_path,
             target_path=path_for_nestml_compilation,
-            module_name="neatmodule_" + nestml_name,
+            module_name=nestml_name + "neatmodule",
             logging_level="ERROR")
-    install_nest(path_for_nestml_compliation, nest_path)
+    install_nest(path_for_nestml_compilation, nest_path)

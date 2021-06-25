@@ -768,20 +768,21 @@ class IonChannel(object):
 
         return modname
 
-    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'functions'], g=0., e=None):
+    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'functions'], v_comp=0., g=0., e=None):
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.statevars]
         cs = [str(conc) for conc in self.conc]
         sv_suff = [sv_ + '_' +cname for sv_ in sv]
         e = self._getReversal(e)
+        sv_init = self.computeVarinf(v_comp)
 
         blocks_dict = {block: '' for block in blocks}
 
         if 'state' in blocks:
             state_str = '\n' + \
                         '    # state variables %s\n'%cname
-            for sv_ in sv_suff:
-                state_str += '    %s real\n'%sv_
+            for sv_, sv_key in zip(sv_suff, sv):
+                state_str += '    %s real = %.8f\n'%(sv_, sv_init[sv_key])
 
             blocks_dict['state'] += state_str
 
@@ -811,7 +812,6 @@ class IonChannel(object):
         if 'functions' in blocks:
             func_str = '\n' + \
                        '# functions %s\n'%cname
-            print('\n\n>>>', cname)
             for svar, sv_, sv_suff_ in zip(self.statevars, sv, sv_suff):
                 # substitute possible default values and concentrations
                 varinf_func = self._substituteDefaults(self.varinf[svar])
@@ -820,9 +820,6 @@ class IonChannel(object):
                 # print activation function to nestml file
                 varinf_func = varinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
                 varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
-                print('')
-                print(varinf_func)
-                print(sp.cse(varinf_func))
                 # varinf_func =  sp.simplify(varinf_func)
                 func_str += 'function %s_inf_%s (v_comp real) real:\n'%(sv_, cname) + \
                             '    return %s\n'%str(varinf_func) + \
