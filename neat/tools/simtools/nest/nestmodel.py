@@ -1,5 +1,7 @@
 from ....trees.compartmenttree import CompartmentTree, CompartmentNode
 
+import warnings
+
 try:
     import nest
 except ModuleNotFoundError:
