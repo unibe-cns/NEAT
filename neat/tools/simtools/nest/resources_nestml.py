@@ -1,33 +1,26 @@
-import os
+import os, copy, warnings
 
-blocks_empty= dict(
+BLOCKS_EMPTY = dict(
 parameters=
 """
-
-parameters:
 """,
 state=
 """
-
-state:
 """,
 equations=
 """
-
-equations:
 """,
 functions=
 """
 """,
-inputs=
+internals=
 """
-
-inputs:
+""",
+input=
+"""
 """,
 output=
 """
-
-output: spike
 """
 )
 
@@ -103,7 +96,7 @@ internals:
     tp_AN_NMDA real = (tau_r_AN_NMDA * tau_d_AN_NMDA) / (tau_d_AN_NMDA - tau_r_AN_NMDA) * ln( tau_d_AN_NMDA / tau_r_AN_NMDA )
     g_norm_AN_NMDA real =  1. / ( -exp( -tp_AN_NMDA / tau_r_AN_NMDA ) + exp( -tp_AN_NMDA / tau_d_AN_NMDA ) )
 """,
-inputs=
+input=
 """
 
 input:
@@ -120,6 +113,102 @@ output: spike
 )
 
 
+def stripVComp(contents):
+    ss = "v_comp real"
+    idx = None
+    for ll, line in enumerate(contents):
+        if ss in line:
+            idx = ll
+
+    if idx is not None:
+        del contents[idx]
+
+
+def stripComments(contents):
+    for ll, line in enumerate(contents):
+        try:
+            s0 = line.index('#')
+            contents[ll] = line[:s0] + '\n'
+        except ValueError as e:
+            # do nothing if there is no comment
+            pass
+
+
+def _getIndexOfBlock(contents, block_name):
+    found, kk = False, 0
+    while not found and kk < len(contents):
+        if block_name in contents[kk]:
+            found = True
+        else:
+            kk += 1
+
+
+    return kk
+
+
+def getBlockString(contents, block_name):
+    try:
+        c0 = _getIndexOfBlock(contents, block_name)
+        s0 = contents[c0].index(block_name) + len(block_name+":")
+
+        c1 = _getIndexOfBlock(contents[c0:], "end") + c0
+        s1 = contents[c1].index("end")
+
+        block_str = contents[c0][s0:] + \
+                    ''.join(contents[c0+1:c1]) + \
+                    contents[c1][:s1] + \
+                    '\n'
+    except IndexError as e:
+        warnings.warn("\'%s\' block not found in .nestml file")
+        block_str = ""
+
+    return block_str
+
+
+def getFunctionsString(contents):
+    function_str = ""
+    try:
+        kk = 0
+        while kk < len(contents):
+            c0 = _getIndexOfBlock(contents[kk:], "function") + kk
+            s0 = contents[c0].index("function")
+            # print("\n",contents[kk:])
+
+            c1 = _getIndexOfBlock(contents[c0:], "end") + c0
+            s1 = contents[c1].index("end") + len("end")
+
+            function_str += contents[c0][s0:] + \
+                            ''.join(contents[c0+1:c1]) + \
+                            contents[c1][:s1] + \
+                            '\n'
+            # move further, functions are assumed to at least occupy one line each
+            kk = c1 + 1
+
+    except (ValueError, IndexError) as e:
+        # we reached the end of the NESTML file and don't have anymore functions
+        # to check
+        pass
+
+    return function_str
+
+
+def parseNestmlFile(f_name):
+    with open(f_name, 'r') as file:
+        contents = file.readlines()
+
+    stripComments(contents)
+    stripVComp(contents)
+
+    blocks = copy.deepcopy(BLOCKS_EMPTY)
+    for block_name in blocks:
+        if block_name != "output" and block_name != "functions":
+            blocks[block_name] += getBlockString(contents, block_name)
+        elif block_name == "functions":
+            blocks[block_name] += getFunctionsString(contents)
+
+    return blocks
+
+
 def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
                       write_blocks=['parameters', 'state', 'equations',
                                     'inputs', 'output', 'functions']):
@@ -130,7 +219,8 @@ def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
 
     for block, blockstr in blocks.items():
         if block != 'functions' and block != 'output':
-            blocks[block] = blockstr + 'end\n\n'
+            blocks[block] = block + ":\n" + blockstr + 'end\n\n'
+            # blocks[block] = blockstr + 'end\n\n'
 
     fname = os.path.join(path_name, neuron_name + ".nestml")
 
@@ -142,3 +232,7 @@ def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
     file.close()
 
     return fname
+
+if __name__ == "__main__":
+    # parseNestmlFile("default_syns.nestml")
+    writeNestmlBlocks(blocks_default_syns, "", "default_syns")

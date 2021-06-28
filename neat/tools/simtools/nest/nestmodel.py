@@ -9,8 +9,8 @@ def createNestModel(ctree, nestml_name):
     cm = nest.Create("cm_main_" + nestml_name)
 
     for node in ctree:
-        g_dict = {'gbar_%s'%key: node.currents[key][0] if key is not 'L'}
-        e_dict = {'gbar_%s'%key: node.currents[key][1] if key is not 'L'}
+        g_dict = {'gbar_%s'%key: node.currents[key][0] for key in node.currents if key is not 'L'}
+        e_dict = {'e_%s'%key:    node.currents[key][1] for key in node.currents if key is not 'L'}
         p_dict = {'g_L': node.currents['L'][0],
                   'e_L': node.currents['L'][1],
                   'C_m': node.ca,
