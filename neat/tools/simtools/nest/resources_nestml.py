@@ -35,9 +35,9 @@ parameters:
     tau_r_AMPA real = 0.2 ms      # Synaptic Time Constant Excitatory Synapse
     tau_d_AMPA real = 3.0 ms      # Synaptic Time Constant Excitatory Synapse
 
-    e_GABA real = 0 mV            # Inhibitory reversal Potential
+    e_GABA real = -80 mV            # Inhibitory reversal Potential
     tau_r_GABA real = 0.2 ms      # Synaptic Time Constant Inhibitory Synapse
-    tau_d_GABA real = 3.0 ms      # Synaptic Time Constant Inhibitory Synapse
+    tau_d_GABA real = 10.0 ms      # Synaptic Time Constant Inhibitory Synapse
 
     e_NMDA real = 0 mV            # NMDA reversal Potential
     tau_r_NMDA real = 0.2 ms      # Synaptic Time Constant NMDA Synapse

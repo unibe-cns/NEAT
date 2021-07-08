@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+import os, glob, shutil, argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--uninstall", nargs="*", type=str, default="",
+                    help=
+"""
+The names of the models that will be uninstalled
+"""
+                    )
+parser.add_argument("arguments", nargs="*", default="",
+                    help=
+"""
+Add the \"list\" argument to list all available models
+"""
+                    )
+args = parser.parse_args()
+
+
+path = os.path.dirname(__file__)
+
+
+def getModels(pprint=True):
+    """
+    Get a dictionary containing all installed model
+    """
+    models = {'nest': [],
+              'neuron': [],
+              }
+
+    path_nest = os.path.join(path, "nest/tmp/*/")
+
+    for file_path in glob.glob(path_nest):
+        file_name = os.path.basename(os.path.normpath(file_path))
+        # only append name if directory contains .nestml files
+        path_test = os.path.join(file_path, "*.nestml")
+        if not len([f for f in glob.glob(path_test)]) == 0:
+            models['nest'].append(file_name)
+
+    path_neuron = os.path.join(path, "neuron/tmp/*/")
+
+    for file_path in glob.glob(path_neuron):
+        file_name = os.path.basename(os.path.normpath(file_path))
+        models['neuron'].append(file_name)
+
+    if pprint:
+        print("\n------- installed models --------")
+        for simulator, model_list in models.items():
+            print("> %s"%simulator)
+            for model in model_list:
+                print("  - %s"%model)
+        print("---------------------------------\n")
+
+    return models
+
+
+def uninstallModel(model_name):
+    """
+    Uninstall the model with the given name
+    """
+
+    # ensure `model_name` is a pure name, not a path or file name
+    assert not "/" in model_name
+    assert not "." in model_name
+
+    try:
+        path_nest = os.path.join(path, "nest/tmp/%s/"%model_name)
+        shutil.rmtree(path_nest)
+        print("> Uninstalling %s from nest"%model_name)
+    except FileNotFoundError as e:
+        print("> %s not found in nest, nothing to uninstall"%model_name)
+
+    try:
+        path_neuron = os.path.join(path, "neuron/tmp/%s/"%model_name)
+        shutil.rmtree(path_neuron)
+        print("> Uninstalling %s from neuron"%model_name)
+    except FileNotFoundError as e:
+        print("> %s not found in neuron, nothing to uninstall"%model_name)
+
+
+if "list" in args.arguments:
+    getModels(pprint=True)
+
+for model_name in args.uninstall:
+    uninstallModel(model_name)
+
+
+# if __name__ == "__main__":
+#     getModels()
+    # uninstallModel("NaK")

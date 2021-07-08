@@ -18,7 +18,8 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    from neat import loadNeuron, NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    loadNeuron("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
@@ -192,18 +193,22 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
         ax.plot(cres['t'], cres['v_m'][0], c=cll[0], lw=1.6*lwidth, ls='--')
 
         # dendritic trace
-        ax.plot(res['t'], res['v_m'][ca_ind]+vd_offset, c='DarkGrey', lw=lwidth)
-        ax.plot(cres['t'], cres['v_m'][ca_ind]+vd_offset, c=cll[1], lw=1.6*lwidth, ls='--')
+        # ax.plot(res['t'], res['v_m'][ca_ind]+vd_offset, c='DarkGrey', lw=lwidth)
+        # ax.plot(cres['t'], cres['v_m'][ca_ind]+vd_offset, c=cll[1], lw=1.6*lwidth, ls='--')
 
-        ax.set_yticks([cres['v_m'][0][0], cres['v_m'][ca_ind][0]+vd_offset])
-        if jj == 1 or jj == 2:
-            drawScaleBars(ax, xlabel=' ms', ylabel=' mV', b_offset=15)
-            # drawScaleBars(ax, xlabel=' ms', b_offset=25)
-        else:
-            drawScaleBars(ax)
-        if jj == 2:
-            ax.set_yticklabels([r'Soma', r'Dend'])
-        ax.set_ylim(vlim)
+        # ax.set_yticks([cres['v_m'][0][0], cres['v_m'][ca_ind][0]+vd_offset])
+        ax.plot(res['t'], res['v_m'][ca_ind], c='DarkGrey', lw=lwidth)
+        ax.plot(cres['t'], cres['v_m'][ca_ind], c=cll[1], lw=1.6*lwidth, ls='--')
+
+        # ax.set_yticks([cres['v_m'][0][0], cres['v_m'][ca_ind][0]+vd_offset])
+        # if jj == 1 or jj == 2:
+        #     drawScaleBars(ax, xlabel=' ms', ylabel=' mV', b_offset=15)
+        #     # drawScaleBars(ax, xlabel=' ms', b_offset=25)
+        # else:
+        #     drawScaleBars(ax)
+        # if jj == 2:
+        #     ax.set_yticklabels([r'Soma', r'Dend'])
+        # ax.set_ylim(vlim)
 
     print('iv')
 

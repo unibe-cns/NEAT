@@ -54,9 +54,12 @@ except ModuleNotFoundError:
     np.array = array
 
 
-h.load_file("stdlib.hoc") # contains the lambda rule
-h.nrn_load_dll(os.path.join(os.path.dirname(__file__),
-                            'x86_64/.libs/libnrnmech.so')) # load all mechanisms
+def loadNeuron(name):
+    path = os.path.join(os.path.dirname(__file__),
+                        'tmp/%s/x86_64/.libs/libnrnmech.so'%name)
+
+    h.load_file("stdlib.hoc") # contains the lambda rule
+    h.nrn_load_dll(path) # load all mechanisms
 
 
 class MechName(object):

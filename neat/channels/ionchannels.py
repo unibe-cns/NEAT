@@ -671,7 +671,7 @@ class IonChannel(object):
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.statevars]
         cs = [str(conc) for conc in self.conc]
-        e = self._getReversal()
+        e = self._getReversal(e)
 
         modname = 'I' + cname + '.mod'
         fname = os.path.join(path, modname)

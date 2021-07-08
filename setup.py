@@ -89,7 +89,8 @@ ext.cython_directives = {'language_level': "3"}
 s_ = setup(
     name='neatdend',
     version=read_version(),
-    scripts=['neat/channels/compilechannels'],
+    scripts=['neat/channels/compilechannels',
+             'neat/tools/simtools/neatmodels'],
     packages=['neat',
               'neat.trees',
               'neat.tools',
