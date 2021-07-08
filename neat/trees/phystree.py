@@ -192,9 +192,9 @@ class PhysNode(MorphNode):
         self.fitLeakCurrent(channel_storage, e_eq_target=v, tau_m_target=t_m)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super().__str__()
+        node_string = super(PhysNode, self).__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super().__str__()
+            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
         node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
                        ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
                             for cname, cpar in self.currents.items()]) + \
@@ -226,6 +226,16 @@ class PhysTree(MorphTree):
             node.setPhysiology(1.0, 100./1e6)
         self.channel_storage = {}
 
+    def _resetChannelStorage(self):
+        new_channel_storage = {}
+        for node in self:
+            for channel_name in node.currents:
+                if channel_name not in new_channel_storage and \
+                   channel_name != "L":
+                    new_channel_storage[channel_name] = self.channel_storage[channel_name]
+
+        self.channel_storage = new_channel_storage
+
     def _createCorrespondingNode(self, node_index, p3d=None,
                                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
         """
@@ -255,7 +265,7 @@ class PhysTree(MorphTree):
         """
         for node in self._convertNodeArgToNodes(node_arg):
             node.asPassiveMembrane(self.channel_storage)
-        self.channel_storage = {}
+        self._resetChannelStorage()
 
     def _distr2Float(self, distr, node, argname=''):
         if isinstance(distr, float):
