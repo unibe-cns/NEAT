@@ -43,7 +43,7 @@ except ModuleNotFoundError:
 try:
     from .tools.simtools.nest.nestmodel import createNestModel
 except ModuleNotFoundError:
-    warnings.warn('NEURON not available', UserWarning)
+    warnings.warn('NEST not available', UserWarning)
 
 from .tools.kernelextraction import FourrierTools
 
