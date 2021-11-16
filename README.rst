@@ -61,7 +61,7 @@ on Linux and macOS platform is via pip:
 
     pip install neuron
 
-See detailed install instructions `here <https://github.com/neuronsimulator/nrn/blob/master/INSTALL.md>`_.
+See detailed `installation instructions <https://github.com/neuronsimulator/nrn/blob/master/INSTALL.md>`_.
 
 You can test it by compiling and installing the default NEURON mechanisms by running
 
