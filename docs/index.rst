@@ -20,7 +20,7 @@ Furthermore, NEAT implements the neural evaluation tree framework [Wybo2019]_
 and an associated C++ simulator, to analyze subunit independence.
 
 Finally, NEAT implements a new and powerful method to simplify morphological
-neuron models into compartmental models with few compartments [Wybo2020]_. For
+neuron models into compartmental models with few compartments [Wybo2021]_. For
 these models, NEAT also provides a NEURON interface so that they can be
 simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
 

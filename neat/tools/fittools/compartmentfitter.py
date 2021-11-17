@@ -580,8 +580,7 @@ class CompartmentFitter(object):
             # run the fit
             self.ctree.runFit()
 
-        # chan_eval = ChannelEvaluator()
-        # chan_eval.evaluate(self, recompute=recompute, pprint=pprint, parallel=parallel)
+        return self.ctree
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
@@ -637,6 +636,8 @@ class CompartmentFitter(object):
             # restore defaults
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
+        return self.ctree
+
     def fitPassiveLeak(self, recompute=False, pprint=True):
         """
         Fit leak only. Coupling conductances have to have been fit already.
@@ -674,6 +675,8 @@ class CompartmentFitter(object):
             print('---------------------------------------\n')
             # restore defaults
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
+
+        return self.ctree
 
     def createTreeSOV(self, eps=1.):
         """
@@ -820,6 +823,8 @@ class CompartmentFitter(object):
 
         if pplot:
             self.plotKernels(alphas, phimat)
+
+        return self.ctree
 
     def plotSOV(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
         fit_locs = self.tree.getLocs('fit locs')
@@ -1125,6 +1130,8 @@ class CompartmentFitter(object):
         # fit the equilibirum potentials of the reduced model
         self.ctree.setEEq(v_eqs)
         self.ctree.fitEL()
+
+        return self.ctree
 
     def fitModel(self, loc_arg, alpha_inds=[0], use_all_channels_for_passive=True,
                        recompute=False, pprint=False, parallel=False):
