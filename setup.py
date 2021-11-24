@@ -23,42 +23,6 @@ def read_version():
         return match[0]
 
 
-class DevelopCommand(develop):
-    """Post-installation for development mode."""
-    def run(self):
-        # develop install
-        develop.run(self)
-
-
-class InstallCommand(install):
-    """Post-installation for installation mode."""
-    def run(self):
-        # regular install
-        install.run(self)
-
-
-class BuildExtCommand(build_ext):
-
-    def run(self):
-        # execute pre build ext commands
-        write_ionchannel_header_and_cpp_file()
-        # build ext
-        build_ext.run(self)
-        # execute post build ext commands
-
-
-def write_ionchannel_header_and_cpp_file():
-    """
-    Writes Ionchannel.h and Ionchannel.cpp files that are required for
-    the netsim.pyx extension.
-
-    """
-    # we can import before installation as we are in the root
-    # directory
-    import neat.channels.writecppcode as writecppcode
-    writecppcode.write()
-
-
 def read_requirements():
     with open('./requirements/requirements.txt') as fp:
         requirements = fp.read()
@@ -104,9 +68,9 @@ s_ = setup(
     ext_package='neat',
     ext_modules=[ext],
     cmdclass={
-        'develop': DevelopCommand,
-        'install': InstallCommand,
-        'build_ext': BuildExtCommand,
+        'develop': develop,
+        'install': install,
+        'build_ext': build_ext,
     },
     include_package_data=True,
     author='Willem Wybo, Jakob Jordan, Benjamin Ellenberger',
