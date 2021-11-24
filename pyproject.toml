@@ -1,0 +1,3 @@
+# https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#basic-setup-py
+[build-system]
+requires = ["setuptools", "wheel", "Cython", "numpy"]
