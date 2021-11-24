@@ -9,9 +9,7 @@ Author: W. Wybo
 import re
 from setuptools import setup
 from setuptools.extension import Extension
-from setuptools.command.build_ext import build_ext
-from setuptools.command.develop import develop
-from setuptools.command.install import install
+from Cython.Build import cythonize
 
 import os, subprocess, shutil, sys
 
@@ -29,26 +27,34 @@ def read_requirements():
     return requirements
 
 
-class DelayedIncludeDirs:
+class DelayedIncludeDirs(list):
     """Delay importing of numpy until extension is built. This allows pip
     to install numpy if it's not available.
 
     """
+    def __init__(self):
+        super().__init__()
+        # WARNING: for some reason we need to have a non-empty list otherwise
+        # __iter__ is never called; this dummy value is never used!
+        self.append('dummy value')
+
     def __iter__(self):
         import numpy
         return iter([numpy.get_include(), "neat/tools/simtools/net/*.h"])
 
 
-ext = Extension("netsim",
-                ["neat/tools/simtools/net/netsim.pyx",
-                 "neat/tools/simtools/net/NETC.cc",
-                 "neat/tools/simtools/net/Synapses.cc",
-                 "neat/tools/simtools/net/Ionchannels.cc",
-                 "neat/tools/simtools/net/Tools.cc"],
+ext = Extension(name="netsim",
+                sources=["neat/tools/simtools/net/netsim.pyx",
+                         "neat/tools/simtools/net/Ionchannels.cc",
+                         "neat/tools/simtools/net/netsim.pyx",
+                         "neat/tools/simtools/net/NETC.cc",
+                         "neat/tools/simtools/net/Synapses.cc",
+                         "neat/tools/simtools/net/Tools.cc"
+                         ],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
-                include_dirs=DelayedIncludeDirs())
-ext.cython_directives = {'language_level': "3"}
+                include_dirs=DelayedIncludeDirs(),
+                )
 
 s_ = setup(
     name='neatdend',
@@ -66,12 +72,7 @@ s_ = setup(
         "neat.tools.simtools.neuron": ["mech_storage/*.mod"],
     },
     ext_package='neat',
-    ext_modules=[ext],
-    cmdclass={
-        'develop': develop,
-        'install': install,
-        'build_ext': build_ext,
-    },
+    ext_modules=cythonize([ext], language_level=3),
     include_package_data=True,
     author='Willem Wybo, Jakob Jordan, Benjamin Ellenberger',
     classifiers=['Development Status :: 3 - Alpha',
