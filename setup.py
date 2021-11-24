@@ -44,7 +44,13 @@ class DelayedIncludeDirs(list):
 
 
 ext = Extension(name="netsim",
-                sources=["neat/tools/simtools/net/netsim.pyx"],
+                sources=["neat/tools/simtools/net/netsim.pyx",
+                         "neat/tools/simtools/net/Ionchannels.cc",
+                         "neat/tools/simtools/net/netsim.pyx",
+                         "neat/tools/simtools/net/NETC.cc",
+                         "neat/tools/simtools/net/Synapses.cc",
+                         "neat/tools/simtools/net/Tools.cc"
+                         ],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
                 include_dirs=DelayedIncludeDirs(),
