@@ -1576,7 +1576,8 @@ class MorphTree(STree):
                 name under which the reference list is stored
             direction: int
                 flag to indicate whether to search in both directions (0), only
-                in the up direction (1) or in the down direction (2).
+                in the direction of the root (1) or in the direction away from
+                the root (2).
 
         Returns
         -------
@@ -2767,7 +2768,7 @@ class MorphTree(STree):
         return roots[rootind]
 
     @originalTreetypeDecorator
-    def createNewTree(self, name, fake_soma=False, store_loc_inds=False):
+    def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -2776,23 +2777,31 @@ class MorphTree(STree):
 
         Parameters
         ----------
-            name: string
-                the name under which the locations are stored that should be
-                used to create the new tree
-            fake_soma: bool (default `False`)
-                if `True`, finds the common root of the set of locations and
-                uses that as the soma of the new tree. If `False`, the real soma
-                is used.
-            store_loc_inds: bool (default `False`)
-                store the index of each location in the `content` attribute of the
-                new node (under the key 'loc ind')
+        loc_arg: list of `neat.MorphLoc` or string
+            the locations. If list of locs, they will be stored under the name
+            `new_tree`
+        fake_soma: bool (default `False`)
+            if `True`, finds the common root of the set of locations and
+            uses that as the soma of the new tree. If `False`, the real soma
+            is used.
+        store_loc_inds: bool (default `False`)
+            store the index of each location in the `content` attribute of the
+            new node (under the key 'loc ind')
 
         Returns
         -------
             `neat.MorphTree`
                 The new tree.
         """
-        self._tryName(name)
+        ## TODO: make sure the stored variables are copied
+
+        if isinstance(loc_arg, str):
+            name = loc_arg
+            self._tryName(name)
+        else:
+            name = 'new tree'
+            self.storeLocs(loc_arg, name)
+
         nids = self.getNodeIndices(name)
         # create new tree
         new_tree = self.__class__()
@@ -2951,7 +2960,7 @@ class MorphTree(STree):
         for cnode in node.child_nodes:
             self._addCompNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
 
-    def __copy__(self, new_tree=None):
+    def __copy__(self, new_tree=None, skip_hidden_soma_nodes=False):
         """
         Fill the ``new_tree`` with it's corresponding nodes in the same
         structure as ``self``, and copies all node variables that both tree
@@ -2962,6 +2971,9 @@ class MorphTree(STree):
         new_tree: :class:`STree` or derived class (default is ``None``)
             the tree class in which the ``self`` is copied. If ``None``,
             returns a copy of ``self``.
+        skip_hidden_soma_nodes: bool
+            whether or not to copy hidden soma nodes with indices 2 and 3 (from
+            the three-point soma .swc convention)
 
         Returns
         -------
@@ -2969,6 +2981,8 @@ class MorphTree(STree):
         """
         if new_tree is None:
             new_tree = self.__class__()
+
+        self.skip_inds = [2,3] if skip_hidden_soma_nodes else []
 
         current_treetype = self.treetype
         self.treetype = 'original'
@@ -2986,4 +3000,14 @@ class MorphTree(STree):
         self.treetype = current_treetype
         new_tree.treetype = current_treetype
 
+        del self.skip_inds
+
         return new_tree
+
+    def _recurseCopy(self, pnode, new_tree):
+        for node in pnode.getChildNodes(skip_inds=self.skip_inds):
+            new_node = new_tree._createCorrespondingNode(node.index)
+            new_node = node.__copy__(new_node=new_node)
+            new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
+                                                                      skip_inds=[]))
+            self._recurseCopy(node, new_tree)

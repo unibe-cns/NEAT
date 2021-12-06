@@ -10,9 +10,11 @@ Author: W. Wybo
 import numpy as np
 
 import warnings
+import copy
 
 from . import morphtree
-from .morphtree import MorphNode, MorphTree
+from .morphtree import MorphNode, MorphTree, MorphLoc
+from .compartmenttree import CompartmentNode, CompartmentTree
 from ..channels import concmechs, ionchannels
 
 
@@ -192,9 +194,9 @@ class PhysNode(MorphNode):
         self.fitLeakCurrent(channel_storage, e_eq_target=v, tau_m_target=t_m)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super().__str__()
+        node_string = super(PhysNode, self).__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super().__str__()
+            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
         node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
                        ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
                             for cname, cpar in self.currents.items()]) + \
@@ -275,6 +277,11 @@ class PhysTree(MorphTree):
         """
         Set the equilibrium potentials throughout the tree
 
+        Note that this potential can a-priori have any value, it is simply the
+        expansion point around which the ion channels are evaluated. Compute
+        the true equilibrium point, i.e. the resting membrane potential in the
+        absence of external input, with `neat.CompartmentTree.calcEEq()`.
+
         Parameters
         ----------
         e_eq_distr: float, dict or :func:`float -> float`
@@ -283,6 +290,62 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             e = self._distr2Float(e_eq_distr, node, argname='`e_eq_distr`')
             node.setEEq(e)
+
+    def calcEEq(self, loc_arg=None):
+        """
+        Compute the equilibrium potential at the midpoint of each node.
+        This function computes the true equilibrium potential, i.e. the
+        potential for which$\dot{v} = 0$
+
+        Parameters
+        ----------
+        loc_arg: optional, list of locations or string (see documentation of
+                :func:`MorphTree._convertLocArgToLocs` for details)
+            The extra locations where to calculate the equilibirum potential
+
+        Returns
+        -------
+        e_eq_mp: dict
+            The equilibrium potentials at the midpoints of the nodes of
+            the pysiological tree (`self.tree`), keys are node indices of
+            `self.tree`.
+        e_eq_locs: np.array
+            The equilibrium potentials at the location specified by `loc_arg`.
+            Only if `loc_arg` is not ``None``.
+        """
+
+        # create finite difference compartment tree and compute the equilibrium
+        # potentials
+        fd_tree, fd_locs = self.createFiniteDifferenceTree(
+                           dx_max=15., add_midpoints=True, name='fd locs')
+        e_eq = fd_tree.calcEEq()
+
+        # select the values equilibrium potentials at the segment midpoints
+        e_eq_mp = {loc['node']: e
+                   for e, loc in zip(e_eq, fd_locs) \
+                   if loc['node'] == 1 or np.abs(loc['x'] - .5) < 1e-10}
+
+        if loc_arg is not None:
+            locs = self._convertLocArgToLocs(loc_arg)
+            # compute the equilibrium potentials at `locs`
+            e_eq_locs = []
+            locinds1 = self.getNearestLocinds(locs, 'fd locs', direction=1)
+            locinds2 = self.getNearestLocinds(locs, 'fd locs', direction=2)
+            for loc, locidx1, locidx2 in zip(locs, locinds1, locinds2):
+                d1 = self.pathLength(loc, fd_locs[locidx1])
+                d2 = self.pathLength(loc, fd_locs[locidx2])
+                dtot = d1 + d2
+                # equilibrium potential by interpolations between 2 nearest locations
+                if dtot < 1e-8:
+                    e_val = e_eq[locidx1]
+                else:
+                    e_val = (d1 / dtot) * e_eq[locidx1] + (d2 / dtot) * e_eq[locidx2]
+                e_eq_locs.append(e_val)
+
+            return e_eq_mp, np.array(e_eq_locs)
+
+        else:
+            return e_eq_mp
 
     @originalTreeModificationDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
@@ -488,71 +551,101 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    # @morphtree.originalTreetypeDecorator
-    # def _calcFdMatrix(self, dx=10.):
-    #     matdict = {}
-    #     locs = [{'node': 1, 'x': 0.}]
-    #     # set the first element
-    #     soma = self.tree.root
-    #     matdict[(0,0)] = 4.0*np.pi*soma.R**2 * soma.G
-    #     # recursion
-    #     cnodes = root.getChildNodes()[2:]
-    #     numel_l = [1]
-    #     for cnode in cnodes:
-    #         if not is_changenode(cnode):
-    #             cnode = find_previous_changenode(cnode)[0]
-    #         self._fdMatrixFromRoot(cnode, root, 0, numel_l, locs, matdict, dx=dx)
-    #     # create the matrix
-    #     FDmat = np.zeros((len(locs), len(locs)))
-    #     for ind in matdict:
-    #         FDmat[ind] = matdict[ind]
+    def createFiniteDifferenceTree(self,
+                    dx_max=15., add_midpoints=False, name='dont store'):
+        """
+        Create a ::class::`neat.CompartmentTree` whose parameters implement the
+        second order finite difference approximation for the morphology.
 
-    #     return FDmat, locs # caution, not the reduced locs yet
+        Parameters
+        ----------
+        dx_max: float
+            Maximum distance step between compartments (in [um]). By default,
+            each node of this tree will correspond to at least one compartment,
+            and thus one node in the comparment tree. If the length of a node
+            exceeds `dx_max`, there will be the smallest possible number of
+            equally spaced comparments so that the distance between them does
+            not exceed `dx_max`. Note that if the computational tree is active,
+            the computational nodes will be taken as a reference for placing
+            the compartment locations.
+        add_midpoints: bool
+            If ``True``, ensures that the midpoints of each node (i.e. the
+            locations for which $x = 0.5$) are also added as compartments. Note
+        name: string
+            If given, stores the compartment locations in this tree
 
-    # def _fdMatrixFromRoot(self, node, pnode, ibranch, numel_l, locs, matdict, dx=10.*1e-4):
-    #     numel = numel_l[0]
-    #     # distance between the two nodes and radius of the cylinder
-    #     radius *= node.R*1e-4; length *= node.L*1e-4
-    #     num = np.around(length/dx)
-    #     xvals = np.linspace(0.,1.,max(num+1,2))
-    #     dx_ = xvals[1]*length
-    #     # set the first element
-    #     matdict[(ibranch,numel)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(ibranch,ibranch)] += np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(numel,numel)] = 2.*np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(numel,ibranch)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #     locs.append({'node': node._index, 'x': xvals[1]})
-    #     # set the other elements
-    #     if len(xvals) > 2:
-    #         i = 0; j = 0
-    #         if len(xvals) > 3:
-    #             for x in xvals[2:-1]:
-    #                 j = i+1
-    #                 matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #                 matdict[(numel+j,numel+j)] = 2. * np.pi*radius**2 / (node.r_a*dx_)
-    #                                            # + 2.*np.pi*radius*dx_*node.G
-    #                 matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #                 locs.append({'node': node._index, 'x': x})
-    #                 i += 1
-    #         # set the last element
-    #         j = i+1
-    #         matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         locs.append({'node': node._index, 'x': 1.})
-    #     numel_l[0] = numel+len(xvals)-1
-    #     # assert numel_l[0] == len(locs)
-    #     # if node is leaf, then implement other bc
-    #     if len(xvals) > 2:
-    #         ibranch = numel+j
-    #     else:
-    #         ibranch = numel
-    #     # move on the further elements
-    #     for cnode in node.child_nodes:
-    #         self._fdMatrixFromRoot(cnode, node, ibranch, numel_l, locs, matdict, dx=dx)
+        Returns
+        -------
+        comptree: ::class::`neat.CompartmentTree`
+            The compartment tree
+        locs: list of ::class::`neat.MorphLoc`
+            The location corresponding to the compartments of the finite
+            difference approximation
+        """
+        set_as_comploc = self.treetype == 'computational'
 
+        # to ensure the midpoints of every segment will be added
+        mp = 2 if add_midpoints else 1
 
+        # create the list of compartment locations for FD approximation
+        locs = []
+        for node in self:
+            if self.isRoot(node):
+                locs.append(MorphLoc((node.index, .5), self))
 
+            else:
+                n_comp = mp * np.ceil(node.L / (mp*dx_max)).astype(int)
 
+                for cc in range(1,n_comp+1):
+                    new_loc = MorphLoc((node.index, cc/n_comp), self,
+                                       set_as_comploc=set_as_comploc)
+                    locs.append(new_loc)
 
+        fd_tree = self.createNewTree(locs)
 
+        # set physiology parameters in the new tree to match the `self`
+        fd_tree.channel_storage = copy.deepcopy(self.channel_storage)
+        for ii, (fd_node, loc) in enumerate(zip(fd_tree, locs)):
+            node = self[loc['node']]
+            fd_node.currents = copy.deepcopy(node.currents)
+
+        if name != 'dont store':
+            self.storeLocs(locs, name)
+
+        # create compartment tree
+        comptree = fd_tree.__copy__(new_tree=CompartmentTree(),
+                                    skip_hidden_soma_nodes=True)
+        # implement the finite difference values for conductances and capacitance
+        for ii, (compnode, fd_node) in enumerate(zip(comptree, fd_tree)):
+            isroot = fd_tree.isRoot(fd_node)
+            # set the location index in `locs` to which the compartment
+            # corresponds
+            compnode._loc_ind = ii
+
+            # unit conversion [um] -> [cm]
+            R_ = fd_node.R * 1e-4
+            L_ = fd_node.L * 1e-4
+
+            if isroot:
+                # for the soma we apply the spherical approximation
+                surf = 4. * np.pi * R_**2
+            else:
+                # for other nodes we apply the cylindrical approximation
+                surf = 2. * np.pi * R_ * L_ / 2.
+
+            # set finite difference values
+            compnode.ca = surf * fd_node.c_m
+            compnode.currents = {key: [surf * value[0], value[1]] \
+                                 for key, value in fd_node.currents.items()}
+            if not isroot:
+                compnode.g_c = np.pi * R_**2 / (fd_node.r_a * L_)
+
+                compnode.parent_node.ca += surf * fd_node.c_m
+
+                for key, value in fd_node.currents.items():
+                    compnode.parent_node.currents[key][0] += surf * value[0]
+
+        # reset the indices to the order they appear in a depth-first iteration
+        comptree.resetIndices()
+
+        return comptree, locs

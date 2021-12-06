@@ -74,9 +74,9 @@ class CompartmentNode(SNode):
     loc_ind = property(getLocInd, setLocInd)
 
     def __str__(self, with_parent=False, with_children=False):
-        node_string = super().__str__()
+        node_string = super(CompartmentNode, self).__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super().__str__()
+            node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
         node_string += ' --- (g_c = %.12f uS, '%self.g_c + \
                        ', '.join(['g_' + cname + ' = %.12f uS'%cpar[0] \
                             for cname, cpar in self.currents.items()]) + \
@@ -400,7 +400,12 @@ class CompartmentTree(STree):
 
     def setEEq(self, e_eq, indexing='locs'):
         """
-        Set the equilibrium potential at all nodes on the compartment tree
+        Set the equilibrium potential at all nodes on the compartment tree.
+
+        Note that this potential can a-priori have any value, it is simply the
+        expansion point around which the ion channels are evaluated. Compute
+        the true equilibrium point, i.e. the resting membrane potential in the
+        absence of external input, with `neat.CompartmentTree.calcEEq()`.
 
         Parameters
         ----------
@@ -423,6 +428,11 @@ class CompartmentTree(STree):
         """
         Get the equilibrium potentials at each node.
 
+        Note that this potential can a-priori have any value, it is simply the
+        expansion point around which the ion channels are evaluated. Compute
+        the true equilibrium point, i.e. the resting membrane potential in the
+        absence of external input, with `neat.CompartmentTree.calcEEq()`.
+
         Parameters
         ----------
         indexing: 'locs' or 'tree'
@@ -430,11 +440,114 @@ class CompartmentTree(STree):
             in the order of the list of locations to which the tree is fitted.
             If 'tree', returns the array in the order in which nodes appear
             during iteration
+
+        Returns
+        -------
+        np.array
+            The equilibrium potentials
         """
         e_eq = np.array([node.e_eq for node in self])
         if indexing == 'locs':
             e_eq = self._permuteToLocs(e_eq)
         return e_eq
+
+    def calcEEq(self, indexing='locs'):
+        """
+        Compute the equilibrium potential at each node. This function computes
+        the true equilibrium potential at each node, i.e. the potential for which
+        $\dot{v} = 0$
+
+        Parameters
+        ----------
+        indexing: 'locs' or 'tree'
+            The ordering of the returned array. If 'locs', returns the array
+            in the order of the list of locations to which the tree is fitted.
+            If 'tree', returns the array in the order in which nodes appear
+            during iteration
+
+        Returns
+        -------
+        np.array
+            The equilibrium potentials
+        """
+        g_l = np.array([node.currents['L'][0] for node in self])
+        e_l = np.array([node.currents['L'][1] for node in self])
+
+        g_chans = {cname: np.array([node.currents[cname][0] \
+                          if cname in node.currents else 0.
+                          for node in self]) \
+                          for cname in self.channel_storage}
+        e_chans = {cname: np.array([node.currents[cname][1] \
+                          if cname in node.currents else 0.
+                          for node in self]) \
+                          for cname in self.channel_storage}
+
+        g_mat = self.calcSystemMatrix(channel_names=['L'],
+                                      with_ca=False, indexing='tree')
+
+        # define auxiliary fucntions `func` and `jac` for newton iteration
+        def func(v):
+            f_val = g_mat @ v - g_l * e_l
+            for cname in self.channel_storage:
+                f_val += g_chans[cname] * \
+                         self.channel_storage[cname].computePOpen(v) * \
+                         (v - e_chans[cname])
+
+            return -f_val
+
+        def jac(v):
+            j_val = copy.deepcopy(g_mat)
+            for cname in self.channel_storage:
+                j_val += np.diag(g_chans[cname] * \
+                                 self.channel_storage[cname].computePOpen(v))
+
+            return -j_val
+
+        # solve for the equilibrium potential
+        e_eq = self._solveNewton(func, jac)
+        if indexing == 'locs':
+            e_eq = self._permuteToLocs(e_eq)
+        return e_eq
+
+    def _solveNewton(self, func, jac, v_0=None, v_eps=.01, n_max=50, n_iter=0):
+        # initial voltage vector
+        if v_0 is None:
+            v_0 = np.array([node.e_eq for node in self])
+        # compute next iteration
+        v_new = v_0 - np.linalg.solve(jac(v_0), func(v_0))
+
+        # check convergence
+        if np.linalg.norm(v_new - v_0) > v_eps:
+            if n_iter < n_max:
+                # no convergence yet, move on to next step
+                v_new = self._solveNewton(func, jac,
+                                          v_0=v_new, n_iter=n_iter+1,
+                                          v_eps=v_eps, n_max=n_max)
+            else:
+                # Newton solver failed to converge, try integration with
+                # NEURON
+                return self._integrate()
+
+        return v_new
+
+    def _integrate(self, t_max=500., dt=0.1, factor_lambda=10.):
+        try:
+            from ..tools.simtools.neuron import neuronmodel as neurm
+        except ModuleNotFoundError as e:
+            e.args = ("Newton solver for 'e_eq' calculation failed to converge, " + \
+                      "tried to use NEURON, but NEURON is not available",
+                      *e.args)
+            raise
+
+        sim_tree = neurm.createReducedNeuronModel(self)
+        # compute equilibrium potentials
+        sim_tree.initModel(dt=dt, factor_lambda=factor_lambda)
+        sim_tree.storeLocs([(node.index, 0.5) for node in self], 'rec locs', warn=False)
+        res = sim_tree.run(t_max)
+        sim_tree.deleteModel()
+        v_eq = np.array([v_m[-1] for v_m in res['v_m']])
+
+        return v_eq
 
     def setExpansionPoints(self, expansion_points):
         """
