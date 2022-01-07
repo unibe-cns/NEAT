@@ -204,7 +204,7 @@ class FitTreeGF(GreensTree):
                 # adapt expansion point arrays for broadcasting
                 sv = {svar: val[None,:] for svar, val in sv.items()}
                 # for specifying the holding potentials in file name
-                e_h_string = '^'.join(list(['%.1f'%val for val in sv['v'][0]]))
+                e_h_string = '^'.join(list([f'{val:.1f}' for val in sv['v'][0]]))
 
                 # set the expansion point
                 for node in self:
