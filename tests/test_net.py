@@ -155,8 +155,8 @@ class TestNET():
 
 if __name__ == '__main__':
     tnet = TestNET()
-    # tnet.testNodeFunctionalities()
+    tnet.testNodeFunctionalities()
     tnet.testKernels()
-    # tnet.testBasic()
-    # tnet.testCompartmentalization()
-    # tnet.testPlotting(pshow=1)
+    tnet.testBasic()
+    tnet.testCompartmentalization()
+    tnet.testPlotting(pshow=1)

@@ -243,6 +243,6 @@ class TestSTree():
 
 if __name__ == '__main__':
     tst = TestSTree()
-    # tst.testPaths()
-    # tst.testBifurcationNodes()
+    tst.testPaths()
+    tst.testBifurcationNodes()
     tst.testDegreeOrderDepthNode()
