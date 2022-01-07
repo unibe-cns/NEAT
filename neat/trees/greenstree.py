@@ -134,11 +134,9 @@ class GreensNode(PhysNode):
             for cnode in self.child_nodes:
                 g_aux = g_aux +  1. / cnode._collapseBranchToRoot()
 
-        with np.errstate(divide='ignore'):
-            # if the current node is a leaf node and with self.g_shunt = 0, then
-            # g_aux is zero and we have a division by 0. In that case
-            # self.z_distal is infinite, thus the numpy-implemented division by
-            # zero has the intended consequence, and we can ignore the warning
+            # note that a division by zero error is not possible here, since the
+            # only case where this occurs would be a node with no child nodes,
+            # which is caught in the if statement
             self.z_distal = 1. / g_aux
 
     def _setImpedanceProximal(self):
