@@ -184,7 +184,7 @@ class FitTreeGF(GreensTree):
         """
         cname_string = '^'.join(list(self.channel_storage.keys()))
         if pprint:
-            print('>>> evaluating impedances with %s'%cname_string)
+            print(f'>>> evaluating impedances with {cname_string}')
 
         if many_freqs:
             freqs = ke.create_logspace_freqarray()
