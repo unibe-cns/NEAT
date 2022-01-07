@@ -50,6 +50,23 @@ def consecutive(inds):
     return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
 
 
+def _statevar_is_activating(f_statevar):
+    """
+    check whether a statevar is activating or inactivating
+
+    Parameters
+    ----------
+    f_statevar: callable
+        the activation function of the state variable
+    """
+    # test voltage values to check whether state variable is activating or
+    # inactivating
+    v_test = np.array([-43.22, -32.22])
+
+    sv_test = f_statevar(v_test)
+    return sv_test[0] < sv_test[1]
+
+
 def getExpansionPoints(e_hs, channel, only_e_h=False):
     """
     Returns a list of expansion points around which to compute the impedance
@@ -80,10 +97,6 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
         sv_hs = channel.computeVarinf(e_hs)
         sv_hs['v'] = e_hs
     else:
-        # test voltage values to check whether state variable is activating or
-        # inactivating
-        v_test = np.array([-43.22, -32.22])
-
         # create different combinations of combinations of holding potentials
         e_hs_aux_act   = list(e_hs)
         e_hs_aux_inact = list(e_hs)
@@ -97,8 +110,7 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
         sv_hs = SPDict(v=e_hs_aux_act)
         for svar, f_inf in channel.f_varinf.items():
             # check if variable is activation
-            sv_test = f_inf(v_test)
-            if sv_test[0] < sv_test[1]: # variable is activation
+            if _statevar_is_activating(f_inf): # variable is activation
                 sv_hs[str(svar)] = f_inf(e_hs_aux_act)
             else: # variable is inactivation
                 sv_hs[str(svar)] = f_inf(e_hs_aux_inact)
