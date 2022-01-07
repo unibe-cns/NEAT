@@ -184,7 +184,7 @@ class FitTreeGF(GreensTree):
         """
         cname_string = '^'.join(list(self.channel_storage.keys()))
         if pprint:
-            print('>>> evaluating impedances with %s'%cname_string)
+            print(f'>>> evaluating impedances with {cname_string}')
 
         if many_freqs:
             freqs = ke.create_logspace_freqarray()
@@ -204,7 +204,7 @@ class FitTreeGF(GreensTree):
                 # adapt expansion point arrays for broadcasting
                 sv = {svar: val[None,:] for svar, val in sv.items()}
                 # for specifying the holding potentials in file name
-                e_h_string = '^'.join(list(['%.1f'%val for val in sv['v'][0]]))
+                e_h_string = '^'.join(list([f'{val:.1f}' for val in sv['v'][0]]))
 
                 # set the expansion point
                 for node in self:
