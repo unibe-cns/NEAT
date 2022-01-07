@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <math.h>
 #include <time.h>
+#include <typeinfo>
 
 #include "Synapses.h"
 #include "Ionchannels.h"
