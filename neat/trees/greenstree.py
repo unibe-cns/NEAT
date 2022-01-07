@@ -217,6 +217,10 @@ class SomaGreensNode(GreensNode):
     def _setImpedanceArrays(self):
         val = 1. / self.z_soma
         for node in self.child_nodes:
+            # make sure that the new array val has a shape and datatype that
+            # is compatible with what comes from node._collapseBranchToRoot()
+            # >>> val += 1. / node._collapseBranchToRoot()
+            # would give an error instead
             val = val + 1. / node._collapseBranchToRoot()
         self.z_in = 1. / val
 
