@@ -688,15 +688,15 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    # tmt.testPlotting(pshow=True)
-    # tmt.testCompTree0()
-    # tmt.testInputArgConversion()
-    # tmt.testLocFunctionality()
-    # tmt.testLocStorageRetrievalLookup()
-    # tmt.testNearestNeighbours()
-    # tmt.testCompTree()
+    tmt.testPlotting(pshow=True)
+    tmt.testCompTree0()
+    tmt.testInputArgConversion()
+    tmt.testLocFunctionality()
+    tmt.testLocStorageRetrievalLookup()
+    tmt.testNearestNeighbours()
+    tmt.testCompTree()
 
     tmt.testMultiCylinderSoma()
-    # tmt.testThreePointSoma()
-    # tmt.testWrongSoma()
+    tmt.testThreePointSoma()
+    tmt.testWrongSoma()
 

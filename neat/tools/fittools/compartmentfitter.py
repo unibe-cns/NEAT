@@ -14,6 +14,7 @@ from ...trees.phystree import PhysTree
 from ...trees.greenstree import GreensTree
 from ...trees.sovtree import SOVTree
 from ...trees.netree import NET, NETNode, Kernel
+from ...channels.ionchannels import SPDict
 
 from ...tools import kernelextraction as ke
 
@@ -49,6 +50,23 @@ def consecutive(inds):
     return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
 
 
+def _statevar_is_activating(f_statevar):
+    """
+    check whether a statevar is activating or inactivating
+
+    Parameters
+    ----------
+    f_statevar: callable
+        the activation function of the state variable
+    """
+    # test voltage values to check whether state variable is activating or
+    # inactivating
+    v_test = np.array([-43.22, -32.22])
+
+    sv_test = f_statevar(v_test)
+    return sv_test[0] < sv_test[1]
+
+
 def getExpansionPoints(e_hs, channel, only_e_h=False):
     """
     Returns a list of expansion points around which to compute the impedance
@@ -65,46 +83,39 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
     channel: `neat.channels.ionchannels.IonChannel`
         The ion channels
     only_e_h: bool
-        If True, othe entries in ``sv_hs`` are only at ``e_hs``
+        Only applicable for channels with at least two state variables.
+        If True, returned expansion points are always for state variable
+        combination evaluated at the same holding potential. Otherwise,
+        state variable activations are evaluated at different holding potentials.
 
     Returns
     -------
-    sv_hs: list of dict
-        Each entry is a state variable expansion point
-    e_hs: list of float
-        The holding potentials corresponding to each entry in ``sv_hs``
+    sv_hs: dict
+        the expansion points at every holding potential
     """
-    e_hs = list(e_hs)
     if len(channel.statevars) == 1 or only_e_h:
-        sv_hs = [channel.computeVarinf(e_h) for e_h in e_hs]
-    elif len(channel.statevars) == 2:
-        # evaluate at the holding potentials
-        sv_aux = [channel.computeVarinf(e_h) for e_h in e_hs]
-
-        # check which variable is activation
-        sv = channel.computeVarinf(np.array([-43.22, -32.22]))
-        sind_act = None
-        for ii, svar in enumerate(channel.ordered_statevars):
-            if sv[svar][1] > sv[svar][0]:
-                sind_act = 'ii' if ii == 0 else 'jj'
-
-        # evaluate at combinations of holding potentials
-        sv_hs_extra, e_hs_extra = [], []
-        sv_o = channel.ordered_statevars
-        for ii, sv_1 in enumerate(sv_aux):
-            for jj, sv_2 in enumerate(sv_aux):
-                sv_hs_extra.append({str(sv_o[0]): sv_1[sv_o[0]],
-                                    str(sv_o[1]): sv_2[sv_o[1]]})
-                # follow holding potential of activation state variable
-                e_hs_extra.append(eval('e_hs[%s]'%sind_act))
-
-        sv_hs = sv_aux + sv_hs_extra
-        e_hs = e_hs + e_hs_extra
+        sv_hs = channel.computeVarinf(e_hs)
+        sv_hs['v'] = e_hs
     else:
-        raise Exception('Method only implemented for channels with two ' + \
-                        'or less state variables')
+        # create different combinations of combinations of holding potentials
+        e_hs_aux_act   = list(e_hs)
+        e_hs_aux_inact = list(e_hs)
+        for ii, e_h1 in enumerate(e_hs):
+            for jj, e_h2 in enumerate(e_hs):
+                e_hs_aux_act.append(e_h1)
+                e_hs_aux_inact.append(e_h2)
+        e_hs_aux_act   = np.array(e_hs_aux_act)
+        e_hs_aux_inact = np.array(e_hs_aux_inact)
 
-    return sv_hs, e_hs
+        sv_hs = SPDict(v=e_hs_aux_act)
+        for svar, f_inf in channel.f_varinf.items():
+            # check if variable is activation
+            if _statevar_is_activating(f_inf): # variable is activation
+                sv_hs[str(svar)] = f_inf(e_hs_aux_act)
+            else: # variable is inactivation
+                sv_hs[str(svar)] = f_inf(e_hs_aux_inact)
+
+    return sv_hs
 
 
 def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
@@ -148,23 +159,7 @@ class FitTreeGF(GreensTree):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setName('dont save', '')
-
-    def setExpansionPointsForFit(self, sv_h, e_h):
-        """
-        Set the holding potentials and expansion points for the fit
-
-        Parameters
-        ----------
-        sv_hs: dict of {string: np.ndarray}
-            Keys are the channel names and values are numpy arrays that contain
-            the expansion point for each ion channel
-        e_h: float
-            the holding potential
-        """
-        for node in self:
-            node.setEEq(e_h)
-            for c_name, sv in sv_h.items():
-                node.setExpansionPoint(c_name, statevar=sv)
+        self.e_h_string = ''
 
     def setName(self, name, path):
         """
@@ -181,12 +176,15 @@ class FitTreeGF(GreensTree):
         self.name = name
         self.path = path
 
-    def setImpedancesInTree(self, many_freqs=False, recompute=False, pprint=False):
+    def setImpedancesInTree(self, sv_h=None, many_freqs=False, recompute=False, pprint=False):
         """
         Sets the impedances in the tree.
 
         Parameters
         ----------
+        sv_hs: dict of {string: np.ndarray}
+            Keys are the channel names and values are numpy arrays that contain
+            the expansion point for each ion channel
         many_freqs: bool (optional, default is ``False``)
             If ``True``, evaluates the impedances over an array suitable to
             apply the inverse Fourrier transform to obtain temporal kernel
@@ -196,8 +194,9 @@ class FitTreeGF(GreensTree):
         pprint: bool (optional, default is ``False``)
             Print info
         """
+        cname_string = '^'.join(list(self.channel_storage.keys()))
         if pprint:
-            print('>>> evaluating impedances with ' + str(list(self.channel_storage.keys())))
+            print(f'>>> evaluating impedances with {cname_string}')
 
         if many_freqs:
             freqs = ke.create_logspace_freqarray()
@@ -206,21 +205,26 @@ class FitTreeGF(GreensTree):
             freqs = np.array([0.])
             suffix = ''
 
-        e_h_string = '_eh=%.2f'%(self.root.e_eq)
+        if sv_h is not None:
+            # check if exansion point for all channels is defined
+            assert sv_h.keys() == self.channel_storage.keys()
 
-        # create suffix for state variable expansion point if it is specified
-        cname_string = ''
-        for c_name, channel in self.channel_storage.items():
-            cname_string += '_' + c_name + '_'
-            try:
-                sv_h = self.root.expansion_points[c_name]
-                for svar in channel.ordered_statevars:
-                    sv = sv_h[str(svar)]
-                    cname_string += str(svar) + '=%.8f'%sv
-            except (KeyError, TypeError):
-                pass
+            # adapt frequency array for broadcasting
+            freqs = freqs[:, None]
 
-        file_name = 'GF_' + suffix + self.name + e_h_string + cname_string + '.p'
+            for c_name, sv in sv_h.items():
+                # adapt expansion point arrays for broadcasting
+                sv = {svar: val[None,:] for svar, val in sv.items()}
+                # for specifying the holding potentials in file name
+                e_h_string = '^'.join(list([f'{val:.1f}' for val in sv['v'][0]]))
+
+                # set the expansion point
+                for node in self:
+                    node.setExpansionPoint(c_name, statevar=sv)
+        else:
+            e_h_string = ''
+
+        file_name = '_'.join(['GF', suffix, self.name, e_h_string, cname_string]) + '.p'
 
         # check if impedances already exist
         try:
@@ -484,61 +488,41 @@ class CompartmentFitter(object):
         locs = self.tree.getLocs('fit locs')
         # find the expansion point parameters for the channel
         channel = self.tree.channel_storage[channel_name]
-        sv_hs, e_hs = getExpansionPoints(self.e_hs, channel)
-        n_tree = len(e_hs)
+        sv_h = getExpansionPoints(self.e_hs, channel)
 
-        # create the trees with only a single channel
+        # create the trees with only a single channel and multiple expansion points
         fit_tree = self.createTreeGF([channel_name])
         fit_tree.setName(self.name, self.path)
-        fit_trees = []
-        for sv_h, e_h in zip(sv_hs, e_hs):
-            ftree = fit_tree.__copy__(new_tree=FitTreeGF())
-            ftree.setExpansionPointsForFit({channel_name: sv_h}, e_h)
-            fit_trees.append(ftree)
 
-        # compute the impedance matrices for different activation levels
-        args_list = [fit_trees,
-                     [locs for _ in range(n_tree)],
-                     [recompute for _ in range(n_tree)],
-                     [pprint for _ in range(n_tree)]]
-        # compute the impedance matrices
-        if parallel:
-            if max_workers is None:
-                raise ValueError('need to provide number of workers if parallel is True')
-            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-                fit_mats = list(pool.map(self._calcFitMatrices, *args_list))
-        else:
-            fit_mats = [self._calcFitMatrices(*args) for args in zip(*args_list)]
+        # set the impedances in the tree
+        fit_tree.setImpedancesInTree(sv_h={channel_name: sv_h},
+                                     recompute=recompute, pprint=pprint)
+        # compute the impedance matrix for this activation level
+        z_mats = fit_tree.calcImpedanceMatrix(locs)
+
+        # compute the fit matrices for all holding potentials
+        fit_mats = []
+        for ii, e_h in enumerate(sv_h['v']):
+            sv = SPDict({str(svar): sv_h[svar][ii] for svar in channel.statevars if str(svar) != 'v'})
+
+            # compute the fit matrices
+            m_f, v_t = self.ctree.computeGSingleChanFromImpedance(
+                            channel_name, z_mats[:,ii,:,:], e_h, self.freqs,
+                            sv=sv, other_channel_names=['L'],
+                            all_channel_names=self.channel_names,
+                            action='return')
+
+            # compute open probability to weigh fit matrices
+            po_h = channel.computePOpen(e_h, **sv)
+            w_f = 1. / po_h
+
+            fit_mats.append([m_f, v_t, w_f])
 
         # fit the model for this channel
         w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         for _, _, w_f in fit_mats: w_f /= w_norm
 
         return fit_mats
-
-    def _calcFitMatrices(self, fit_tree, locs, recompute, pprint):
-        """
-        Compute the matrices needed to fit the channel
-        """
-        e_h = fit_tree.root.e_eq
-        c_name = list(fit_tree.channel_storage.keys())[0]
-        sv_h = fit_tree.root.expansion_points[c_name]
-        freqs = self.freqs
-        # set the impedances in the tree
-        fit_tree.setImpedancesInTree(recompute=recompute, pprint=pprint)
-        # compute the impedance matrix for this acitvation level
-        z_mat = fit_tree.calcImpedanceMatrix(locs)
-
-        # compute the fit matrices
-        m_f, v_t = self.ctree.computeGSingleChanFromImpedance(c_name, z_mat, e_h, freqs,
-                        sv=sv_h, other_channel_names=['L'],
-                        all_channel_names=self.channel_names, action='return')
-        # compute open probability to weigh fit matrices
-        channel = self.tree.channel_storage[c_name]
-        po_h = channel.computePOpen(e_h, **sv_h)
-        w_f = 1. / po_h
-
-        return m_f, v_t, w_f
 
     def fitChannels(self, recompute=False, pprint=False, parallel=True):
         """
@@ -564,9 +548,6 @@ class CompartmentFitter(object):
                         ]
             if parallel:
                 max_workers = min(n_arg, cpu_count())
-                # split cores evenly over inner workers
-                inner_max_workers = cpu_count() // max_workers
-                args_list += [[inner_max_workers for _ in range(n_arg)]]
                 with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
                     fit_mats_ = list(pool.map(self.evalChannel, *args_list))
             else:
@@ -579,9 +560,6 @@ class CompartmentFitter(object):
                                              channel_names=self.channel_names)
             # run the fit
             self.ctree.runFit()
-
-        # chan_eval = ChannelEvaluator()
-        # chan_eval.evaluate(self, recompute=recompute, pprint=pprint, parallel=parallel)
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
