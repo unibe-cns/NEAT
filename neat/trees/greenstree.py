@@ -120,6 +120,12 @@ class GreensNode(PhysNode):
         Set the boundary condition at the distal end of the segment
         """
         if len(self.child_nodes) == 0:
+            # note that instantiating z_aux as a float, multiplying with np.infty,
+            # and then converting it as a complex results in entries
+            # inf + 0.j -- which is desired
+            # where instatiating z_aux as complex, and then multiplying with
+            # np.infty, would result in
+            # inf + nanj -- which is not desired
             z_aux = np.ones(self.z_m.shape, dtype=float)
 
             if self.g_shunt > 1e-10:
@@ -217,11 +223,7 @@ class SomaGreensNode(GreensNode):
     def _setImpedanceArrays(self):
         val = 1. / self.z_soma
         for node in self.child_nodes:
-            # make sure that the new array val has a shape and datatype that
-            # is compatible with what comes from node._collapseBranchToRoot()
-            # >>> val += 1. / node._collapseBranchToRoot()
-            # would give an error instead
-            val = val + 1. / node._collapseBranchToRoot()
+            val += 1. / node._collapseBranchToRoot()
         self.z_in = 1. / val
 
     def _calcZF(self, x1, x2):
