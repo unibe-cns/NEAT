@@ -2,6 +2,7 @@ import os
 import time
 import copy
 import warnings
+import platform
 
 import numpy as np
 
@@ -56,7 +57,7 @@ except ModuleNotFoundError:
 
 h.load_file("stdlib.hoc") # contains the lambda rule
 h.nrn_load_dll(os.path.join(os.path.dirname(__file__),
-                            'x86_64/.libs/libnrnmech.so')) # load all mechanisms
+                            platform.machine() + '/.libs/libnrnmech.so')) # load all mechanisms
 
 
 class MechName(object):
