@@ -108,12 +108,12 @@ cdef class NETSim:
                 # initialize the C++ object
                 self.net_ptr = new NETSimulator(self.n_loc, &v_eq_arr[0])
                 self.n_syn = np.zeros(self.n_loc, dtype=int)
-            cnode_inds = np.array([cnode.index for cnode in node.child_nodes], dtype=int)
-            if len(cnode_inds) == 0: cnode_inds = np.array([-1])
-            locinds = np.array(list(node.loc_inds)) \
-                                if len(node.loc_inds) > 0 else np.array([-1])
-            newlocinds = np.array(list(node.newloc_inds)) \
-                                if len(node.newloc_inds) > 0 else np.array([-1])
+            cnode_inds = np.array([cnode.index for cnode in node.child_nodes], dtype=np.int64)
+            if len(cnode_inds) == 0: cnode_inds = np.array([-1], dtype=np.int64)
+            locinds = np.array(list(node.loc_inds), dtype=np.int64) \
+                                if len(node.loc_inds) > 0 else np.array([-1], dtype=np.int64)
+            newlocinds = np.array(list(node.newloc_inds), dtype=np.int64) \
+                                if len(node.newloc_inds) > 0 else np.array([-1], dtype=np.int64)
             (alphas, gammas) = (-node.z_kernel.a, node.z_kernel.c)
             alphas = alphas.astype(complex); gammas = gammas.astype(complex)
             self._addNode(node.index, pnode_ind,
