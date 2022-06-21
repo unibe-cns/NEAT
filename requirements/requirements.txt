@@ -5,3 +5,4 @@ scipy>=1.8.1
 sympy>=1.10.1
 pytest>=6.2.0
 scikit-learn>=1.1.1
+neuron>=8.1.0
