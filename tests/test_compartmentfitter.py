@@ -12,10 +12,17 @@ from neat import PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
 from neat.channels.channelcollection import channelcollection
 import neat.tools.fittools.compartmentfitter as compartmentfitter
+from neat import loadNeuron
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__))), 'test_morphologies')
 
+# load the default neuron model
+try:
+    loadNeuron("default")
+except RuntimeError as e:
+    # the neuron model is already loaded in hoc
+    pass
 
 class TestCompartmentFitter():
     def loadTTree(self):
@@ -100,48 +107,6 @@ class TestCompartmentFitter():
         # input paradigm 1
         cm.setCTree(fit_locs1, extend_w_bifurc=True)
 
-
-        # fl1_a = cm.tree.getLocs('fit locs')
-        # with pytest.warns(UserWarning):
-        #     cm.setCTree(fit_locs1, extend_w_bifurc=False)
-        #     fl1_b = cm.tree.getLocs('fit locs')
-        # assert len(fl1_a) == len(fl1_b)
-        # for fla, flb in zip(fl1_a, fl1_b): assert fla == flb
-        # # input paradigm 2
-        # cm.tree.storeLocs(fit_locs1, 'fl1')
-        # cm.setCTree('fl1', extend_w_bifurc=True)
-        # fl1_a = cm.tree.getLocs('fit locs')
-        # assert len(fl1_a) == len(fl1_b)
-        # for fla, flb in zip(fl1_a, fl1_b): assert fla == flb
-        # # test tree structure
-        # assert len(cm.ctree) == 3
-        # for cn in cm.ctree: assert len(cn.child_nodes) <= 1
-
-        # # test fit_locs2, a bifurcation should be added
-        # with pytest.warns(UserWarning):
-        #     cm.setCTree(fit_locs2, extend_w_bifurc=False)
-        # fl2_b = cm.tree.getLocs('fit locs')
-        # cm.setCTree(fit_locs2, extend_w_bifurc=True)
-        # fl2_a = cm.tree.getLocs('fit locs')
-        # assert len(fl2_a) == len(fl2_b) + 1
-        # for fla, flb in zip(fl2_a, fl2_b): assert fla == flb
-        # assert fl2_a[-1] == (4,1.)
-        # # test tree structure
-        # assert len(cm.ctree) == 5
-        # for cn in cm.ctree:
-        #     assert len(cn.child_nodes) <= 1 if cn.loc_ind != 4 else \
-        #            len(cn.child_nodes) == 2
-
-        # # test fit_locs2, no bifurcation should be added as it is already present
-        # cm.setCTree(fit_locs3, extend_w_bifurc=True)
-        # fl3 = cm.tree.getLocs('fit locs')
-        # for fl_, fl3 in zip(fit_locs3, fl3): assert fl_ == fl3
-        # # test tree structure
-        # assert len(cm.ctree) == 4
-        # for cn in cm.ctree:
-        #     assert len(cn.child_nodes) <= 1 if cn.loc_ind != 1 else \
-        #            len(cn.child_nodes) == 2
-
     def _checkChannels(self, tree, channel_names):
         assert isinstance(tree, compartmentfitter.FitTreeGF)
         assert set(tree.channel_storage.keys()) == set(channel_names)
@@ -206,9 +171,9 @@ class TestCompartmentFitter():
         for e_eq1 in e_eqs:
             sv1 = na_chan.computeVarinf(e_eq1)
             for e_eq2 in e_eqs:
-                e_eqs_.append(e_eq2)
+                e_eqs_.append(e_eq1)
                 sv2 = na_chan.computeVarinf(e_eq2)
-                svs.append({'m': sv2['m'], 'h': sv1['h']})
+                svs.append({'m': sv1['m'], 'h': sv2['h']})
 
         # compute sodium impedance matrices
         z_mats_na = []
@@ -257,6 +222,8 @@ class TestCompartmentFitter():
         fit_mats_cm_na = cm.evalChannel('Na_Ta', parallel=False)
         fit_mats_cm_k = cm.evalChannel('Kv3_1', parallel=False)
         fit_mats_control_na, fit_mats_control_k = self.reduceExplicit()
+
+
         # test whether potassium fit matrices agree
         for fm_cm, fm_control in zip(fit_mats_cm_k, fit_mats_control_k):
             assert np.allclose(np.sum(fm_cm[0]), fm_control[0][0,0]) # feature matrices
@@ -612,16 +579,37 @@ class TestCompartmentFitter():
             print('Parallel: %.8f s'%(t1-t0))
 
 
+def test_expansionpoints():
+    kv3_1 = channelcollection.Kv3_1()
+    na_ta = channelcollection.Na_Ta()
 
+    e_hs = np.array([-75., -15.])
+
+    # test expansion point for channel with 1 state variable
+    sv_hs = compartmentfitter.getExpansionPoints(e_hs, kv3_1)
+    for svar, f_inf in kv3_1.f_varinf.items():
+        assert np.allclose(f_inf(e_hs), sv_hs[svar])
+    assert np.allclose(sv_hs['v'], e_hs)
+
+    # test expansion point for channel with 2 state variables
+    sv_hs = compartmentfitter.getExpansionPoints(e_hs, na_ta)
+    v_act = np.array([-75.,-15.,-75.,-75.,-15.,-15.])
+    v_inact = np.array([-75.,-15.,-75.,-15.,-75.,-15.])
+
+    assert np.allclose(na_ta.f_varinf['m'](v_act), sv_hs['m'])
+    assert np.allclose(na_ta.f_varinf['h'](v_inact), sv_hs['h'])
+    assert not np.allclose(na_ta.f_varinf['h'](v_act), sv_hs['h'])
+    assert np.allclose(v_act, sv_hs['v'])
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    # tcf.testTreeStructure()
-    # tcf.testCreateTreeGF()
-    # tcf.testChannelFitMats()
+    tcf.testTreeStructure()
+    tcf.testCreateTreeGF()
+    tcf.testChannelFitMats()
     tcf.testPassiveFit()
-    # tcf.testRecalcImpedanceMatrix()
-    # tcf.testSynRescale()
-    # tcf.testFitModel()
-    # tcf.testPickling()
-    # tcf.testParallel(w_benchmark=True)
+    tcf.testRecalcImpedanceMatrix()
+    tcf.testSynRescale()
+    tcf.testFitModel()
+    tcf.testPickling()
+    tcf.testParallel(w_benchmark=True)
+    test_expansionpoints()

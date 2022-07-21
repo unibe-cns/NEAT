@@ -10,7 +10,7 @@ import itertools
 
 from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
-from neat import NeuronSimTree, createReducedNeuronModel
+from neat import NeuronSimTree, createReducedNeuronModel, loadNeuron
 import neat.tools.kernelextraction as ke
 from neat.channels.channelcollection import channelcollection
 
@@ -21,6 +21,14 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
                 'ForestGreen',  'DarkOliveGreen', 'DarkGoldenRod',
                 'DarkOrange', 'Coral', 'Red', 'Sienna', 'Black', 'DarkGrey']
+
+
+# load the default neuron model
+try:
+    loadNeuron("default")
+except RuntimeError as e:
+    # the neuron model is already loaded in hoc
+    pass
 
 
 class TestNeuron():
@@ -605,11 +613,11 @@ class TestReducedNeuron():
 if __name__ == '__main__':
     tn = TestNeuron()
     tn.testPassive(pplot=True)
-    # tn.testActive()
-    # tn.testChannelRecording()
+    tn.testActive()
+    tn.testChannelRecording()
 
-    # trn = TestReducedNeuron()
-    # trn.testGeometry1()
-    # trn.testImpedanceProperties1()
-    # trn.testGeometry2()
-    # trn.testImpedanceProperties2()
+    trn = TestReducedNeuron()
+    trn.testGeometry1()
+    trn.testImpedanceProperties1()
+    trn.testGeometry2()
+    trn.testImpedanceProperties2()

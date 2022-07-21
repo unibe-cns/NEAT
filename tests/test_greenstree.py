@@ -70,8 +70,11 @@ class TestGreensTree():
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
         self.tree.setImpedance(ft.s)
+
+
         # sets of location
         locs_0 = [(6, .5), (8, .5)]
+        zf = self.tree.calcZF(*locs_0)
         locs_1 = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         locs_2 = [(7, .5), (8, .5)]
         self.tree.storeLocs(locs_0, '0')

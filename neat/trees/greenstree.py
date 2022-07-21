@@ -85,6 +85,7 @@ class GreensNode(PhysNode):
         """
         if use_conc:
             g_m_ions = {conc: np.zeros_like(freqs) for conc in list(self.concmechs.keys())}
+
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
         # loop over channels that do not read concentrations
         for channel_name in set(self.currents.keys()) - set('L'):
@@ -92,31 +93,17 @@ class GreensNode(PhysNode):
             if g > 1e-10:
                 # create the ionchannel object
                 channel = channel_storage[channel_name]
-                if len(channel.conc) == 0:
-                    # check if needs to be computed around expansion point
-                    sv = self.getExpansionPoint(channel_name)
-                    # add channel contribution to membrane impedance
-                    g_ = g * channel.computeLinSum(self.e_eq, freqs, e, **sv)
-                    g_m_aux -= g_
-                    if use_conc:
-                        g_m_ions[channel.ion] += g_
-                        # g_m_ions[channel.ion] += g * channel.computePOpen(self.e_eq, statevars=sv)
-        # loop over channels that do read concentrations
-        for channel_name in set(self.currents.keys()) - set('L'):
-            g, e = self.currents[channel_name]
-            if g > 1e-10:
-                # create the ionchannel object
-                channel = channel_storage[channel_name]
-                if len(channel.conc) > 0:
-                    # check if needs to be computed around expansion point
-                    sv = self.getExpansionPoint(channel_name)
-                    # add channel contribution to membrane impedance
-                    g_m_aux -= g * channel.computeLinSum(self.e_eq, freqs, e, **sv)
-                    if use_conc:
-                        for ion in channel.conc:
-                            g_m_aux -= g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
-                                       self.concmechs[ion].computeLinear(freqs) * \
-                                       g_m_ions[ion]
+                # check if needs to be computed around expansion point
+                sv = self.getExpansionPoint(channel_name).copy()
+                v = sv.pop('v', self.e_eq)
+                # add channel contribution to membrane impedance
+                g_m_aux = g_m_aux - g * channel.computeLinSum(v, freqs, e, **sv)
+                if use_conc:
+                    for ion in channel.conc:
+                        g_m_aux = g_m_aux - \
+                                  g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
+                                  self.concmechs[ion].computeLinear(freqs) * \
+                                  g_m_ions[ion]
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
@@ -133,12 +120,30 @@ class GreensNode(PhysNode):
         Set the boundary condition at the distal end of the segment
         """
         if len(self.child_nodes) == 0:
-            self.z_distal = np.infty*np.ones(len(self.z_m)) if self.g_shunt < 1e-10 else \
-                            1. / self.g_shunt
+            # note that instantiating z_aux as a float, multiplying with np.infty,
+            # and then converting it as a complex results in entries
+            # inf + 0.j -- which is desired
+            # where instatiating z_aux as complex, and then multiplying with
+            # np.infty, would result in
+            # inf + nanj -- which is not desired
+            z_aux = np.ones(self.z_m.shape, dtype=float)
+
+            if self.g_shunt > 1e-10:
+                z_aux /= self.g_shunt
+            else:
+                z_aux *= np.infty
+
+            self.z_distal = z_aux.astype(self.z_m.dtype)
         else:
-            self.z_distal = 1. / (np.sum([1. / cnode._collapseBranchToRoot() \
-                                         for cnode in self.child_nodes], 0) + \
-                                  self.g_shunt)
+            g_aux = np.ones_like(self.z_m) * self.g_shunt
+
+            for cnode in self.child_nodes:
+                g_aux = g_aux +  1. / cnode._collapseBranchToRoot()
+
+            # note that a division by zero error is not possible here, since the
+            # only case where this occurs would be a node with no child nodes,
+            # which is caught in the if statement
+            self.z_distal = 1. / g_aux
 
     def _setImpedanceProximal(self):
         """
@@ -307,8 +312,8 @@ class GreensTree(PhysTree):
         # the recursion has passed node, the distal impedance can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            node._setImpedanceDistal()
             if not self.isRoot(node):
+                node._setImpedanceDistal()
                 self._impedanceFromLeaf(pnode, leafs, pprint=pprint)
         elif len(leafs) > 0:
                 self._impedanceFromLeaf(leafs[0], leafs[1:], pprint=pprint)
@@ -343,7 +348,7 @@ class GreensTree(PhysTree):
         # the path between the nodes
         path = self.pathBetweenNodes(self[loc1['node']], self[loc2['node']])
         # compute the kernel
-        z_f = np.ones_like(self.freqs)
+        z_f = np.ones_like(self.root.z_soma)
         if len(path) == 1:
             # both locations are on same node
             z_f *= path[0]._calcZF(loc1['x'], loc2['x'])
@@ -399,34 +404,39 @@ class GreensTree(PhysTree):
             locs = self.getLocs(locarg)
         else:
             raise IOError('`locarg` should be list of locs or string')
-        z_mat = np.zeros((len(self.freqs), len(locs), len(locs)),
-                         dtype=self.freqs.dtype)
+
+        n_loc = len(locs)
+        z_mat = np.zeros((n_loc, n_loc) + self.root.z_soma.shape,
+                         dtype=self.root.z_soma.dtype)
 
         if explicit_method:
             for ii, loc0 in enumerate(locs):
+                # diagonal elements
+                z_f = self.calcZF(loc0, loc0)
+                z_mat[ii,ii] = z_f
+
+                # off-diagonal elements
                 jj = 0
                 while jj < ii:
                     loc1 = locs[jj]
                     z_f = self.calcZF(loc0, loc1)
-                    z_mat[:,ii,jj] = z_f
-                    z_mat[:,jj,ii] = z_f
+                    z_mat[ii,jj] = z_f
+                    z_mat[jj,ii] = z_f
                     jj += 1
-                z_f = self.calcZF(loc0, loc0)
-                z_mat[:,ii,ii] = z_f
-
         else:
             for ii in range(len(locs)):
                 self._calcImpedanceMatrixFromNode(ii, locs, z_mat)
 
-        return z_mat
+        return np.moveaxis(z_mat, [0, 1], [-1, -2])
 
     def _calcImpedanceMatrixFromNode(self, ii, locs, z_mat):
         node = self[locs[ii]['node']]
         for jj, loc in enumerate(locs):
             if loc['node'] == node.index and jj >= ii:
                 z_new = node._calcZF(locs[ii]['x'],loc['x'])
-                z_mat[:,ii,jj] = z_new
-                z_mat[:,jj,ii] = z_new
+                z_mat[ii,jj] = z_new
+                z_mat[jj,ii] = z_new
+
         # move down
         for c_node in node.child_nodes:
             z_new = node._calcZF(locs[ii]['x'], 1.)
@@ -446,8 +456,8 @@ class GreensTree(PhysTree):
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
                 z_new = z_0 / z_in * node._calcZF(1.,loc['x'])
-                z_mat[:,ii,jj] = z_new
-                z_mat[:,jj,ii] = z_new
+                z_mat[ii,jj] = z_new
+                z_mat[jj,ii] = z_new
 
         if node.parent_node is not None:
             z_new = z_0 / z_in * node._calcZF(0., 1.)
@@ -464,8 +474,8 @@ class GreensTree(PhysTree):
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
                 z_new = z_0 / z_in * node._calcZF(0., loc['x'])
-                z_mat[:,ii,jj] = z_new
-                z_mat[:,jj,ii] = z_new
+                z_mat[ii,jj] = z_new
+                z_mat[jj,ii] = z_new
 
         # recurse to child nodes
         z_new = z_0 / z_in * node._calcZF(0., 1.)

@@ -1,2 +1,10 @@
-include requirements.txt
+include requirements/requirements.txt
 include LICENCE.txt
+include neat/tools/simtools/net/Ionchannels.h
+include neat/tools/simtools/net/Ionchannels.cc
+include neat/tools/simtools/net/netsim.pyx
+include neat/tools/simtools/net/NETC.h
+include neat/tools/simtools/net/NETC.cc
+include neat/tools/simtools/net/Synapses.h
+include neat/tools/simtools/net/Synapses.cc
+include neat/tools/simtools/net/Tools.cc

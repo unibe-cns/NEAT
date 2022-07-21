@@ -2,6 +2,7 @@ import os
 import time
 import copy
 import warnings
+import platform
 
 import numpy as np
 
@@ -11,6 +12,9 @@ from ....trees.phystree import PhysTree, PhysNode
 try:
     import neuron
     from neuron import h
+
+    h.load_file("stdlib.hoc") # contains the lambda rule
+
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, importing non-functional h module only for doc generation', UserWarning)
     # universal iterable mock object
@@ -55,10 +59,11 @@ except ModuleNotFoundError:
 
 
 def loadNeuron(name):
-    path = os.path.join(os.path.dirname(__file__),
-                        'tmp/%s/x86_64/.libs/libnrnmech.so'%name)
+    path = os.path.join(
+        os.path.dirname(__file__),
+        f'tmp/{name}/{platform.machine()}/.libs/libnrnmech.so'
+    )
 
-    h.load_file("stdlib.hoc") # contains the lambda rule
     h.nrn_load_dll(path) # load all mechanisms
 
 

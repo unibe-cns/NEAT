@@ -157,6 +157,6 @@ class TestSOVTree():
 
 if __name__ == '__main__':
     tsov = TestSOVTree()
-    # tsov.testSOVCalculation()
+    tsov.testSOVCalculation()
     tsov.testSingleCompartment()
-    # tsov.testNETDerivation()
+    tsov.testNETDerivation()

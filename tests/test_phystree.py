@@ -238,7 +238,7 @@ class TestPhysTree():
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
-    # tphys.testLeakDistr()
-    # tphys.testPhysiologySetting()
-    # tphys.testMembraneFunctions()
+    tphys.testLeakDistr()
+    tphys.testPhysiologySetting()
+    tphys.testMembraneFunctions()
     tphys.testCompTree()
