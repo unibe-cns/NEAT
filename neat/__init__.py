@@ -2,9 +2,13 @@
 import os
 import warnings
 
-if not os.environ.get('DISPLAY'):
-    import matplotlib
+havedisplay = "DISPLAY" in os.environ
+if not havedisplay:
+    exitval = os.system('python -c "import matplotlib.pyplot as plt; plt.figure()"')
+    havedisplay = (exitval == 0)
 
+if not havedisplay:
+    import matplotlib
     matplotlib.use('Agg')
 
 from .trees.stree import STree
