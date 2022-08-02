@@ -605,11 +605,11 @@ class TestReducedNeuron():
 if __name__ == '__main__':
     tn = TestNeuron()
     tn.testPassive(pplot=True)
-    # tn.testActive()
-    # tn.testChannelRecording()
+    tn.testActive()
+    tn.testChannelRecording()
 
-    # trn = TestReducedNeuron()
-    # trn.testGeometry1()
-    # trn.testImpedanceProperties1()
-    # trn.testGeometry2()
-    # trn.testImpedanceProperties2()
+    trn = TestReducedNeuron()
+    trn.testGeometry1()
+    trn.testImpedanceProperties1()
+    trn.testGeometry2()
+    trn.testImpedanceProperties2()

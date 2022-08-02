@@ -604,19 +604,19 @@ class TestCompartmentTreePlotting():
 
 if __name__ == '__main__':
     tcomp = TestCompartmentTree()
-    # tcomp.testTreeDericvation()
-    # tcomp.testFitting()
-    # tcomp.testReordering()
-    # tcomp.testLocationMapping()
-    # tcomp.testGSSFit()
-    # tcomp.testCFit()
-    # tcomp.testPasFunctionality()
+    tcomp.testTreeDericvation()
+    tcomp.testFitting()
+    tcomp.testReordering()
+    tcomp.testLocationMapping()
+    tcomp.testGSSFit()
+    tcomp.testCFit()
+    tcomp.testPasFunctionality()
     tcomp.testChannelFit()
 
-    # tcomp.testGChanFitDynamic()
-    # tcomp.testGChanFitDynamicComp()
+    tcomp.testGChanFitDynamic()
+    tcomp.testGChanFitDynamicComp()
 
-    # tplot = TestCompartmentTreePlotting()
-    # tplot.testPlot(pshow=True)
+    tplot = TestCompartmentTreePlotting()
+    tplot.testPlot(pshow=True)
 
 

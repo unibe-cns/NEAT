@@ -112,8 +112,52 @@ def test_pickling():
     assert True  # reaching this means we didn't encounter an error
 
 
+def test_broadcasting():
+    na_ta = channelcollection.Na_Ta()
+
+    v = np.array([-73.234, -50.325, -25.459])
+    s = np.array([0., 10., 20., 40.])*1j
+
+    # error must be raised if arguments are not broadcastable
+    with pytest.raises(ValueError):
+        na_ta.computeLinSum(v, s)
+
+    # check if broadcasting rules are applied correctly for voltage and frequency
+    ll = na_ta.computeLinSum(v[:,None], s[None,:])
+    l1 = na_ta.computeLinear(v[:,None], s[None,:])
+    l2 = na_ta.computePOpen(v[:,None])
+
+    assert ll.shape == (3,4)
+    assert l1.shape == (3,4)
+    assert l2.shape == (3,1)
+    assert np.allclose(ll, (na_ta._getReversal(None) - v[:,None]) * l1 - l2)
+
+    # check if broadcasting rules are applied correctly for state variables
+    sv = {'m': .2,
+          'h': .4}
+    ll = na_ta.computeLinSum(v[:,None], s[None,:], **sv)
+    assert ll.shape == (3,4)
+
+    sv = {'m': np.array([0.1, 0.2, 0.3]),
+          'h': np.array([0.9, 0.6, 0.3])}
+    with pytest.raises(ValueError):
+        ll = na_ta.computeLinSum(v[:,None], s[None,:], **sv)
+
+    sv_ = {'m': sv['m'][:,None],
+           'h': sv['h'][:,None]}
+    ll = na_ta.computeLinSum(v[:,None], s[None,:], **sv_)
+    assert ll.shape == (3,4)
+
+    sv__ = {'m': sv['m'][:, None, None],
+            'h': sv['h'][None, None, :]}
+    l_ = na_ta.computeLinSum(v[:, None, None], s[None, :, None], **sv__)
+    assert l_.shape == (3,4,3)
+    for ii in range(4):
+        assert np.allclose([ll[0,ii], ll[1,ii], ll[2,ii]],
+                           [l_[0,ii,0], l_[1,ii,1], l_[2,ii,2]])
+
 if __name__ == '__main__':
     tcns = TestChannels()
     tcns.testBasic()
     test_ionchannel_simplified()
-
+    test_broadcasting()
