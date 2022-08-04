@@ -41,7 +41,12 @@ from neat.tools.actions.install import _installModels
 
 
 def parse_cmd_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="The program compiles and installs neat ion channels models for "
+             "simulators of neuronal dynamics.\n"
+             "It can also list installed models and uninstall them.\n"
+             "Currently, 'nest' and 'neuron' are supported as simulators"
+    )
 
     parser.add_argument('action',
         help="Whether to install a model, list all installed models or "
@@ -53,11 +58,11 @@ def parse_cmd_args():
         default=[""],
         help="(i) If the [action] is 'install',"
              "specifies the name of the to be compiled model.\n"
-             "If not provided, the name of the last element in [path] will be taken.\n"
+             "If not provided, the name of the last element in [--path] will be taken.\n"
              "(ii) If the [action] is 'list', the argument is ignored.\n"
              "(iii) If the [action] is 'uninstall',"
              "specifies the name of the be removed model.\n"
-             "If not provided, nothing will be removed."
+             "If not provided, nothing will be removed. "
              "Should be a pure name, not a path.\n"
              "At most one argument can be provided."
     )
@@ -113,8 +118,6 @@ if len(cmd_args.name) > 1:
     )
 else:
     cmd_args.name = cmd_args.name[0]
-
-print(cmd_args)
 
 if cmd_args.action == 'install':
     _installModels(cmd_args.name,
