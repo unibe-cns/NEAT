@@ -28,7 +28,7 @@ class AnchoredScaleBar(AnchoredOffsetbox):
             bars.add_artist(Rectangle((0,0), 0, sizey, fc="none", lw=lw))
 
         if sizex and labelx:
-            bars = VPacker(children=[bars, TextArea(labelx, minimumdescent=False)],
+            bars = VPacker(children=[bars, TextArea(labelx)],
                            align="center", pad=0, sep=sep)
         if sizey and labely:
             bars = HPacker(children=[TextArea(labely), bars],
