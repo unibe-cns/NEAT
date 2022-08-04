@@ -909,7 +909,7 @@ class STree(object):
         orig_keys = set(self.__dict__.keys())
         copy_keys = orig_keys.intersection(set(new_tree.__dict__.keys()))
         for key in copy_keys:
-            if key not in ['root', '_computational_root', '_original_root']:
+            if key not in ['root', '_root', '_computational_root', '_original_root']:
                 new_tree.__dict__[key] = copy.deepcopy(self.__dict__[key])
 
         return new_tree
