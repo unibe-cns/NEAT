@@ -1,8 +1,6 @@
 import numpy as np
 
 import matplotlib
-print('(i)',matplotlib.get_backend())
-
 import matplotlib.patheffects as patheffects
 import matplotlib.patches as patches
 import matplotlib.cm as cm
@@ -12,9 +10,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
-
-print('(ii)',matplotlib.get_backend())
-
 from ...trees.morphtree import MorphLoc
 from ...trees.phystree import PhysTree
 from ...trees.greenstree import GreensTree
@@ -23,9 +18,6 @@ from ...trees.netree import NET, NETNode, Kernel
 from ...channels.ionchannels import SPDict
 
 from ...tools import kernelextraction as ke
-
-
-print('(iii)',matplotlib.get_backend())
 
 import warnings
 import copy

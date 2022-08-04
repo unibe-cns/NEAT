@@ -60,7 +60,7 @@ s_ = setup(
     name='neatdend',
     version=read_version(),
     scripts=['neat/channels/compilechannels',
-             'neat/tools/simtools/neatmodels'],
+             'neat/tools/actions/neatmodels'],
     packages=['neat',
               'neat.trees',
               'neat.tools',

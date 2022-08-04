@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-import os, glob, sys, inspect, shutil, subprocess, argparse, importlib
+import os, glob, sys, inspect, shutil, subprocess
+import warnings
+
+
+warnings.warn(
+    "Usage of 'compilechannels' is deprecated. "
+    "It will be removed in a future version in favour of 'neatmodels install' "
+    "which is more general as it contains functionality to list and uninstall "
+    "models, and it supports NESTML model compilation.",
+    DeprecationWarning
+)
+
 
 def loadNEATCorrectPath():
     """
@@ -13,13 +24,13 @@ def loadNEATCorrectPath():
     # get new paths list without the current working directory
     current_path = os.path.realpath(os.getcwd())
     paths = [path for path in sys.path if os.path.realpath(path) != current_path]
-    # append current path to paths list
     paths += [current_path]
 
     # load module with importlib according to
     # https://stackoverflow.com/questions/35288021/what-is-the-equivalent-of-imp-find-module-in-importlib
     # and to
     # https://import-sig.python.narkive.com/JW8eIKSg/how-best-to-replace-imp-load-module
+    import importlib
     neatspec = importlib.machinery.PathFinder().find_spec("neat", paths)
     neat = neatspec.loader.load_module()
     neatspec.loader.exec_module(neat)
@@ -28,89 +39,18 @@ def loadNEATCorrectPath():
 
 neat = loadNEATCorrectPath()
 from neat import IonChannel
-# set all neat dependent path variables
+
 path_neat = neat.__path__[0]
-path_for_neuron_compilation = os.path.join(path_neat, 'tools/simtools/neuron/tmp/')
-path_for_nestml_compilation = os.path.join(path_neat, 'tools/simtools/nest/tmp/')
+path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/tmp/user_model/mech/')
+path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/tmp/user_model/')
 
-
-parser = argparse.ArgumentParser()
-parser.add_argument("arguments", nargs="*", type=str, default="",
-                    help=
-'''
-[sim_1] ... [sim_k]
-    The simulator for which ion channels will be compiled. Currently, Neuron
-    (use 'neuron') and Nest (use 'nest') are supported.
-[path]
-    The path to the python file containing the ion channels, or to the directory
-    containing python files with ion channels. Use 'default' for the Neat
-    default models
-'''
-                    )
-parser.add_argument("--name", type=str, default="",
-                    help=
-"""
-The name of the compiled model. If not provided, the name of the last element
-in [path] will be taken. Should be a pure name, not a path.
-"""
-                    )
-parser.add_argument("--neuronresource", type=str,
-                    default=os.path.join(path_neat, "tools/simtools/neuron/mech_storage/"),
-                    help=
-"""
-Path to directory containing additional .mod-file mechanisms (e.g. synapses)
-that will be compiled together with the generated ion channel mod files
-"""
-                    )
-parser.add_argument("--nestresource", type=str,
-                    default=os.path.join(path_neat, "tools/simtools/nest/default_syns.nestml"),
-                    help=
-"""
-Path to nestml file containing additional equations (e.g. synapses) that will be
-combined with the ion channel equations into a neuron model
-"""
-                    )
-args = parser.parse_args()
-# check arguments
-if len(args.arguments) == 0 or (len(args.arguments) == 1 and ("nest" in args.arguments or "neuron" in args.arguments)):
-    raise IOError("Either an invalid channel path was provided, or nothing was provided")
-elif len(args.arguments) == 1:
-    args.arguments.insert(0, "neuron")
-else:
-    if not ("neuron" in args.arguments or "nest" in args.arguments):
-        raise IOError("No simulator was provided")
-
-# flags for the simulators for which to compile
-compile_nest = "nest" in args.arguments
-compile_neuron = "neuron" in args.arguments
-# path with the ion channel files
-path_for_channels = args.arguments[-1]
-
-# extract the channel path from arguments
-if path_for_channels == 'default':
-    path_for_channels = os.path.join(path_neat, 'channels/channelcollection/')
-    model_name = 'default'
-else:
-    if args.name == "":
-        path_aux = path_for_channels.replace('.py', '')
-        model_name = os.path.basename(os.path.normpath(path_aux))
-    else:
-        model_name = args.name
-
-# assert that `model_name` is a pure name
-assert not "/" in model_name
-assert not "." in model_name
-# combine `model_name` with the nestml and neuron compilation path
-path_for_neuron_compilation = os.path.join(path_for_neuron_compilation, model_name)
-path_for_mod_files = os.path.join(path_for_neuron_compilation, "mech/")
-path_for_nestml_compilation = os.path.join(path_for_nestml_compilation, model_name)
 
 def resetDefaultMech():
     """
     Create the "mech/" directory in a clean state with only the default
     mechanisms and channels
     """
-    path_default_mech = args.neuronresource
+    path_default_mech = os.path.join(path_neat, 'tools/simtools/neuron/mech_storage/')
 
     # recreate the "mech/" directory in a clean state
     if os.path.exists(path_for_mod_files):
@@ -119,35 +59,14 @@ def resetDefaultMech():
     # copy default mechanisms
     shutil.copytree(path_default_mech, path_for_mod_files)
 
+if sys.argv[1] == 'default':
+    resetDefaultMech()
+    path_for_channels = os.path.join(path_neat, 'channels/channelcollection/')
+else:
+    resetDefaultMech()
+    path_for_channels = sys.argv[1]
 
-def extractChannelPathAndModules(path_with_channels):
-    """
-    Extract the path to the directory with the ".py" files containing ion
-    ion channels, as well as a list of all ".py" modules that need to be scanned
-    for ion channels.
-
-    If the input path points to a single .py file, we will extract this .py file
-    as a module. If the input path points to a directory, all .py files within
-    will be loaded as modules and scanned for ion channels
-    """
-    # parse the channel path
-    if path_with_channels[-3:] == '.py':
-        path_with_channels = path_with_channels.replace('.py', '')
-        # path points to a single .py file, we load this file as a module
-        path_with_channels, channel_module = os.path.split(path_with_channels)
-        channel_modules = [channel_module]
-    else:
-        # path points to a directory, we search all files in the directory for
-        # ion channels
-        channel_modules = []
-        for channel_module in glob.glob(os.path.join(path_with_channels, '*.py')):
-            # import channel modules
-            # convert names from glob to something susceptible to python import
-            channel_module = os.path.split(channel_module)[1]
-            channel_module = channel_module.replace('.py', '')
-            channel_modules.append(channel_module)
-
-    return path_with_channels, channel_modules
+print('--- writing channels from \n' + path_for_channels + '\nto \n' + path_for_mod_files)
 
 
 def allBaseClasses(cls):
@@ -157,85 +76,38 @@ def allBaseClasses(cls):
     return [cls.__base__] + allBaseClasses(cls.__base__) if cls is not None else []
 
 
-def collectChannels(path_with_channels, channel_modules):
-    """
-    Returns list with all channels found in the list of modules
-    """
-    sys.path.insert(0, path_with_channels)
+if not os.path.exists(path_for_mod_files):
+        os.makedirs(path_for_mod_files)
 
-    channels = []
-    for channel_module in channel_modules:
-        print('Reading channels from:', os.path.join(path_with_channels, channel_module))
-        # exec('import ' + channel_module + ' as chans')
-        chans = importlib.import_module(channel_module)
+sys.path.insert(0, path_for_channels)
+for channel_module in glob.glob(os.path.join(path_for_channels, '*.py')):
+    # import channel modules
+    # convert names from glob to something susceptible to python import
+    channel_module = os.path.split(channel_module)[1]
+    channel_module = channel_module.replace('.py', '')
+    print('Reading channels from:', channel_module)
+    exec('import ' + channel_module + ' as chans')
 
-        for name, obj in inspect.getmembers(chans):
-            # if an object is a class and inheriting from IonChannel, write its mod-file
-            if inspect.isclass(obj) and IonChannel in allBaseClasses(obj):
-                channels.append(obj())
+    for name, obj in inspect.getmembers(chans):
+        # if an object is a class and inheriting from IonChannel, write its mod-file
+        if inspect.isclass(obj) and IonChannel in allBaseClasses(obj):
+            chan = obj()
+            print(' - write .mod file for:', chan.__class__.__name__)
+            chan.writeModFile(path_for_mod_files)
 
-    return channels
+# copy the mod-files within the source directory to the compile directory
+for mod_file in glob.glob(os.path.join(path_for_channels, '*.mod')):
+    shutil.copy2(mod_file, path_for_mod_files)
 
+# change to directory where 'mech/' folder is located and compile the mechanisms
+os.chdir(path_for_compilation)
+if os.path.exists("x86_64/"):  # delete old compiled files if exist
+    shutil.rmtree("x86_64/")
+subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
 
-path_for_channels, channel_modules = extractChannelPathAndModules(path_for_channels)
-channels = collectChannels(path_for_channels, channel_modules)
-
-
-if compile_neuron:
-    print('--- writing channels from \n' + path_for_channels + '\nto \n' + path_for_mod_files)
-
-    resetDefaultMech()
-
-    if not os.path.exists(path_for_mod_files):
-            os.makedirs(path_for_mod_files)
-
-    for chan in channels:
-        print(' - write .mod file for:', chan.__class__.__name__)
-        chan.writeModFile(path_for_mod_files)
-
-    # copy the mod-files within the source directory to the compile directory
-    for mod_file in glob.glob(os.path.join(path_for_channels, '*.mod')):
-        shutil.copy2(mod_file, path_for_mod_files)
-
-    # change to directory where 'mech/' folder is located and compile the mechanisms
-    os.chdir(path_for_neuron_compilation)
-    if os.path.exists("x86_64/"):  # delete old compiled files if exist
-        shutil.rmtree("x86_64/")
-    subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
-
-    print('\n------------------------------')
-    print('The compiled .mod-files can be loaded into neuron using:')
-    print('    neat.loadNeuron(\"%s\")'%model_name)
-    print('------------------------------\n')
-
-
-if compile_nest:
-    from neat.tools.simtools.nest import resources_nestml
-    blocks = resources_nestml.parseNestmlFile(args.nestresource)
-
-    for chan in channels:
-        print(' - write .nestml blocks for:', chan.__class__.__name__)
-        blocks_ = chan.writeNestmlBlocks(v_comp=-75.)
-
-        for block, blockstr in blocks_.items():
-            blocks[block] += blockstr
-
-    # create directory to install nestml files
-    if not os.path.exists(path_for_nestml_compilation):
-        os.makedirs(path_for_nestml_compilation)
-    # write the nestml file
-    nestml_file_path = resources_nestml.writeNestmlBlocks(blocks, path_for_nestml_compilation, model_name, v_comp=-75.)
-
-    from pynestml.frontend.pynestml_frontend import to_nest, install_nest
-    import nest
-    # get the path to the nest installation
-    nest_path = nest.ll_api.sli_func("statusdict/prefix ::")
-    # compile and install the nest extension module
-    to_nest(input_path=nestml_file_path,
-            target_path=path_for_nestml_compilation,
-            module_name=model_name + "_neatmodule",
-            logging_level="ERROR")
-    install_nest(path_for_nestml_compilation, nest_path)
-
-
-
+print(
+    f'\n------------------------------\n'
+    f'The compiled .mod-files can be loaded into neuron using:\n'
+    f'    neat.loadNeuronModel(user_model)\n'
+    f'------------------------------\n'
+)
