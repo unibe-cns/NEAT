@@ -35,17 +35,18 @@ from .trees.compartmenttree import CompartmentTree
 from .trees.compartmenttree import CompartmentNode
 
 try:
-    from .tools.simtools.neuron.neuronmodel import loadNeuron
+    from .tools.simtools.neuron.neuronmodel import loadNeuronModel
     from .tools.simtools.neuron.neuronmodel import NeuronSimTree
     from .tools.simtools.neuron.neuronmodel import NeuronSimNode
     from .tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
     from .tools.simtools.neuron.neuronmodel import createReducedNeuronModel
-
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 
 try:
-    from .tools.simtools.nest.nestmodel import createNestModel
+    from .tools.simtools.nest.nestmodel import NestCompartmentTree
+    from .tools.simtools.nest.nestmodel import NestCompartmentNode
+    from .tools.simtools.nest.nestmodel import loadNestModel
 except ModuleNotFoundError:
     warnings.warn('NEST not available', UserWarning)
 

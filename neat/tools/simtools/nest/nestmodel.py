@@ -54,31 +54,18 @@ class NestCompartmentNode(CompartmentNode):
     def __init__(self, index, **kwargs):
         super().__init__(index, **kwargs)
 
-     def _createCorrespondingNode(self, index, **kwargs):
-        """
-        Creates a node with the given index corresponding to the tree class.
-
-        Parameters
-        ----------
-        node_index: int
-            index of the new node
-        **kwargs
-            Parameters of the parent class node initialization function
-        """
-        return CompartmentNode(index, **kwargs)
-
     def _makeCompartmentDict(self):
         g_dict = {
-            f'gbar_{key}{self.index}': node.currents[key][0] for key in node.currents if key != 'L'
+            f'gbar_{key}{self.index}': self.currents[key][0] for key in self.currents if key != 'L'
         }
         e_dict = {
-            f'e_{key}{self.index}': node.currents[key][1] for key in node.currents if key != 'L'
+            f'e_{key}{self.index}': self.currents[key][1] for key in self.currents if key != 'L'
         }
         p_dict = {
-            'g_L': node.currents['L'][0],
-            'e_L': node.currents['L'][1],
-            'C_m': node.ca*1e3, # convert uF to nF
-            'g_c': node.g_c
+            'g_L': self.currents['L'][0],
+            'e_L': self.currents['L'][1],
+            'C_m': self.ca*1e3, # convert uF to nF
+            'g_c': self.g_c
         }
         p_dict.update(g_dict)
         p_dict.update(e_dict)
@@ -92,8 +79,21 @@ class NestCompartmentNode(CompartmentNode):
 
 
 class NestCompartmentTree(CompartmentTree):
-    def __init__(self, root=root):
+    def __init__(self, root=None):
         super().__init__(root=root)
+
+    def _createCorrespondingNode(self, index, **kwargs):
+        """
+        Creates a node with the given index corresponding to the tree class.
+
+        Parameters
+        ----------
+        node_index: int
+            index of the new node
+        **kwargs
+            Parameters of the parent class node initialization function
+        """
+        return NestCompartmentNode(index, **kwargs)
 
     def _getCompartmentsStatus(self):
         # ensure that the all node indices are equal to the position where
