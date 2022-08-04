@@ -156,8 +156,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
         f' > {path_for_mod_files}'
     )
 
-    # Create the "mech/" directory in a clean state with only the default
-    # mechanisms and channels
+    # Create the "mech/" directory in a clean state
     if os.path.exists(path_for_mod_files):
         shutil.rmtree(path_for_mod_files)
     os.makedirs(path_for_mod_files)
@@ -205,6 +204,11 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None):
         model_name
     )
 
+    # Create the model directory in a clean state
+    if os.path.exists(path_for_nestml_compilation):
+        shutil.rmtree(path_for_nestml_compilation)
+    os.makedirs(path_for_nestml_compilation)
+
     print(
         f'--- writing nestml model to \n'
         f'    > {path_for_nestml_compilation}'
@@ -224,12 +228,17 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None):
     if not os.path.exists(path_for_nestml_compilation):
         os.makedirs(path_for_nestml_compilation)
     # write the nestml file
-    nestml_file_path = nestml_tools.writeNestmlBlocks(blocks, path_for_nestml_compilation, model_name, v_comp=-75.)
+    nestml_file_path = nestml_tools.writeNestmlBlocks(
+        blocks,
+        path_for_nestml_compilation,
+        model_name + "_model",
+        v_comp=-75.
+    )
 
     generate_nest_compartmental_target(
         input_path=nestml_file_path,
         target_path=path_for_nestml_compilation,
-        module_name=model_name + "module",
+        module_name=model_name + "_module",
         logging_level="DEBUG"
     )
 

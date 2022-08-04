@@ -58,12 +58,11 @@ except ModuleNotFoundError:
     np.array = array
 
 
-def loadNeuron(name):
+def loadNeuronModel(name):
     path = os.path.join(
         os.path.dirname(__file__),
         f'tmp/{name}/{platform.machine()}/.libs/libnrnmech.so'
     )
-
     h.nrn_load_dll(path) # load all mechanisms
 
 
