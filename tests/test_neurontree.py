@@ -10,7 +10,7 @@ import itertools
 
 from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
-from neat import NeuronSimTree, createReducedNeuronModel, loadNeuron
+from neat import NeuronSimTree, createReducedNeuronModel, loadNeuronModel
 import neat.tools.kernelextraction as ke
 from neat.channels.channelcollection import channelcollection
 
@@ -25,7 +25,7 @@ colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
 
 # load the default neuron model
 try:
-    loadNeuron("default")
+    loadNeuronModel("default")
 except RuntimeError as e:
     # the neuron model is already loaded in hoc
     pass

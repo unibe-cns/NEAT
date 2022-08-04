@@ -18,8 +18,8 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import loadNeuron, NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
-    loadNeuron("channels")
+    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    loadNeuronModel("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0

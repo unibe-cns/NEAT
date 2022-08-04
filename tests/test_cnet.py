@@ -6,7 +6,7 @@ import pytest
 from neat import netsim
 from neat import NETNode, NET, Kernel
 from neat import GreensTree, NeuronSimTree, SOVTree
-from neat import loadNeuron
+from neat import loadNeuronModel
 
 from neat.channels.channelcollection import channelcollection
 
@@ -15,7 +15,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__
 
 # load the default neuron model
 try:
-    loadNeuron("default")
+    loadNeuronModel("default")
 except RuntimeError as e:
     # the neuron model is already loaded in hoc
     pass

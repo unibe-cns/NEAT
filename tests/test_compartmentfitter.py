@@ -12,14 +12,14 @@ from neat import PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
 from neat.channels.channelcollection import channelcollection
 import neat.tools.fittools.compartmentfitter as compartmentfitter
-from neat import loadNeuron
+from neat import loadNeuronModel
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__))), 'test_morphologies')
 
 # load the default neuron model
 try:
-    loadNeuron("default")
+    loadNeuronModel("default")
 except RuntimeError as e:
     # the neuron model is already loaded in hoc
     pass
