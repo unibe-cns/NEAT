@@ -64,7 +64,7 @@ s_ = setup(
     packages=['neat',
               'neat.trees',
               'neat.tools',
-              'neat.tools.actions'
+              'neat.tools.actions',
               'neat.tools.fittools',
               'neat.tools.plottools',
               'neat.tools.simtools.neuron',
