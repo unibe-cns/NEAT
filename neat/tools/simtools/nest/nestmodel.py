@@ -1,5 +1,7 @@
 from ....trees.compartmenttree import CompartmentTree, CompartmentNode
 
+import numpy as np
+
 import warnings
 
 try:
