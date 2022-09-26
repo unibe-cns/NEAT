@@ -230,28 +230,37 @@ class IonChannel(object):
         self.p_open = sp.sympify(self.p_open)
         self.statevars = self.p_open.free_symbols
 
-        # construct the rate functions
-        if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
-            for svar in self.statevars:
-                key = str(svar)
-                self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
-                self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
-            # convert to internal representation
-            self.varinf, self.tauinf = {}, {}
-            for svar in self.statevars:
-                key = str(svar)
-                self.varinf[svar] = self.alpha[svar] / (self.alpha[svar] + self.beta[svar])
-                self.tauinf[svar] = (1./self.q10) / (self.alpha[svar] + self.beta[svar])
-        elif 'tauinf' in self.__dict__ and 'varinf' in self.__dict__:
-            for svar in self.statevars:
-                key = str(svar)
+        if not 'tauinf' in self.__dict__:
+            self.tauinf = {}
+        if not 'varinf' in self.__dict__:
+            self.varinf = {}
+
+        for svar in self.statevars:
+            key = str(svar)
+            if key in (self.varinf.keys() | self.tauinf.keys()):
                 self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
                 self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False) / self.q10
                 del self.varinf[key]
                 del self.tauinf[key]
-        else:
+
+        # construct the rate functions
+        if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
+            # for svar in self.statevars:
+            for svar in self.statevars:
+                key = str(svar)
+                if key in (self.alpha.keys() | self.beta.keys()):
+                    self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
+                    self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
+                    self.varinf[svar] = self.alpha[svar] / (self.alpha[svar] + self.beta[svar])
+                    self.tauinf[svar] = (1./self.q10) / (self.alpha[svar] + self.beta[svar])
+            del self.alpha
+            del self.beta
+
+        # check if rate equations where defined
+        if len(self.varinf) == 0 or len (self.tauinf) == 0:
             raise AttributeError("Necessary attributes not defined, define either " + \
                                  "`alpha` and `beta` or `tauinf` and `varinf`.")
+
         self.varinf, self.tauinf = SPDict(self.varinf), SPDict(self.tauinf)
 
         # set the right hand side of the differential equation for
