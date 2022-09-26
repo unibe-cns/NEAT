@@ -73,6 +73,7 @@ s_ = setup(
               'neat.channels.channelcollection'],
     package_data={
         "neat.tools.simtools.neuron": ["mech_storage/*.mod"],
+        "neat.tools.simtools.nest": ["default_syns.nestml"]
     },
     ext_package='neat',
     ext_modules=cythonize([ext], language_level=3),
