@@ -68,6 +68,7 @@ s_ = setup(
               'neat.tools.fittools',
               'neat.tools.plottools',
               'neat.tools.simtools.neuron',
+              'neat.tools.simtools.nest',
               'neat.channels',
               'neat.channels.channelcollection'],
     package_data={
