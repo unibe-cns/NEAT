@@ -245,7 +245,6 @@ class IonChannel(object):
 
         # construct the rate functions
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
-            # for svar in self.statevars:
             for svar in self.statevars:
                 key = str(svar)
                 if key in (self.alpha.keys() | self.beta.keys()):

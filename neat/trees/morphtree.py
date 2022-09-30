@@ -483,6 +483,13 @@ class MorphTree(STree):
                 for inode in self.__iter__(cnode, skip_inds=skip_inds):
                     if node.index not in skip_inds: yield inode
 
+    def resetIndices(self):
+        """
+        Resets the indices in the order they appear in a depth-first iteration
+        """
+        for ind, node in enumerate(self):
+            node.index = ind+1
+
     def getRoot(self):
         """
         Returns the root of the original or the computational tree, depending
@@ -757,14 +764,43 @@ class MorphTree(STree):
         if all_nodes[1][0] != 1:
             raise ValueError('Node with index 1 should be soma-type, i.e. swc_type == 1')
 
-        # standard three point soma representation
+        # one point soma representation
+        if soma_type == 0:
+            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+                if index == 1:
+                    self.setRoot(node)
+                else:
+                    parent_node = all_nodes[parent_index][1]
+                    self.addNodeWithParent(node, parent_node)
+
+            # we add nodes 2 and 3 to adhere to obtain a 3-point soma representation
+            # (http://neuromorpho.org/neuroMorpho/SomaFormat.html)
+            # and increment the indices of all nodes that are not the soma by 2
+            for node in self.__iter__(skip_inds=[]):
+                if self.isRoot(node):
+                    # create p3ds for the extra soma nodes
+                    xyz_2 = copy.copy(node.xyz)
+                    xyz_2[1] -= node.R
+                    p3d_2 = (xyz_2, node.R, node.swc_type)
+                    xyz_3 = copy.copy(node.xyz)
+                    xyz_3[1] += node.R
+                    p3d_3 = (xyz_3, node.R, node.swc_type)
+                else:
+                    node.index += 2
+            # add extra soma nodes to the tree
+            snode_2 = self._createCorrespondingNode(2, p3d_2)
+            snode_3 = self._createCorrespondingNode(3, p3d_3)
+            self.addNodeWithParent(snode_2, self[1])
+            self.addNodeWithParent(snode_3, self[1])
+
+        # three point soma representation
         if soma_type == 1:
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
                 if index == 1:
                     self.setRoot(node)
                 elif index in (2,3):
                     # the 3-point soma representation
-                    # (http://neuromorpho.org/neuroMorpho/SomaFormat.html)
+                    # (https://neuromorpho.org/SomaFormat.html)
                     somanode = all_nodes[1][1]
                     self.addNodeWithParent(node, somanode)
                 else:
@@ -879,6 +915,7 @@ class MorphTree(STree):
         -------
         soma_type: int
             Integer indicating one of the su[pported SWC soma formats.
+            0: One point soma
             1: Default three-point soma,
             2: multiple cylinder description
 
@@ -897,6 +934,8 @@ class MorphTree(STree):
                 if s_type == 1 :
                     somas = somas +1
         file.close()
+        if somas == 1:
+            return 0
         if somas == 3:
             return 1
         elif somas < 3:

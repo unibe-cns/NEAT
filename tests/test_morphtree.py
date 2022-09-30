@@ -649,6 +649,25 @@ class TestMorphTree():
         self.tree.treetype = 'computational'
         for node in self.tree: assert node.index in [1,5,8,10,12]
 
+
+    def testOnePointSoma(self):
+        mtree1 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'onepoint_soma.swc'))
+        mtree3 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
+
+        # one point soma is internally converted to three-point soma, so we test
+        # equivalence of both representations
+        for ii in range(1,6):
+            n1 = mtree1.__getitem__(ii, skip_inds=[])
+            n3 = mtree3.__getitem__(ii, skip_inds=[])
+            xyz1, R1, swc_type1 = n1.xyz, n1.R, n1.swc_type
+            xyz3, R3, swc_type3 = n3.xyz, n3.R, n3.swc_type
+
+            assert np.allclose(xyz1, xyz3)
+            assert np.allclose(R1, R3)
+            assert swc_type1 == swc_type3
+
+
+
     def testThreePointSoma(self):
         mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
 
@@ -688,15 +707,16 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    tmt.testPlotting(pshow=True)
-    tmt.testCompTree0()
-    tmt.testInputArgConversion()
-    tmt.testLocFunctionality()
-    tmt.testLocStorageRetrievalLookup()
-    tmt.testNearestNeighbours()
-    tmt.testCompTree()
+    # tmt.testPlotting(pshow=True)
+    # tmt.testCompTree0()
+    # tmt.testInputArgConversion()
+    # tmt.testLocFunctionality()
+    # tmt.testLocStorageRetrievalLookup()
+    # tmt.testNearestNeighbours()
+    # tmt.testCompTree()
 
-    tmt.testMultiCylinderSoma()
-    tmt.testThreePointSoma()
-    tmt.testWrongSoma()
+    # tmt.testMultiCylinderSoma()
+    tmt.testOnePointSoma()
+    # tmt.testThreePointSoma()
+    # tmt.testWrongSoma()
 
