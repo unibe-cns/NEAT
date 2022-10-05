@@ -7,33 +7,34 @@ import argparse
 import importlib
 
 
-def loadNEATCorrectPath():
-    """
-    Loads neat from a custom paths list where the current working directory
-    only occurs as the final path, so that neat is first loaded from the install
-    path and only from the current path if we are working in development mode.
+# def loadNEATCorrectPath():
+#     """
+#     Loads neat from a custom paths list where the current working directory
+#     only occurs as the final path, so that neat is first loaded from the install
+#     path and only from the current path if we are working in development mode.
 
-    Required to run `compilechannels default` from package root directory after
-    installation via `setup.py`
-    """
-    # get new paths list without the current working directory
-    current_path = os.path.realpath(os.getcwd())
-    paths = [path for path in sys.path if os.path.realpath(path) != current_path]
-    # append current path to paths list
-    paths += [current_path]
+#     Required to run `compilechannels default` from package root directory after
+#     installation via `setup.py`
+#     """
+#     # get new paths list without the current working directory
+#     current_path = os.path.realpath(os.getcwd())
+#     paths = [path for path in sys.path if os.path.realpath(path) != current_path]
+#     # append current path to paths list
+#     paths += [current_path]
 
-    # load module with importlib according to
-    # https://stackoverflow.com/questions/35288021/what-is-the-equivalent-of-imp-find-module-in-importlib
-    # and to
-    # https://import-sig.python.narkive.com/JW8eIKSg/how-best-to-replace-imp-load-module
-    neatspec = importlib.machinery.PathFinder().find_spec("neat", paths)
-    neat = neatspec.loader.load_module()
-    neatspec.loader.exec_module(neat)
+#     # load module with importlib according to
+#     # https://stackoverflow.com/questions/35288021/what-is-the-equivalent-of-imp-find-module-in-importlib
+#     # and to
+#     # https://import-sig.python.narkive.com/JW8eIKSg/how-best-to-replace-imp-load-module
+#     neatspec = importlib.machinery.PathFinder().find_spec("neat", paths)
+#     neat = neatspec.loader.load_module()
+#     neatspec.loader.exec_module(neat)
 
-    return neat
+#     return neat
 
 
-neat = loadNEATCorrectPath()
+# neat = loadNEATCorrectPath()
+import neat
 from neat import IonChannel
 from neat.tools.actions.list import _listModels
 from neat.tools.actions.uninstall import _uninstallModels

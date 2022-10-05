@@ -52,6 +52,20 @@ class SOVNode(PhysNode):
         self.mu_vals_m  = np.NaN
         self.q_vals_m   = np.NaN
 
+
+    def __str__(self):
+        node_string = super(PhysNode, self).__str__()
+
+        if hasattr(self, "R_sov"):
+            node_string += f" --- "\
+                f"(g_m = {self.g_m:.8f} uS/cm^2, "\
+                f"tau_m = {self.tau_m:.8f} s, "\
+                f"eps_m = {self.eps_m:.8f}, "\
+                f"R_sov = {self.R_sov:.8f} cm, "\
+                f"L_sov = {self.L_sov:.8f} cm)"\
+
+        return node_string
+
     def q_m(self, x):
         return np.sqrt(self.eps_m*x**2 - 1.)
 
@@ -362,6 +376,7 @@ class SOVTree(PhysTree):
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
             # node._setMuFunctions()
+            print(node)
             node._setZerosPoles(maxspace_freq=maxspace_freq)
             if not self.isRoot(node):
                 self._SOVFromLeaf(pnode, leafs, count=count+1,
