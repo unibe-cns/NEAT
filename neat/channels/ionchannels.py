@@ -2,6 +2,7 @@ import sympy as sp
 import numpy as np
 
 import os
+import ast
 import warnings
 
 CONC_DICT = {'na': 10.,  # mM
@@ -15,6 +16,23 @@ E_ION_DICT = {'na': 50.,
               'k': -85.,
               'ca': 50.,
              }
+
+
+class IfExpVisitor(ast.NodeVisitor):
+    """
+    Returns the first `IfExp` node in the ast, signalling an if statement
+    """
+    def __init__(self):
+        self.ifexp_node = None
+
+    def visit_IfExp(self, node):
+        self.ifexp_node = node
+
+    def findIfExpNode(self, node):
+        self.visit(node)
+        return_node = self.ifexp_node
+        self.ifexp_node = None
+        return return_node
 
 
 class _func(object):
@@ -229,6 +247,10 @@ class IonChannel(object):
         # extract the state variables
         self.p_open = sp.sympify(self.p_open)
         self.statevars = self.p_open.free_symbols
+        # if voltage occurs directly in open probability,
+        # remove it from statevars
+        if self.sp_v in self.statevars:
+            self.statevars.remove(self.sp_v)
 
         if not 'tauinf' in self.__dict__:
             self.tauinf = {}
@@ -239,7 +261,9 @@ class IonChannel(object):
             key = str(svar)
             if key in (self.varinf.keys() | self.tauinf.keys()):
                 self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
-                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False) / self.q10
+                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False)
+                self.varinf[svar] = sp.simplify(self.varinf[svar])
+                self.tauinf[svar] = sp.simplify(self.tauinf[svar] / self.q10)
                 del self.varinf[key]
                 del self.tauinf[key]
 
@@ -250,8 +274,8 @@ class IonChannel(object):
                 if key in (self.alpha.keys() | self.beta.keys()):
                     self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
                     self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
-                    self.varinf[svar] = self.alpha[svar] / (self.alpha[svar] + self.beta[svar])
-                    self.tauinf[svar] = (1./self.q10) / (self.alpha[svar] + self.beta[svar])
+                    self.varinf[svar] = sp.simplify(self.alpha[svar] / (self.alpha[svar] + self.beta[svar]))
+                    self.tauinf[svar] = sp.simplify((1./self.q10) / (self.alpha[svar] + self.beta[svar]))
             del self.alpha
             del self.beta
 
@@ -737,24 +761,62 @@ class IonChannel(object):
         file.write('PROCEDURE rates(v%s) {\n'%concstring)
         file.write('    %s = celsius\n'%str(self.sp_t))
         for var, svar in zip(sv, self.statevars):
-            vi = sp.printing.ccode(self.varinf[svar])
-            ti = sp.printing.ccode(self.tauinf[svar])
+            vi = sp.printing.ccode(self.varinf[svar], assign_to=f"{var}_inf")
+            ti = sp.printing.ccode(self.tauinf[svar], assign_to=f"tau_{var}")
             for repl_pair in repl_pairs:
                 vi = vi.replace(*repl_pair)
                 ti = ti.replace(*repl_pair)
-            file.write('    %s_inf = %s\n'%(var, vi))
-            file.write('    tau_%s = %s\n'%(var, ti))
+            # no ";" in mod-file, add indent
+            vi = vi.replace(";", "").replace("\n", "\n    ")
+            ti = ti.replace(";", "").replace("\n", "\n    ")
+            file.write(f'    {vi}\n')
+            file.write(f'    {ti}\n')
         file.write('}\n\n')
 
         file.close()
 
         return modname
 
+    def _create_nestml_funcstr(self, code_str, n_spaces=0, indent=4):
+        """
+        This function is used to recursively expand if... else... statements
+        across multiple lines, as by default the single line version is printed
+        by `sympy.pycode()` and `ast.unparse()`
+        """
+        tree = ast.parse(code_str)
+        iev = IfExpVisitor()
+        ifexp = iev.findIfExpNode(tree)
+
+        if ifexp is not None:
+            # sanity check
+            assert iev.findIfExpNode(ifexp.test) is None
+            cond_1_str = self._create_nestml_funcstr(
+                ast.unparse(ifexp.body),
+                n_spaces=n_spaces+indent,
+                indent=indent
+            )
+            cond_0_str = self._create_nestml_funcstr(
+                ast.unparse(ifexp.orelse),
+                n_spaces=n_spaces+indent,
+                indent=indent
+            )
+            code_str = \
+                " "*indent   + f"if {ast.unparse(ifexp.test)}:\n" + \
+                " "*n_spaces + f"{cond_1_str}" + \
+                " "*n_spaces + f"else:\n" + \
+                " "*n_spaces + f"{cond_0_str}" + \
+                " "*n_spaces + f"end\n"
+        else:
+            code_str = \
+                " "*indent + f"val = {code_str}\n"
+
+        return code_str
+
     def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'functions'], v_comp=0., g=0., e=None):
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.statevars]
         cs = [str(conc) for conc in self.conc]
-        sv_suff = [sv_ + '_' +cname for sv_ in sv]
+        sv_suff = [sv_ + '_' + cname for sv_ in sv]
         e = self._getReversal(e)
         sv_init = self.computeVarinf(v_comp)
 
@@ -781,6 +843,7 @@ class IonChannel(object):
             p_open_ = self.p_open
             for svar, sv_ in zip(self.statevars, sv_suff):
                 p_open_ = p_open_.subs(svar, sp.symbols(sv_))
+                p_open_ = p_open_.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
             eq_str = '\n' + \
                      '    # equation %s\n'%cname + \
@@ -790,6 +853,8 @@ class IonChannel(object):
 
         def _customsimplify(expr):
             return sp.logcombine(sp.powsimp(sp.expand(expr)))
+
+        from sympy import pycode
 
         if 'functions' in blocks:
             func_str = '\n' + \
@@ -802,10 +867,13 @@ class IonChannel(object):
                 # print activation function to nestml file
                 varinf_func = varinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
                 varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
-                # varinf_func =  sp.simplify(varinf_func)
-                func_str += 'function %s_inf_%s (v_comp real) real:\n'%(sv_, cname) + \
-                            '    return %s\n'%str(varinf_func) + \
-                            'end\n'
+
+                code_str = sp.pycode(varinf_func, fully_qualified_modules=False)
+                func_str += f'function {sv_}_inf_{cname} (v_comp real) real:\n' \
+                            f'    val real = 0\n' \
+                            f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
+                            f'    return val\n' \
+                            f'end\n'
 
                 # substitute possible default values and concentrations
                 tauinf_func = self._substituteDefaults(self.tauinf[svar])
@@ -814,9 +882,13 @@ class IonChannel(object):
 
                 tauinf_func = tauinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
                 tauinf_func = tauinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
-                func_str += 'function tau_%s_%s (v_comp real) real:\n'%(sv_, cname) + \
-                            '    return %s\n'%str(tauinf_func) + \
-                            'end\n'
+
+                code_str = sp.pycode(tauinf_func, fully_qualified_modules=False)
+                func_str += f'\nfunction tau_{sv_}_{cname} (v_comp real) real:\n' \
+                            f'    val real = 0\n' \
+                            f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
+                            f'    return val\n' \
+                            f'end\n'
 
             blocks_dict['functions'] += func_str
 

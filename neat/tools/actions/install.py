@@ -185,7 +185,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
     print(
         f'\n------------------------------\n'
         f'The compiled .mod-files can be loaded into neuron using:\n'
-        f'    neat.loadNeuronModel({model_name})\n'
+        f'    neat.loadNeuronModel(\"{model_name}\")\n'
         f'------------------------------\n'
     )
 
