@@ -53,8 +53,8 @@ class SOVNode(PhysNode):
         self.q_vals_m   = np.NaN
 
 
-    def __str__(self):
-        node_string = super(PhysNode, self).__str__()
+    def __str__(self, *args, **kwargs):
+        node_string = super(PhysNode, self).__str__(*args, **kwargs)
 
         if hasattr(self, "R_sov"):
             node_string += f" --- "\
@@ -577,7 +577,9 @@ class SOVTree(PhysTree):
                         improve_input_impedance=False,
                         pprint=False):
         """
-        Construct a Neural Evaluation Tree (NET) for this cell
+        Construct a Neural Evaluation Tree (NET) for this cell. The locations
+        for which impedance values are computed are stored under the name
+        `net eval`
 
         Parameters
         ----------

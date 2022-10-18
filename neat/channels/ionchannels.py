@@ -218,7 +218,7 @@ class IonChannel(object):
     >>>         # temperature factor for reaction rates
     >>>         self.q10 = '2.3^((temp - 23.)/10.)'
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
         """
         Will give an ``AttributeError`` if initialized as is. Should only be
         initialized from its' derived classes that implement specific ion
@@ -238,8 +238,11 @@ class IonChannel(object):
 
         # sympy temperature symbols
         assert len(self.q10.free_symbols) <= 1
-        self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
-                    sp.symbols('temp')
+        if len(self.q10.free_symbols) > 0:
+            assert str(list(self.q10.free_symbols)[0]) == "temp"
+            self.sp_t = list(self.q10.free_symbols)[0]
+        else:
+            self.sp_t = sp.symbols('temp')
 
         # the voltage variable
         self.sp_v = sp.symbols('v')
@@ -320,8 +323,8 @@ class IonChannel(object):
         except KeyError:
             warnings.warn('No default reversal potential defined.')
 
-        # set the lambda functions for efficient numpy evaluation
-        self._lambdifyChannel()
+        # self._lambdifyChannel()
+        self.setDefaultParams(**kwargs)
 
     def __getstate__(self):
         """
@@ -350,6 +353,7 @@ class IonChannel(object):
             Default values for temperature (`temp`), reversal (`e`)
         """
         self.default_params.update(kwargs)
+        # set the lambda functions for efficient numpy evaluation
         self._lambdifyChannel()
 
     def _substituteDefaults(self, expr):
@@ -706,8 +710,6 @@ class IonChannel(object):
         file.write('PARAMETER {\n')
         file.write('    g = ' + str(g*1e-6) + ' (S/cm2)' + '\n')
         file.write('    e = ' + str(e) + ' (mV)' + '\n')
-        for ion in cs:
-            file.write('    ' + ion + 'i (mM)' + '\n')
         file.write('    celsius (degC)\n')
         file.write('}\n\n')
 
@@ -722,6 +724,8 @@ class IonChannel(object):
         for var in sv:
             file.write('    %s_inf      \n'%var)
             file.write('    tau_%s (ms) \n'%var)
+        for ion in cs:
+            file.write('    ' + ion + 'i (mM)' + '\n')
         file.write('    v (mV)' + '\n')
         file.write('    %s (degC)\n'%(self.sp_t))
         file.write('}\n\n')
@@ -790,11 +794,13 @@ class IonChannel(object):
         if ifexp is not None:
             # sanity check
             assert iev.findIfExpNode(ifexp.test) is None
+            # if test is True
             cond_1_str = self._create_nestml_funcstr(
                 ast.unparse(ifexp.body),
                 n_spaces=n_spaces+indent,
                 indent=indent
             )
+            # if test is False
             cond_0_str = self._create_nestml_funcstr(
                 ast.unparse(ifexp.orelse),
                 n_spaces=n_spaces+indent,
@@ -870,7 +876,7 @@ class IonChannel(object):
 
                 code_str = sp.pycode(varinf_func, fully_qualified_modules=False)
                 func_str += f'function {sv_}_inf_{cname} (v_comp real) real:\n' \
-                            f'    val real = 0\n' \
+                            f'    val real\n' \
                             f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
                             f'    return val\n' \
                             f'end\n'
@@ -885,7 +891,7 @@ class IonChannel(object):
 
                 code_str = sp.pycode(tauinf_func, fully_qualified_modules=False)
                 func_str += f'\nfunction tau_{sv_}_{cname} (v_comp real) real:\n' \
-                            f'    val real = 0\n' \
+                            f'    val real\n' \
                             f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
                             f'    return val\n' \
                             f'end\n'

@@ -656,6 +656,7 @@ class NeuronSimTree(PhysTree):
     def run(self, t_max, downsample=1,
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
             record_from_channels=False, record_v_deriv=False, record_concentrations=[],
+            record_spikes=False,
             pprint=False):
         """
         Run the NEURON simulation. Records at all locations stored
@@ -687,6 +688,8 @@ class NeuronSimTree(PhysTree):
             Record ion concentration at locations stored under 'rec locs'
             Accessible as `np.ndarray` in the output dict with as key the ion's
             name
+        record_spikes: bool (default ``False``)
+            Record the output spike times
 
         Returns
         -------
@@ -757,6 +760,17 @@ class NeuronSimTree(PhysTree):
             for ii, loc in enumerate(self.getLocs('rec locs')):
                 res['dv_dt'].append(h.Vector())
                 # res['dv_dt'][-1].deriv(res['v_m'][ii], self.dt)
+        if record_spikes:
+            # add spike detector at soma
+            self.spike_detector = h.NetCon(
+                self.sections[1](0.5)._ref_v,
+                None,
+                sec=self.sections[1]
+            )
+            self.spike_detector.threshold = -20.
+            res['spikes'] = h.Vector()
+            self.spike_detector.record(res['spikes'])
+
 
         # initialize
         # neuron.celsius=37.
@@ -779,7 +793,7 @@ class NeuronSimTree(PhysTree):
             res['dv_dt'] = np.array(res['dv_dt'])
         # cast recordings into numpy arrays
         res['t'] = np.array(res['t'])[self.indstart:][::downsample] - self.t_calibrate
-        for key in set(res.keys()) - {'t', 'chan', 'dv_dt'}:
+        for key in set(res.keys()) - {'t', 'chan', 'dv_dt', 'spikes'}:
             if key in res and len(res[key]) > 0:
                 res[key] = np.array([np.array(reslist)[self.indstart:][::downsample] \
                                      for reslist in res[key]])
@@ -805,6 +819,11 @@ class NeuronSimTree(PhysTree):
                     var = str(varname)
                     sv[var] = res['chan'][channel_name][var]
                 res['chan'][channel_name]['p_open'] = channel.computePOpen(res['v_m'], **sv)
+        # cast spike recording to numpy array
+        if 'spikes' in res:
+            res['spikes'] = np.array(list(res['spikes']))
+            self.spike_detector = None
+            del self.spike_detector
 
         return res
 
