@@ -68,11 +68,14 @@ def loadNeuronModel(name):
 
 class MechName(object):
     def __init__(self):
-        self.names = {'L': 'pas', 'ca': 'CaDyn'}
+        self.names = {'L': 'pas'}
+        self.ions = ['ca']
 
     def __getitem__(self, key):
         if key in self.names:
             return self.names[key]
+        elif key in self.ions:
+            return "conc_" + key
         else:
             return 'I' + key
 mechname = MechName()
@@ -116,6 +119,7 @@ class NeuronSimNode(PhysNode):
             for seg in compartment:
                 for param, value in params.items():
                     exec('seg.' + mechname[ion] + '.' + param + ' = ' + str(value))
+                    print(seg, mechname[ion], eval('seg.' + mechname[ion] + '.' + param))
         h.pop_section()
 
         if pprint:
@@ -655,7 +659,8 @@ class NeuronSimTree(PhysTree):
 
     def run(self, t_max, downsample=1,
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
-            record_from_channels=False, record_v_deriv=False, record_concentrations=[],
+            record_from_channels=False, record_v_deriv=False,
+            record_concentrations=[], record_currents=[],
             record_spikes=False,
             pprint=False):
         """
@@ -684,8 +689,12 @@ class NeuronSimTree(PhysTree):
         record_v_deriv: bool (default ``False``)
             Record voltage derivative at locations stored under 'rec locs'
             Accessible as `np.ndarray` in the output dict under key 'dv_dt'
-        record_from_concentrations: bool (default ``False``)
+        record_concentrations: list (default ``[]``)
             Record ion concentration at locations stored under 'rec locs'
+            Accessible as `np.ndarray` in the output dict with as key the ion's
+            name
+        record_currents: list (default ``[]``)
+            Record ion currents at locations stored under 'rec locs'
             Accessible as `np.ndarray` in the output dict with as key the ion's
             name
         record_spikes: bool (default ``False``)
@@ -754,6 +763,13 @@ class NeuronSimTree(PhysTree):
                 for loc in self.getLocs('rec locs'):
                     res[c_ion].append(h.Vector())
                     exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + 'i)')
+        if len(record_currents) > 0:
+            for c_ion in record_currents:
+                curr_name = f"i{c_ion}"
+                res[curr_name] = []
+                for loc in self.getLocs('rec locs'):
+                    res[curr_name].append(h.Vector())
+                    exec(f'res[curr_name][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name})')
         # record voltage derivative
         if record_v_deriv:
             res['dv_dt'] = []
