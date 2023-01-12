@@ -119,7 +119,6 @@ class NeuronSimNode(PhysNode):
             for seg in compartment:
                 for param, value in params.items():
                     exec('seg.' + mechname[ion] + '.' + param + ' = ' + str(value))
-                    print(seg, mechname[ion], eval('seg.' + mechname[ion] + '.' + param))
         h.pop_section()
 
         if pprint:
