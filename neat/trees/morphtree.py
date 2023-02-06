@@ -854,6 +854,9 @@ class MorphTree(STree):
         for node in self:
             if node.parent_node != None:
                 L = np.sqrt(np.sum((node.parent_node.xyz - node.xyz)**2))
+                # if the length is zero we can just delete it
+                if L == 0:
+                    self.removeSingleNode(node)
             else:
                 L = 0.
             node.setLength(L)
