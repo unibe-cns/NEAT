@@ -87,6 +87,7 @@ class GreensNode(PhysNode):
             g_m_ions = {conc: np.zeros_like(freqs) for conc in list(self.concmechs.keys())}
 
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
+
         # loop over channels that do not read concentrations
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
@@ -223,7 +224,7 @@ class SomaGreensNode(GreensNode):
     def _setImpedanceArrays(self):
         val = 1. / self.z_soma
         for node in self.child_nodes:
-            val += 1. / node._collapseBranchToRoot()
+            val = val + 1. / node._collapseBranchToRoot()
         self.z_in = 1. / val
 
     def _calcZF(self, x1, x2):
@@ -348,7 +349,7 @@ class GreensTree(PhysTree):
         # the path between the nodes
         path = self.pathBetweenNodes(self[loc1['node']], self[loc2['node']])
         # compute the kernel
-        z_f = np.ones_like(self.root.z_soma)
+        z_f = np.ones_like(self.root.z_in)
         if len(path) == 1:
             # both locations are on same node
             z_f *= path[0]._calcZF(loc1['x'], loc2['x'])
@@ -406,8 +407,8 @@ class GreensTree(PhysTree):
             raise IOError('`locarg` should be list of locs or string')
 
         n_loc = len(locs)
-        z_mat = np.zeros((n_loc, n_loc) + self.root.z_soma.shape,
-                         dtype=self.root.z_soma.dtype)
+        z_mat = np.zeros((n_loc, n_loc) + self.root.z_in.shape,
+                         dtype=self.root.z_in.dtype)
 
         if explicit_method:
             for ii, loc0 in enumerate(locs):
