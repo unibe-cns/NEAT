@@ -156,10 +156,10 @@ class GreensNode(PhysNode):
         # compute the impedance
         val = 0.
         if self.parent_node is not None:
-            val += 1. / self.parent_node._collapseBranchToLeaf()
+            val = val + 1. / self.parent_node._collapseBranchToLeaf()
             val += self.parent_node.g_shunt
         for snode in sister_nodes:
-            val += 1. / snode._collapseBranchToRoot()
+            val = val + 1. / snode._collapseBranchToRoot()
         self.z_proximal = 1. / val
 
     def _collapseBranchToLeaf(self):
