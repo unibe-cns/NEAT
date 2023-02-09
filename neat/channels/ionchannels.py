@@ -5,17 +5,19 @@ import os
 import ast
 import warnings
 
-CONC_DICT = {'na': 10.,  # mM
-             'k': 54.4,  # mM
-             'ca': 1e-4,  # 1e-4
-             }
+CONC_DICT = {
+    'na': 10.,  # mM
+    'k': 54.4,  # mM
+    'ca': 1e-4,  # mM
+}
 
 TEMP_DEFAULT = 36.
 
-E_ION_DICT = {'na': 50.,
-              'k': -85.,
-              'ca': 50.,
-             }
+E_ION_DICT = {
+    'na': 50.,
+    'k': -85.,
+    'ca': 50.,
+}
 
 
 class IfExpVisitor(ast.NodeVisitor):
@@ -111,6 +113,10 @@ class SPDict(dict):
                 return super(SPDict, self).__getitem__(str(key))
             else:
                 return super(SPDict, self).__getitem__(sp.symbols(key))
+
+    def __contains__(self, key):
+        return super().__contains__(key) or \
+               super().__contains__(sp.symbols(key))
 
 
 class CallDict(SPDict):
@@ -378,6 +384,8 @@ class IonChannel(object):
         channel functions
         """
         # arguments for lambda function
+        # if self.__class__.__name__ == "SK_E2":
+        #     breakpoint()
         args = [self.sp_v] + self.ordered_statevars + self.sp_c
         args_ = [self.sp_v] + self.sp_c
 

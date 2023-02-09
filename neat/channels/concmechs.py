@@ -13,7 +13,7 @@ class ConcMech(object):
 class ExpConcMech(ConcMech):
     def __init__(self, ion, tau, gamma):
         self.tau = tau # ms
-        self.gamma = gamma # ms * mM / nA
+        self.gamma = gamma # mM / (nA*ms)
         super().__init__(ion)
 
     def iteritems(self):
@@ -24,7 +24,7 @@ class ExpConcMech(ConcMech):
         return [('gamma', self.gamma), ('tau', self.tau)]
 
     def computeLinear(self, freqs):
-        return self.gamma / (freqs + 1e3 / self.tau)
+        return -self.gamma * 1e3 / (freqs + 1e3 / self.tau)
 
     def computeLin(self, freqs):
         return 1. / (freqs + 1e3 / self.tau)

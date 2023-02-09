@@ -64,7 +64,8 @@ class PhysNode(MorphNode):
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt # uS
-        self.e_eq = e_eq
+        self.e_eq = e_eq # mV
+        self.conc_eqs = {} #
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
         """
@@ -127,6 +128,19 @@ class PhysNode(MorphNode):
             the equilibrium potential (mV)
         """
         self.e_eq = e_eq
+
+    def setConcEq(self, ion, conc):
+        """
+        Set the equilibrium concentration value at this node
+
+        Parameters
+        ----------
+        ion: str ('ca', 'k', 'na')
+            the ion for which the concentration is to be set
+        conc: float
+            the concentration value (mM)
+        """
+        self.conc_eqs[ion] = conc
 
     def fitLeakCurrent(self, channel_storage, e_eq_target=-75., tau_m_target=10.):
         """
@@ -293,6 +307,20 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             e = self._distr2Float(e_eq_distr, node, argname='`e_eq_distr`')
             node.setEEq(e)
+
+    @originalTreeModificationDecorator
+    def setConcEq(self, ion, conc_eq_distr, node_arg=None):
+        """
+        Set the equilibrium concentrations in the tree
+
+        Parameters
+        ----------
+        conc_eq_distr: float, dict or :func:`float -> float`
+            The equilibrium concentrations [mV]
+        """
+        for node in self._convertNodeArgToNodes(node_arg):
+            conc = self._distr2Float(conc_eq_distr, node, argname='`conc_eq_distr`')
+            node.setConcEq(ion, conc)
 
     @originalTreeModificationDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):

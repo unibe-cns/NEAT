@@ -15,6 +15,7 @@ import copy
 from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
+from ..channels import ionchannels
 
 
 class GreensNode(PhysNode):
@@ -63,6 +64,27 @@ class GreensNode(PhysNode):
             self.expansion_points[channel_name] = {}
             return self.expansion_points[channel_name]
 
+    def _constructChannelArgs(self, channel):
+        # check if linearistation needs to be computed around expansion point
+        sv = self.getExpansionPoint(channel.__class__.__name__).copy()
+
+        # if voltage is not in expansion point, use equilibrium potential
+        v = sv.pop('v', self.e_eq)
+
+        # if concencentration is in expansion point, use it. Otherwise use
+        # concentration in equilibrium concentrations (self.conc_eqs), if
+        # it is there. If not, use default concentration.
+        ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
+        conc = {
+            ion: sv.pop(
+                    ion, self.conc_eqs.copy().pop(ion, ionchannels.CONC_DICT[ion])
+                ) \
+            for ion in ions
+        }
+        sv.update(conc)
+
+        return v, sv
+
     def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
         """
         Compute the impedance of the membrane at the node
@@ -84,29 +106,65 @@ class GreensNode(PhysNode):
             The membrane impedance
         """
         if use_conc:
-            g_m_ions = {conc: np.zeros_like(freqs) for conc in list(self.concmechs.keys())}
+            g_m_ions = {ion: np.zeros_like(freqs) for ion in self.concmechs}
 
         g_m_aux = self.c_m * freqs + self.currents['L'][0]
 
-        # loop over channels that do not read concentrations
+        # loop over all active channels
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
-            if g > 1e-10:
-                # create the ionchannel object
-                channel = channel_storage[channel_name]
-                # check if needs to be computed around expansion point
-                sv = self.getExpansionPoint(channel_name).copy()
-                v = sv.pop('v', self.e_eq)
-                # add channel contribution to membrane impedance
-                g_m_aux = g_m_aux - g * channel.computeLinSum(v, freqs, e, **sv)
-                if use_conc:
-                    for ion in channel.conc:
-                        g_m_aux = g_m_aux - \
-                                  g * channel.computeLinConc(self.e_eq, freqs, e, ion) * \
-                                  self.concmechs[ion].computeLinear(freqs) * \
-                                  g_m_ions[ion]
+
+            if g < 1e-10:
+                continue
+
+            # recover the ionchannel object
+            channel = channel_storage[channel_name]
+
+            # get voltage(s), state variable expansion point(s) and
+            # concentration(s) around which to linearize the channel
+            v, sv = self._constructChannelArgs(channel)
+
+            # compute linearized channel contribution to membrane impedance
+            g_m_chan = g * channel.computeLinSum(v, freqs, e=e, **sv)
+
+            # add channel contribution to total ionic current
+            if use_conc and channel.ion in g_m_ions:
+                g_m_ions[channel.ion] = g_m_ions[channel.ion] - g_m_chan
+
+            # add channel contribution to membrane impedance
+            g_m_aux = g_m_aux - g_m_chan
+
+        if not use_conc:
+            return 1. / (2. * np.pi * self.R_ * g_m_aux)
+
+        for channel_name in set(self.currents.keys()) - set('L'):
+            g, e = self.currents[channel_name]
+
+            if g < 1e-10:
+                continue
+
+            # recover the ionchannel object
+            channel = channel_storage[channel_name]
+
+            for ion in self.concmechs:
+
+                if ion not in channel.conc:
+                    continue
+
+                # get voltage(s), state variable expansion point(s) and
+                # concentration(s) around which to linearize the channel
+                v, sv = self._constructChannelArgs(channel)
+
+                # add concentration contribution to linearized membrane
+                # conductance
+                g_m_aux = g_m_aux - \
+                    g * \
+                    channel.computeLinConc(v, freqs, ion, e=e, **sv) * \
+                    self.concmechs[ion].computeLinear(freqs) * \
+                    g_m_ions[ion] * 1e-6
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
+
 
     def _setImpedance(self, freqs, channel_storage, use_conc=False):
         self.counter = 0

@@ -63,7 +63,16 @@ def loadNeuronModel(name):
         os.path.dirname(__file__),
         f'tmp/{name}/{platform.machine()}/.libs/libnrnmech.so'
     )
-    h.nrn_load_dll(path) # load all mechanisms
+    if os.path.exists(path):
+        h.nrn_load_dll(path) # load all mechanisms
+    else:
+        path_name = os.path.join(os.path.dirname(__file__), 'tmp/')
+        raise FileNotFoundError(
+            f"The NEURON model named \'{name}\' is not installed. "
+            f"Run \'neatmodels -h\' in the terminal for help on "
+            f"installing new NEURON models with NEAT. "
+            f"Installed models will be in \'{path_name}\'."
+        )
 
 
 class MechName(object):
@@ -78,6 +87,8 @@ class MechName(object):
             return "conc_" + key
         else:
             return 'I' + key
+
+
 mechname = MechName()
 
 
