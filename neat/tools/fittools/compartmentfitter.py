@@ -68,6 +68,19 @@ def _statevar_is_activating(f_statevar):
     return sv_test[0] < sv_test[1]
 
 
+def getTwoVariableHoldingPotentials(e_hs):
+    e_hs_aux_act   = list(e_hs)
+    e_hs_aux_inact = list(e_hs)
+    for ii, e_h1 in enumerate(e_hs):
+        for jj, e_h2 in enumerate(e_hs):
+            e_hs_aux_act.append(e_h1)
+            e_hs_aux_inact.append(e_h2)
+    e_hs_aux_act   = np.array(e_hs_aux_act)
+    e_hs_aux_inact = np.array(e_hs_aux_inact)
+
+    return e_hs_aux_act, e_hs_aux_inact
+
+
 def getExpansionPoints(e_hs, channel, only_e_h=False):
     """
     Returns a list of expansion points around which to compute the impedance
@@ -98,15 +111,8 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
         sv_hs = channel.computeVarinf(e_hs)
         sv_hs['v'] = e_hs
     else:
-        # create different combinations of combinations of holding potentials
-        e_hs_aux_act   = list(e_hs)
-        e_hs_aux_inact = list(e_hs)
-        for ii, e_h1 in enumerate(e_hs):
-            for jj, e_h2 in enumerate(e_hs):
-                e_hs_aux_act.append(e_h1)
-                e_hs_aux_inact.append(e_h2)
-        e_hs_aux_act   = np.array(e_hs_aux_act)
-        e_hs_aux_inact = np.array(e_hs_aux_inact)
+        # create different combinations of holding potentials
+        e_hs_aux_act, e_hs_aux_inact = getTwoVariableHoldingPotentials(e_hs)
 
         sv_hs = SPDict(v=e_hs_aux_act)
         for svar, f_inf in channel.f_varinf.items():
@@ -215,6 +221,9 @@ class FitTreeGF(GreensTree):
 
             for c_name, sv in sv_h.items():
                 # adapt expansion point arrays for broadcasting
+                print(f'\n{c_name}')
+                for val, svar in sv.items():
+                    print(f'{val}\n{svar}')
                 sv = {svar: val[None,:] for svar, val in sv.items()}
                 # for specifying the holding potentials in file name
                 e_h_string = '^'.join(list([f'{val:.1f}' for val in sv['v'][0]]))
@@ -355,6 +364,9 @@ class CompartmentFitter(object):
         The full tree based on which reductions are made
     e_hs: np.array of float
         The holding potentials for which quasi active expansions are computed
+    conc_hs: dict ({str: np.array of float})
+        The holding concentrations for the concentration dependent channel
+        expansion
     freqs: np.array of float or complex (default is ``np.array([0.])``)
         The frequencies at which impedance matrices are evaluated
     name: str (default 'dont save')
@@ -369,8 +381,12 @@ class CompartmentFitter(object):
     """
 
     def __init__(self, phys_tree,
-                 e_hs=np.array([-75., -55., -35., -15.]), freqs=np.array([0.]),
-                 name='dont save', path=''):
+            e_hs=np.array([-75., -55., -35., -15.]),
+            conc_hs={'ca': np.array([0.00010, 0.00012, 0.00014, 0.00016])},
+            freqs=np.array([0.]),
+            name='dont save',
+            path='',
+        ):
         self.tree = phys_tree.__copy__(new_tree=PhysTree())
         self.tree.treetype = 'original'
         # get all channels in the tree
@@ -379,6 +395,7 @@ class CompartmentFitter(object):
         self.freqs = freqs
         # expansion point holding potentials for fit
         self.e_hs = e_hs
+        self.conc_hs = conc_hs
         # name to store fit models
         self.name = name
         self.path = path
@@ -504,14 +521,18 @@ class CompartmentFitter(object):
         # compute the fit matrices for all holding potentials
         fit_mats = []
         for ii, e_h in enumerate(sv_h['v']):
-            sv = SPDict({str(svar): sv_h[svar][ii] for svar in channel.statevars if str(svar) != 'v'})
+            sv = SPDict({
+                str(svar): sv_h[svar][ii] \
+                for svar in channel.statevars if str(svar) != 'v'
+            })
 
             # compute the fit matrices
             m_f, v_t = self.ctree.computeGSingleChanFromImpedance(
-                            channel_name, z_mats[:,ii,:,:], e_h, self.freqs,
-                            sv=sv, other_channel_names=['L'],
-                            all_channel_names=self.channel_names,
-                            action='return')
+                channel_name, z_mats[:,ii,:,:], e_h, self.freqs,
+                sv=sv, other_channel_names=['L'],
+                all_channel_names=self.channel_names,
+                action='return'
+            )
 
             # compute open probability to weigh fit matrices
             po_h = channel.computePOpen(e_h, **sv)
@@ -541,28 +562,116 @@ class CompartmentFitter(object):
         # create the fit matrices for each channel
         n_arg = len(self.channel_names)
 
-        if n_arg > 0:
-            args_list = [self.channel_names,
-                         [recompute for _ in range(n_arg)],
-                         [pprint for _ in range(n_arg)],
-                         [parallel for _ in range(n_arg)],
-                        ]
-            if parallel:
-                max_workers = min(n_arg, cpu_count())
-                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-                    fit_mats_ = list(pool.map(self.evalChannel, *args_list))
-            else:
-                fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
-            fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
-            # store the fit matrices
-            for m_f, v_t, w_f in fit_mats:
-                if not (np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()):
-                    self.ctree._fitResAction('store', m_f, v_t, w_f,
-                                             channel_names=self.channel_names)
-            # run the fit
-            self.ctree.runFit()
+        if n_arg == 0:
+            return self.ctree
+
+        args_list = [self.channel_names,
+                     [recompute for _ in range(n_arg)],
+                     [pprint for _ in range(n_arg)],
+                     [parallel for _ in range(n_arg)],
+                    ]
+        if parallel:
+            max_workers = min(n_arg, cpu_count())
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+                fit_mats_ = list(pool.map(self.evalChannel, *args_list))
+        else:
+            fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
+        fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
+        # store the fit matrices
+        for m_f, v_t, w_f in fit_mats:
+            if not (
+                np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()
+            ):
+                self.ctree._fitResAction(
+                    'store', m_f, v_t, w_f,
+                    channel_names=self.channel_names
+                )
+        # run the fit
+        self.ctree.runFit()
 
         return self.ctree
+
+    def fitConcentration(self, ion, recompute=False, pprint=False):
+        for ion, conc_hs in self.conc_hs.items():
+            assert len(conc_hs) == len(self.e_hs)
+        nh = len(self.e_hs)
+
+        locs = self.tree.getLocs('fit locs')
+
+        e_hs_aux_act, e_hs_aux_inact = getTwoVariableHoldingPotentials(self.e_hs)
+        conc_ehs = {ion: np.array(
+            [c_ion for c_ion in self.conc_hs[ion]] + \
+            [c_ion for c_ion in self.conc_hs[ion] for _ in range(nh)]
+        )}
+
+        # only retain channels involved with the ion
+        channel_names = []
+        sv_hs = {}
+        for cname, chan in self.tree.channel_storage.items():
+            if chan.ion == ion:
+                channel_names.append(cname)
+
+                # if len(chan.statevars) > 1:
+                #     sv_h = getExpansionPoints(self.e_hs, chan)
+                # else:
+                sv_h = getExpansionPoints(e_hs_aux_act, chan, only_e_h=True)
+
+                sv_hs[cname] = sv_h
+
+            elif ion in chan.conc:
+                channel_names.append(cname)
+
+                args = chan._argsAsList(
+                    e_hs_aux_act, w_statevar=False, **conc_ehs
+                )
+                sv_h = chan.f_varinf(*args)
+                sv_h[ion] = conc_ehs[ion]
+                sv_h['v'] = e_hs_aux_act
+
+                sv_hs[cname] = sv_h
+
+        for cname, sv in sv_hs.items():
+            print(f'\n{cname}')
+            for var, vals in sv.items():
+                print(f'{var}, {vals}')
+
+        # create the trees with the desired channels and expansion points
+        fit_tree = self.createTreeGF(channel_names)
+        fit_tree.setName(self.name, self.path)
+
+        # set the impedances in the tree
+        fit_tree.setImpedancesInTree(
+            sv_h=sv_hs, recompute=recompute, pprint=pprint
+        )
+        # compute the impedance matrix for this activation level
+        z_mats = fit_tree.calcImpedanceMatrix(locs)
+
+        # compute the fit matrices for all holding potentials
+        fit_mats = []
+        for ii, e_h in enumerate(sv_h['v']):
+            svs = []
+            for cname in channel_names:
+                sv = {key: val_arr[ii] for key, val_arr in sv_hs[cname] if key != 'v'}
+                svs.append(sv)
+
+                sv = SPDict({
+                    str(svar): sv_h[svar][ii] \
+                    for svar in channel.statevars if str(svar) != 'v'
+                })
+
+            # compute the fit matrices
+            m_f, v_t = self.ctree.computeConcMech(
+                z_mats[:,ii,:,:], e_h, self.freqs, ion,
+                sv=svs, channel_names=channel_names,
+                action='fit'
+            )
+
+            fit_mats.append([m_f, v_t, w_f])
+
+        # fit the model for this channel
+        w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
+        for _, _, w_f in fit_mats: w_f /= w_norm
+
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
@@ -881,7 +990,9 @@ class CompartmentFitter(object):
         """
         fit_locs = self.tree.getLocs('fit locs')
         if alphas is None or phimat is None:
-            alphas, phimat, _, _ = self._calcSOVMats(fit_locs, recompute=recompute, pprint=pprint)
+            alphas, phimat, _, _ = self._calcSOVMats(
+                fit_locs, recompute=recompute, pprint=pprint
+            )
 
         # compute eigenvalues
         alphas_comp, phimat_comp, phimat_inv_comp = \

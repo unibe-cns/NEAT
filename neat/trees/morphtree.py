@@ -2052,8 +2052,11 @@ class MorphTree(STree):
                 if Nloc == 0 and len(node.child_nodes) > 1 and add_bifurcations:
                     Nloc = 1
                 xvals = np.arange(1, Nloc+1) / float(Nloc)
-                locs.extend([MorphLoc((node.index, xv), self,
-                                      set_as_comploc=True) for xv in xvals])
+                locs.extend([
+                    MorphLoc(
+                        (node.index, xv), self, set_as_comploc=True
+                    ) for xv in xvals
+                ])
         if name != 'dont save': self.storeLocs(locs, name=name)
         return locs
 

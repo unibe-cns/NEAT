@@ -9,7 +9,7 @@ import subprocess
 
 import pytest
 
-from neat import PhysTree, GreensTree, NeuronSimTree
+from neat import PhysTree, GreensTree, NeuronSimTree, CompartmentFitter
 from neat import loadNeuronModel
 import neat.channels.ionchannels as ionchannels
 
@@ -344,7 +344,7 @@ class TestConcMechs:
         tree2.setCompTree()
 
         tree0.setImpedance(0.)
-        tree1.setImpedance(0., use_conc=False)
+        tree1.setImpedance(0., use_conc=False) # omit concentration mechanism
         tree2.setImpedance(0., use_conc=True)
 
         z_in0 = tree0.calcZF((1,.5), (1,.5))
@@ -419,12 +419,30 @@ class TestConcMechs:
 
             pl.show()
 
+    def testFitting(self, pplot=True):
 
+        tree2 = self.loadBall(w_ca_conc=True, gamma_factor=1e3).__copy__(new_tree=GreensTree())
+        cfit = CompartmentFitter(tree2)
+
+        cfit.setCTree([(1,.5)])
+        # fit the passive steady state model
+        cfit.fitPassive(recompute=False, pprint=True, use_all_channels=False)
+
+        # fit the ion channel
+        cfit.fitChannels(recompute=False, pprint=True, parallel=False)
+
+        cfit.fitConcentration('ca', recompute=False, pprint=False)
+
+        # # fit the resting potentials
+        # self.fitEEq()
+
+        # return self.ctree
 
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    tcm.testSpiking(pplot=True)
+    # tcm.testSpiking(pplot=True)
     # tcm.testImpedance()
+    tcm.testFitting()
 
 

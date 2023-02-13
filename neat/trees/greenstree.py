@@ -65,6 +65,29 @@ class GreensNode(PhysNode):
             return self.expansion_points[channel_name]
 
     def _constructChannelArgs(self, channel):
+        """
+        Returns the expansion points for the channel, around which the
+        linearization in computed.
+
+        For voltage, checks if 'v' key is in `self.expansion_points`, otherwise
+        defaults to `self.e_eq`.
+
+        For concentrations, checks if the ion is in `self.expansion_points`,
+        otherwise checks if a concentration of the ion is given in
+        `self.conc_eqs`, and otherwise defaults to the factory default in
+        `neat.channels.ionchannels`.
+
+        Parameters
+        ----------
+        channel: `neat.IonChannel` object
+            the ion channel
+
+        Returns
+        v: float or np.ndarray
+            The voltage values for the expansion points
+        sv: dict ({str: np.ndarray})
+            The state variables and/or concentrations at the expansion points.
+        """
         # check if linearistation needs to be computed around expansion point
         sv = self.getExpansionPoint(channel.__class__.__name__).copy()
 
@@ -161,7 +184,7 @@ class GreensNode(PhysNode):
                     g * \
                     channel.computeLinConc(v, freqs, ion, e=e, **sv) * \
                     self.concmechs[ion].computeLinear(freqs) * \
-                    g_m_ions[ion] * 1e-6
+                    g_m_ions[ion] * 1e-6 # TODO: explain factor
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 

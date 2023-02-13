@@ -101,6 +101,15 @@ def _insert_function_prefixes(string, prefix='np',
     return string
 
 
+def _broadcast(fun):
+    """
+    This function is to be used in together with `sympy.lambdify` to ensure that
+    lambda functions generated from constant expressions are broadcast to the
+    input shape
+    """
+    return lambda *x: np.broadcast_arrays(fun(*x), *x)[0]
+
+
 class SPDict(dict):
     """
     Dictionary that accepts both strings and similarly name sympy symbols as keys
@@ -383,6 +392,9 @@ class IonChannel(object):
         Create lambda functions based on sympy expression for relevant ion
         channel functions
         """
+        from sympy.utilities.autowrap import ufuncify
+        # ufuncify = sp.utilities.autowrap.ufuncify
+
         # arguments for lambda function
         # if self.__class__.__name__ == "SK_E2":
         #     breakpoint()
@@ -390,7 +402,7 @@ class IonChannel(object):
         args_ = [self.sp_v] + self.sp_c
 
         # lambdified open probability
-        self.f_p_open = sp.lambdify(args, self.p_open)
+        self.f_p_open = _broadcast(sp.lambdify(args, self.p_open))
         # storatestate variable function
         self.f_statevar = CallDict()
         self.f_varinf, self.f_tauinf = CallDict(), CallDict()
@@ -404,24 +416,24 @@ class IonChannel(object):
             tauinf = self._substituteDefaults(self.tauinf[svar])
 
             # state variable function
-            self.f_statevar = sp.lambdify(args, f_svar)
+            self.f_statevar = _broadcast(sp.lambdify(args, f_svar))
 
             # state variable activation & timescale
-            self.f_varinf[svar] = sp.lambdify(args_, varinf)
-            self.f_tauinf[svar] = sp.lambdify(args_, tauinf)
+            self.f_varinf[svar] = _broadcast(sp.lambdify(args_, varinf))
+            self.f_tauinf[svar] = _broadcast(sp.lambdify(args_, tauinf))
 
             # derivatives of open probability to state variables
-            self.dp_dx[svar] = sp.lambdify(args, sp.diff(self.p_open, svar, 1))
+            self.dp_dx[svar] = _broadcast(sp.lambdify(args, sp.diff(self.p_open, svar, 1)))
 
             # derivatives of state variable function to voltage
-            self.df_dv[svar] = sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1))
+            self.df_dv[svar] = _broadcast(sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1)))
 
             # derivatives of state variable function to state variable
-            self.df_dx[svar] = sp.lambdify(args, sp.diff(f_svar, svar, 1))
+            self.df_dx[svar] = _broadcast(sp.lambdify(args, sp.diff(f_svar, svar, 1)))
 
             # derivatives of state variable function to concentrations
             self.df_dc[svar] = \
-                CallDict({c: sp.lambdify(args, sp.diff(f_svar, c, 1)) \
+                CallDict({c: _broadcast(sp.lambdify(args, sp.diff(f_svar, c, 1))) \
                           for c in self.sp_c})
 
     def _argsAsList(self, v, w_statevar=True, **kwargs):

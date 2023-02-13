@@ -65,7 +65,7 @@ class PhysNode(MorphNode):
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt # uS
         self.e_eq = e_eq # mV
-        self.conc_eqs = {} #
+        self.conc_eqs = {} # equilibrium concentration values (mM)
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
         """
@@ -316,7 +316,7 @@ class PhysTree(MorphTree):
         Parameters
         ----------
         conc_eq_distr: float, dict or :func:`float -> float`
-            The equilibrium concentrations [mV]
+            The equilibrium concentrations [mM]
         """
         for node in self._convertNodeArgToNodes(node_arg):
             conc = self._distr2Float(conc_eq_distr, node, argname='`conc_eq_distr`')

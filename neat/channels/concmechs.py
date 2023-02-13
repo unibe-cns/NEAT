@@ -27,7 +27,7 @@ class ExpConcMech(ConcMech):
         return -self.gamma * 1e3 / (freqs + 1e3 / self.tau)
 
     def computeLin(self, freqs):
-        return 1. / (freqs + 1e3 / self.tau)
+        return - 1e3 / (freqs + 1e3 / self.tau)
 
     def __str__(self):
         return 'tau: %.2f ms, gamma: %.6f (ms/nA)'%(self.tau, self.gamma)
