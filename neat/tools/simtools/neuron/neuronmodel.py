@@ -129,6 +129,8 @@ class NeuronSimNode(PhysNode):
             compartment.insert(mechname[ion])
             for seg in compartment:
                 for param, value in params.items():
+                    if param == 'gamma':
+                        value *= 1e6
                     exec('seg.' + mechname[ion] + '.' + param + ' = ' + str(value))
         h.pop_section()
 
@@ -671,7 +673,7 @@ class NeuronSimTree(PhysTree):
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
             record_from_channels=False, record_v_deriv=False,
             record_concentrations=[], record_currents=[],
-            record_spikes=False,
+            spike_rec_loc=None,
             pprint=False):
         """
         Run the NEURON simulation. Records at all locations stored
@@ -786,12 +788,12 @@ class NeuronSimTree(PhysTree):
             for ii, loc in enumerate(self.getLocs('rec locs')):
                 res['dv_dt'].append(h.Vector())
                 # res['dv_dt'][-1].deriv(res['v_m'][ii], self.dt)
-        if record_spikes:
+        if spike_rec_loc is not None:
             # add spike detector at soma
             self.spike_detector = h.NetCon(
-                self.sections[1](0.5)._ref_v,
+                self.sections[spike_rec_loc[0]](spike_rec_loc[1])._ref_v,
                 None,
-                sec=self.sections[1]
+                sec=self.sections[spike_rec_loc[0]]
             )
             self.spike_detector.threshold = -20.
             res['spikes'] = h.Vector()
@@ -1073,7 +1075,7 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
                                          for chan, (g, e) in comp_node.currents.items()}
             sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
             for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index]
+                concmech.gamma *= surfaces[comp_node.index] * 1e6
             sim_node.c_m = fake_c_m
             sim_node.r_a = fake_r_a
             sim_node.content['points_3d'] = points[comp_node.index]
@@ -1095,8 +1097,9 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
             sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
                                          for chan, (g, e) in comp_node.currents.items()}
             sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
+            print("!!!",  surfaces[comp_node.index])
             for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index]
+                concmech.gamma *= surfaces[comp_node.index] * 1e6
             sim_node.c_m = fake_c_m
             sim_node.r_a = fake_r_a
             sim_node.R = radii[comp_node.index]*1e4    # convert to [um]

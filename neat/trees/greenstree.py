@@ -184,7 +184,20 @@ class GreensNode(PhysNode):
                     g * \
                     channel.computeLinConc(v, freqs, ion, e=e, **sv) * \
                     self.concmechs[ion].computeLinear(freqs) * \
-                    g_m_ions[ion] * 1e-6 # TODO: explain factor
+                    g_m_ions[ion]
+
+                print(f"\n> {ion} concmech gamma = {self.concmechs[ion].gamma}")
+                gg = g_m_ions[ion] * 4.*np.pi*(self.R*1e-4)**2 * \
+                    g * 4.*np.pi*(self.R*1e-4)**2 * channel.computeLinConc(v, freqs, ion, e=e, **sv) * \
+                    self.concmechs[ion].computeLin(freqs) * \
+                    1.
+                print(f"Membrane concentration term without gamma greenstree =\n{gg}")
+                ff = g_m_ions[ion] * 4.*np.pi*(self.R*1e-4)**2 * \
+                    g * channel.computeLinConc(v, freqs, ion, e=e, **sv) * \
+                    self.concmechs[ion].computeLinear(freqs) * \
+                    1.
+                print(f"Membrane concentration term with gamma greenstree =\n{ff}")
+                print(f"Ratio = \n{ff/gg}")
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 

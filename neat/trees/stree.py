@@ -921,3 +921,4 @@ class STree(object):
             new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
                                                                       skip_inds=[]))
             self._recurseCopy(node, new_tree)
+

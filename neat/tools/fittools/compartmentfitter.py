@@ -26,6 +26,7 @@ import concurrent.futures
 import contextlib
 import multiprocessing
 import os
+import ctypes
 
 try:
     from ...tools.simtools.neuron import neuronmodel as neurm
@@ -49,6 +50,67 @@ def consecutive(inds):
     split a list of ints into consecutive sublists
     """
     return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
+
+
+def nonnegative_hash(o):
+    return ctypes.c_size_t(hash(o)).value
+
+
+def make_hash(o):
+    """
+    Makes a hash from a dictionary, list, tuple or set to any level, that contains
+    only other hashable types (including any lists, tuples, sets, and
+    dictionaries).
+
+    From https://stackoverflow.com/questions/5884066/hashing-a-dictionary
+    """
+
+    if isinstance(o, (set, tuple, list)):
+
+        return nonnegative_hash(tuple([make_hash(e) for e in o]))
+
+    elif isinstance(o, np.ndarray):
+
+        return nonnegative_hash(o.tobytes())
+
+    elif not isinstance(o, dict):
+
+        return nonnegative_hash(o)
+
+    new_o = copy.deepcopy(o)
+    for k, v in new_o.items():
+        new_o[k] = make_hash(v)
+
+    return nonnegative_hash(tuple(frozenset(sorted(new_o.items()))))
+
+
+def maybe_execute_funcs(
+    tree, file_name,
+    funcs_args_kwargs=[],
+    recompute_cache=False, save_cache=True, pprint=False,
+):
+    try:
+        # ensure that the funcs are recomputed if 'recompute' is true
+        if recompute_cache:
+            raise IOError
+
+        with open(file_name, 'rb') as file:
+            tree_ = pickle.load(file)
+
+        tree.__dict__.update(tree_.__dict__)
+        del tree_
+
+    except (Exception, IOError, EOFError, KeyError) as err:
+        if pprint:
+            print('>>> No cache found, recomputing...')
+
+        # execute the functions
+        for func, args, kwargs in funcs_args_kwargs:
+            func(*args, **kwargs)
+
+        if save_cache:
+            with open(file_name, 'wb') as file:
+                pickle.dump(tree, file)
 
 
 def _statevar_is_activating(f_statevar):
@@ -163,10 +225,14 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
 
 
 class FitTreeGF(GreensTree):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, recompute_cache=False, cache_name='dont save', cache_path='', **kwargs):
         super().__init__(*args, **kwargs)
         self.setName('dont save', '')
         self.e_h_string = ''
+
+        self.cache_name = cache_name
+        self.cache_path = cache_path
+        self.recompute_cache = recompute_cache
 
     def setName(self, name, path):
         """
@@ -183,7 +249,7 @@ class FitTreeGF(GreensTree):
         self.name = name
         self.path = path
 
-    def setImpedancesInTree(self, sv_h=None, many_freqs=False, recompute=False, pprint=False):
+    def setImpedancesInTree(self, sv_h=None, many_freqs=False, recompute=False, pprint=False, **kwargs):
         """
         Sets the impedances in the tree.
 
@@ -221,9 +287,6 @@ class FitTreeGF(GreensTree):
 
             for c_name, sv in sv_h.items():
                 # adapt expansion point arrays for broadcasting
-                print(f'\n{c_name}')
-                for val, svar in sv.items():
-                    print(f'{val}\n{svar}')
                 sv = {svar: val[None,:] for svar, val in sv.items()}
                 # for specifying the holding potentials in file name
                 e_h_string = '^'.join(list([f'{val:.1f}' for val in sv['v'][0]]))
@@ -250,15 +313,60 @@ class FitTreeGF(GreensTree):
             if pprint: print('>>>>>Impedances not stored, calculating...')
             self.setCompTree()
             # set the impedances
-            self.setImpedance(freqs, pprint=pprint)
+            self.setImpedance(freqs, pprint=pprint, **kwargs)
 
-            if not 'dont save' in self.name:
+            if len(self.cache_name):
                 # store the impedance tree
                 if not os.path.isdir(self.path):
                     os.makedirs(self.path)
                 file = open(self.path + file_name, 'wb')
                 pickle.dump(self, file)
                 file.close()
+
+    def setImpedancesInTree_(self, freqs, sv_h=None, pprint=False, **kwargs):
+        """
+        Sets the impedances in the tree.
+
+        Parameters
+        ----------
+        sv_hs: dict of {string: np.ndarray}
+            Keys are the channel names and values are numpy arrays that contain
+            the expansion point for each ion channel
+        many_freqs: bool (optional, default is ``False``)
+            If ``True``, evaluates the impedances over an array suitable to
+            apply the inverse Fourrier transform to obtain temporal kernel
+            If ``False``, evaluates at zero frequency
+        pprint: bool (optional, default is ``False``)
+            Print info
+        """
+        if pprint:
+            cname_string = ', '.join(list(self.channel_storage.keys()))
+            print(f'>>> evaluating impedances with {cname_string}')
+
+        if sv_h is not None:
+            # check if exansion point for all channels is defined
+            assert sv_h.keys() == self.channel_storage.keys()
+
+            for c_name, sv in sv_h.items():
+
+                # set the expansion point
+                for node in self:
+                    node.setExpansionPoint(c_name, statevar=sv)
+
+        file_name = os.path.join(
+            self.cache_path,
+            f"{self.cache_name}_cache_{str(make_hash([freqs, sv_h, kwargs]))}.p",
+        )
+
+        maybe_execute_funcs(
+            self, file_name,
+            recompute_cache=self.recompute_cache,
+            save_cache=(self.cache_name != 'dont save'),
+            funcs_args_kwargs=[
+                (self.setCompTree, [], {}),
+                (self.setImpedance, [freqs], {"pprint": pprint, **kwargs})
+            ]
+        )
 
     def calcNETSteadyState(self, root_loc=None, dx=5., dz=5.):
         if root_loc is None: root_loc = (1, .5)
@@ -399,6 +507,10 @@ class CompartmentFitter(object):
         # name to store fit models
         self.name = name
         self.path = path
+        self.cache_name = os.path.join(self.path, self.name)
+
+        if not os.path.isdir(path):
+            os.makedirs(path)
 
         # boolean flag that is reset the first time `self.fitPassive` is called
         self.use_all_channels_for_passive = True
@@ -423,12 +535,16 @@ class CompartmentFitter(object):
         if extend_w_bifurc:
             locs = self.tree.extendWithBifurcationLocs(locs)
         else:
-            warnings.warn('Not adding bifurcations to `loc_arg`, this could '+ \
-                          'lead to inaccurate fits. To add bifurcation, set' + \
-                          'kwarg `extend_w_bifurc` to ``True``')
+            warnings.warn(
+                'Not adding bifurcations to `loc_arg`, this could ' \
+                'lead to inaccurate fits. To add bifurcation, set' \
+                'kwarg `extend_w_bifurc` to ``True``'
+            )
         self.tree.storeLocs(locs, name='fit locs')
+
         # create the reduced compartment tree
         self.ctree = self.tree.createCompartmentTree(locs)
+
         # add currents to compartmental model
         for c_name, channel in self.tree.channel_storage.items():
             e_revs = []
@@ -437,6 +553,28 @@ class CompartmentFitter(object):
                     e_revs.append(node.currents[c_name][1])
             # reversal potential is the same throughout the reduced model
             self.ctree.addCurrent(copy.deepcopy(channel), np.mean(e_revs))
+
+        # add concentration mechanisms
+        ions = set()
+        ion_params = {}
+        for node in self.tree:
+            for ion, concmech in node.concmechs.items():
+                if ion not in ion_params:
+                    ion_params[ion] = {}
+
+                for param, val in concmech.items():
+                    if param in ion_params:
+                        ion_params[ion][param].append(val)
+                    else:
+                        ion_params[ion][param] = [val]
+
+            ions.union(set(node.concmechs.keys()))
+
+        for ion, params in ion_params.items():
+            params = {param: np.mean(pvals) for param, pvals in params.items()}
+            for node in self.ctree:
+                node.addConcMech(ion, **params)
+
         # set the equilibirum potentials at fit locations
         self.setEEq()
 
@@ -461,6 +599,49 @@ class CompartmentFitter(object):
         tree = self.tree.__copy__(new_tree=FitTreeGF())
         tree.channel_storage = {}
         tree.setName(self.name, self.path)
+        # add the ion channel to the tree
+        channel_names_newtree = set()
+        for node, node_orig in zip(tree, self.tree):
+            node.currents = {}
+            g_l, e_l = node_orig.currents['L']
+            # add the current to the tree
+            node._addCurrent('L', g_l, e_l)
+            for channel_name in channel_names:
+                try:
+                    g_max, e_rev = node_orig.currents[channel_name]
+                    node._addCurrent(channel_name, g_max, e_rev)
+                    channel_names_newtree.add(channel_name)
+                except KeyError:
+                    pass
+
+        tree.channel_storage = {channel_name: self.tree.channel_storage[channel_name] \
+                                for channel_name in channel_names_newtree}
+        tree.setCompTree()
+
+        return tree
+
+    def createTreeGF_(self, channel_names=[]):
+        """
+        Create a `FitTreeGF` copy of the old tree, but only with the
+        channels in ``channel_names``. Leak 'L' is included in the tree by
+        default.
+
+        Parameters
+        ----------
+        channel_names: list of strings
+            List of channel names of the channels that are to be included in the
+            new tree.
+
+        Returns
+        -------
+        `FitTreeGF()`
+
+        """
+        # create new tree and empty channel storage
+        tree = self.tree.__copy__(
+            new_tree=FitTreeGF(cache_name=self.cache_name, recompute_cache=True)
+        )
+        tree.channel_storage = {}
         # add the ion channel to the tree
         channel_names_newtree = set()
         for node, node_orig in zip(tree, self.tree):
@@ -630,47 +811,84 @@ class CompartmentFitter(object):
 
                 sv_hs[cname] = sv_h
 
-        for cname, sv in sv_hs.items():
-            print(f'\n{cname}')
-            for var, vals in sv.items():
-                print(f'{var}, {vals}')
+        # for cname, sv in sv_hs.items():
+        #     print(f'\n{cname}')
+        #     for var, vals in sv.items():
+        #         print(f'{var}, {vals}')
 
         # create the trees with the desired channels and expansion points
-        fit_tree = self.createTreeGF(channel_names)
+        fit_tree = self.createTreeGF_(channel_names)
         fit_tree.setName(self.name, self.path)
 
         # set the impedances in the tree
-        fit_tree.setImpedancesInTree(
-            sv_h=sv_hs, recompute=recompute, pprint=pprint
+        fit_tree.setImpedancesInTree_(
+            freqs=0., sv_h=sv_hs, pprint=pprint, use_conc=False,
         )
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-        # compute the fit matrices for all holding potentials
-        fit_mats = []
-        for ii, e_h in enumerate(sv_h['v']):
-            svs = []
-            for cname in channel_names:
-                sv = {key: val_arr[ii] for key, val_arr in sv_hs[cname] if key != 'v'}
-                svs.append(sv)
+        print(f"impedance matrices greenstree without conc = \n{z_mats}")
 
-                sv = SPDict({
-                    str(svar): sv_h[svar][ii] \
-                    for svar in channel.statevars if str(svar) != 'v'
-                })
 
-            # compute the fit matrices
-            m_f, v_t = self.ctree.computeConcMech(
-                z_mats[:,ii,:,:], e_h, self.freqs, ion,
-                sv=svs, channel_names=channel_names,
-                action='fit'
-            )
+        # set the impedances in the tree
+        fit_tree.setImpedancesInTree_(
+            freqs=0., sv_h=sv_hs, pprint=pprint, use_conc=True,
+        )
+        # compute the impedance matrix for this activation level
+        z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-            fit_mats.append([m_f, v_t, w_f])
+        print(f"impedance matrices greenstree with conc = \n{z_mats}")
 
-        # fit the model for this channel
-        w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
-        for _, _, w_f in fit_mats: w_f /= w_norm
+        # # compute the fit matrices for all holding potentials
+        # fit_mats = []
+        # for ii, e_h in enumerate(sv_h['v']):
+        #     svs = []
+        #     for cname in channel_names:
+        #         sv = {key: val_arr[ii] for key, val_arr in sv_hs[cname] if key != 'v'}
+        #         svs.append(sv)
+
+        #         sv = SPDict({
+        #             str(svar): sv_h[svar][ii] \
+        #             for svar in channel.statevars if str(svar) != 'v'
+        #         })
+
+        #     # compute the fit matrices
+        #     m_f, v_t = self.ctree.computeConcMech(
+        #         z_mats[:,ii,:,:], e_h, self.freqs, ion,
+        #         sv=svs, channel_names=channel_names,
+        #         action='fit'
+        #     )
+
+        #     fit_mats.append([m_f, v_t, w_f])
+
+        print("\n> original tree")
+        for node in fit_tree:
+            str_repr = f"Node {node.index}"
+            for cname, (g, e) in node.currents.items():
+                A = 4. * np.pi * (node.R * 1e-4)**2
+                str_repr += f" g_{cname} = {g*A} uS,"
+            print(str_repr)
+
+
+        print("\n> fit tree")
+        for node in self.ctree:
+            print(node)
+
+        self.ctree.computeConcMech(
+            z_mats, self.freqs, ion,
+            sv_s=sv_hs, channel_names=channel_names, action='fit',
+        )
+
+        for node in self.ctree:
+            for cm in node.concmechs.values():
+                print(A)
+                print(cm, cm.gamma * A)
+                # print(node.concmechs)
+
+
+        # # fit the model for this channel
+        # w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
+        # for _, _, w_f in fit_mats: w_f /= w_norm
 
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
@@ -1144,15 +1362,19 @@ class CompartmentFitter(object):
 
         return net_reduced
 
-    def calcEEq(self, locs, t_max=500., dt=0.1, factor_lambda=10.):
+    def calcEEq(self, locs, t_max=500., dt=0.1, factor_lambda=10., ions=[]):
         # create a biophysical simulation model
         sim_tree_biophys = self.tree.__copy__(new_tree=neurm.NeuronSimTree())
         # compute equilibrium potentials
         sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
         sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
-        res_biophys = sim_tree_biophys.run(t_max)
+        res_biophys = sim_tree_biophys.run(t_max, record_concentrations=ions)
         sim_tree_biophys.deleteModel()
-        return np.array([v_m[-1] for v_m in res_biophys['v_m']])
+
+        return (
+            np.array([v_m[-1] for v_m in res_biophys['v_m']]),
+            {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
+        )
 
     def setEEq(self, t_max=500., dt=0.1, factor_lambda=10.):
         """
@@ -1176,7 +1398,7 @@ class CompartmentFitter(object):
         fit_locs = self.tree.getLocs('fit locs')
         # compute equilibrium potentials
         v_eqs = self.calcEEq(tree_locs + fit_locs,
-                             t_max=t_max, dt=dt, factor_lambda=factor_lambda)
+                             t_max=t_max, dt=dt, factor_lambda=factor_lambda)[0]
         # store the equilibrium potentials
         self.v_eqs_tree = {n.index: v for n, v in zip(self.tree, v_eqs)}
         self.v_eqs_fit = v_eqs[len(tree_locs):]
@@ -1208,7 +1430,7 @@ class CompartmentFitter(object):
         else:
             raise IOError('``e_eqs_type`` should be \'fit\' or \'tree\'')
 
-    def fitEEq(self, **kwargs):
+    def fitEEq(self, ions=[], **kwargs):
         """
         Fits the leak potentials of the reduced model to yield the same
         equilibrium potentials as the full model
@@ -1218,10 +1440,21 @@ class CompartmentFitter(object):
         kwargs: When `v_eqs_tree` or `v_eqs_fit`, have not been set, calls
             ::func::`self.setEEq()` with these `kwargs`
         """
-        # compute equilibirum potentials
-        v_eqs = self.getEEq('fit', **kwargs)
-        # fit the equilibirum potentials of the reduced model
-        self.ctree.setEEq(v_eqs)
+        fit_locs = self.tree.getLocs('fit locs')
+
+        # compute equilibrium potentials
+        eqs = self.calcEEq(
+            fit_locs,
+            ions=ions,
+            **kwargs
+        )
+
+        # set the equilibria
+        self.ctree.setEEq(eqs[0])
+        for ion in ions:
+            self.ctree.setConcEq(ion, eqs[1][ion])
+
+        # fit the leak
         self.ctree.fitEL()
 
         return self.ctree
@@ -1284,7 +1517,7 @@ class CompartmentFitter(object):
 
         # compute equilibirum potentials
         all_locs = [(n.index, .5) for n in self.tree]
-        e_eqs = self.calcEEq(all_locs + locs)
+        e_eqs = self.calcEEq(all_locs + locs)[0]
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
         greens_tree.setName(self.name + '_atRest_', self.path)
@@ -1357,7 +1590,7 @@ class CompartmentFitter(object):
 
         # compute equilibirum potentials
         all_locs = [(n.index, .5) for n in self.tree]
-        e_eqs = self.calcEEq(all_locs + cs_locs)
+        e_eqs = self.calcEEq(all_locs + cs_locs)[0]
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(channel_names=channel_names)
         greens_tree.setName(self.name + '_atRest_', self.path)
