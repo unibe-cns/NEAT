@@ -869,6 +869,7 @@ class CompartmentFitter(object):
                 str_repr += f" g_{cname} = {g*A} uS,"
             print(str_repr)
 
+        tau_conc = fit_tree[1].concmechs['ca'].tau
 
         print("\n> fit tree")
         for node in self.ctree:
@@ -890,6 +891,29 @@ class CompartmentFitter(object):
         # w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         # for _, _, w_f in fit_mats: w_f /= w_norm
 
+        for c_name in sv_hs:
+            sv_hs[c_name] = {key: val_arr[:,None] for key, val_arr in sv_hs[c_name].items()}
+        freqs = np.array([1.,10.,100.,1000.])[None,:] * 1j
+
+
+        print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+
+        # set the impedances in the tree
+        fit_tree.setImpedancesInTree_(
+            freqs=freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
+        )
+        # compute the impedance matrix for this activation level
+        z_mats = fit_tree.calcImpedanceMatrix(locs)
+
+        self.ctree.computeConcMech2(
+            z_mats, freqs, ion,
+            sv_s=sv_hs, channel_names=channel_names, action='fit',
+        )
+
+
+        for node in self.ctree:
+            for cm in node.concmechs.values():
+                print(cm)
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """

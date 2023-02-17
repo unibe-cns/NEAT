@@ -246,7 +246,7 @@ class CompartmentNode(SNode):
         return cond_terms
 
     def calcMembraneConcentrationTerms(self, ion, channel_storage,
-                freqs=0., v=None, channel_names=None):
+                freqs=0., v=None, channel_names=None, fit_type="gamma"):
         """
         Contribution of linearized concentration dependence to conductance matrix
 
@@ -295,23 +295,37 @@ class CompartmentNode(SNode):
                 conc_read_channels = conc_read_channels - \
                     g * channel.computeLinConc(v, freqs, ion, e, **sv)
 
-        print("Membrane concentration term withtout gamma compartmenttree =\n",
-            conc_write_channels * \
-            conc_read_channels * \
-            self.concmechs[ion].computeLin(freqs) * \
-            1.
-        )
+        # print("Membrane concentration term withtout gamma compartmenttree =\n",
+        #     conc_write_channels * \
+        #     conc_read_channels * \
+        #     self.concmechs[ion].computeLin(freqs) * \
+        #     1.
+        # )
 
-        print("Membrane concentration term with gamma compartmenttree =\n",
-            conc_write_channels * \
-            conc_read_channels * \
-            self.concmechs[ion].computeLinear(freqs) * \
-            1.
-        )
+        # print("Membrane concentration term with gamma compartmenttree =\n",
+        #     conc_write_channels * \
+        #     conc_read_channels * \
+        #     self.concmechs[ion].computeLinear(freqs) * \
+        #     1.
+        # )
 
-        return conc_write_channels * \
-               conc_read_channels * \
-               self.concmechs[ion].computeLin(freqs)
+        if fit_type == 'gamma':
+
+            return conc_write_channels * \
+                   conc_read_channels * \
+                   self.concmechs[ion].computeLin(freqs)
+
+        elif fit_type == "tau":
+
+            c0, c1 = self.concmechs[ion].computeLinTauFit(freqs)
+            # print(conc_write_channels * conc_read_channels * c0)
+            return conc_write_channels * conc_read_channels * c0, c1
+
+        else:
+
+            raise NotImplementedError(
+                "Unkown fit type, choose \'gamma\' or \'tau\'"
+            )
 
     def getGTot(self, channel_storage,
                       v=None, channel_names=None, p_open_channels=None):
@@ -1089,9 +1103,21 @@ class CompartmentTree(STree):
         """
         return np.array([node.concmechs[ion].gamma for node in self])
 
-    def _toTreeConc(self, c_vec, ion):
-        for ii, node in enumerate(self):
-            node.concmechs[ion].gamma = c_vec[ii]
+    def _toTreeConc(self, c_vec, ion, param_type):
+        if param_type == 'tau':
+            c_vec *= 1e3 # convert to ms
+
+            for ii, node in enumerate(self):
+                # node.concmechs[ion].gamma /= c_vec[ii]
+                node.concmechs[ion].tau = c_vec[ii]
+
+        elif param_type == 'gamma':
+
+            for ii, node in enumerate(self):
+                node.concmechs[ion].gamma = c_vec[ii] / node.concmechs[ion].tau
+
+        else:
+            raise NotImplementedError("param_type should be 'tau' or 'gamma'")
 
     def _toStructureTensorC(self, freqs):
         c_vec = self._toVecC()
@@ -1469,7 +1495,7 @@ class CompartmentTree(STree):
             for node in self:
                 node.setExpansionPoint(channel_name, expansion_point)
 
-    def computeConcMech(self, z_mats, freqs, ion, sv_s=None,
+    def computeConcMech(self, z_mats, freqs, ion, sv_s,
                         weight=1., channel_names=None, action='fit'):
         # check compatibility of shapes
         ep_shape = z_mats.shape[:-2]
@@ -1495,16 +1521,17 @@ class CompartmentTree(STree):
             use_conc=False,
             ep_shape=z_mats.shape[:-2]
         )
-        print(f"inverse g_mat = \n{np.linalg.inv(g_mat)}")
+        # print(f"inverse g_mat = \n{np.linalg.inv(g_mat)}")
         # compute the matrix product of impedance and conductance matrices
         zg_prod = np.einsum('...ij,...jk->...ik', z_mats, g_mat)
+        # breakpoint()
         # construct the target vector
         mat_target = np.tile(np.eye(len(self)), ep_shape + (1,1)) - zg_prod
         vec_target = mat_target.reshape((-1,))
 
-        print(f"sanity check = \n{vec_target / mat_feature[:,0]}")
+        # print(f"sangity check = \n{vec_target / mat_feature[:,0]}")
 
-        self._fitResAction(action, mat_feature, vec_target, weight, ion=ion)
+        self._fitResAction(action, mat_feature, vec_target, weight, ion=ion, param_type='gamma')
         self._toStructureTensorConc_(ion, freqs, channel_names, z_mats.shape[:-2])
 
         self.removeExpansionPoints()
@@ -1512,6 +1539,85 @@ class CompartmentTree(STree):
 
 
         # return self._fitResAction(action, mat_feature, vec_target, weight, ion=ion)
+
+    def computeConcMech2(self,
+        z_mats, freqs, ion, sv_s,
+        weight=1., channel_names=None, action='fit'
+    ):
+        # check compatibility of shapes
+        ep_shape = z_mats.shape[:-2]
+        nn_shape = z_mats.shape[-2:]
+        assert nn_shape == (len(self), len(self))
+        for chan, svars in sv_s.items():
+            for svar, vals in svars.items():
+                assert np.broadcast(freqs, vals).shape == ep_shape
+        freqs_ = np.broadcast_to(freqs, ep_shape)
+
+        print("111", freqs_.shape)
+
+        self._setExpansionPoints(sv_s)
+
+        # breakpoint()
+
+        # construct conductance matrix with known channel terms
+        g_mat = self._calcSystemMatrix_vtest(
+            freqs,
+            channel_names=channel_names+['L'],
+            indexing='tree',
+            use_conc=False,
+            ep_shape=z_mats.shape[:-2]
+        )
+
+        # construct conductance vector for fit
+        c_terms0, c_terms1 = np.zeros(ep_shape + (len(self),), dtype=g_mat.dtype), np.zeros(ep_shape + (len(self),), dtype=g_mat.dtype)
+        for node in self:
+            ii = node.index
+            c0, c1 = node.calcMembraneConcentrationTerms(
+                ion, self.channel_storage,
+                freqs=freqs, channel_names=channel_names,
+                fit_type='tau',
+            )
+
+            c_terms0[...,ii], c_terms1[...,ii] = c0, c1
+
+        # compute the matrix product of impedance and conductance matrices
+        zg_prod = np.einsum('...ij,...jk->...ik', z_mats, g_mat)
+        # construct the target vector
+        mat_aux = np.tile(np.eye(len(self)), ep_shape + (1,1)) - zg_prod
+
+        mat_target1 = z_mats * c_terms0[...,None]
+        # breakpoint()
+        # freqs__ = np.reshape(freqs_, mat_target1.shape)
+        freqs__ = np.tile(np.expand_dims(freqs_, (-1,-2)), (1,1)+nn_shape)
+        mat_target2 = mat_aux * freqs__
+
+        # mat_target2 = np.einsum('i...,i->i...', mat_aux, np.squeeze(freqs))
+
+        target = mat_target1 - mat_target2
+
+
+        feature = mat_aux
+        print(feature.shape)
+        print(target.shape)
+
+
+        taus = np.zeros(len(self))
+        for ii in range(len(self)):
+            m1 = np.reshape(feature[...,ii], (-1,1))
+            m2 = np.reshape(target[...,ii], (-1,))
+
+            v0 = np.linalg.lstsq(m1, m2)[0]
+
+            # print("!!!\n", m1[...,0]/m2)
+            # print("???\n", 1./v0)
+
+            taus[ii] = 1./v0.real
+
+        self._toTreeConc(taus, ion, param_type='tau')
+
+
+        self.removeExpansionPoints()
+
 
 
     def _toStructureTensorConc(self, ion, freqs, channel_names):
@@ -1823,12 +1929,11 @@ class CompartmentTree(STree):
             # linear regression fit
             res = so.nnls(mat_feature, vec_target)
             vec_res = res[0].real
-            print("!!!!", vec_res / 605.033222)
             # set the conductances
             if 'channel_names' in kwargs:
                 self._toTreeGM(vec_res, channel_names=kwargs['channel_names'])
             elif 'ion' in kwargs:
-                self._toTreeConc(vec_res, kwargs['ion'])
+                self._toTreeConc(vec_res, kwargs['ion'], param_type=kwargs['param_type'])
             else:
                 raise IOError('Provide \'channel_names\' or \'ion\' as keyword argument')
         elif action == 'return':

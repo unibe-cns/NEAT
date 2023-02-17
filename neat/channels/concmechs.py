@@ -19,6 +19,22 @@ class ExpConcMech(ConcMech):
     def __str__(self):
         return f"ExpConcMech(ion={self.ion}, gamma={self.gamma}, tau={self.tau})"
 
+    # def __getitem__(self, key):
+    #     if key in ['tau', 'gamma']:
+    #         return self.__dict__['key']
+    #     else:
+    #         raise KeyError(
+    #             "ExpConcMech only has \'tau\' or \'gamma\' as valid keys"
+    #         )
+
+    # def __setitem__(self, key, value):
+    #     if key in ['tau', 'gamma']:
+    #         self.__dict__[key] = value
+    #     else:
+    #         raise KeyError(
+    #             "ExpConcMech only has \'tau\' or \'gamma\' as valid keys"
+    #         )
+
     def iteritems(self):
         yield 'gamma', self.gamma
         yield 'tau', self.tau
@@ -31,6 +47,9 @@ class ExpConcMech(ConcMech):
 
     def computeLin(self, freqs):
         return - 1e3 / (freqs + 1e3 / self.tau)
+
+    def computeLinTauFit(self, freqs):
+        return -self.gamma * 1e3, 1e3
 
     def __str__(self):
         return 'tau: %.2f ms, gamma: %.6f (ms/nA)'%(self.tau, self.gamma)

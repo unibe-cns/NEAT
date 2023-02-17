@@ -198,6 +198,7 @@ class GreensNode(PhysNode):
                     1.
                 print(f"Membrane concentration term with gamma greenstree =\n{ff}")
                 print(f"Ratio = \n{ff/gg}")
+                print(f"linear term = \n{self.concmechs[ion].computeLinear(freqs) }")
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
@@ -206,6 +207,7 @@ class GreensNode(PhysNode):
         self.counter = 0
         self.z_m = self._calcMembraneImpedance(freqs, channel_storage,
                                               use_conc=use_conc)
+
         self.z_a = self.r_a / (np.pi * self.R_**2)
         self.gamma = np.sqrt(self.z_a / self.z_m)
         self.z_c = self.z_a / self.gamma

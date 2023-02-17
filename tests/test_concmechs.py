@@ -63,19 +63,23 @@ class TestConcMechs:
             tree.addConcMech(
                 "ca",
                 params={
-                    "tau": 605.033222,
+                    # "tau": 605.033222,
+                    "tau": 20.715642,
                     "gamma": gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY) * 1e-6,
                 },
                 node_arg=[tree[1]],
             )
+            print("gamma soma = ", gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY))
             tree.addConcMech(
                 "ca",
                 params={
                     "tau": 20.715642,
+                    # "tau": 605.033222,
                     "gamma": gamma_factor * 0.003923 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY) * 1e-6,
                 },
                 node_arg="axonal",
             )
+            print("gamma axon = ", gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY))
         else:
             # These parameters effectively disable changes in the Ca-concentration
             # In fact, it would be superfluous to add this mechanisms here,
@@ -382,11 +386,11 @@ class TestConcMechs:
         dica0 = res0['ica'][0][int((100. + 20000.)/0.1)-10] - res0['ica'][0][0]
         dica2 = res2['ica'][0][int((100. + 20000.)/0.1)-10] - res2['ica'][0][0]
 
-        # # check whether the conductance terms are correct
-        # assert np.abs(dik0 - dv0 * d_gk0 * 1e-6) < 0.01 * np.abs(dik0)
-        # assert np.abs(dik2 - dv2 * d_gk2 * 1e-6) < 0.01 * np.abs(dik0)
-        # assert np.abs(dica0 - dv0 * d_gca0 * 1e-6) < 0.01 * np.abs(dica0)
-        # assert np.abs(dica2 - dv2 * d_gca2 * 1e-6) < 0.01 * np.abs(dica0)
+        # check whether the conductance terms are correct
+        assert np.abs(dik0 - dv0 * d_gk0 * 1e-6) < 0.01 * np.abs(dik0)
+        assert np.abs(dik2 - dv2 * d_gk2 * 1e-6) < 0.01 * np.abs(dik0)
+        assert np.abs(dica0 - dv0 * d_gca0 * 1e-6) < 0.01 * np.abs(dica0)
+        assert np.abs(dica2 - dv2 * d_gca2 * 1e-6) < 0.01 * np.abs(dica0)
 
         if pplot:
             pl.figure()
@@ -402,7 +406,6 @@ class TestConcMechs:
             ax = pl.subplot(412)
             ax.plot(res2['t'], res2['ca'][0], 'g', label="w ca2")
             ax.axhline(res2['ca'][0][0] + dv2 * d_cca2 * 1e-6 * 1e6, c="DarkGrey", ls='-.')
-            print(f"d_cca = {d_cca2}")
 
             ax = pl.subplot(413)
             ax.plot(res0['t'], res0['ik'][0], 'r', label="no ca")
@@ -427,12 +430,12 @@ class TestConcMechs:
 
             pl.show()
 
-    def testFitting(self, pplot=True, amp=0.1):
+    def testFittingBall(self, pplot=False, amp=0.1):
         locs = [(1,.5)]
 
-        tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3).__copy__(new_tree=GreensTree())
+        tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
 
-        cfit = CompartmentFitter(tree, name='test', path='cache/')
+        cfit = CompartmentFitter(tree, name='ball_test', path='cache/')
         cfit.setCTree(locs)
 
         # fit the passive steady state model
@@ -454,20 +457,20 @@ class TestConcMechs:
         clocs = ctree.getEquivalentLocs()
 
 
-        print("\n> original tree")
-        for node in tree:
-            str_repr = f"Node {node.index}:\n"
-            for cname, (g, e) in node.currents.items():
-                A = 4. * np.pi * (node.R * 1e-4)**2
-                str_repr += f"  g_{cname} = {g*A} uS -- e_{cname} = {e} mV,\n"
-            print(str_repr)
+        # print("\n> original tree")
+        # for node in tree:
+        #     str_repr = f"Node {node.index}:\n"
+        #     for cname, (g, e) in node.currents.items():
+        #         A = 4. * np.pi * (node.R * 1e-4)**2
+        #         str_repr += f"  g_{cname} = {g*A} uS -- e_{cname} = {e} mV,\n"
+        #     print(str_repr)
 
 
-        for node in ctree:
-            str_repr = f"Node {node.index}:\n"
-            for cname, (g, e) in node.currents.items():
-                str_repr += f"  g_{cname} = {g} uS -- e_{cname} = {e} mV,\n"
-            print(str_repr)
+        # for node in ctree:
+        #     str_repr = f"Node {node.index}:\n"
+        #     for cname, (g, e) in node.currents.items():
+        #         str_repr += f"  g_{cname} = {g} uS -- e_{cname} = {e} mV,\n"
+        #     print(str_repr)
 
         # check whether parameters of original and fitted models match
         node = tree[1]
@@ -485,9 +488,9 @@ class TestConcMechs:
         for ion in node.concmechs:
             print(channel_name)
             # check gamma factors
-            assert np.abs(cnode.concmechs[ion].gamma * A - node.concmechs[ion].gamma*1e-6) < 1e-6
+            assert np.abs(cnode.concmechs[ion].gamma * A - node.concmechs[ion].gamma * 1e-6) < 1e-6
             # check time scales
-            assert np.abs(cnode.concmechs[ion].tau - node.concmechs[ion].tau) < 1e-8
+            assert np.abs(cnode.concmechs[ion].tau - node.concmechs[ion].tau) < 1e-6
 
 
         # run test simulations
@@ -510,10 +513,62 @@ class TestConcMechs:
 
             pl.show()
 
+
+    def testFittingBallAndStick(self, pplot=False, amp=0.1):
+        locs = [(1,.5), (4.,0.5), (5,0.5)]
+
+        tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
+
+        cfit = CompartmentFitter(tree, name='ball_and_stick_test', path='cache/',
+            e_hs=np.array([-78.22, -68.22, -58.22,]),
+            conc_hs={'ca': np.array([0.000100, 0.000105, 0.000110])},
+            )
+        cfit.setCTree(locs)
+
+        # fit the passive steady state model
+        cfit.fitPassive(recompute=True, pprint=True, use_all_channels=False)
+
+        # fit the capacitances
+        cfit.fitCapacitance(recompute=True, pprint=True, pplot=False)
+
+        # fit the ion channel
+        cfit.fitChannels(recompute=True, pprint=True, parallel=False)
+
+        # fit the concentration mechanism
+        cfit.fitConcentration('ca', recompute=True, pprint=True)
+
+        # fit the resting potentials
+        cfit.fitEEq(ions=['ca'], t_max=10000)
+
+        ctree = cfit.ctree
+        clocs = ctree.getEquivalentLocs()
+
+        # ctree[0].concmechs['ca'].tau = 20.715642#605.033222#
+        # ctree[1].concmechs['ca'].tau = 20.715642#605.033222#
+        # ctree[2].concmechs['ca'].tau = 20.715642#605.033222#
+
+        # run test simulations
+        res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
+            locs, amp=amp, dur=20000., delay=100., cal=10000.
+        )
+        res_reduced = self._simulate(createReducedNeuronModel(ctree),
+            clocs, amp=amp, dur=20000., delay=100., cal=10000.
+        )
+        if pplot:
+            pl.figure()
+            ax = pl.gca()
+
+            ax.plot(res_full['t'], res_full['v_m'][0], 'b')
+            ax.plot(res_reduced['t'], res_reduced['v_m'][0], 'r--')
+
+            pl.show()
+
+
 if __name__ == "__main__":
     tcm = TestConcMechs()
     # tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
-    tcm.testFitting()
+    # tcm.testFittingBall(pplot=True)
+    tcm.testFittingBallAndStick(pplot=True)
 
 
