@@ -1105,16 +1105,15 @@ class CompartmentTree(STree):
 
     def _toTreeConc(self, c_vec, ion, param_type):
         if param_type == 'tau':
-            c_vec *= 1e3 # convert to ms
 
             for ii, node in enumerate(self):
-                # node.concmechs[ion].gamma /= c_vec[ii]
+                node.concmechs[ion].gamma *= node.concmechs[ion].tau / c_vec[ii]
                 node.concmechs[ion].tau = c_vec[ii]
 
         elif param_type == 'gamma':
 
             for ii, node in enumerate(self):
-                node.concmechs[ion].gamma = c_vec[ii] / node.concmechs[ion].tau
+                node.concmechs[ion].gamma = c_vec[ii] #* node.concmechs[ion].tau / (605.033222)
 
         else:
             raise NotImplementedError("param_type should be 'tau' or 'gamma'")
@@ -1585,34 +1584,39 @@ class CompartmentTree(STree):
         # construct the target vector
         mat_aux = np.tile(np.eye(len(self)), ep_shape + (1,1)) - zg_prod
 
-        mat_target1 = z_mats * c_terms0[...,None]
+        mat_feature = z_mats * c_terms0[...,None] - mat_aux
         # breakpoint()
         # freqs__ = np.reshape(freqs_, mat_target1.shape)
         freqs__ = np.tile(np.expand_dims(freqs_, (-1,-2)), (1,1)+nn_shape)
-        mat_target2 = mat_aux * freqs__
+        mat_target = mat_aux * freqs__
 
         # mat_target2 = np.einsum('i...,i->i...', mat_aux, np.squeeze(freqs))
 
-        target = mat_target1 - mat_target2
+        # target = mat_target1 - mat_target2
 
 
-        feature = mat_aux
-        print(feature.shape)
-        print(target.shape)
+        # feature = mat_aux
+        print(mat_feature.shape)
+        print(mat_target.shape)
 
-
+        # breakpoint()
         taus = np.zeros(len(self))
         for ii in range(len(self)):
-            m1 = np.reshape(feature[...,ii], (-1,1))
-            m2 = np.reshape(target[...,ii], (-1,))
+            m1 = np.reshape(mat_feature[...,ii], (-1,1))
+            m2 = np.reshape(mat_target[...,ii], (-1,))
 
             v0 = np.linalg.lstsq(m1, m2)[0]
+            # v0 = so.nnls(m1, m2)[0]
 
-            # print("!!!\n", m1[...,0]/m2)
-            # print("???\n", 1./v0)
+            if v0 <  0.:
+                v0 = 1e-9
+
+            print("!!!\n", m1[...,0]/m2)
+            print("???\n", 1./v0)
 
             taus[ii] = 1./v0.real
 
+        print("...\n", taus)
         self._toTreeConc(taus, ion, param_type='tau')
 
 

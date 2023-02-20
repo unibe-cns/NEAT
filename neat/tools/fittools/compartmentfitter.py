@@ -572,6 +572,8 @@ class CompartmentFitter(object):
 
         for ion, params in ion_params.items():
             params = {param: np.mean(pvals) for param, pvals in params.items()}
+            print(f'\ntau_0 =  {params["tau"]}\n')
+            # params["tau"] = 10.
             for node in self.ctree:
                 node.addConcMech(ion, **params)
 
@@ -893,8 +895,15 @@ class CompartmentFitter(object):
 
         for c_name in sv_hs:
             sv_hs[c_name] = {key: val_arr[:,None] for key, val_arr in sv_hs[c_name].items()}
-        freqs = np.array([1.,10.,100.,1000.])[None,:] * 1j
+        # freqs = np.array([1.,10.,100.,1000.])[None,:] * 1j
+        # freqs = np.array([1000.])[None,:] * 1j
 
+
+        from neat.tools import kernelextraction as ke
+        # ft = ke.FourrierTools(tarr = np.linspace(0., 50., 1000))
+        # freqs = ft.s
+
+        freqs = np.logspace(0, 4, 100) *1j
 
         print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
 
