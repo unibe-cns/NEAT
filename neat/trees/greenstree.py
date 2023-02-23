@@ -384,11 +384,13 @@ class GreensTree(PhysTree):
             whether or not to print info on the progression of the algorithm
 
         """
-        self.freqs = freqs
+        # cast to array to make sure there is always a shape attribute
+        self.freqs = np.array(freqs)
+
         # set the node specific impedances
         for node in self:
             node._rescaleLengthRadius()
-            node._setImpedance(freqs, self.channel_storage, use_conc=use_conc)
+            node._setImpedance(self.freqs, self.channel_storage, use_conc=use_conc)
         # recursion
         if len(self) > 1:
             self._impedanceFromLeaf(self.leafs[0], self.leafs[1:], pprint=pprint)

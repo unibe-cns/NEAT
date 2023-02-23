@@ -429,20 +429,20 @@ class TestConcMechs:
 
         tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
 
-        cfit = CompartmentFitter(tree, name='ball_test', path='cache/')
+        cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         cfit.setCTree(locs)
 
         # fit the passive steady state model
-        cfit.fitPassive(recompute=True, pprint=True, use_all_channels=False)
+        cfit.fitPassive(pprint=True, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fitCapacitance(recompute=True, pprint=True, pplot=False)
+        cfit.fitCapacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(recompute=True, pprint=True, parallel=False)
+        cfit.fitChannels(pprint=True, parallel=False)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', recompute=True, pprint=True)
+        cfit.fitConcentration('ca', pprint=True)
 
         # fit the resting potentials
         cfit.fitEEq(ions=['ca'], t_max=10000)
@@ -513,23 +513,24 @@ class TestConcMechs:
 
         tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
 
-        cfit = CompartmentFitter(tree, name='ball_and_stick_test', path='cache/',
+        cfit = CompartmentFitter(tree,
             e_hs=np.array([-78.22, -68.22, -58.22,]),
             conc_hs={'ca': np.array([0.000100, 0.000105, 0.000110])},
-            )
+            save_cache=False, recompute_cache=True,
+        )
         cfit.setCTree(locs)
 
         # fit the passive steady state model
-        cfit.fitPassive(recompute=True, pprint=True, use_all_channels=False)
+        cfit.fitPassive(pprint=True, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fitCapacitance(recompute=True, pprint=True, pplot=False)
+        cfit.fitCapacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(recompute=True, pprint=True, parallel=False)
+        cfit.fitChannels(pprint=True, parallel=False)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', recompute=True, pprint=True)
+        cfit.fitConcentration('ca', pprint=True)
 
         # fit the resting potentials
         cfit.fitEEq(ions=['ca'], t_max=10000)
@@ -560,9 +561,9 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    tcm.testSpiking(pplot=True)
+    # tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
-    # tcm.testFittingBall(pplot=True)
+    tcm.testFittingBall(pplot=True)
     # tcm.testFittingBallAndStick(pplot=True)
 
 

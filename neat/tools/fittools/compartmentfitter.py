@@ -399,23 +399,24 @@ class CompartmentFitter(object):
         expansion
     freqs: np.array of float or complex (default is ``np.array([0.])``)
         The frequencies at which impedance matrices are evaluated
-    name: str (default 'dont save')
+    cache_name: str (default '')
         name of files in which intermediate trees required for the fit are
-        stored. Details about what is in the actual pickle
-        files are appended as a suffix to `name`. Default is to not store
-        intermediate files.
-    path: str (default '')
-        specify a path under which the intermediate files are saved (only if
-        `name` is specified). Default is empty string, which means that
-        intermediate files are stored in the working directory.
+        cached.
+    cache_path: str (default '')
+        specify a path under which the intermediate files are cached.
+        Default is empty string, which means that intermediate files are stored
+        in the working directory.
+    save_cache: bool (default `True`)
+        Save the intermediate results in a cache (using `cache_path` and
+        `cache_name`).
+    recompute_cache: bool (default `False`)
+        Forces recomputing the caches.
     """
 
     def __init__(self, phys_tree,
             e_hs=np.array([-75., -55., -35., -15.]),
             conc_hs={'ca': np.array([0.00010, 0.00012, 0.00014, 0.00016])},
             freqs=np.array([0.]),
-            name='dont save',
-            path='',
             cache_name='', cache_path='',
             save_cache=True, recompute_cache=False,
         ):
@@ -428,12 +429,8 @@ class CompartmentFitter(object):
         # expansion point holding potentials for fit
         self.e_hs = e_hs
         self.conc_hs = conc_hs
-        # name to store fit models
-        self.name = name
-        self.path = path
-        # self.cache_name = os.path.join(self.path, self.name)
 
-
+        # cache related params
         self.cache_name = cache_name
         self.cache_path = cache_path
         self.save_cache = save_cache
@@ -957,9 +954,9 @@ class CompartmentFitter(object):
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeSOV())
         if self.use_all_channels_for_passive:
-            tree.setName(self.name + '_allchans_', self.path)
+            tree.setName(self.cache_name + '_allchans_', self.cache_path)
         else:
-            tree.setName(self.name, self.path)
+            tree.setName(self.cache_name, self.cache_path)
 
         if not self.use_all_channels_for_passive:
             tree.channel_storage = {}
