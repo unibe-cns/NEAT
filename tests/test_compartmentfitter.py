@@ -208,7 +208,7 @@ class TestCompartmentFitter():
 
     def testChannelFitMats(self):
         self.loadBall()
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, cache_name="channelfitmats", cache_path="neatcache/")
         cm.setCTree([(1,.5)])
         # check if reversals are correct
         for key in set(cm.ctree[0].currents) - {'L'}:
@@ -284,7 +284,7 @@ class TestCompartmentFitter():
         ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # fit a tree with compartment fitter
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, cache_name="passivefit1", cache_path="neatcache/")
         cm.setCTree(fit_locs)
         cm.fitPassive()
         cm.fitCapacitance()
@@ -331,7 +331,7 @@ class TestCompartmentFitter():
         ctree_all.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # new compartment fitter
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, cache_name="passivefit2", cache_path="neatcache/")
         cm.setCTree(fit_locs)
         # test fitting
         cm.fitPassive(use_all_channels=False)
@@ -355,15 +355,18 @@ class TestCompartmentFitter():
     def testRecalcImpedanceMatrix(self, g_inp=np.linspace(0.,0.01, 20)):
         self.loadBall()
         fit_locs = [(1,.5)]
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
         cm.setCTree(fit_locs)
 
         # test only leak
         # compute impedances explicitly
-        greens_tree = cm.createTreeGF(channel_names=[])
+        greens_tree = cm.createTreeGF(
+            channel_names=[],
+        )
         greens_tree.setEEq(-75.)
-        greens_tree.setImpedancesInTree()
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0]
+        print("xxx")
+        greens_tree.setImpedancesInTree(freqs=0., pprint=True)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
         # compute impedances with compartmentfitter function
         z_calc = np.array([ \
@@ -377,10 +380,12 @@ class TestCompartmentFitter():
 
         # test with z based on all channels (passive)
         # compute impedances explicitly
-        greens_tree = cm.createTreeGF(channel_names=list(cm.tree.channel_storage.keys()))
+        greens_tree = cm.createTreeGF(
+            channel_names=list(cm.tree.channel_storage.keys()),
+        )
         greens_tree.setEEq(-75.)
-        greens_tree.setImpedancesInTree()
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)[0]
+        greens_tree.setImpedancesInTree(freqs=0., pprint=True)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
         # compute impedances with compartmentfitter function
         z_calc = np.array([ \
@@ -396,13 +401,15 @@ class TestCompartmentFitter():
         self.loadBallAndStick()
         fit_locs = [(4,.7)]
         syn_locs = [(4,1.)]
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
         cm.setCTree(fit_locs)
         # compute impedance matrix
-        greens_tree = cm.createTreeGF(channel_names=[])
+        greens_tree = cm.createTreeGF(
+            channel_names=[],
+        )
         greens_tree.setEEq(-75.)
-        greens_tree.setImpedancesInTree()
-        z_mat = greens_tree.calcImpedanceMatrix(fit_locs+syn_locs)[0]
+        greens_tree.setImpedancesInTree(freqs=0.)
+        z_mat = greens_tree.calcImpedanceMatrix(fit_locs+syn_locs)
         # analytical synapse scale factors
         beta_calc = 1. / (1. + (z_mat[1,1] - z_mat[0,0]) * g_inp)
         beta_full = z_mat[0,1] / z_mat[0,0] * (e_rev - v_eq) / \
@@ -513,7 +520,7 @@ class TestCompartmentFitter():
         ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # fit a tree with compartmentfitter
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
         ctree_cm = cm.fitModel(fit_locs)
 
         # compare the two trees
@@ -524,7 +531,7 @@ class TestCompartmentFitter():
         # check active channel
         self.fitBall()
         locs = [(1, 0.5)]
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
         ctree_cm_1 = cm.fitModel(locs, parallel=False, use_all_channels_for_passive=False)
         ctree_cm_2 = cm.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
 
@@ -562,20 +569,47 @@ class TestCompartmentFitter():
     def testParallel(self, w_benchmark=False):
         self.loadTSegmentTree()
         locs = [(nn.index,0.5) for nn in self.tree.nodes[:30]]
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
 
         ctree_cm = cm.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
 
         if w_benchmark:
             from timeit import default_timer as timer
             t0 = timer()
-            cm.fitChannels(recompute=False, pprint=False, parallel=False)
+            cm.fitChannels(pprint=False, parallel=False)
             t1 = timer()
             print('Not parallel: %.8f s'%(t1-t0))
             t0 = timer()
-            cm.fitChannels(recompute=False, pprint=False, parallel=True)
+            cm.fitChannels(pprint=False, parallel=True)
             t1 = timer()
             print('Parallel: %.8f s'%(t1-t0))
+
+    def testCacheing(self):
+        self.loadTSegmentTree()
+        locs = [(1, 0.5), (4,.9)]
+
+        cm1 = CompartmentFitter(self.tree,
+            cache_name='cacheingtest', cache_path='neatcache/', recompute_cache=True,
+        )
+        ctree_cm_1a = cm1.fitModel(locs, parallel=False, use_all_channels_for_passive=False)
+        ctree_cm_1b = cm1.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
+        del cm1
+
+        cm2 = CompartmentFitter(self.tree,
+            cache_name='cacheingtest', cache_path='neatcache/', recompute_cache=False,
+        )
+        ctree_cm_2a = cm2.fitModel(locs, parallel=False, use_all_channels_for_passive=False)
+        ctree_cm_2b = cm2.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
+        del cm2
+
+        self._checkAllCurrProps(ctree_cm_1a, ctree_cm_2a)
+        self._checkAllCurrProps(ctree_cm_1b, ctree_cm_2b)
+
+        with pytest.raises(AssertionError):
+            self._checkAllCurrProps(ctree_cm_1a, ctree_cm_1b)
+
+
+
 
 
 def test_expansionpoints():
@@ -602,13 +636,14 @@ def test_expansionpoints():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    tcf.testTreeStructure()
-    tcf.testCreateTreeGF()
-    tcf.testChannelFitMats()
-    tcf.testPassiveFit()
-    tcf.testRecalcImpedanceMatrix()
-    tcf.testSynRescale()
-    tcf.testFitModel()
-    tcf.testPickling()
-    tcf.testParallel(w_benchmark=True)
-    test_expansionpoints()
+    # tcf.testTreeStructure()
+    # tcf.testCreateTreeGF()
+    # tcf.testChannelFitMats()
+    # tcf.testPassiveFit()
+    # tcf.testRecalcImpedanceMatrix()
+    # tcf.testSynRescale()
+    # tcf.testFitModel()
+    # tcf.testPickling()
+    # tcf.testParallel(w_benchmark=True)
+    tcf.testCacheing()
+    # test_expansionpoints()
