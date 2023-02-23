@@ -10,25 +10,21 @@ import itertools
 
 from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
-from neat import NeuronSimTree, createReducedNeuronModel, loadNeuronModel
+from neat import NeuronSimTree, createReducedNeuronModel
 import neat.tools.kernelextraction as ke
-from neat.channels.channelcollection import channelcollection
+
+import channelcollection_for_tests as channelcollection
+import channel_installer
+channel_installer.load_or_install_testchannels()
 
 
-MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
-
-
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
                 'ForestGreen',  'DarkOliveGreen', 'DarkGoldenRod',
                 'DarkOrange', 'Coral', 'Red', 'Sienna', 'Black', 'DarkGrey']
-
-
-# load the default neuron model
-try:
-    loadNeuronModel("default")
-except RuntimeError as e:
-    # the neuron model is already loaded in hoc
-    pass
 
 
 class TestNeuron():

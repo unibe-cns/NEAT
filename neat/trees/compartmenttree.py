@@ -362,7 +362,7 @@ class CompartmentNode(SNode):
             g, e = self.currents[channel_name]
             channel = channel_storage[channel_name]
 
-            v, sv = self._constructChannelArgs(channel_name)
+            v, sv = self._constructChannelArgs(channel)
 
             # open probability
             if p_open_channels is None:
@@ -606,7 +606,7 @@ class CompartmentTree(STree):
             else:
                 eps = [{} for _ in self]
                 for svar, exp_p in expansion_point.items():
-                    if isinstance(exp_p, float):
+                    if np.ndim(exp_p) == 0:
                         for ep in eps:
                             ep[svar] = exp_p
                     else:
@@ -1097,11 +1097,15 @@ class CompartmentTree(STree):
             c_struct[:,ii,ii,ii] += c_term
         return c_struct
 
-    def _toVecConc(self, ion):
+    def _toVecConc(self, ion, return_type="gamma"):
         """
         Place concentration mechanisms to be fitted in a single vector
         """
-        return np.array([node.concmechs[ion].gamma for node in self])
+        if return_type == "gamma":
+            return np.array([node.concmechs[ion].gamma for node in self])
+        elif return_type == "tau":
+            return np.array([node.concmechs[ion].tau for node in self])
+
 
     def _toTreeConc(self, c_vec, ion, param_type):
         if param_type == 'tau':

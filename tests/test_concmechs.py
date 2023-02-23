@@ -10,25 +10,18 @@ import subprocess
 import pytest
 
 from neat import PhysTree, GreensTree, NeuronSimTree, CompartmentFitter
-from neat import loadNeuronModel, createReducedNeuronModel
+from neat import createReducedNeuronModel
 import neat.channels.ionchannels as ionchannels
 
 from channelcollection_for_tests import *
+import channel_installer
+channel_installer.load_or_install_testchannels()
 
 
-PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-MORPHOLOGIES_PATH_PREFIX = os.path.join(PATH_PREFIX, 'test_morphologies')
-CHANNEL_FILE = os.path.join(PATH_PREFIX, 'channelcollection_for_tests.py')
-try:
-    # raise FileNotFoundError
-    loadNeuronModel("multichannel_test")
-except FileNotFoundError:
-    subprocess.call([
-        "neatmodels", "install", "multichannel_test",
-        "-s", "neuron",
-        "-p", CHANNEL_FILE
-    ])
-    loadNeuronModel("multichannel_test")
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 
 
 class TestConcMechs:
@@ -63,10 +56,10 @@ class TestConcMechs:
             tree.addConcMech(
                 "ca",
                 params={
-                    # "tau": 605.033222,
-                    "tau": 20.715642,
-                    # "gamma": gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY) * 1e-6,
-                    "gamma": 0.,
+                    "tau": 605.033222,
+                    # "tau": 20.715642,
+                    "gamma": gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY) * 1e-6,
+                    # "gamma": 0.,
                 },
                 node_arg=[tree[1]],
             )
@@ -306,8 +299,8 @@ class TestConcMechs:
     def testImpedance(self, pplot=False, amp=0.001):
 
         tree0 = self.loadBall(w_ca_conc=False).__copy__(new_tree=GreensTree())
-        tree1 = self.loadBall(w_ca_conc=True, gamma_factor=10.).__copy__(new_tree=GreensTree())
-        tree2 = self.loadBall(w_ca_conc=True, gamma_factor=10.).__copy__(new_tree=GreensTree())
+        tree1 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
+        tree2 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
 
         print(f"Soma radius = {tree0[1].R}")
 
@@ -567,9 +560,9 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    # tcm.testSpiking(pplot=True)
+    tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
     # tcm.testFittingBall(pplot=True)
-    tcm.testFittingBallAndStick(pplot=True)
+    # tcm.testFittingBallAndStick(pplot=True)
 
 

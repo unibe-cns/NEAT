@@ -2,12 +2,13 @@ import numpy as np
 import sympy as sp
 # import sympy as cse
 
-from neat.channels.channelcollection import channelcollection
-from neat import IonChannel
-
 import pytest
 import pickle
 import os, shutil
+
+from neat import IonChannel
+
+import channelcollection_for_tests as channelcollection
 
 
 class TestChannels():

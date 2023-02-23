@@ -8,7 +8,9 @@ import copy
 
 from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
-from neat.channels.channelcollection import channelcollection
+# from neat.channels.channelcollection import channelcollection
+
+import channelcollection_for_tests as channelcollection
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
@@ -604,7 +606,7 @@ class TestCompartmentTreePlotting():
 
 if __name__ == '__main__':
     tcomp = TestCompartmentTree()
-    tcomp.testTreeDericvation()
+    tcomp.testTreeDerivation()
     tcomp.testFitting()
     tcomp.testReordering()
     tcomp.testLocationMapping()
@@ -612,9 +614,6 @@ if __name__ == '__main__':
     tcomp.testCFit()
     tcomp.testPasFunctionality()
     tcomp.testChannelFit()
-
-    tcomp.testGChanFitDynamic()
-    tcomp.testGChanFitDynamicComp()
 
     tplot = TestCompartmentTreePlotting()
     tplot.testPlot(pshow=True)

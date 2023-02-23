@@ -6,10 +6,14 @@ import pytest
 import copy
 
 from neat import PhysTree, PhysNode
-from neat.channels.channelcollection import channelcollection
+
+import channelcollection_for_tests as channelcollection
 
 
-MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 
 
 class TestPhysTree():

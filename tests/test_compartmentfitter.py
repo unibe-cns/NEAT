@@ -10,19 +10,18 @@ import pickle
 from neat import MorphLoc
 from neat import PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
-from neat.channels.channelcollection import channelcollection
 import neat.tools.fittools.compartmentfitter as compartmentfitter
-from neat import loadNeuronModel
+
+import channelcollection_for_tests as channelcollection
+import channel_installer
+channel_installer.load_or_install_testchannels()
 
 
-MORPHOLOGIES_PATH_PREFIX = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__))), 'test_morphologies')
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 
-# load the default neuron model
-try:
-    loadNeuronModel("default")
-except RuntimeError as e:
-    # the neuron model is already loaded in hoc
-    pass
 
 class TestCompartmentFitter():
     def loadTTree(self):

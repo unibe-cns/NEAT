@@ -14,6 +14,7 @@ try:
     from neuron import h
 
     h.load_file("stdlib.hoc") # contains the lambda rule
+    h.load_file("stdrun.hoc") # basic run control
 
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, importing non-functional h module only for doc generation', UserWarning)
@@ -802,13 +803,13 @@ class NeuronSimTree(PhysTree):
 
         # initialize
         # neuron.celsius=37.
-        h.finitialize(self.v_init)
         h.dt = self.dt
+        h.finitialize(self.v_init)
 
         # simulate
         if pprint: print('>>> Simulating the NEURON model for ' + str(t_max) + ' ms. <<<')
         start = time.process_time()
-        neuron.run(t_max + self.t_calibrate)
+        h.continuerun(t_max + self.t_calibrate)
         stop = time.process_time()
         if pprint: print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')
         runtime = stop-start

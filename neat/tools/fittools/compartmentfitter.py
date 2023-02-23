@@ -315,7 +315,7 @@ class FitTreeGF(GreensTree):
             # set the impedances
             self.setImpedance(freqs, pprint=pprint, **kwargs)
 
-            if len(self.cache_name):
+            if len(self.cache_name) and self.cache_name != 'dont save':
                 # store the impedance tree
                 if not os.path.isdir(self.path):
                     os.makedirs(self.path)
@@ -509,7 +509,7 @@ class CompartmentFitter(object):
         self.path = path
         self.cache_name = os.path.join(self.path, self.name)
 
-        if not os.path.isdir(path):
+        if len(path) > 0 and not os.path.isdir(path):
             os.makedirs(path)
 
         # boolean flag that is reset the first time `self.fitPassive` is called
@@ -572,10 +572,22 @@ class CompartmentFitter(object):
 
         for ion, params in ion_params.items():
             params = {param: np.mean(pvals) for param, pvals in params.items()}
-            print(f'\ntau_0 =  {params["tau"]}\n')
-            # params["tau"] = 10.
+            # print(f'\ntau_0 =  {params["tau"]}\n')
+            # params["tau"] = 50.
             for node in self.ctree:
-                node.addConcMech(ion, **params)
+                loc_idx = node.loc_ind
+                if ion in self.tree[locs[loc_idx]['node']].concmechs:
+                    cparams = {pname: pval for pname, pval in self.tree[locs[loc_idx]['node']].concmechs[ion].items()}
+                    node.addConcMech(ion, **cparams)
+
+                else:
+                    node.addConcMech(ion, **params)
+
+
+        print("-----------------")
+        for node in self.ctree:
+            for cm in node.concmechs.values():
+                print(cm)
 
         # set the equilibirum potentials at fit locations
         self.setEEq()
@@ -905,24 +917,26 @@ class CompartmentFitter(object):
 
         freqs = np.logspace(0, 4, 100) *1j
 
-        print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+        # print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
 
-        # set the impedances in the tree
-        fit_tree.setImpedancesInTree_(
-            freqs=freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
-        )
-        # compute the impedance matrix for this activation level
-        z_mats = fit_tree.calcImpedanceMatrix(locs)
+        # # set the impedances in the tree
+        # fit_tree.setImpedancesInTree_(
+        #     freqs=freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
+        # )
+        # # compute the impedance matrix for this activation level
+        # z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-        self.ctree.computeConcMech2(
-            z_mats, freqs, ion,
-            sv_s=sv_hs, channel_names=channel_names, action='fit',
-        )
+        # self.ctree.computeConcMech2(
+        #     z_mats, freqs, ion,
+        #     sv_s=sv_hs, channel_names=channel_names, action='fit',
+        # )
 
+        # c_vecs = np.zeros
+        # for node in self.ctree:
+        #     for cm in node.concmechs.values():
+        #         print(cm)
 
-        for node in self.ctree:
-            for cm in node.concmechs.values():
-                print(cm)
+        # self.ctree._toTreeConc()
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
