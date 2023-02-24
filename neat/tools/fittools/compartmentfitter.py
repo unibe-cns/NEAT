@@ -97,7 +97,16 @@ def maybe_execute_funcs(
         with open(file_name, 'rb') as file:
             tree_ = pickle.load(file)
 
+        cache_params_dict = {
+            "cache_name": tree.cache_name,
+            "cache_path": tree.cache_path,
+            "save_cache": tree.save_cache,
+            "recompute_cache": tree.recompute_cache,
+        }
+
         tree.__dict__.update(tree_.__dict__)
+        # set the original cache parameters
+        tree.__dict__.update(cache_params_dict)
         del tree_
 
     except (Exception, IOError, EOFError, KeyError) as err:
@@ -237,7 +246,6 @@ class FitTreeGF(GreensTree):
             **kwargs
         ):
         super().__init__(*args, **kwargs)
-        self.e_h_string = ''
 
         self.cache_name = cache_name
         self.cache_path = cache_path
@@ -250,13 +258,11 @@ class FitTreeGF(GreensTree):
 
         Parameters
         ----------
+        freqs: np.ndarray of float or complex
+            The frequencies at which to evaluate the impedances
         sv_hs: dict of {string: np.ndarray}
             Keys are the channel names and values are numpy arrays that contain
             the expansion point for each ion channel
-        many_freqs: bool (optional, default is ``False``)
-            If ``True``, evaluates the impedances over an array suitable to
-            apply the inverse Fourrier transform to obtain temporal kernel
-            If ``False``, evaluates at zero frequency
         pprint: bool (optional, default is ``False``)
             Print info
         """
@@ -339,49 +345,42 @@ class FitTreeGF(GreensTree):
 
 
 class FitTreeSOV(SOVTree):
-    def __init__(self, *args, **kwargs):
+    def __init__(self,
+            *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
         super().__init__(*args, **kwargs)
-        self.setName('dont save', '')
 
-    def setName(self, name, path):
-        """
-        Set the name and path under which the tree will be stored
+        self.cache_name = cache_name
+        self.cache_path = cache_path
+        self.save_cache = save_cache
+        self.recompute_cache = recompute_cache
 
-        Parameters
-        ----------
-        name: string
-            string based on which name is generated (not equal to actual file
-            name)
-        path: string
-            path where the file is to be located
-        """
-        self.name = name
-        self.path = path
+    def setSOVInTree(self, pprint=False, maxspace_freq=100.):
+        if pprint:
+            print(f'>>> evaluating SOV expansion')
 
-    def setSOVInTree(self, recompute=False, pprint=False, maxspace_freq=100.):
-        file_name = 'SOV_' + self.name + '.p'
-        # load or compute the separation of variables tree
-        try:
-            # ensure that the tree is recomputed if 'recompute' is true
-            if recompute:
-                raise IOError
-            file = open(self.path + file_name, 'rb')
-            tree = pickle.load(file)
-            self.__dict__.update(tree.__dict__)
-            file.close()
-            del tree
-        except (IOError, EOFError, KeyError) as err:
-            suffix = self.path + file_name if not 'dont save' in self.name else ''
-            if pprint: print('>>>>> Calculating SOV expansion... ' + suffix)
-            # set the computational tree
-            self.setCompTree(eps=1.)
-            # compute SOV factorisation
-            self.calcSOVEquations(maxspace_freq=maxspace_freq, pprint=False)
-            if not 'dont save' in self.name:
-                # store the tree
-                file = open(self.path + file_name, 'wb')
-                pickle.dump(self, file)
-                file.close()
+        file_name = os.path.join(
+            self.cache_path,
+            f"{self.cache_name}cache_{str(make_hash([maxspace_freq]))}.p",
+        )
+
+        maybe_execute_funcs(
+            self, file_name,
+            recompute_cache=self.recompute_cache,
+            pprint=pprint,
+            save_cache=self.save_cache,
+            funcs_args_kwargs=[
+                (self.setCompTree, [], {"eps": 1.}),
+                (self.calcSOVEquations, [], {
+                    "maxspace_freq": maxspace_freq,"pprint": pprint,
+                })
+            ]
+        )
 
 
 class CompartmentFitter(object):
@@ -499,8 +498,6 @@ class CompartmentFitter(object):
 
         for ion, params in ion_params.items():
             params = {param: np.mean(pvals) for param, pvals in params.items()}
-            # print(f'\ntau_0 =  {params["tau"]}\n')
-            # params["tau"] = 50.
             for node in self.ctree:
                 loc_idx = node.loc_ind
                 if ion in self.tree[locs[loc_idx]['node']].concmechs:
@@ -951,13 +948,20 @@ class CompartmentFitter(object):
         `neat.tools.fittools.compartmentfitter.FitTreeSOV`
 
         """
-        # create new tree and empty channel storage
-        tree = self.tree.__copy__(new_tree=FitTreeSOV())
         if self.use_all_channels_for_passive:
-            tree.setName(self.cache_name + '_allchans_', self.cache_path)
+            cache_name_suffix = '_SOV_allchans_'
         else:
-            tree.setName(self.cache_name, self.cache_path)
+            cache_name_suffix = 'SOV_only_leak_'
 
+        # create new tree and empty channel storage
+        tree = self.tree.__copy__(
+            new_tree=FitTreeSOV(
+                cache_path=self.cache_path,
+                cache_name=self.cache_name + cache_name_suffix,
+                save_cache=self.save_cache,
+                recompute_cache=self.recompute_cache,
+            ),
+        )
         if not self.use_all_channels_for_passive:
             tree.channel_storage = {}
 
@@ -979,11 +983,12 @@ class CompartmentFitter(object):
         # create an SOV tree
         sov_tree = self.createTreeSOV()
         # compute the SOV expansion for this tree
-        sov_tree.setSOVInTree(recompute=self.recompute_cache, pprint=pprint)
+        sov_tree.setSOVInTree(pprint=pprint)
         # get SOV constants
-        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
-                                            sort_type='importance', eps=1e-12,
-                                            return_importance=True)
+        alphas, phimat, importance = sov_tree.getImportantModes(
+            locarg=locs, sort_type='importance', eps=1e-12,
+            return_importance=True
+        )
         alphas = alphas.real
         phimat = phimat.real
 
