@@ -15,12 +15,16 @@ import scipy.optimize as so
 from .stree import SNode, STree
 from ..tools import kernelextraction as ke
 from ..channels import ionchannels, concmechs
+from ..factorydefaults import DefaultPhysiology
 
 import copy
 import warnings
 import itertools
 from operator import mul
 from functools import reduce
+
+
+CFG = DefaultPhysiology()
 
 
 class CompartmentNode(SNode):
@@ -196,7 +200,7 @@ class CompartmentNode(SNode):
         ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
         conc = {
             ion: sv.pop(
-                    ion, self.conc_eqs.copy().pop(ion, ionchannels.CONC_DICT[ion])
+                    ion, self.conc_eqs.copy().pop(ion, CFG.conc[ion])
                 ) \
             for ion in ions
         }
@@ -1030,6 +1034,7 @@ class CompartmentTree(STree):
                     kk += 1
 
     def _toStructureTensorGM(self, freqs, channel_names, all_channel_names=None):
+        freqs = np.array(freqs)
         # to construct appropriate channel vector
         if all_channel_names is None:
             all_channel_names = channel_names
@@ -1067,6 +1072,7 @@ class CompartmentTree(STree):
                 kk += 1
 
     def _toStructureTensorConc(self, ion, freqs, channel_names):
+        freqs = np.array(freqs)
         # to construct appropriate channel vector
         c_struct = np.zeros((len(freqs), len(self), len(self), len(self)), dtype=freqs.dtype)
         # fill the fit structure
@@ -1105,6 +1111,7 @@ class CompartmentTree(STree):
             raise NotImplementedError("param_type should be 'tau' or 'gamma'")
 
     def _toStructureTensorC(self, freqs):
+        freqs = np.array(freqs)
         c_vec = self._toVecC()
         c_struct = np.zeros((len(freqs), len(self), len(self), len(c_vec)), dtype=complex)
         for node in self:
@@ -1482,6 +1489,7 @@ class CompartmentTree(STree):
 
     def computeConcMech(self, z_mats, freqs, ion, sv_s,
                         weight=1., channel_names=None, action='fit'):
+        freqs = np.array(freqs)
         # check compatibility of shapes
         ep_shape = z_mats.shape[:-2]
         for chan, svars in sv_s.items():
@@ -1529,6 +1537,7 @@ class CompartmentTree(STree):
         z_mats, freqs, ion, sv_s,
         weight=1., channel_names=None, action='fit'
     ):
+        freqs = np.array(freqs)
         # check compatibility of shapes
         ep_shape = z_mats.shape[:-2]
         nn_shape = z_mats.shape[-2:]

@@ -12,12 +12,14 @@ import pytest
 from neat import PhysTree, GreensTree, NeuronSimTree, CompartmentFitter
 from neat import createReducedNeuronModel
 import neat.channels.ionchannels as ionchannels
+from neat.factorydefaults import DefaultPhysiology
 
 from channelcollection_for_tests import *
 import channel_installer
 channel_installer.load_or_install_testchannels()
 
 
+CFG = DefaultPhysiology()
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
     os.path.dirname(__file__),
     'test_morphologies'
@@ -235,7 +237,7 @@ class TestConcMechs:
             ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
             conc = {
                 ion: sv.pop(
-                        ion, node.conc_eqs.copy().pop(ion, ionchannels.CONC_DICT[ion])
+                        ion, node.conc_eqs.copy().pop(ion, CFG.conc[ion])
                     ) \
                 for ion in ions
             }
@@ -277,7 +279,7 @@ class TestConcMechs:
             ions = [str(ion_) for ion_ in channel.conc] # convert potential sympy symbols to str
             conc = {
                 ion_: sv.pop(
-                        ion_, node.conc_eqs.copy().pop(ion_, ionchannels.CONC_DICT[ion_])
+                        ion_, node.conc_eqs.copy().pop(ion_, CFG.conc[ion_])
                     ) \
                 for ion_ in ions
             }
@@ -513,11 +515,7 @@ class TestConcMechs:
 
         tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
 
-        cfit = CompartmentFitter(tree,
-            e_hs=np.array([-78.22, -68.22, -58.22,]),
-            conc_hs={'ca': np.array([0.000100, 0.000105, 0.000110])},
-            save_cache=False, recompute_cache=True,
-        )
+        cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         cfit.setCTree(locs)
 
         # fit the passive steady state model

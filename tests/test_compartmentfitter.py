@@ -364,7 +364,6 @@ class TestCompartmentFitter():
             channel_names=[],
         )
         greens_tree.setEEq(-75.)
-        print("xxx")
         greens_tree.setImpedancesInTree(freqs=0., pprint=True)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
@@ -375,6 +374,10 @@ class TestCompartmentFitter():
                            ) \
                            for g_i in g_inp \
                           ])
+        zzz = cm.recalcImpedanceMatrix('fit locs', [g_inp[0]], \
+                               channel_names=[]
+                           )
+        print("xxxx", z_calc.shape, zzz.shape)
         z_calc = np.swapaxes(z_calc, 0, 2)
         assert np.allclose(z_calc, z_test)
 
@@ -609,9 +612,6 @@ class TestCompartmentFitter():
             self._checkAllCurrProps(ctree_cm_1a, ctree_cm_1b)
 
 
-
-
-
 def test_expansionpoints():
     kv3_1 = channelcollection.Kv3_1()
     na_ta = channelcollection.Na_Ta()
@@ -636,14 +636,14 @@ def test_expansionpoints():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    # tcf.testTreeStructure()
-    # tcf.testCreateTreeGF()
-    # tcf.testChannelFitMats()
-    # tcf.testPassiveFit()
-    # tcf.testRecalcImpedanceMatrix()
-    # tcf.testSynRescale()
-    # tcf.testFitModel()
-    # tcf.testPickling()
-    # tcf.testParallel(w_benchmark=True)
+    tcf.testTreeStructure()
+    tcf.testCreateTreeGF()
+    tcf.testChannelFitMats()
+    tcf.testPassiveFit()
+    tcf.testRecalcImpedanceMatrix()
+    tcf.testSynRescale()
+    tcf.testFitModel()
+    tcf.testPickling()
+    tcf.testParallel(w_benchmark=True)
     tcf.testCacheing()
-    # test_expansionpoints()
+    test_expansionpoints()

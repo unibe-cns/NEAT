@@ -16,6 +16,10 @@ from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
 from ..channels import ionchannels
+from ..factorydefaults import DefaultPhysiology
+
+
+CFG = DefaultPhysiology()
 
 
 class GreensNode(PhysNode):
@@ -100,7 +104,7 @@ class GreensNode(PhysNode):
         ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
         conc = {
             ion: sv.pop(
-                    ion, self.conc_eqs.copy().pop(ion, ionchannels.CONC_DICT[ion])
+                    ion, self.conc_eqs.copy().pop(ion, CFG.conc[ion])
                 ) \
             for ion in ions
         }

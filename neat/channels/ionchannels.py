@@ -5,19 +5,21 @@ import os
 import ast
 import warnings
 
-CONC_DICT = {
-    'na': 10.,  # mM
-    'k': 54.4,  # mM
-    'ca': 1e-4,  # mM
-}
+from ..factorydefaults import DefaultPhysiology
 
-TEMP_DEFAULT = 36.
+# CONC_DICT = {
+#     'na': 10.,  # mM
+#     'k': 54.4,  # mM
+#     'ca': 1e-4,  # mM
+# }
 
-E_ION_DICT = {
-    'na': 50.,
-    'k': -85.,
-    'ca': 50.,
-}
+# TEMP_DEFAULT = 36.
+
+# E_ION_DICT = {
+#     'na': 50.,
+#     'k': -85.,
+#     'ca': 50.,
+# }
 
 
 class IfExpVisitor(ast.NodeVisitor):
@@ -239,6 +241,9 @@ class IonChannel(object):
         initialized from its' derived classes that implement specific ion
         channel types.
         """
+        # initialize default configuration
+        self.cfg = DefaultPhysiology()
+
         # define the channel based on user specified state variables and activations
         self.define()
 
@@ -324,17 +329,17 @@ class IonChannel(object):
         # from default concentration values
         if not hasattr(self.conc, 'values'):
             self.conc = SPDict({sp.symbols(str(ion)): \
-                                CONC_DICT[str(ion)] for ion in self.conc})
+                                self.cfg.conc[str(ion)] for ion in self.conc})
         # sympy concentration symbols
         self.sp_c = [ion for ion in self.conc]
 
         # default parameters
         self.default_params = SPDict({})
         self.default_params[str(self.sp_t)] = self.temp if 'temp' in self.__dict__ else \
-                                              TEMP_DEFAULT
+                                              self.cfg.temp
         try:
             self.default_params['e'] = self.e if 'e' in self.__dict__ else \
-                                       E_ION_DICT[self.ion]
+                                       self.cfg.e_rev[self.ion]
         except KeyError:
             warnings.warn('No default reversal potential defined.')
 

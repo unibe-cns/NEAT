@@ -16,6 +16,7 @@ from ...trees.greenstree import GreensTree
 from ...trees.sovtree import SOVTree
 from ...trees.netree import NET, NETNode, Kernel
 from ...channels.ionchannels import SPDict
+from ...factorydefaults import DefaultFitting, DefaultMechParams
 
 from ...tools import kernelextraction as ke
 
@@ -413,9 +414,7 @@ class CompartmentFitter(object):
     """
 
     def __init__(self, phys_tree,
-            e_hs=np.array([-75., -55., -35., -15.]),
-            conc_hs={'ca': np.array([0.00010, 0.00012, 0.00014, 0.00016])},
-            freqs=np.array([0.]),
+            fit_cfg=None, concmech_cfg=None,
             cache_name='', cache_path='',
             save_cache=True, recompute_cache=False,
         ):
@@ -423,11 +422,12 @@ class CompartmentFitter(object):
         self.tree.treetype = 'original'
         # get all channels in the tree
         self.channel_names = self.tree.getChannelsInTree()
-        # frequencies for fit
-        self.freqs = freqs
-        # expansion point holding potentials for fit
-        self.e_hs = e_hs
-        self.conc_hs = conc_hs
+
+        self.cfg = fit_cfg
+        if fit_cfg is None:
+            self.cfg = DefaultFitting()
+        if concmech_cfg is None:
+            self.concmech_cfg = DefaultMechParams()
 
         # cache related params
         self.cache_name = cache_name
@@ -480,29 +480,21 @@ class CompartmentFitter(object):
             # reversal potential is the same throughout the reduced model
             self.ctree.addCurrent(copy.deepcopy(channel), np.mean(e_revs))
 
-        # add concentration mechanisms
+        # find all ions of all concentration mechanisms present in the tree
         ions = set()
-        ion_params = {}
+        # ion_params = {}
         for node in self.tree:
             for ion, concmech in node.concmechs.items():
-                if ion not in ion_params:
-                    ion_params[ion] = {}
+                ions.add(ion)
 
-                for param, val in concmech.items():
-                    if param in ion_params:
-                        ion_params[ion][param].append(val)
-                    else:
-                        ion_params[ion][param] = [val]
+        for node in self.ctree:
+            loc_idx = node.loc_ind
+            concmechs = self.tree[locs[loc_idx]['node']].concmechs
 
-            ions.union(set(node.concmechs.keys()))
-
-        for ion, params in ion_params.items():
-            params = {param: np.mean(pvals) for param, pvals in params.items()}
-
-            for node in self.ctree:
-                loc_idx = node.loc_ind
-                concmechs = self.tree[locs[loc_idx]['node']].concmechs
-
+            # try to set default parameters as the ones from the original tree
+            # if the concmech is not present at the corresponding location,
+            # use the default parameters
+            for ion in ions:
                 if ion in concmechs:
                     cparams = {
                         pname: pval for pname, pval in concmechs[ion].items()
@@ -510,7 +502,7 @@ class CompartmentFitter(object):
                     node.addConcMech(ion, **cparams)
 
                 else:
-                    node.addConcMech(ion, **params)
+                    node.addConcMech(ion, **self.concmech_cfg.asdict())
 
         # set the equilibirum potentials at fit locations
         self.setEEq()
@@ -594,7 +586,7 @@ class CompartmentFitter(object):
         locs = self.tree.getLocs('fit locs')
         # find the expansion point parameters for the channel
         channel = self.tree.channel_storage[channel_name]
-        sv_h = getExpansionPoints(self.e_hs, channel)
+        sv_h = getExpansionPoints(self.cfg.e_hs, channel)
 
         # create the trees with only a single channel and multiple expansion points
         fit_tree = self.createTreeGF([channel_name],
@@ -620,7 +612,7 @@ class CompartmentFitter(object):
 
             # compute the fit matrices
             m_f, v_t = self.ctree.computeGSingleChanFromImpedance(
-                channel_name, z_mats[:,ii,:,:], e_h, self.freqs,
+                channel_name, z_mats[:,ii,:,:], e_h, np.array([self.cfg.freqs]),
                 sv=sv, other_channel_names=['L'],
                 all_channel_names=self.channel_names,
                 action='return'
@@ -684,30 +676,28 @@ class CompartmentFitter(object):
         return self.ctree
 
     def fitConcentration(self, ion, recompute=False, pprint=False):
-        for ion, conc_hs in self.conc_hs.items():
-            assert len(conc_hs) == len(self.e_hs)
-        nh = len(self.e_hs)
+        for ion, conc_hs in self.cfg.conc_hs_cm.items():
+            assert len(conc_hs) == len(self.cfg.e_hs_cm)
+        nh = len(self.cfg.e_hs_cm)
 
         locs = self.tree.getLocs('fit locs')
 
-        e_hs_aux_act, e_hs_aux_inact = getTwoVariableHoldingPotentials(self.e_hs)
+        # get lists of linearisation holding potentials
+        e_hs_aux_act, e_hs_aux_inact = getTwoVariableHoldingPotentials(self.cfg.e_hs_cm)
         conc_ehs = {ion: np.array(
-            [c_ion for c_ion in self.conc_hs[ion]] + \
-            [c_ion for c_ion in self.conc_hs[ion] for _ in range(nh)]
+            [c_ion for c_ion in self.cfg.conc_hs_cm[ion]] + \
+            [c_ion for c_ion in self.cfg.conc_hs_cm[ion] for _ in range(nh)]
         )}
 
         # only retain channels involved with the ion
         channel_names = []
         sv_hs = {}
         for cname, chan in self.tree.channel_storage.items():
+
             if chan.ion == ion:
                 channel_names.append(cname)
 
-                # if len(chan.statevars) > 1:
-                #     sv_h = getExpansionPoints(self.e_hs, chan)
-                # else:
                 sv_h = getExpansionPoints(e_hs_aux_act, chan, only_e_h=True)
-
                 sv_hs[cname] = sv_h
 
             elif ion in chan.conc:
@@ -722,11 +712,6 @@ class CompartmentFitter(object):
 
                 sv_hs[cname] = sv_h
 
-        # for cname, sv in sv_hs.items():
-        #     print(f'\n{cname}')
-        #     for var, vals in sv.items():
-        #         print(f'{var}, {vals}')
-
         # create the trees with the desired channels and expansion points
         fit_tree = self.createTreeGF(
             channel_names,
@@ -740,39 +725,12 @@ class CompartmentFitter(object):
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-        print(f"impedance matrices greenstree without conc = \n{z_mats}")
-
-
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(
             freqs=0., sv_h=sv_hs, pprint=pprint, use_conc=True,
         )
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)
-
-        print(f"impedance matrices greenstree with conc = \n{z_mats}")
-
-        # # compute the fit matrices for all holding potentials
-        # fit_mats = []
-        # for ii, e_h in enumerate(sv_h['v']):
-        #     svs = []
-        #     for cname in channel_names:
-        #         sv = {key: val_arr[ii] for key, val_arr in sv_hs[cname] if key != 'v'}
-        #         svs.append(sv)
-
-        #         sv = SPDict({
-        #             str(svar): sv_h[svar][ii] \
-        #             for svar in channel.statevars if str(svar) != 'v'
-        #         })
-
-        #     # compute the fit matrices
-        #     m_f, v_t = self.ctree.computeConcMech(
-        #         z_mats[:,ii,:,:], e_h, self.freqs, ion,
-        #         sv=svs, channel_names=channel_names,
-        #         action='fit'
-        #     )
-
-        #     fit_mats.append([m_f, v_t, w_f])
 
         print("\n> original tree")
         for node in fit_tree:
@@ -789,7 +747,7 @@ class CompartmentFitter(object):
             print(node)
 
         self.ctree.computeConcMech(
-            z_mats, self.freqs, ion,
+            z_mats, self.cfg.freqs, ion,
             sv_s=sv_hs, channel_names=channel_names, action='fit',
         )
 
@@ -916,11 +874,11 @@ class CompartmentFitter(object):
             cache_name_suffix="_only_leak_",
         )
         # set the impedances in the tree
-        fit_tree.setImpedancesInTree(self.freqs, pprint=pprint)
+        fit_tree.setImpedancesInTree(self.cfg.freqs, pprint=pprint)
         # compute the steady state impedance matrix
-        z_mat = fit_tree.calcImpedanceMatrix(locs)
+        z_mat = fit_tree.calcImpedanceMatrix(locs)[None,:,:]
         # fit the conductances to steady state impedance matrix
-        self.ctree.computeGSingleChanFromImpedance('L', z_mat, -75., self.freqs,
+        self.ctree.computeGSingleChanFromImpedance('L', z_mat, -75., np.array([self.cfg.freqs]),
                                                    other_channel_names=[],
                                                    action='fit')
         # print passive impedance matrices
@@ -1303,7 +1261,7 @@ class CompartmentFitter(object):
             channel_names=channel_names,
             cache_name_suffix="_for_NET_",
         )
-        greens_tree.setImpedancesInTree(self.freqs, pprint=False)
+        greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
         # create the NET
         net, z_mat = greens_tree.calcNETSteadyState(c_loc)
         net.improveInputImpedance(z_mat)
@@ -1476,9 +1434,9 @@ class CompartmentFitter(object):
         )
         for ii, node in enumerate(greens_tree):
             node.setEEq(e_eqs[ii])
-        greens_tree.setImpedancesInTree(self.freqs, pprint=False)
+        greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
         # compute the impedance matrix of the synapse locations
-        z_mat = greens_tree.calcImpedanceMatrix(locs, explicit_method=False)[0].real
+        z_mat = greens_tree.calcImpedanceMatrix(locs, explicit_method=False)
 
         # get the reversal potentials of the synapse locations
         n_all = len(self.tree)
@@ -1548,9 +1506,9 @@ class CompartmentFitter(object):
         )
         for ii, node in enumerate(greens_tree):
             node.setEEq(e_eqs[ii])
-        greens_tree.setImpedancesInTree(self.freqs, pprint=False)
+        greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
         # compute the impedance matrix of the synapse locations
-        z_mat = greens_tree.calcImpedanceMatrix(cs_locs, explicit_method=False)[0].real
+        z_mat = greens_tree.calcImpedanceMatrix(cs_locs, explicit_method=False)
         zc_mat = z_mat[:n_comp, :n_comp]
 
         # get the reversal potentials of the synapse locations
@@ -1632,7 +1590,7 @@ class CompartmentFitter(object):
         )
         for ii, node in enumerate(greens_tree):
             node.setEEq(e_eqs[ii])
-        greens_tree.setImpedancesInTree(self.freqs, pprint=False)
+        greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
 
         # process input
         c_locs = self.tree._parseLocArg(c_locarg)
