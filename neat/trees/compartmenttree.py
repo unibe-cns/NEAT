@@ -295,34 +295,16 @@ class CompartmentNode(SNode):
                 conc_read_channels = conc_read_channels - \
                     g * channel.computeLinConc(v, freqs, ion, e, **sv)
 
-        # print("Membrane concentration term withtout gamma compartmenttree =\n",
-        #     conc_write_channels * \
-        #     conc_read_channels * \
-        #     self.concmechs[ion].computeLin(freqs) * \
-        #     1.
-        # )
-
-        # print("Membrane concentration term with gamma compartmenttree =\n",
-        #     conc_write_channels * \
-        #     conc_read_channels * \
-        #     self.concmechs[ion].computeLinear(freqs) * \
-        #     1.
-        # )
-
         if fit_type == 'gamma':
-
             return conc_write_channels * \
                    conc_read_channels * \
                    self.concmechs[ion].computeLin(freqs)
 
         elif fit_type == "tau":
-
             c0, c1 = self.concmechs[ion].computeLinTauFit(freqs)
-            # print(conc_write_channels * conc_read_channels * c0)
             return conc_write_channels * conc_read_channels * c0, c1
 
         else:
-
             raise NotImplementedError(
                 "Unkown fit type, choose \'gamma\' or \'tau\'"
             )

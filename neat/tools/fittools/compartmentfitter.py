@@ -498,10 +498,15 @@ class CompartmentFitter(object):
 
         for ion, params in ion_params.items():
             params = {param: np.mean(pvals) for param, pvals in params.items()}
+
             for node in self.ctree:
                 loc_idx = node.loc_ind
-                if ion in self.tree[locs[loc_idx]['node']].concmechs:
-                    cparams = {pname: pval for pname, pval in self.tree[locs[loc_idx]['node']].concmechs[ion].items()}
+                concmechs = self.tree[locs[loc_idx]['node']].concmechs
+
+                if ion in concmechs:
+                    cparams = {
+                        pname: pval for pname, pval in concmechs[ion].items()
+                    }
                     node.addConcMech(ion, **cparams)
 
                 else:
@@ -557,8 +562,10 @@ class CompartmentFitter(object):
                 except KeyError:
                     pass
 
-        tree.channel_storage = {channel_name: self.tree.channel_storage[channel_name] \
-                                for channel_name in channel_names_newtree}
+        tree.channel_storage = {
+            channel_name: self.tree.channel_storage[channel_name] \
+            for channel_name in channel_names_newtree
+        }
         tree.setCompTree()
 
         return tree
