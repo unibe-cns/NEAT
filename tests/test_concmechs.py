@@ -107,6 +107,83 @@ class TestConcMechs:
 
         return tree
 
+    def loadPassiveAxonTree(self, gamma_factor=1.):
+        '''
+        Parameters taken from a BBP SST model for a subset of ion channels
+        '''
+        tree = PhysTree(
+            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            types=[1,2,3,4],
+        )
+        # capacitance and axial resistance
+        tree.setPhysiology(1.0, 100./1e6)
+        # ion channels
+        k_chan = SKv3_1()
+        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        ca_chan = Ca_HVA()
+        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        sk_chan = SK_E2()
+        tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        # passive leak current
+        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+
+        # ca concentration mech
+        tree.addConcMech(
+            "ca",
+            params={
+                "tau": 605.033222,
+                "gamma": gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY) * 1e-6,
+            },
+            node_arg=[tree[1]],
+        )
+
+        # set computational tree
+        tree.setCompTree()
+
+        return tree
+
+    def loadNoCaAxonTree(self, gamma_factor=1.):
+        '''
+        Parameters taken from a BBP SST model for a subset of ion channels
+        '''
+        tree = PhysTree(
+            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            types=[1,2,3,4],
+        )
+        # capacitance and axial resistance
+        tree.setPhysiology(1.0, 100./1e6)
+        # ion channels
+        k_chan = SKv3_1()
+        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
+        na_chan = NaTa_t()
+        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
+        ca_chan = Ca_HVA()
+        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
+        sk_chan = SK_E2()
+        tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.addCurrent(sk_chan, 0.196957 * 1e6, -85., node_arg="axonal")
+        # passive leak current
+        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+
+        # ca concentration mech
+        tree.addConcMech(
+            "ca",
+            params={
+                "tau": 605.033222,
+                "gamma": gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY) * 1e-6,
+            },
+            node_arg=[tree[1]],
+        )
+
+        # set computational tree
+        tree.setCompTree()
+
+        return tree
+
     def loadBall(self, w_ca_conc=True, gamma_factor=1.):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
@@ -426,7 +503,7 @@ class TestConcMechs:
 
             pl.show()
 
-    def testFittingBall(self, pplot=False, amp=0.1):
+    def testFittingBall(self, pplot=False, fit_tau=False, amp=0.1, eps_tau=1e-10):
         locs = [(1,.5)]
 
         tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
@@ -444,29 +521,13 @@ class TestConcMechs:
         cfit.fitChannels(pprint=True, parallel=False)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', pprint=True)
+        cfit.fitConcentration('ca', fit_tau=fit_tau, pprint=True)
 
         # fit the resting potentials
         cfit.fitEEq(ions=['ca'], t_max=10000)
 
         ctree = cfit.ctree
         clocs = ctree.getEquivalentLocs()
-
-
-        # print("\n> original tree")
-        # for node in tree:
-        #     str_repr = f"Node {node.index}:\n"
-        #     for cname, (g, e) in node.currents.items():
-        #         A = 4. * np.pi * (node.R * 1e-4)**2
-        #         str_repr += f"  g_{cname} = {g*A} uS -- e_{cname} = {e} mV,\n"
-        #     print(str_repr)
-
-
-        # for node in ctree:
-        #     str_repr = f"Node {node.index}:\n"
-        #     for cname, (g, e) in node.currents.items():
-        #         str_repr += f"  g_{cname} = {g} uS -- e_{cname} = {e} mV,\n"
-        #     print(str_repr)
 
         # check whether parameters of original and fitted models match
         node = tree[1]
@@ -475,19 +536,24 @@ class TestConcMechs:
 
         # check channels
         for channel_name in node.currents:
-            print(channel_name)
             # check conductances
-            assert np.abs(cnode.currents[channel_name][0] - node.currents[channel_name][0] * A) < 1e-8
+            assert np.abs(
+                cnode.currents[channel_name][0] - node.currents[channel_name][0] * A
+            ) < 1e-8 * node.currents[channel_name][1]
             # check reversals
-            assert np.abs(cnode.currents[channel_name][1] - node.currents[channel_name][1]) < 1e-8
+            assert np.abs(
+                cnode.currents[channel_name][1] - node.currents[channel_name][1]
+            ) < 1e-8 * node.currents[channel_name][1]
 
-        # for ion in node.concmechs:
-        #     print(channel_name)
-        #     # check gamma factors
-        #     assert np.abs(cnode.concmechs[ion].gamma * A - node.concmechs[ion].gamma * 1e-6) < 1e-6
-        #     # check time scales
-        #     assert np.abs(cnode.concmechs[ion].tau - node.concmechs[ion].tau) < 1e-6
-
+        for ion in node.concmechs:
+            # check gamma factors
+            assert np.abs(
+                cnode.concmechs[ion].gamma * A - node.concmechs[ion].gamma
+            ) < 1e-6 * node.concmechs[ion].gamma
+            # check time scales
+            assert np.abs(
+                cnode.concmechs[ion].tau - node.concmechs[ion].tau
+            ) < eps_tau * node.concmechs[ion].tau
 
         # run test simulations
         res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
@@ -497,8 +563,8 @@ class TestConcMechs:
             clocs, amp=amp, dur=20000., delay=100., cal=10000.
         )
 
-        # # check whether the simulation results match
-        # assert np.allclose(res_full['v_m'], res_reduced['v_m'])
+        # check whether the simulation results match
+        assert np.allclose(res_full['v_m'], res_reduced['v_m'])
 
         if pplot:
             pl.figure()
@@ -509,6 +575,8 @@ class TestConcMechs:
 
             pl.show()
 
+    def testTauFitBall(self, pplot=False):
+        self.testFittingBall(fit_tau=True, pplot=pplot, eps_tau=1e-1)
 
     def testFittingBallAndStick(self, pplot=False, amp=0.1):
         locs = [(1,.5), (4.,0.5), (5,0.5)]
@@ -536,10 +604,6 @@ class TestConcMechs:
         ctree = cfit.ctree
         clocs = ctree.getEquivalentLocs()
 
-        # ctree[0].concmechs['ca'].tau = 20.715642#605.033222#
-        # ctree[1].concmechs['ca'].tau = 20.715642#605.033222#
-        # ctree[2].concmechs['ca'].tau = 20.715642#605.033222#
-
         # run test simulations
         res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
             locs, amp=amp, dur=20000., delay=100., cal=10000.
@@ -547,21 +611,75 @@ class TestConcMechs:
         res_reduced = self._simulate(createReducedNeuronModel(ctree),
             clocs, amp=amp, dur=20000., delay=100., cal=10000.
         )
+
+        v_error = np.sqrt(np.mean((res_full['v_m'] - res_reduced['v_m'])**2))
+        assert v_error < 1e-2 # mV
+
         if pplot:
             pl.figure()
             ax = pl.gca()
 
-            ax.plot(res_full['t'], res_full['v_m'][0], 'b')
-            ax.plot(res_reduced['t'], res_reduced['v_m'][0], 'r--')
+            ax.plot(res_full['t'], res_full['v_m'][2], 'b')
+            ax.plot(res_reduced['t'], res_reduced['v_m'][2], 'r--')
 
             pl.show()
+
+    def _runLocalizedConcMech(self, tree):
+        locs = [(1,.5), (4.,0.5), (5,0.5)]
+
+        cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
+        cfit.setCTree(locs)
+
+        # fit the passive steady state model
+        cfit.fitPassive(pprint=True, use_all_channels=False)
+
+        # fit the capacitances
+        cfit.fitCapacitance(pprint=True, pplot=False)
+
+        # fit the ion channel
+        cfit.fitChannels(pprint=True, parallel=False)
+
+        # fit the concentration mechanism
+        cfit.fitConcentration('ca', pprint=True)
+
+        # fit the resting potentials
+        # cfit.fitEEq(ions=['ca'], t_max=10000)
+
+        ctree = cfit.ctree
+
+        # check whether parameters of original and fitted models match
+        node = tree[1]
+        cnode = ctree[0]
+        A = 4. * np.pi * (node.R * 1e-4)**2
+
+        print(np.abs(ctree[0].concmechs['ca'].gamma))
+        print(np.abs(ctree[1].concmechs['ca'].gamma))
+        print(np.abs(ctree[2].concmechs['ca'].gamma))
+
+        assert np.abs(
+            cnode.concmechs['ca'].gamma * A - node.concmechs['ca'].gamma
+        ) < 1e-6 * node.concmechs['ca'].gamma
+
+        assert np.abs(ctree[1].concmechs['ca'].gamma) < ctree[0].concmechs['ca'].gamma * 1e-10
+        assert np.abs(ctree[2].concmechs['ca'].gamma) < ctree[0].concmechs['ca'].gamma * 1e-10
+
+    def testLocalizedConcMechPasAxon(self):
+        tree = self.loadPassiveAxonTree(gamma_factor=1e3)
+        self._runLocalizedConcMech(tree)
+
+    def testLocalizedConcMechActAxon(self):
+        tree = self.loadNoCaAxonTree(gamma_factor=1e3)
+        self._runLocalizedConcMech(tree)
 
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
     # tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
-    tcm.testFittingBall(pplot=True)
+    # tcm.testFittingBall(pplot=True)
+    # tcm.testTauFitBall(pplot=True)
     # tcm.testFittingBallAndStick(pplot=True)
+    tcm.testLocalizedConcMechPasAxon()
+    tcm.testLocalizedConcMechActAxon()
 
 

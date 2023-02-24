@@ -28,6 +28,7 @@ import contextlib
 import multiprocessing
 import os
 import ctypes
+from dataclasses import asdict
 
 try:
     from ...tools.simtools.neuron import neuronmodel as neurm
@@ -65,7 +66,6 @@ def make_hash(o):
 
     From https://stackoverflow.com/questions/5884066/hashing-a-dictionary
     """
-
     if isinstance(o, (set, tuple, list)):
 
         return nonnegative_hash(tuple([make_hash(e) for e in o]))
@@ -482,7 +482,6 @@ class CompartmentFitter(object):
 
         # find all ions of all concentration mechanisms present in the tree
         ions = set()
-        # ion_params = {}
         for node in self.tree:
             for ion, concmech in node.concmechs.items():
                 ions.add(ion)
@@ -502,7 +501,7 @@ class CompartmentFitter(object):
                     node.addConcMech(ion, **cparams)
 
                 else:
-                    node.addConcMech(ion, **self.concmech_cfg.asdict())
+                    node.addConcMech(ion, **self.concmech_cfg.exp_conc_mech)
 
         # set the equilibirum potentials at fit locations
         self.setEEq()
@@ -595,7 +594,7 @@ class CompartmentFitter(object):
 
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(
-            freqs=0.,
+            freqs=self.cfg.freqs,
             sv_h={channel_name: sv_h},
             pprint=pprint
         )
@@ -675,7 +674,7 @@ class CompartmentFitter(object):
 
         return self.ctree
 
-    def fitConcentration(self, ion, recompute=False, pprint=False):
+    def fitConcentration(self, ion, fit_tau=False, pprint=False):
         for ion, conc_hs in self.cfg.conc_hs_cm.items():
             assert len(conc_hs) == len(self.cfg.e_hs_cm)
         nh = len(self.cfg.e_hs_cm)
@@ -720,14 +719,14 @@ class CompartmentFitter(object):
 
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(
-            freqs=0., sv_h=sv_hs, pprint=pprint, use_conc=False,
+            freqs=self.cfg.freqs, sv_h=sv_hs, pprint=pprint, use_conc=False,
         )
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)
 
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(
-            freqs=0., sv_h=sv_hs, pprint=pprint, use_conc=True,
+            freqs=self.cfg.freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
         )
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)
@@ -762,31 +761,33 @@ class CompartmentFitter(object):
         # w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         # for _, _, w_f in fit_mats: w_f /= w_norm
 
-        for c_name in sv_hs:
-            sv_hs[c_name] = {key: val_arr[:,None] for key, val_arr in sv_hs[c_name].items()}
         # freqs = np.array([1.,10.,100.,1000.])[None,:] * 1j
         # freqs = np.array([1000.])[None,:] * 1j
 
 
-        from neat.tools import kernelextraction as ke
+        # from neat.tools import kernelextraction as ke
         # ft = ke.FourrierTools(tarr = np.linspace(0., 50., 1000))
         # freqs = ft.s
 
-        freqs = np.logspace(0, 4, 100) *1j
+        if fit_tau:
+            # add dimensions for broadcasting
+            freqs = self.cfg.freqs_tau[None,:]
+            for c_name in sv_hs:
+                sv_hs[c_name] = {
+                    key: val_arr[:,None] for key, val_arr in sv_hs[c_name].items()
+                }
 
-        # print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+            # set the impedances in the tree
+            fit_tree.setImpedancesInTree(
+                freqs=freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
+            )
+            # compute the impedance matrix for this activation level
+            z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-        # # set the impedances in the tree
-        # fit_tree.setImpedancesInTree_(
-        #     freqs=freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
-        # )
-        # # compute the impedance matrix for this activation level
-        # z_mats = fit_tree.calcImpedanceMatrix(locs)
-
-        # self.ctree.computeConcMech2(
-        #     z_mats, freqs, ion,
-        #     sv_s=sv_hs, channel_names=channel_names, action='fit',
-        # )
+            self.ctree.computeConcMech2(
+                z_mats, freqs, ion,
+                sv_s=sv_hs, channel_names=channel_names, action='fit',
+            )
 
         # c_vecs = np.zeros
         # for node in self.ctree:
