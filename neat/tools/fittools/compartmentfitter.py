@@ -752,7 +752,7 @@ class CompartmentFitter(object):
         # fit the concentration mechanism
         self.ctree.computeConcMechGamma(
             z_mats, self.cfg.freqs, ion,
-            sv_s=sv_hs, channel_names=channel_names, action='fit',
+            sv_s=sv_hs, channel_names=channel_names,
         )
 
         if fit_tau:
@@ -772,7 +772,7 @@ class CompartmentFitter(object):
 
             self.ctree.computeConcMechTau(
                 z_mats, freqs, ion,
-                sv_s=sv_hs, channel_names=channel_names, action='fit',
+                sv_s=sv_hs, channel_names=channel_names,
             )
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):

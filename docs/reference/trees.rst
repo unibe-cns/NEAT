@@ -75,6 +75,8 @@ Compartment Tree
    CompartmentTree.computeGMC
    CompartmentTree.computeGChanFromImpedance
    CompartmentTree.computeGSingleChanFromImpedance
+   CompartmentTree.computeConcMechGamma
+   CompartmentTree.computeConcMechTau
    CompartmentTree.computeC
    CompartmentTree.resetFitData
    CompartmentTree.runFit
@@ -379,6 +381,7 @@ Individual fit functions.
    CompartmentFitter.fitPassive
    CompartmentFitter.evalChannel
    CompartmentFitter.fitChannels
+   CompartmentFitter.fitConcentration
    CompartmentFitter.fitCapacitance
    CompartmentFitter.setEEq
    CompartmentFitter.getEEq

@@ -484,7 +484,6 @@ class TestConcMechs:
 
             ax.axhline(res0['ik'][0][0] + dv0 * d_gk0 * 1e-6, c="y", ls='-.')
             ax.axhline(res2['ik'][0][0] + dv2 * d_gk2 * 1e-6, c="DarkGrey", ls='-.')
-
             ax = pl.subplot(414)
             ax.plot(res0['t'], res0['ica'][0], 'r', label="no ca")
             ax.plot(res2['t'], res2['ica'][0], 'g', label="w ca2")
@@ -675,12 +674,12 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    # tcm.testSpiking(pplot=True)
-    # tcm.testImpedance(pplot=True)
-    # tcm.testFittingBall(pplot=True)
+    tcm.testSpiking(pplot=True)
+    tcm.testImpedance(pplot=True)
+    tcm.testFittingBall(pplot=True)
     tcm.testTauFitBall(pplot=True)
-    # tcm.testFittingBallAndStick(pplot=True)
-    # tcm.testLocalizedConcMechPasAxon()
-    # tcm.testLocalizedConcMechActAxon()
+    tcm.testFittingBallAndStick(pplot=True)
+    tcm.testLocalizedConcMechPasAxon()
+    tcm.testLocalizedConcMechActAxon()
 
 

@@ -1094,6 +1094,41 @@ class CompartmentTree(STree):
 
         return c_struct
 
+    def _toStructureTensorConc(self,
+        ion, freqs, channel_names, ep_shape,
+        fit_type="gamma"
+    ):
+        if fit_type == "gamma":
+            # to construct appropriate channel vector
+            c_terms = np.zeros(ep_shape + (len(self),), dtype=freqs.dtype)
+            for node in self:
+                ii = node.index
+
+                c_term = node.calcMembraneConcentrationTerms(
+                    ion, self.channel_storage,
+                    freqs=freqs, channel_names=channel_names,
+                    fit_type=fit_type,
+                )
+                c_terms[...,ii] = c_term
+
+            return c_terms
+
+        elif fit_type == "tau":
+            # construct conductance vectors for fit
+            c_terms0 = np.zeros(ep_shape + (len(self),), dtype=freqs.dtype)
+            c_terms1 = np.zeros(ep_shape + (len(self),), dtype=freqs.dtype)
+            for node in self:
+                ii = node.index
+
+                c0, c1 = node.calcMembraneConcentrationTerms(
+                    ion, self.channel_storage,
+                    freqs=freqs, channel_names=channel_names,
+                    fit_type=fit_type,
+                )
+                c_terms0[...,ii], c_terms1[...,ii] = c0, c1
+
+            return c_terms0, c_terms1
+
     def _toVecConc(self, ion, return_type="gamma"):
         """
         Place concentration mechanisms to be fitted in a single vector
@@ -1364,8 +1399,32 @@ class CompartmentTree(STree):
 
     def computeConcMechGamma(self,
         z_mats, freqs, ion, sv_s,
-        weight=1., channel_names=None, action='fit',
+        channel_names=None
     ):
+        """
+        Computes the gamma factors of exponential concentration mechanisms for
+        the specified `ion`.
+
+        Note that the shape of `freqs` and the shape of the state variable
+        expansion points must be broadcastable together, and assuming the
+        broadcasted shape is called `ep_shape`, `z_mats` must be of shape
+        `ep_shape + (len(self), len(self))`.
+
+        Parameters
+        ----------
+        z_mats: np.ndarray
+            The impedance matrices from the full tree that provide the target
+            for the fit
+        freqs: np.ndarray
+            The frequencies at which the impedance matrices were evaluated
+        ion: str
+            The ion type for which to evaluate the concentration mechanism
+        sv_s: Dict[str: np.ndarray]
+            The state variable expansion points for all relevant channels
+            included in the fit
+        channel_names: List[str]
+            Names of channels to be included in the fit
+        """
         freqs = np.array(freqs)
         # check compatibility of shapes
         ep_shape = z_mats.shape[:-2]
@@ -1376,14 +1435,12 @@ class CompartmentTree(STree):
         self._setExpansionPoints(sv_s)
 
         # compute the conductance tensor with the ion channels
-        g_struct = self._toStructureTensorConc(
-            ion, freqs, channel_names, z_mats.shape[:-2]
+        c_terms = self._toStructureTensorConc(
+            ion, freqs, channel_names, z_mats.shape[:-2],
+            fit_type="gamma",
         )
         # compute matrix product of impedance and (parametric) conductance matrices
-        tensor_feature = np.einsum('...ij,...jkl->...ikl', z_mats, g_struct)
-        # construct the feature matrix
-        tshape = tensor_feature.shape
-        mat_feature = tensor_feature.reshape((-1, len(self)))
+        mat_feature = z_mats * c_terms[...,None]
 
         # construct conductance matrix with known channel terms
         g_mat = self.calcSystemMatrix(
@@ -1397,19 +1454,48 @@ class CompartmentTree(STree):
         zg_prod = np.einsum('...ij,...jk->...ik', z_mats, g_mat)
         # construct the target vector
         mat_target = np.tile(np.eye(len(self)), ep_shape + (1,1)) - zg_prod
-        vec_target = mat_target.reshape((-1,))
 
-        # perform the fit
-        self._fitResAction(
-            action, mat_feature, vec_target, weight,
-            ion=ion, param_type='gamma'
-        )
+        gammas = np.zeros(len(self))
+        for ii in range(len(self)):
+
+            m1 = np.reshape(mat_feature[...,ii], (-1,1))
+            m2 = np.reshape(mat_target[...,ii], (-1,))
+
+            # check for negative or very small fit results
+            v0 = max(np.linalg.lstsq(m1, m2, rcond=None)[0].real, 1e-20)
+            gammas[ii] = v0
+
+        self._toTreeConc(gammas, ion, param_type='gamma')
         self.removeExpansionPoints()
 
     def computeConcMechTau(self,
         z_mats, freqs, ion, sv_s,
-        weight=1., channel_names=None, action='fit'
+        channel_names=None
     ):
+        """
+        Computes the time-scales of exponential concentration mechanisms for
+        the specified `ion`.
+
+        Note that the shape of `freqs` and the shape of the state variable
+        expansion points must be broadcastable together, and assuming the
+        broadcasted shape is called `ep_shape`, `z_mats` must be of shape
+        `ep_shape + (len(self), len(self))`.
+
+        Parameters
+        ----------
+        z_mats: np.ndarray
+            The impedance matrices from the full tree that provide the target
+            for the fit
+        freqs: np.ndarray
+            The frequencies at which the impedance matrices were evaluated
+        ion: str
+            The ion type for which to evaluate the concentration mechanism
+        sv_s: Dict[str: np.ndarray]
+            The state variable expansion points for all relevant channels
+            included in the fit
+        channel_names: List[str]
+            Names of channels to be included in the fit
+        """
         freqs = np.array(freqs)
         # check compatibility of shapes
         ep_shape = z_mats.shape[:-2]
@@ -1431,18 +1517,11 @@ class CompartmentTree(STree):
             ep_shape=z_mats.shape[:-2]
         )
 
-        # construct conductance vector for fit
-        c_terms0 = np.zeros(ep_shape + (len(self),), dtype=g_mat.dtype)
-        c_terms1 = np.zeros(ep_shape + (len(self),), dtype=g_mat.dtype)
-        for node in self:
-            ii = node.index
-
-            c0, c1 = node.calcMembraneConcentrationTerms(
-                ion, self.channel_storage,
-                freqs=freqs, channel_names=channel_names,
-                fit_type='tau',
-            )
-            c_terms0[...,ii], c_terms1[...,ii] = c0, c1
+        # compute the conductance tensor with the ion channels
+        c_terms0, c_terms1 = self._toStructureTensorConc(
+            ion, freqs, channel_names, z_mats.shape[:-2],
+            fit_type="tau",
+        )
 
         # compute intermediate matrices for fit
         zg_prod = np.einsum('...ij,...jk->...ik', z_mats, g_mat)
@@ -1460,7 +1539,7 @@ class CompartmentTree(STree):
             m2 = np.reshape(mat_target[...,ii], (-1,))
 
             # check for negative or very small fit results
-            v0 = max(np.linalg.lstsq(m1, m2)[0].real, 1e-9)
+            v0 = max(np.linalg.lstsq(m1, m2, rcond=None)[0].real, 1e-9)
             taus[ii] = 1./v0
 
         self._toTreeConc(taus, ion, param_type='tau')
