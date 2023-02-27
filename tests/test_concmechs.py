@@ -65,7 +65,6 @@ class TestConcMechs:
                 },
                 node_arg=[tree[1]],
             )
-            print("gamma soma = ", gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY))
             tree.addConcMech(
                 "ca",
                 params={
@@ -75,7 +74,6 @@ class TestConcMechs:
                 },
                 node_arg="axonal",
             )
-            print("gamma axon = ", gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY))
         else:
             # These parameters effectively disable changes in the Ca-concentration
             # In fact, it would be superfluous to add this mechanisms here,
@@ -218,7 +216,6 @@ class TestConcMechs:
                 },
                 node_arg=[tree[1]],
             )
-            print("gamma = ", gamma_factor * 0.000893 * 1e4 / (2.0 * 0.1 * neuron.h.FARADAY))
         else:
             # These parameters effectively disable changes in the Ca-concentration
             # In fact, it would be superfluous to add this mechanisms here,
@@ -381,8 +378,6 @@ class TestConcMechs:
         tree1 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
         tree2 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
 
-        print(f"Soma radius = {tree0[1].R}")
-
         locs = [(1, .5)]
         res0 = self._simulate(tree0.__copy__(new_tree=NeuronSimTree()),
             locs, amp=amp, dur=20000., delay=100., cal=10000.
@@ -536,7 +531,7 @@ class TestConcMechs:
             # check conductances
             assert np.abs(
                 cnode.currents[channel_name][0] - node.currents[channel_name][0] * A
-            ) < 1e-8 * np.abs(node.currents[channel_name][1])
+            ) < 1e-8 * np.abs(node.currents[channel_name][0])
             # check reversals
             assert np.abs(
                 cnode.currents[channel_name][1] - node.currents[channel_name][1]
@@ -579,8 +574,9 @@ class TestConcMechs:
         locs = [(1,.5), (4.,0.5), (5,0.5)]
 
         tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
-
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
+
+        # test explicit fit
         cfit.setCTree(locs)
 
         # fit the passive steady state model
@@ -600,6 +596,35 @@ class TestConcMechs:
 
         ctree = cfit.ctree
         clocs = ctree.getEquivalentLocs()
+
+        # test fit with fitModel function
+        ctree_ = cfit.fitModel(locs, use_all_channels_for_passive=False)
+
+        # check whether both reductions are the same
+        for ii in range(len(locs)):
+            cnode = ctree[ii]
+            cnode_ = ctree_[ii]
+
+            # check channels
+            for channel_name in cnode.currents:
+                # check conductances
+                assert np.abs(
+                    cnode.currents[channel_name][0] - cnode_.currents[channel_name][0]
+                ) < 1e-8 * np.abs(cnode_.currents[channel_name][0])
+                # check reversals
+                assert np.abs(
+                    cnode.currents[channel_name][1] - cnode_.currents[channel_name][1]
+                ) < 1e-8 * np.abs(cnode_.currents[channel_name][1])
+
+            for ion in cnode.concmechs:
+                # check gamma factors
+                assert np.abs(
+                    cnode.concmechs[ion].gamma - cnode_.concmechs[ion].gamma
+                ) < np.abs(cnode_.concmechs[ion].gamma) * 1e-8
+                # check time scales
+                assert np.abs(
+                    cnode.concmechs[ion].tau - cnode_.concmechs[ion].tau
+                ) < np.abs(cnode_.concmechs[ion].tau) * 1e-8
 
         # run test simulations
         res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
@@ -639,19 +664,12 @@ class TestConcMechs:
         # fit the concentration mechanism
         cfit.fitConcentration('ca', pprint=True)
 
-        # fit the resting potentials
-        # cfit.fitEEq(ions=['ca'], t_max=10000)
-
         ctree = cfit.ctree
 
         # check whether parameters of original and fitted models match
         node = tree[1]
         cnode = ctree[0]
         A = 4. * np.pi * (node.R * 1e-4)**2
-
-        print(np.abs(ctree[0].concmechs['ca'].gamma))
-        print(np.abs(ctree[1].concmechs['ca'].gamma))
-        print(np.abs(ctree[2].concmechs['ca'].gamma))
 
         assert np.abs(
             cnode.concmechs['ca'].gamma * A - node.concmechs['ca'].gamma
@@ -667,9 +685,10 @@ class TestConcMechs:
         tree = self.loadPassiveAxonTree(gamma_factor=1e3)
         self._runLocalizedConcMech(tree)
 
-    # def testLocalizedConcMechActAxon(self):
-    #     tree = self.loadNoCaAxonTree(gamma_factor=1e3)
-    #     self._runLocalizedConcMech(tree)
+    @pytest.mark.skip(reason="Fitting methodology fails in this case, should check if dynamics diverges significantly")
+    def testLocalizedConcMechActAxon(self):
+        tree = self.loadNoCaAxonTree(gamma_factor=1e3)
+        self._runLocalizedConcMech(tree)
 
 
 if __name__ == "__main__":

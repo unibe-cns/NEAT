@@ -1432,6 +1432,7 @@ class CompartmentTree(STree):
             for svar, vals in svars.items():
                 assert np.broadcast(freqs, vals).shape == ep_shape
 
+        z_mats = self._permuteToTree(z_mats)
         self._setExpansionPoints(sv_s)
 
         # compute the conductance tensor with the ion channels
@@ -1506,6 +1507,7 @@ class CompartmentTree(STree):
                 assert np.broadcast(freqs, vals).shape == ep_shape
         freqs_ = np.broadcast_to(freqs, ep_shape)
 
+        z_mats = self._permuteToTree(z_mats)
         self._setExpansionPoints(sv_s)
 
         # construct conductance matrix with known channel terms

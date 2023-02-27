@@ -691,7 +691,22 @@ class CompartmentFitter(object):
             time-scale from `neat.factorydefaults` is taken.
         pprint: bool (default ``False``)
             Whether to print fit information.
+
+        Returns
+        -------
+        bool
+            `False` when no concentration mech for `ion` was found in the tree,
+            `True` otherwise
         """
+        # check if concmech for ion exists in original tree,
+        # if not, skip the rest
+        has_concmech = False
+        for node in self.tree:
+            if ion in node.concmechs:
+                has_concmech = True
+                break
+        if not has_concmech:
+            return 0
 
         for ion, conc_hs in self.cfg.conc_hs_cm.items():
             assert len(conc_hs) == len(self.cfg.e_hs_cm)
@@ -774,6 +789,8 @@ class CompartmentFitter(object):
                 z_mats, freqs, ion,
                 sv_s=sv_hs, channel_names=channel_names,
             )
+
+        return 1
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
@@ -1327,8 +1344,10 @@ class CompartmentFitter(object):
 
         Parameters
         ----------
-        kwargs: When `v_eqs_tree` or `v_eqs_fit`, have not been set, calls
-            ::func::`self.setEEq()` with these `kwargs`
+        ions: List[str]
+            The ions that are included in the fit
+        kwargs:
+            arguments to the `CompartmentFitter.calcEEq()` function
         """
         fit_locs = self.tree.getLocs('fit locs')
 
@@ -1349,8 +1368,12 @@ class CompartmentFitter(object):
 
         return self.ctree
 
-    def fitModel(self, loc_arg, alpha_inds=[0], use_all_channels_for_passive=True,
-                       pprint=False, parallel=False):
+    def fitModel(self,
+        loc_arg,
+        alpha_inds=[0], use_all_channels_for_passive=True,
+        fit_ions=['ca'],
+        pprint=False, parallel=False,
+    ):
         """
         Runs the full fit for a set of locations (the location are automatically
         extended with the bifurcation locs)
@@ -1364,6 +1387,9 @@ class CompartmentFitter(object):
             Indices of all mode time-scales to be included in the fit
         use_all_channels_for_passive: bool (optional, default ``True``)
             Uses all channels in the tree to compute coupling conductances
+        fit_ions: List[str]
+            Ions for which the associated concentration mechanisms have to be
+            fitted.
         pprint:  bool
             whether to print information
         parallel:  bool
@@ -1375,20 +1401,32 @@ class CompartmentFitter(object):
             The reduced tree containing the fitted parameters
         """
         self.setCTree(loc_arg)
+
         # fit the passive steady state model
-        self.fitPassive(pprint=pprint,
-                        use_all_channels=use_all_channels_for_passive)
+        self.fitPassive(
+            pprint=pprint,
+            use_all_channels=use_all_channels_for_passive
+        )
         # fit the capacitances
-        self.fitCapacitance(inds=alpha_inds,
-                            pprint=pprint, pplot=False)
+        self.fitCapacitance(inds=alpha_inds, pprint=pprint, pplot=False)
         # refit with only leak
         if use_all_channels_for_passive:
             self.fitPassiveLeak(pprint=pprint)
 
-        # fit the ion channel
+        # fit the ion channels
         self.fitChannels(pprint=pprint, parallel=parallel)
+
+        # fit the concentration mechansims
+        fit_ions_ = []
+        for ion in fit_ions:
+            found = self.fitConcentration(ion, fit_tau=False, pprint=pprint)
+            if found:
+                fit_ions_.append(ion)
+
+        # use longer simulation for Eeq fit if concentration mechansims are present
+        t_max = 10000. if len(fit_ions_) > 0 else 500.
         # fit the resting potentials
-        self.fitEEq()
+        self.fitEEq(ions=fit_ions_, t_max=t_max)
 
         return self.ctree
 
