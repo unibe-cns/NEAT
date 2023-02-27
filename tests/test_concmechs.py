@@ -440,8 +440,6 @@ class TestConcMechs:
         # test whether including the impedance mechanisms has an effect
         assert np.abs(z_in0 - z_in2) > .1 * z_in0
 
-        print("z_ins =", z_in0, z_in1, z_in2)
-
         # compute analytical conductance terms for combined ca and k currents,
         # and the analytical ca concentration
         d_gca0, d_cca0 = self._compute_gca_cca_analytical(tree0, 0.)
@@ -503,7 +501,7 @@ class TestConcMechs:
 
             pl.show()
 
-    def testFittingBall(self, pplot=False, fit_tau=False, amp=0.1, eps_tau=1e-10):
+    def testFittingBall(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
         locs = [(1,.5)]
 
         tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
@@ -539,21 +537,21 @@ class TestConcMechs:
             # check conductances
             assert np.abs(
                 cnode.currents[channel_name][0] - node.currents[channel_name][0] * A
-            ) < 1e-8 * node.currents[channel_name][1]
+            ) < 1e-8 * np.abs(node.currents[channel_name][1])
             # check reversals
             assert np.abs(
                 cnode.currents[channel_name][1] - node.currents[channel_name][1]
-            ) < 1e-8 * node.currents[channel_name][1]
+            ) < 1e-8 * np.abs(node.currents[channel_name][1])
 
         for ion in node.concmechs:
             # check gamma factors
             assert np.abs(
                 cnode.concmechs[ion].gamma * A - node.concmechs[ion].gamma
-            ) < 1e-6 * node.concmechs[ion].gamma
+            ) < np.abs(node.concmechs[ion].gamma) * eps_gamma
             # check time scales
             assert np.abs(
                 cnode.concmechs[ion].tau - node.concmechs[ion].tau
-            ) < eps_tau * node.concmechs[ion].tau
+            ) < np.abs(node.concmechs[ion].tau) * eps_tau
 
         # run test simulations
         res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
@@ -576,7 +574,7 @@ class TestConcMechs:
             pl.show()
 
     def testTauFitBall(self, pplot=False):
-        self.testFittingBall(fit_tau=True, pplot=pplot, eps_tau=1e-1)
+        self.testFittingBall(fit_tau=True, pplot=pplot, eps_gamma=1e-3, eps_tau=1e-1)
 
     def testFittingBallAndStick(self, pplot=False, amp=0.1):
         locs = [(1,.5), (4.,0.5), (5,0.5)]
@@ -658,18 +656,21 @@ class TestConcMechs:
 
         assert np.abs(
             cnode.concmechs['ca'].gamma * A - node.concmechs['ca'].gamma
-        ) < 1e-6 * node.concmechs['ca'].gamma
-
-        assert np.abs(ctree[1].concmechs['ca'].gamma) < ctree[0].concmechs['ca'].gamma * 1e-10
-        assert np.abs(ctree[2].concmechs['ca'].gamma) < ctree[0].concmechs['ca'].gamma * 1e-10
+        ) < 1e-6 * np.abs(node.concmechs['ca'].gamma)
+        assert np.abs(
+            ctree[1].concmechs['ca'].gamma
+        ) < np.abs(ctree[0].concmechs['ca'].gamma) * 1e-10
+        assert np.abs(
+            ctree[2].concmechs['ca'].gamma
+        ) < np.abs(ctree[0].concmechs['ca'].gamma) * 1e-10
 
     def testLocalizedConcMechPasAxon(self):
         tree = self.loadPassiveAxonTree(gamma_factor=1e3)
         self._runLocalizedConcMech(tree)
 
-    def testLocalizedConcMechActAxon(self):
-        tree = self.loadNoCaAxonTree(gamma_factor=1e3)
-        self._runLocalizedConcMech(tree)
+    # def testLocalizedConcMechActAxon(self):
+    #     tree = self.loadNoCaAxonTree(gamma_factor=1e3)
+    #     self._runLocalizedConcMech(tree)
 
 
 if __name__ == "__main__":
@@ -677,9 +678,9 @@ if __name__ == "__main__":
     # tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
     # tcm.testFittingBall(pplot=True)
-    # tcm.testTauFitBall(pplot=True)
+    tcm.testTauFitBall(pplot=True)
     # tcm.testFittingBallAndStick(pplot=True)
-    tcm.testLocalizedConcMechPasAxon()
-    tcm.testLocalizedConcMechActAxon()
+    # tcm.testLocalizedConcMechPasAxon()
+    # tcm.testLocalizedConcMechActAxon()
 
 

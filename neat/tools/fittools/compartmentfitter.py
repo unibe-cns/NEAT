@@ -675,6 +675,24 @@ class CompartmentFitter(object):
         return self.ctree
 
     def fitConcentration(self, ion, fit_tau=False, pprint=False):
+        """
+        Fits the concentration mechanisms parameters associate with the `ion`
+        ion type.
+
+        Parameters
+        ----------
+        ion: str
+            The ion type that is to be fitted (e.g. 'ca').
+        fit_tau: bool (default ``False``)
+            If ``True``, fits the time-scale of the concentration mechansims. If
+            ``False``, tries to take the time-scale from the corresponding
+            location in the original tree. However, if no concentration
+            mechanism is present at the corresponding location, than the default
+            time-scale from `neat.factorydefaults` is taken.
+        pprint: bool (default ``False``)
+            Whether to print fit information.
+        """
+
         for ion, conc_hs in self.cfg.conc_hs_cm.items():
             assert len(conc_hs) == len(self.cfg.e_hs_cm)
         nh = len(self.cfg.e_hs_cm)
@@ -731,43 +749,11 @@ class CompartmentFitter(object):
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-        print("\n> original tree")
-        for node in fit_tree:
-            str_repr = f"Node {node.index}"
-            for cname, (g, e) in node.currents.items():
-                A = 4. * np.pi * (node.R * 1e-4)**2
-                str_repr += f" g_{cname} = {g*A} uS,"
-            print(str_repr)
-
-        tau_conc = fit_tree[1].concmechs['ca'].tau
-
-        print("\n> fit tree")
-        for node in self.ctree:
-            print(node)
-
-        self.ctree.computeConcMech(
+        # fit the concentration mechanism
+        self.ctree.computeConcMechGamma(
             z_mats, self.cfg.freqs, ion,
             sv_s=sv_hs, channel_names=channel_names, action='fit',
         )
-
-        for node in self.ctree:
-            for cm in node.concmechs.values():
-                print(A)
-                print(cm, cm.gamma * A)
-                # print(node.concmechs)
-
-
-        # # fit the model for this channel
-        # w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
-        # for _, _, w_f in fit_mats: w_f /= w_norm
-
-        # freqs = np.array([1.,10.,100.,1000.])[None,:] * 1j
-        # freqs = np.array([1000.])[None,:] * 1j
-
-
-        # from neat.tools import kernelextraction as ke
-        # ft = ke.FourrierTools(tarr = np.linspace(0., 50., 1000))
-        # freqs = ft.s
 
         if fit_tau:
             # add dimensions for broadcasting
@@ -784,17 +770,10 @@ class CompartmentFitter(object):
             # compute the impedance matrix for this activation level
             z_mats = fit_tree.calcImpedanceMatrix(locs)
 
-            self.ctree.computeConcMech2(
+            self.ctree.computeConcMechTau(
                 z_mats, freqs, ion,
                 sv_s=sv_hs, channel_names=channel_names, action='fit',
             )
-
-        # c_vecs = np.zeros
-        # for node in self.ctree:
-        #     for cm in node.concmechs.values():
-        #         print(cm)
-
-        # self.ctree._toTreeConc()
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
