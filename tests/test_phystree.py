@@ -183,16 +183,37 @@ class TestPhysTree():
 
         # total membrane conductance
         g_pas = self.tree[1].currents['L'][0] + g_chan*p_open
+        i_pas = self.tree[1].currents['L'][0] * (-30. - self.tree[1].currents['L'][1]) + \
+                g_chan*p_open * (-30. - e_chan)
+        i_pas_ = self.tree[1].getITot(self.tree.channel_storage)
+        # check that total current is zero at equilibrium
+        assert np.abs(i_pas) < 1e-10
+        assert np.abs(i_pas_) < 1e-10
         # make passive membrane
         tree = copy.deepcopy(self.tree)
         tree.asPassiveMembrane()
         # test if fit was correct
         for node in tree:
             assert np.abs(node.currents['L'][0] - g_pas) < 1e-10
+            assert np.abs(node.currents['L'][1] - (-30.)) < 1e-10
         # test if channels storage is empty
         assert len(tree.channel_storage) == 0
         # test if computational root was removed
         assert tree._computational_root is None
+
+        # test partial passification
+        tree = copy.deepcopy(self.tree)
+        # channel
+        g_chan1, e_chan1 = 50., -100.
+        channel1 = channelcollection.TestChannel()
+        tree.addCurrent(channel1, g_chan, e_chan)
+        # passify channel 2
+        tree.asPassiveMembrane(channel_names=["TestChannel2"])
+        for node in tree:
+            assert set(node.currents.keys()) == {"TestChannel", "L"}
+            assert np.abs(node.currents['L'][0] - g_pas) < 1e-10
+            assert np.abs(node.getITot(tree.channel_storage)) < 1e-10
+
 
     def testCompTree(self):
         self.loadTree(reinitialize=1, segments=True)

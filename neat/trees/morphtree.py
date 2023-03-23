@@ -1124,7 +1124,7 @@ class MorphTree(STree):
 
         Parameters
         ----------
-        node_arg: ``None``, `neat.MorphNode`, {'apical', 'basal', 'axonal'} or iterable collection of instances of `neat.MorphNode`
+        node_arg: ``None``, `neat.MorphNode`, {'apical', 'basal', 'axonal', 'somatic'} or iterable collection of instances of `neat.MorphNode`
             * `None`: returns all nodes
             * `neat.MorphNode`: returns list of nodes in the subtree of the given node
             * {'apical', 'basal', 'axonal'}: returns list of nodes in the apical, basal or axonal subtree
@@ -1159,6 +1159,8 @@ class MorphTree(STree):
             nodes = self.getNodesInBasalSubtree()
         elif node_arg == 'axonal':
             nodes = self.getNodesInAxonalSubtree()
+        elif node_arg == 'somatic':
+            nodes = [self[1]]
         else:
             try:
                 nodes = []

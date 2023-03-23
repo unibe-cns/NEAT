@@ -150,14 +150,13 @@ class PhysNode(MorphNode):
 
         for channel_name in set(self.currents.keys()) - set('L'):
             g, e = self.currents[channel_name]
-            # get the ionchannel object
-            channel = channel_storage[channel_name]
+
             # compute channel conductance and current
-            p_open = channel.computePOpen(e_eq_target)
+            p_open = channel_storage[channel_name].computePOpen(e_eq_target)
             g_chan = g * p_open
-            i_chan = g_chan * (e - e_eq_target)
+
             gsum += g_chan
-            i_eq += i_chan
+            i_eq += g_chan * (e - e_eq_target)
 
         if self.c_m / (tau_m_target*1e-3) < gsum:
             warnings.warn('Membrane time scale is chosen larger than ' + \
@@ -170,7 +169,7 @@ class PhysNode(MorphNode):
         self.currents['L'] = [g_l, e_l]
         self.e_eq = e_eq_target
 
-    def getGTot(self, channel_storage, v=None):
+    def getGTot(self, channel_storage, channel_names=None, v=None):
         """
         Get the total conductance of the membrane at a steady state given voltage,
         if nothing is given, the equilibrium potential is used to compute membrane
@@ -178,6 +177,9 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
+            channel_names: List[str]
+                the names of the channels to be included included in the
+                conductance calculation
             channel_storage: dict {``channel_name``: `channel_instance`}
                 dict where all ion channel objects present on the node are stored
             v: float (optional, defaults to `self.e_eq`)
@@ -188,27 +190,97 @@ class PhysNode(MorphNode):
             float
                 the total conductance of the membrane (uS / cm^2)
         """
+        if channel_names is None:
+            channel_names = channel_names = list(self.currents.keys())
         v = self.e_eq if v is None else v
-        g_tot = self.currents['L'][0]
-        for channel_name in set(self.currents.keys()) - set('L'):
+
+        g_tot = 0.
+        for channel_name in set(self.currents.keys()) & set(channel_names):
             g, e = self.currents[channel_name]
-            # get the ionchannel object
-            channel = channel_storage[channel_name]
-            g_tot += g * channel.computePOpen(v)
+
+            if channel_name == 'L':
+                g_tot += g
+            else:
+                g_tot += g * channel_storage[channel_name].computePOpen(v)
 
         return g_tot
 
-    def asPassiveMembrane(self, channel_storage, v=None):
+    def getITot(self, channel_storage, channel_names=None, v=None):
+        """
+        Get the total conductance of the membrane at a steady state given voltage,
+        if nothing is given, the equilibrium potential is used to compute membrane
+        conductance.
+
+        Parameters
+        ----------
+            channel_names: List[str]
+                the names of the channels to be included included in the
+                conductance calculation
+            channel_storage: dict {``channel_name``: `channel_instance`}
+                dict where all ion channel objects present on the node are stored
+            v: float (optional, defaults to `self.e_eq`)
+                the potential (in mV) at which to compute the membrane conductance
+
+        Returns
+        -------
+            float
+                the total conductance of the membrane (uS / cm^2)
+        """
+        if channel_names is None:
+            channel_names = channel_names = list(self.currents.keys())
         v = self.e_eq if v is None else v
-        g_l = self.getGTot(channel_storage, v=v)
-        t_m = self.c_m / g_l * 1e3 # time scale in ms
-        self.currents = {'L': (0., 0.)} # dummy values
-        self.fitLeakCurrent(channel_storage, e_eq_target=v, tau_m_target=t_m)
+
+        i_tot = 0.
+        for channel_name in set(self.currents.keys()) & set(channel_names):
+            g, e = self.currents[channel_name]
+
+            if channel_name == 'L':
+                i_tot += g * (v - e)
+            else:
+                p_open = channel_storage[channel_name].computePOpen(v)
+                i_tot += g * p_open * (v - e)
+
+        return i_tot
+
+    def asPassiveMembrane(self, channel_storage, channel_names=None, v=None):
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
+        # append leak current to channel names
+        if "L" not in channel_names:
+            channel_names.append("L")
+
+        v = self.e_eq if v is None else v
+
+        # compute the total conductance of the to be passified channels
+        g_l = self.getGTot(channel_storage, channel_names=channel_names, v=v)
+
+        # compute the total current of the not to be passified channels
+        i_tot = self.getITot(channel_storage,
+            channel_names=[
+                key for key in channel_storage if key not in channel_names
+            ],
+            v=v,
+        )
+
+        # remove the passified channels
+        for channel_name in channel_names:
+            if channel_name == 'L':
+                continue
+
+            try:
+                del self.currents[channel_name]
+            except KeyError:
+                # the channel was not present at this node anyway
+                pass
+
+        self.currents['L'] = [g_l, v + i_tot / g_l]
 
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(PhysNode, self).__str__()
+
         if self.parent_node is not None:
             node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
+
         node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
                        ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
                             for cname, cpar in self.currents.items()]) + \
@@ -263,22 +335,27 @@ class PhysTree(MorphTree):
         return PhysNode(node_index, p3d=p3d)
 
     @originalTreeModificationDecorator
-    def asPassiveMembrane(self, node_arg=None):
+    def asPassiveMembrane(self, channel_names=None, node_arg=None):
         """
         Makes the membrane act as a passive membrane (for the nodes in
         ``node_arg``), channels are assumed to add a conductance of
         g_max * p_open to the membrane conductance, where p_open for each node
-        is evaluated at the equilibrium potential stored in that node
+        is evaluated at the equilibrium potential stored in that node.
 
         Parameters
         ----------
+        channel_names: List[str] or None
+            The channels to passify. If not provided, all channels are passified.
         node_arg: optional
-                see documentation of :func:`MorphTree._convertNodeArgToNodes`.
-                Defaults to None. The nodes for which the membrane is set to
-                passive
+            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            Defaults to None. The nodes for which the membrane is set to
+            passive
         """
         for node in self._convertNodeArgToNodes(node_arg):
-            node.asPassiveMembrane(self.channel_storage)
+            node.asPassiveMembrane(
+                self.channel_storage, channel_names=channel_names
+            )
+
         self._resetChannelStorage()
 
     def _distr2Float(self, distr, node, argname=''):

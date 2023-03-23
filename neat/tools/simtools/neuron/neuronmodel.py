@@ -774,8 +774,11 @@ class NeuronSimTree(PhysTree):
             for c_ion in record_concentrations:
                 res[c_ion] = []
                 for loc in self.getLocs('rec locs'):
-                    res[c_ion].append(h.Vector())
-                    exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + 'i)')
+                    try:
+                        res[c_ion].append(h.Vector())
+                        exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + 'i)')
+                    except AttributeError:
+                        res[c_ion].append([])
         if len(record_currents) > 0:
             for c_ion in record_currents:
                 curr_name = f"i{c_ion}"
@@ -824,8 +827,14 @@ class NeuronSimTree(PhysTree):
         res['t'] = np.array(res['t'])[self.indstart:][::downsample] - self.t_calibrate
         for key in set(res.keys()) - {'t', 'chan', 'dv_dt', 'spikes'}:
             if key in res and len(res[key]) > 0:
-                res[key] = np.array([np.array(reslist)[self.indstart:][::downsample] \
-                                     for reslist in res[key]])
+                arrlist = []
+                for reslist in res[key]:
+                    arr = np.array(reslist)[self.indstart:][::downsample] \
+                        if len(reslist) > 0 else np.zeros_like(res['t'])
+                    arrlist.append(arr)
+                res[key] = np.array(arrlist)
+                # res[key] = np.array([np.array(reslist)[self.indstart:][::downsample] \
+                #                      for reslist in res[key]])
                 if key in ('i_syn', 'i_clamp', 'i_vclamp'):
                     res[key] *= -1.
         # cast channel recordings into numpy arrays
