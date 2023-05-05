@@ -80,7 +80,7 @@ class NestCompartmentNode(CompartmentNode):
             'g_L': self.currents['L'][0],
             'e_L': self.currents['L'][1],
             'C_m': self.ca*1e3, # convert uF to nF
-            'g_c': self.g_c
+            'g_C': self.g_c
         }
         p_dict.update(g_dict)
         p_dict.update(e_dict)
@@ -133,6 +133,9 @@ class NestCompartmentTree(CompartmentTree):
             Keyword arguments to the `nest.Create()` function
         """
         models = nest.Create(model_name + "_model", n, **kwargs)
+        print(self, "\n----\n")
+        for sd in self._getCompartmentsStatus():
+            print(sd)
         models.compartments = self._getCompartmentsStatus()
 
         return models
