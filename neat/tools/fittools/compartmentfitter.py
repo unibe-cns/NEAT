@@ -1053,8 +1053,9 @@ class CompartmentFitter(object):
         fit_locs = self.tree.getLocs('fit locs')
 
         if alphas is None or phimat is None or importance is None:
-            alphas, phimat, importance, _ = self._calcSOVMats(fit_locs,
-                                            recompute=False, pprint=False)
+            alphas, phimat, importance, _ = self._calcSOVMats(
+                fit_locs, pprint=False
+            )
         if alphas2 is None:
             alphas2, _, _ = self.ctree.calcEigenvalues()
 
@@ -1120,7 +1121,7 @@ class CompartmentFitter(object):
         fit_locs = self.tree.getLocs('fit locs')
         if alphas is None or phimat is None:
             alphas, phimat, _, _ = self._calcSOVMats(
-                fit_locs, recompute=self.recompute_cache, pprint=pprint
+                fit_locs, pprint=pprint
             )
 
         # compute eigenvalues
@@ -1151,7 +1152,7 @@ class CompartmentFitter(object):
         k_comp: list of list of `neat.Kernel`
             The kernels of the reduced model
         """
-        return self._getKernels(recompute=self.recompute_cache, pprint=pprint)
+        return self._getKernels(pprint=pprint)
 
     def plotKernels(self, alphas=None, phimat=None, t_arr=None,
                           pprint=False):
@@ -1183,6 +1184,11 @@ class CompartmentFitter(object):
         fit_locs = self.tree.getLocs('fit locs')
         nn = len(fit_locs)
 
+        if alphas is None or phimat is None:
+            alphas, phimat, _, _ = self._calcSOVMats(
+                fit_locs, pprint=False
+            )
+
         k_orig, k_comp = self._getKernels(alphas=alphas, phimat=phimat)
 
         if t_arr is None:
@@ -1205,6 +1211,31 @@ class CompartmentFitter(object):
                 # kernel label
                 pstring = '%d $\leftrightarrow$ %d'%(ii,jj)
                 ax.set_title(pstring, pad=-10)
+
+    def _storeSOVMats(self):
+        fit_locs = self.tree.getLocs('fit locs')
+        self.alphas, self.phimat, _, _ = self._calcSOVMats(
+            fit_locs, pprint=False
+        )
+
+    def kernelObjective(self, t_arr=None):
+        fit_locs = self.tree.getLocs('fit locs')
+        nn = len(fit_locs)
+
+        if t_arr is None:
+            t_arr = np.concatenate(
+                (np.logspace(-2,0,200), np.linspace(1., 200., 400)[1:])
+            )
+
+        k_orig, k_comp = self._getKernels(alphas=self.alphas, phimat=self.phimat)
+
+        res = 0.
+        for ii in range(nn):
+            for jj in range(ii, nn):
+                ko, kc = k_orig[ii][jj], k_comp[ii][jj]
+                res += np.sum((ko(t_arr) - kc(t_arr))**2)
+
+        return res
 
     def checkPassive(self, loc_arg, alpha_inds=[0], n_modes=5,
                            use_all_channels_for_passive=True, force_tau_m_fit=False,
@@ -1239,7 +1270,7 @@ class CompartmentFitter(object):
         # fit the capacitances
         self.fitCapacitance(inds=alpha_inds,
                             force_tau_m_fit=force_tau_m_fit,
-                            pprint=pprint, pplot=True)
+                            pprint=pprint, pplot=False)
 
         fit_locs = self.tree.getLocs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])

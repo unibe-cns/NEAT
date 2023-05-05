@@ -137,6 +137,10 @@ class Kernel(object):
         """
         return self(t_arr)
 
+    def diff(self, t_arr):
+        return np.dot(-self.a[np.newaxis,:] * np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
+                      self.c[:,np.newaxis]).flatten().real
+
     def ft(self, s_arr):
         """
         Evaluates the kernel in the Fourrier domain

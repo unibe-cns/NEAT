@@ -619,12 +619,12 @@ class CompartmentTree(STree):
         e_l = np.linalg.solve(jac, -fun + np.dot(jac, e_l_0))
         # set the leak reversals
         for ii, node in enumerate(self):
-            node.currents['L'][1] = e_l[ii]
+            node.currents['L'] = [node.currents['L'][0], e_l[ii]]
 
     def _fun(self, e_l):
         # set the leak reversal potentials
         for ii, node in enumerate(self):
-            node.currents['L'][1] = e_l[ii]
+            node.currents['L'] = [node.currents['L'][0], e_l[ii]]
         # compute the function values (currents)
         fun_vals = np.zeros(len(self))
         for ii, node in enumerate(self):

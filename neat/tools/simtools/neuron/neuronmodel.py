@@ -863,6 +863,8 @@ class NeuronSimTree(PhysTree):
             self.spike_detector = None
             del self.spike_detector
 
+        res['runtime'] = runtime
+
         return res
 
     def calcEEq(self, t_dur=100., set_e_eq=True):
@@ -1107,7 +1109,6 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
             sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
                                          for chan, (g, e) in comp_node.currents.items()}
             sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
-            print("!!!",  surfaces[comp_node.index])
             for concmech in sim_node.concmechs.values():
                 concmech.gamma *= surfaces[comp_node.index] * 1e6
             sim_node.c_m = fake_c_m

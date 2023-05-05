@@ -15,7 +15,7 @@ import neat.tools.kernelextraction as ke
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
-channel_installer.load_or_install_testchannels()
+channel_installer.load_or_install_neuron_testchannels()
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(

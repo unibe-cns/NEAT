@@ -16,7 +16,7 @@ from neat.factorydefaults import DefaultPhysiology
 
 from channelcollection_for_tests import *
 import channel_installer
-channel_installer.load_or_install_testchannels()
+channel_installer.load_or_install_neuron_testchannels()
 
 
 CFG = DefaultPhysiology()

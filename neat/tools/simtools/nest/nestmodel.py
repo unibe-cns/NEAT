@@ -3,6 +3,7 @@ from ....trees.compartmenttree import CompartmentTree, CompartmentNode
 import numpy as np
 
 import warnings
+import subprocess
 
 try:
     import nest
@@ -49,6 +50,18 @@ except ModuleNotFoundError:
 
 
 def loadNestModel(name):
+    # Currently, we have no way of checking whether the *.so-file
+    # associated with the model is in {nest build directory}/lib/nest,
+    # so instead we check whether the model is installed in NEAT
+    output = str(
+        subprocess.check_output([
+            "neatmodels", "list", "multichannel_test",
+            "-s", "nest",
+        ]),
+        'utf-8',
+    )
+    if name not in output:
+        raise FileNotFoundError(f"The NEST model '{name}' is not installed")
     nest.Install(name + "_module")
 
 
@@ -58,10 +71,10 @@ class NestCompartmentNode(CompartmentNode):
 
     def _makeCompartmentDict(self):
         g_dict = {
-            f'gbar_{key}{self.index}': self.currents[key][0] for key in self.currents if key != 'L'
+            f'gbar_{key}': self.currents[key][0] for key in self.currents if key != 'L'
         }
         e_dict = {
-            f'e_{key}{self.index}': self.currents[key][1] for key in self.currents if key != 'L'
+            f'e_{key}': self.currents[key][1] for key in self.currents if key != 'L'
         }
         p_dict = {
             'g_L': self.currents['L'][0],
