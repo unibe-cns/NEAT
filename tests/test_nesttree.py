@@ -250,10 +250,8 @@ class TestNest:
         tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
         na_chan = channelcollection.NaTa_t()
         tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
-        # ca_chan = channelcollection.Ca_HVA()
-        # tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        # sk_chan = channelcollection.SK_E2()
-        # tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        ca_chan = channelcollection.Ca_HVA()
+        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         # passive leak current
         tree.fitLeakCurrent(-70., 15.)
 
@@ -263,7 +261,10 @@ class TestNest:
         self.ctree = cfit.fitModel(locs)
 
     def testDendNestNeuronComparison(self, pplot=False):
-        dt = .001
+        dt = .1
+        t0 = 0.
+        t1 = 200.
+        idx0 = int(t0/dt)
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
@@ -276,16 +277,24 @@ class TestNest:
         print(clocs)
         print(self.ctree)
         csimtree_neuron = createReducedNeuronModel(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
+        csimtree_neuron.initModel(dt=dt, t_calibrate=0.)
         csimtree_neuron.storeLocs(clocs, name='rec locs')
         csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)
-        csimtree_neuron.setSpikeTrain(0, 0.005, [20., 23., 40.])
+        csimtree_neuron.setSpikeTrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
         csimtree_neuron.addDoubleExpSynapse(clocs[dend_idx], .2, 3., 0.)
-        csimtree_neuron.setSpikeTrain(1, 0.005, [70., 74., 85.])
-        res_neuron = csimtree_neuron.run(200.)
+        csimtree_neuron.setSpikeTrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
+        res_neuron = csimtree_neuron.run(400, record_from_channels=True)
+
+        print(res_neuron['chan'].keys())
+
+        res_neuron['t'] = res_neuron['t'][idx0:] - res_neuron['t'][idx0]
+        res_neuron['v_m'] = res_neuron['v_m'][:,idx0:]
+
+        print(res_neuron['v_m'].shape)
 
         csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel.V_init = -75.
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -297,7 +306,7 @@ class TestNest:
             "receptor_type": "AMPA",
             "params": {"e_AMPA": 0., "tau_r_AMPA": .2, "tau_d_AMPA": 3.},
         }]
-        sg = nest.Create('spike_generator', 1, {'spike_times': [220., 223., 240.]})
+        sg = nest.Create('spike_generator', 1, {'spike_times': [t1 + 20., t1 + 23., t1 + 40.]})
         nest.Connect(sg, nestmodel,
             syn_spec={
                 'synapse_model': 'static_synapse',
@@ -306,7 +315,7 @@ class TestNest:
                 'receptor_type': 0,
             }
         )
-        sg_ = nest.Create('spike_generator', 1, {'spike_times': [270., 274., 285.]})
+        sg_ = nest.Create('spike_generator', 1, {'spike_times': [t1 + 70., t1 + 74., t1 + 85.]})
         nest.Connect(sg_, nestmodel,
             syn_spec={
                 'synapse_model': 'static_synapse',
@@ -316,18 +325,26 @@ class TestNest:
             }
         )
         # voltage recording
-        mm = nest.Create('multimeter', 1,
-            {'record_from': [f"v_comp{ii}" for ii in range(len(self.ctree))], 'interval': dt}
-        )
+        mm = nest.Create('multimeter', 1, {
+            'record_from': [f"v_comp{ii}" for ii in range(len(self.ctree))] + \
+                           [f"h_Ca_HVA{ii}"for ii in range(len(self.ctree))] + \
+                           [f"m_Ca_HVA{ii}"for ii in range(len(self.ctree))] + \
+                           [f"h_NaTa_t{ii}"for ii in range(len(self.ctree))] + \
+                           [f"m_NaTa_t{ii}"for ii in range(len(self.ctree))],
+            'interval': dt
+        })
         nest.Connect(mm, nestmodel)
         # simulate
         nest.Simulate(400.)
         res_nest = nest.GetStatus(mm, 'events')[0]
 
-        idx0 = int(200./dt)
+        print("!!!", len(res_nest[f'v_comp{0}']))
+
         res_nest['times'] = res_nest['times'][idx0:] - res_nest['times'][idx0]
         for ii in range(len(self.ctree)):
             res_nest[f'v_comp{ii}'] = res_nest[f'v_comp{ii}'][idx0:]
+
+        print("!!!", len(res_nest[f'v_comp{0}']))
 
         for ii in range(len(self.ctree)):
             v0 = res_nest[f'v_comp{ii}'][0]
@@ -337,7 +354,7 @@ class TestNest:
             # assert v_maxdiff < 3. and v_meandiff < 0.004
 
         if pplot:
-            pl.figure(figsize=(15,6))
+            pl.figure('v', figsize=(15,6))
             ax = pl.subplot(131)
             ax.plot(res_neuron['t'], res_neuron['v_m'][0], 'r-')
             ax.plot(res_nest['times'], res_nest['v_comp0'], 'b--')
@@ -347,9 +364,41 @@ class TestNest:
             ax = pl.subplot(133)
             ax.plot(res_neuron['t'], res_neuron['v_m'][dend_idx], 'r-')
             ax.plot(res_nest['times'], res_nest[f'v_comp{dend_idx}'], 'b--')
+
+            pl.figure('Ca_HVA', figsize=(15,6))
+            ax = pl.subplot(131)
+            ax.plot(res_neuron['t'], res_neuron['chan']['Ca_HVA']['m'][0], 'r-')
+            ax.plot(res_neuron['t'], res_neuron['chan']['Ca_HVA']['h'][0], 'g-')
+            ax.plot(res_nest['times'], res_nest[f'm_Ca_HVA0'], 'r--', lw=2)
+            ax.plot(res_nest['times'], res_nest[f'h_Ca_HVA0'], 'g--', lw=2)
+            ax = pl.subplot(132)
+            ax.plot(res_neuron['t'], res_neuron['chan']['Ca_HVA']['m'][rec_idx], 'r-')
+            ax.plot(res_neuron['t'], res_neuron['chan']['Ca_HVA']['h'][rec_idx], 'g-')
+            ax.plot(res_nest['times'], res_nest[f'm_Ca_HVA{rec_idx}'], 'r--', lw=2)
+            ax.plot(res_nest['times'], res_nest[f'h_Ca_HVA{rec_idx}'], 'g--', lw=2)
+            ax = pl.subplot(133)
+            ax.plot(res_neuron['t'], res_neuron['chan']['Ca_HVA']['m'][dend_idx], 'r-')
+            ax.plot(res_neuron['t'], res_neuron['chan']['Ca_HVA']['h'][dend_idx], 'g-')
+            ax.plot(res_nest['times'], res_nest[f'm_Ca_HVA{dend_idx}'], 'r--', lw=2)
+            ax.plot(res_nest['times'], res_nest[f'h_Ca_HVA{dend_idx}'], 'g--', lw=2)
+
+            pl.figure('NaTa_t', figsize=(15,6))
+            ax = pl.subplot(131)
+            ax.plot(res_neuron['t'], res_neuron['chan']['NaTa_t']['m'][0], 'r-')
+            ax.plot(res_neuron['t'], res_neuron['chan']['NaTa_t']['h'][0], 'g-')
+            ax.plot(res_nest['times'], res_nest[f'm_NaTa_t0'], 'r--', lw=2)
+            ax.plot(res_nest['times'], res_nest[f'h_NaTa_t0'], 'g--', lw=2)
+            ax = pl.subplot(132)
+            ax.plot(res_neuron['t'], res_neuron['chan']['NaTa_t']['m'][rec_idx], 'r-')
+            ax.plot(res_neuron['t'], res_neuron['chan']['NaTa_t']['h'][rec_idx], 'g-')
+            ax.plot(res_nest['times'], res_nest[f'm_NaTa_t{rec_idx}'], 'r--', lw=2)
+            ax.plot(res_nest['times'], res_nest[f'h_NaTa_t{rec_idx}'], 'g--', lw=2)
+            ax = pl.subplot(133)
+            ax.plot(res_neuron['t'], res_neuron['chan']['NaTa_t']['m'][dend_idx], 'r-')
+            ax.plot(res_neuron['t'], res_neuron['chan']['NaTa_t']['h'][dend_idx], 'g-')
+            ax.plot(res_nest['times'], res_nest[f'm_NaTa_t{dend_idx}'], 'r--', lw=2)
+            ax.plot(res_nest['times'], res_nest[f'h_NaTa_t{dend_idx}'], 'g--', lw=2)
             pl.show()
-
-
 
 
 if __name__ == "__main__":
@@ -358,3 +407,5 @@ if __name__ == "__main__":
     # tn.testSingleCompNestNeuronComparison(pplot=True)
     # tn.testMultiCompNestNeuronComparison(pplot=True)
     tn.testDendNestNeuronComparison(pplot=True)
+
+    # ca_act()

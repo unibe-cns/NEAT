@@ -839,7 +839,7 @@ class IonChannel(object):
                 " "*n_spaces + f"end\n"
         else:
             code_str = \
-                " "*indent + f"val = {code_str}\n"
+                " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
 
         return code_str
 

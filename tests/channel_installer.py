@@ -11,6 +11,9 @@ from neat import loadNeuronModel, loadNestModel
 
 
 def load_or_install_neuron_testchannels():
+    """
+    neatmodels install multichannel_test -s neuron -p channelcollection_for_tests.py
+    """
     channel_file = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
         'channelcollection_for_tests.py'
@@ -34,6 +37,9 @@ def load_or_install_neuron_testchannels():
 
 
 def load_or_install_nest_testchannels():
+    """
+    neatmodels install multichannel_test -s nest -p channelcollection_for_tests.py
+    """
     channel_file = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
         'channelcollection_for_tests.py'
