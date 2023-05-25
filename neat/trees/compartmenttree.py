@@ -408,6 +408,49 @@ class CompartmentNode(SNode):
 
         return i_tot
 
+    def calcLinearStatevarTerms(self, channel_storage,
+                freqs=0., v=None, channel_names=None):
+        """
+        Contribution of linearized ion channel to conductance matrix
+
+        Parameters
+        ----------
+        channel_storage: dict of ion channels
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+        freqs: np.ndarray (ndim = 1, dtype = complex or float) or float or complex
+            The frequencies at which the impedance terms are to be evaluated
+        v: float (optional, default is None which evaluates at `self.e_eq`)
+            The potential at which to compute the total conductance
+        channel_names: list of str
+            The names of the ion channels that have to be included in the
+            conductance term
+
+        Returns
+        -------
+        dict of np.ndarray or float or complex
+            Each entry in the dict is of the same type as ``freqs`` and is the
+            conductance term of a channel
+        """
+        if channel_names is None: channel_names = list(self.currents.keys())
+
+        svar_terms = {}
+        for channel_name in set(channel_names) - set('L'):
+            g, e = self.currents[channel_name]
+
+            # get the ionchannel object
+            channel = channel_storage[channel_name]
+            v, sv = self._constructChannelArgs(channel)
+
+            # add linearized channel contribution to membrane conductance
+            dp_dx = channel.computeDerivatives(v, **sv)[0]
+
+            svar_terms[channel] = {}
+            for svar, dp_dx_ in dp_dx.items():
+                svar_terms[channel][svar] = g * dp_dx_ * (e - v)
+
+        return svar_terms
+
     def getDrive(self, channel_name, v=None, channel_storage=None):
         v = self.e_eq if v is None else v
         _, e = self.currents[channel_name]
@@ -1624,6 +1667,54 @@ class CompartmentTree(STree):
             ca_vec.append((node.currents['L'][0]+np.sum(g_cs)) / alpha)
 
         self._toTreeC(ca_vec)
+
+    def computeCfromZ(self, zt_mat, dz_dt_mat, qt_mat):
+        """
+        Parameters
+        ----------
+        zt_mat: `np.ndarray` of ``shape=(t,k,k)
+            The impedance kernel matrix
+        dz_dt_mat: `np.ndarray` of ``shape=(t,k,k)
+            The matrix with time derivatives of the impedance kernels
+        qt_mat: list of dict of dict of `np.ndarray`
+            The linearized responses of all channels to current pulse input,
+            can be accessed as
+            [location_index][channel_name][statevar_name][time, input loc]
+        """
+        # permutation of input matrices to tree
+        perm_inds = self._permuteToTreeInds()
+        zt_mat = self._permuteToTree(z_mat_fit)
+        dz_dt_mat = self._permuteToTree(dz_dt_mat_fit)
+
+        # compute passive matrix
+        g_mat = -ctree.calcConductanceMatrix(indexing='tree')
+        # compute channel linearization matrix
+        c_mat = self._computeChannelContributions()
+
+        # matrix product for passive terms
+        zg_prod = np.einsum("lk,tkn->tln", g_mat, z_mat_fit) * 1e-3
+
+        # explicit matrix product for channel terms
+        cq_prod = np.zeros_like(zg_prod)
+        for ii, node in enumerate(self):
+
+            c_resps = node.calcLinearStatevarTerms()
+            for channel_name, c_resp in c_resps.items():
+                for svar, arg1 in c_resp.items():
+                    arg2 = self._permuteToTree(
+                        qt_mat[perm_inds[ii]][channel_name][svar]
+                    )
+                    cq_prod[:,ii,:] += arg1 * arg2 * 1e-3
+
+        c_vec = np.zeros(len(ctree))
+        for ii in range(len(ctree)):
+            m1 = dz_dt_mat[:,ii,:].reshape((-1,1))
+            m2 = (zg_prod[:,ii,:] + cq_prod[:,ii,:]).reshape((-1,))
+
+            c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
+            c_vec[ii] = c_val
+
+        self._toTreeC(c_vec)
 
     def computeGChanFromTrace(self, dv_mat, v_mat, i_mat,
                          p_open_channels=None, p_open_other_channels={}, test={},

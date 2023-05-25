@@ -222,7 +222,7 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None):
         blocks_ = chan.writeNestmlBlocks(v_comp=-75.)
 
         for block, blockstr in blocks_.items():
-            blocks[block] += blockstr
+            blocks[block] = blockstr + blocks[block]
 
     # create directory to install nestml files
     if not os.path.exists(path_for_nestml_compilation):

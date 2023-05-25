@@ -128,7 +128,7 @@ class Kernel(object):
         Parameters
         ----------
         t_arr: np.array of float
-            the time array at which the kernel is evaluated
+            the time array in ``ms`` at which the kernel is evaluated
 
         Returns
         -------
@@ -148,7 +148,7 @@ class Kernel(object):
         Parameters
         ----------
         s_arr: np.array of complex
-            The frequencies (Hz) at which the kernel is to be evaluated
+            The frequencies in ``Hz`` at which the kernel is to be evaluated
 
         Returns
         -------
@@ -158,6 +158,28 @@ class Kernel(object):
         """
         return np.sum(self.c[:,None]*1e3 / (self.a[:,None]*1e3 + s_arr[None,:]), 0)
 
+    def fit_c(self, t_arr, func_arr, w=None):
+        """
+        Perform a linear least squares fit of the exponential prefactors in the
+        time domain
+
+        Parameters
+        ----------
+        t_arr: `np.array` of float
+            the time array in ``ms`` at which the kernel is evaluated
+        k_arr: `np.array` of float
+            the to be fitted kernel array
+
+        Returns
+        -------
+        `np.ndarray` of float (`ndim = 2`)
+            The feature matrix
+        """
+        if w is None:
+            w = np.ones_like(t_arr)
+        A = np.exp(-t_arr[:,None] * self.a[None,:])
+
+        self.c = np.linalg.lstsq(w[:,None]*A, w*func_arr, rcond=None)[0]
 
 class NETNode(SNode):
     """

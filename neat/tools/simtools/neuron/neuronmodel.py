@@ -890,12 +890,7 @@ class NeuronSimTree(PhysTree):
         return v_eq
 
     def calcImpedanceMatrix(self, locarg, i_amp=0.001, t_dur=100., pplot=False):
-        if isinstance(locarg, list):
-            locs = [MorphLoc(loc, self) for loc in locarg]
-        elif isinstance(locarg, str):
-            locs = self.getLocs(locarg)
-        else:
-            raise IOError('`locarg` should be list of locs or string')
+        locs = self._convertLocArgToLocs(locarg)
         z_mat = np.zeros((len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
@@ -905,6 +900,7 @@ class NeuronSimTree(PhysTree):
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_dur)
+                self.deleteModel()
                 # voltage deflections
                 # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].e_eq
                 v_trans = res['v_m'][1][-int(1./self.dt)] - res['v_m'][1][0]
@@ -920,13 +916,7 @@ class NeuronSimTree(PhysTree):
 
     def calcImpedanceKernelMatrix(self, locarg, i_amp=0.001,
                                                 dt_pulse=0.1, t_max=100.):
-        tk = np.arange(0., t_max, self.dt)
-        if isinstance(locarg, list):
-            locs = [MorphLoc(loc, self) for loc in locarg]
-        elif isinstance(locarg, str):
-            locs = self.getLocs(locarg)
-        else:
-            raise IOError('`locarg` should be list of locs or string')
+        locs = self._convertLocArgToLocs(locarg)
         zk_mat = np.zeros((len(tk), len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
@@ -937,6 +927,7 @@ class NeuronSimTree(PhysTree):
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_max)
+                self.deleteModel()
                 # voltage deflections
                 v_trans = res['v_m'][1][1:] - self[loc1['node']].e_eq
                 # compute impedances

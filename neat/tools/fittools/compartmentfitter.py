@@ -938,6 +938,89 @@ class CompartmentFitter(object):
 
         return tree
 
+    def fitCapacitance_(self):
+        t_fit = np.array([
+                # 0.2, 0.4, 0.6, 0.8, 1.0,
+                # 2.0, 4.0, 6.0, 8.0, 10.,
+                # 5., 6., 7., 8., 9. ,10.,
+                11., 12., 13., 14., 15.,
+                16., 17., 18., 19., 20.,
+                22., 24., 26., 28. ,30.,
+                32., 34., 36., 38., 40.,
+                50., 60., 70., 80.
+        ])
+        ft_fit = FourrierTools(t_fit, fmax=7., base=10., num=200)
+
+        greens_tree = self.createTreeGF(
+            channel_names=list(self.tree.channel_storage.keys()),
+            cache_name_suffix='cfit',
+        )
+        greens_tree.setEEq(self.v_eqs_tree)
+
+        # compute kernels biophysical model
+        t_arr = np.linspace(0.1, 50.,10000)
+        ft = FourrierTools(t_arr, fmax=7., base=10., num=200)
+
+        dt = 0.1*1e-3
+        N = 2**12
+        smax = np.pi/dt # Hz
+        ds = np.pi/(N*dt) # Hz
+        s = np.arange(-smax,smax,ds)*1j  # Hz
+        print(smax)
+
+        ft_ = copy.deepcopy(ft)
+        # reset frequency in ft
+        ft_.s = s
+        ft_.ind_0s = len(ft_.s) // 2
+        # create the quadrature matrix
+        ft_._setQuad()
+        ft_._setQuadInv()
+
+        t_fit = np.array([
+            # 0.2, 0.4, 0.6, 0.8, 1.0,
+            # 2.0, 4.0, 6.0, 8.0, 10.,
+            # 5., 6., 7., 8., 9. ,10.,
+            11., 12., 13., 14., 15.,
+            16., 17., 18., 19., 20.,
+            22., 24., 26., 28. ,30.,
+            32., 34., 36., 38., 40.,
+            50., 60., 70., 80.
+        ])
+        ft_fit = FourrierTools(t_fit, fmax=7., base=10., num=200)
+
+        greens_tree_ztrans = greens_tree.__copy__(new_tree=GreensTree())
+        greens_tree_ztrans.setImpedance(ft_fit.s)
+        greens_tree_zinput = greens_tree.__copy__(new_tree=GreensTree())
+        greens_tree_zinput.setImpedance(ft_.s)
+
+        z_mat_fit = np.zeros((len(t_fit), len(all_locs), len(all_locs)))
+        dz_dt_mat_fit = np.zeros((len(t_fit), len(all_locs), len(all_locs)))
+
+        for ii, loc0 in enumerate(all_locs):
+            for jj, loc1 in enumerate(all_locs):
+
+                z_criterion = np.abs(z_mat_full[-1, ii, jj]) / np.abs(z_mat_full[ft.ind_0s, ii, jj])
+
+                if z_criterion > 1e-10:
+
+                    zf = greens_tree_zinput.calcZF(loc0, loc1)
+                    alpha, gamma, pairs, rms = f_exp_fitter.fitFExp(ft_.s, zf, deg=40,
+                                initpoles='log10', realpoles=True, zerostart=False, constrained=True, reduce_numexp=False)
+                    z_k = Kernel({'a': alpha*1e-3, 'c': gamma*1e-3})
+
+                    z_mat_fit[:,ii,jj] = z_k(t_fit)
+                    dz_dt_mat_fit[:,ii,jj] = z_k.diff(t_fit)
+
+                else:
+
+                    zf = greens_tree_ztrans.calcZF(loc0, loc1)
+                    tt, z_arr = ft_fit.ftInv(zf)
+                    tt, dz_dt_arr = ft_fit.ftInv(ft_fit.s * zf)
+
+                    z_mat_fit[:, ii, jj] = z_arr.real * 1e-3
+                    dz_dt_mat_fit[:, ii, jj] = dz_dt_arr.real * 1e-6
+
+
     def _calcSOVMats(self, locs, pprint=False):
         """
         Use a `neat.SOVTree` to compute SOV matrices for fit

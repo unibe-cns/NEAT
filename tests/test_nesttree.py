@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 
 import os
+import time
 import pytest
 
 try:
@@ -261,7 +262,8 @@ class TestNest:
         self.ctree = cfit.fitModel(locs)
 
     def testDendNestNeuronComparison(self, pplot=False):
-        dt = .1
+        dt = 1.
+        tmax = 400.
         t0 = 0.
         t1 = 200.
         idx0 = int(t0/dt)
@@ -283,7 +285,7 @@ class TestNest:
         csimtree_neuron.setSpikeTrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
         csimtree_neuron.addDoubleExpSynapse(clocs[dend_idx], .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
-        res_neuron = csimtree_neuron.run(400, record_from_channels=True)
+        res_neuron = csimtree_neuron.run(tmax, record_from_channels=True, pprint=True)
 
         print(res_neuron['chan'].keys())
 
@@ -294,16 +296,16 @@ class TestNest:
 
         csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
-        nestmodel.V_init = -75.
+        # nestmodel.V_init = -75.
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
-            "receptor_type": "AMPA",
+            "receptor_type": "i_AMPA",
             "params": {"e_AMPA": 0., "tau_r_AMPA": .2, "tau_d_AMPA": 3.},
         },
         {
             "comp_idx": dend_idx,
-            "receptor_type": "AMPA",
+            "receptor_type": "i_AMPA",
             "params": {"e_AMPA": 0., "tau_r_AMPA": .2, "tau_d_AMPA": 3.},
         }]
         sg = nest.Create('spike_generator', 1, {'spike_times': [t1 + 20., t1 + 23., t1 + 40.]})
@@ -335,7 +337,13 @@ class TestNest:
         })
         nest.Connect(mm, nestmodel)
         # simulate
-        nest.Simulate(400.)
+        print('>>> Simulating the NEST model for ' + str(tmax) + ' ms. <<<')
+        nest.Prepare()
+        start = time.process_time()
+        nest.Run(tmax)
+        stop = time.process_time()
+        nest.Cleanup()
+        print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')
         res_nest = nest.GetStatus(mm, 'events')[0]
 
         print("!!!", len(res_nest[f'v_comp{0}']))
