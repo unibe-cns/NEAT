@@ -222,18 +222,19 @@ class TestGreensTreeTime():
         self.tree.setEEq(-75.)
         self.tree.setCompTree()
 
-    def loadBall(self):
+    def loadBall(self, is_active):
         '''
         Load point neuron model
         '''
         self.tree = GreensTreeTime(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
-        # ion channels
-        k_chan = channelcollection.Kv3_1()
-        self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
-        na_chan = channelcollection.Na_Ta()
-        self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
+        if is_active:
+            # ion channels
+            k_chan = channelcollection.Kv3_1()
+            self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
+            na_chan = channelcollection.Na_Ta()
+            self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
@@ -314,7 +315,6 @@ class TestGreensTreeTime():
 
             pl.show()
 
-
     def testActiveKernels(self, pplot=True):
         self.loadAxonTree()
         greens_tree = self.tree.__copy__(new_tree=GreensTree())
@@ -368,15 +368,25 @@ class TestGreensTreeTime():
         self.tree.setImpedance(self.ft)
         sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
 
-        locs = [(1, .5), (5, .5)]
-        idxs_out = [0,1]
+        locs = [(1, .05), (5, .45), (5, .5)]
+        nl = len(locs)
+        idxs_out = [0,1,2]
         idx_in = 1
 
         crt_01 = [
-            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0) \
+            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="quadrature") \
+            for idx_out in idxs_out
+        ]
+        crt_01_quad = [
+            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="quadrature") \
+            for idx_out in idxs_out
+        ]
+        crt_01_expf = [
+            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="exp fit") \
             for idx_out in idxs_out
         ]
         crt_mat = self.tree.calcChannelResponseMatrix(locs)
+        zt_mat_gtt = self.tree.calcImpulseResponseMatrix(locs)
 
         # simulate
         i_amp = 0.001 # nA
@@ -390,40 +400,186 @@ class TestGreensTreeTime():
         res = sim_tree.run(tmax, record_from_channels=True)
         sim_tree.deleteModel()
 
+        slice_sim = np.s_[int((delay_pulse+dt_pulse) / self.dt - 2):]
+        t_sim = res['t'][slice_sim] - (delay_pulse+dt_pulse)
+
+        v_resps = [
+            (
+                res['v_m'][idxs_out[ii]][slice_sim] - res['v_m'][idxs_out[ii]][0]
+            ) / (i_amp * dt_pulse) for ii in range(nl)
+        ]
+
+        if pplot:
+            pl.figure('v')
+            ax0 = pl.subplot(121)
+            ax1 = pl.subplot(122)
+            lss = ["-", "--", ":", "-."]
+            css = ["r", "b", "g", "y"]
+            lws = ["1", "2", "2.5", "1.5"]
+
+            for ii, idx_out in enumerate(idxs_out):
+                ax0.plot(res['t'], res['v_m'][idxs_out[ii]], c=css[ii], lw=1., ls="-")
+
+                ax1.plot(t_sim, v_resps[ii], c=css[ii], lw=1., ls="-")
+                ax1.plot(self.ft.t, zt_mat_gtt[:, idxs_out[ii], idx_in], c=css[ii], lw=2, ls="--")
+
+        slice_time = np.s_[int(1.5/self.dt):]
+        for ii in range(nl):
+            if pplot:
+                print(
+                    "zt vs sim:",
+                    np.max(np.abs(
+                        v_resps[ii][slice_time] - zt_mat_gtt[slice_time, idxs_out[ii], idx_in]
+                    )) / np.max(np.abs(v_resps[ii][slice_time]))
+                )
+            # assert np.allclose(
+            #     v_resps[ii][slice_time], zt_mat_gtt[slice_time, idxs_out[ii], idx_in],
+            #     atol=0.0025*np.max(np.abs(v_resps[ii][slice_time]))
+            # )
+
         # compute state variable deflections
         for channel_name in self.tree.getChannelsInTree():
 
             if pplot:
                 pl.figure(channel_name)
-                axes = [pl.subplot(121), pl.subplot(122)]
-                axes[0].set_title("rec loc 0")
-                axes[1].set_title("rec loc 1")
+                axes = [pl.subplot(int(f"1{nl}{ii+1}")) for ii in range(nl)]
+                for ii in range(nl):
+                    axes[ii].set_title(f"rec loc {ii}")
 
             for svar_name in list(crt_01[0][channel_name].keys()):
                 for idx_out in idxs_out:
+                    # simulated channel response
                     q_sim = res['chan'][channel_name][svar_name][idx_out]
-                    # q_sim = q_sim[int((delay_pulse+dt_pulse) / self.dt):] - q_sim[0]
-                    q_sim = q_sim - q_sim[0]
+                    q_sim = q_sim[slice_sim] - q_sim[0]
                     q_sim /= (i_amp * dt_pulse)
-                    t_sim = res['t']#[int((delay_pulse+dt_pulse) / self.dt):] - (delay_pulse+dt_pulse)
-
+                    # computed channel response
                     q_calc = crt_mat[idx_out][channel_name][svar_name][:,idx_in]
 
-                    print(len(t_sim), len(self.ft.t))
-
+                    # compare `calcChannelResponseT()` and `calcChannelResponsMatrix()`
                     q_calc_ = crt_01[idx_out][channel_name][svar_name]
                     assert np.allclose(q_calc, q_calc_)
+
+                    # compare `method="exp fit"` and `method="quadrature"`
+                    q_calc_expf = crt_01_expf[idx_out][channel_name][svar_name]
+                    q_calc_quad = crt_01_quad[idx_out][channel_name][svar_name]
+                    if pplot:
+                        print(
+                            f"exp fit vs quadrature {channel_name}:",
+                            np.max(np.abs(
+                                q_calc_expf[slice_time] - q_calc_quad[slice_time]
+                            )) / np.max(np.abs(q_calc_quad[slice_time]))
+                        )
+                    # exp fit does not work well for Ca_HVA response for some reason
+                    if channel_name != "Ca_HVA":
+                        assert np.allclose(
+                            q_calc_expf[slice_time],
+                            q_calc_quad[slice_time],
+                            atol=0.03*np.max(np.abs(q_calc_quad[slice_time]))
+                        )
+
+                    # compare `calcChannelResponsMatrix()` and simulation
+                    if pplot:
+                        print(
+                            "qt vs sim:",
+                            np.max(np.abs(q_calc - q_sim)) / np.max(np.abs(q_calc))
+                        )
+                    assert np.allclose(
+                        q_calc, q_sim,
+                        atol=0.35*np.max(np.abs(q_calc))
+                    )
 
                     if pplot:
                         axes[idx_out].plot(self.ft.t, q_calc, c='r', ls='-', lw=1.)
                         axes[idx_out].plot(self.ft.t, q_calc_, c='b', ls=':', lw=3.)
+                        # axes[idx_out].plot(self.ft.t, q_calc_expf, c='r', ls='-', lw=1.)
+                        # axes[idx_out].plot(self.ft.t, q_calc_quad, c='b', ls=':', lw=3.)
                         axes[idx_out].plot(t_sim, q_sim, c='k', ls='--', lw=2.)
 
         if pplot:
             pl.show()
 
+    def testExponentialDerivative(self, pplot=True):
+        # test passive case
+        self.loadBall(is_active=False)
+        self.tree.asPassiveMembrane()
+        self.tree.setCompTree()
+        self.tree.setImpedance(self.ft)
 
-    def testExponentialDerivative(self, pplot=True): pass
+        loc = (1, .5)
+        zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1)
+
+        a_soma = 4. * np.pi * self.tree[1].R**2 # cm^2
+        c_soma = self.tree[1].c_m * a_soma # uF
+        g_soma = self.tree[1].currents['L'][0] * a_soma # uS
+
+        print(-g_soma / c_soma * 1e-3)
+        print(dzt_dt / zt)
+
+        # np.testing.assert_equal(dzt_dt, -g_soma / c_soma * 1e-3)
+
+        # test active case
+        self.loadBall(is_active=False)
+        self.tree.setImpedance(self.ft)
+        zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1)
+        crt, dcrt_dt = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=1)
+
+        soma = self.tree[1]
+        a_soma = 4. * np.pi * soma.R**2 # cm^2
+        c_soma = self.tree[1].c_m * a_soma # uF
+        g_soma = 0
+        svar_terms = {}
+        for channel_name in soma.currents:
+            g, e = soma.currents[channel_name]
+
+            if channel_name == 'L':
+                g_soma += g
+                break
+
+            # recover the ionchannel object
+            channel = self.tree.channel_storage[channel_name]
+
+            # get voltage(s), state variable expansion point(s) and
+            # concentration(s) around which to linearize the channel
+            v, sv = soma._constructChannelArgs(channel)
+
+            # add open probability to total conductance
+            g_soma += g * a_soma * channel.computePOpen(v)
+
+            # add linearized channel contribution to membrane conductance
+            dp_dx = channel.computeDerivatives(v)[0]
+
+            svar_terms[channel_name] = {}
+            for svar, dp_dx_ in dp_dx.items():
+                svar_terms[channel_name][svar] = g * a_soma * dp_dx_ * (v - e)
+
+        print("--- crt ---")
+        for channel_name in crt:
+            print(crt[channel_name].keys())
+        print("--- svar_terms ---")
+        for channel_name in svar_terms:
+            print(svar_terms[channel_name].keys())
+
+        print(svar_terms)
+
+        arr_aux = g_soma * zt
+        for channel_name in crt:
+            for svar_name in crt[channel_name]:
+                print(channel_name, svar_name)
+                arr_aux += svar_terms[channel_name][svar_name] * crt[channel_name][svar_name]
+
+        print(arr_aux / dzt_dt)
+        print(c_soma)
+
+        pl.figure()
+        ax1 = pl.subplot(121)
+        ax1.plot(self.ft.t, arr_aux)
+        ax2 = pl.subplot(122)
+        ax2.plot(self.ft.t, arr_aux / dzt_dt)
+
+        pl.show()
+
+        # crt, dcrt_dt = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=1)
+
 
 
 if __name__ == '__main__':
@@ -434,5 +590,6 @@ if __name__ == '__main__':
     tgtt = TestGreensTreeTime()
     # tgtt.testPassiveKernels(pplot=True)
     # tgtt.testActiveKernels(pplot=True)
-    tgtt.testChannelResponses()
+    # tgtt.testChannelResponses()
+    tgtt.testExponentialDerivative()
 

@@ -737,7 +737,9 @@ class GreensTreeTime(GreensTree):
         # typically, exponential fit is chosen for input impedances and
         # explicit quadrature for transfer impedances
         f_arr = func_vals_f[self._slice_quad]
-        criterion = np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s]) <= 1e-10
+        criterion = np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s]) <= 1e-8
+
+        print(f"> criterion = {np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s])}")
 
         # compute kernel through quadrature method
         func_vals_t = self.ft.ftInv(
@@ -911,6 +913,8 @@ class GreensTreeTime(GreensTree):
             [channel_name][statevar_name][time]
         """
         self._checkInstantiated()
+        loc1 = MorphLoc(loc1, self)
+        loc2 = MorphLoc(loc2, self)
 
         # compute impedances in the frequency domain
         crf = self.calcChannelResponseF(loc1, loc2) if _crf is None else _crf
@@ -991,11 +995,13 @@ class GreensTreeTime(GreensTree):
                     crt_loc1, dcrt_dt_loc1 = self.calcChannelResponseT(
                         loc_in, loc_out,
                         compute_time_derivative=True,
+                        method="quadrature",
                     )
                 else:
                     crt_loc1 = self.calcChannelResponseT(
                         loc_in, loc_out,
                         compute_time_derivative=False,
+                        method="quadrature",
                     )
 
                 # in the first loop iteration, we initialize all dictionary elements
