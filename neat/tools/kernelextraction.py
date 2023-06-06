@@ -444,7 +444,9 @@ class fExpFitter(Fitter):
         return alphas, gammas, rms, approx, npairs
 
     def _find_start_nodes(self, s, deg, realpoles, initpoles):
-        if initpoles == 'lin':
+        if not isinstance(initpoles, str):
+            trialpoles = initpoles.astype(complex)
+        elif initpoles == 'lin':
             trialpoles = np.linspace(s[int(len(s)/2.)+1].imag, s[-1].imag, deg)
         elif initpoles == 'log10':
             trialpoles = np.logspace(1, np.log10(s[-1].imag), num=deg, base=10)
@@ -649,7 +651,7 @@ class fExpFitter(Fitter):
                 pl.plot(s.imag, y_f_part.imag, 'b--')
                 pl.show()
             # multiple step approach
-            t = np.linspace(0., 5./amin.real, 1000.)
+            t = np.linspace(0., 5./amin.real, 1000)
             y_t = EF.sumExp(t, -a[inds], c[inds])
             y_t_full = EF.sumExp(t, -a, c)
             A_t = -np.sum(c[inds] * (np.exp(-a[inds]*t[-1]) - np.exp(-a[inds]*t[0])) / a[inds])
@@ -811,8 +813,10 @@ class fExpFitter(Fitter):
                 decaying transfer functions!!
             [realpoles]: boolean, use real starting poles if true, use complex conjugate poles if
                 false
-            [initpoles]: 'lin' for linearly spaced initial poles, 'log10' and 'log' for
-                logarithmically spaced poles
+            [initpoles]: numpy array or str
+                'lin' for linearly spaced initial poles, 'log10' and 'log' for
+                logarithmically spaced poles. If a numpy array is given, those values
+                will be the initial polez (Hz).
             [zerostart]: boolean, constrain the function to be 0 at t=0 if true
             [constrained]: fix the poles to be complex conjugate pairs
             [reduce_numexp]: boolean, pool short time scale exponentials together if true

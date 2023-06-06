@@ -711,7 +711,7 @@ class GreensTreeTime(GreensTree):
         if isinstance(t_inp, ke.FourrierTools):
             self.ft = t_inp
         else:
-            # reasonably parameters for FourrierTools
+            # reasonable parameters for FourrierTools
             self.ft = ke.FourrierTools(t_inp, fmax=7., base=10., num=200)
 
     def setImpedance(self, t_inp):
@@ -733,22 +733,30 @@ class GreensTreeTime(GreensTree):
                 "Method should be empty string, 'exp fit' or 'quadrature'"
             )
 
-        # compute in time domain, methods depends on case
-        # typically, exponential fit is chosen for input impedances and
-        # explicit quadrature for transfer impedances
+        # compute in time domain, method depends on ratio between spectral
+        # power in zero frequency vs max frequency component
+        # typically, this will mean exponential fit is chosen for input
+        # impedances and explicit quadrature for transfer impedances
         f_arr = func_vals_f[self._slice_quad]
-        criterion = np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s]) <= 1e-8
+        criterion_eval = np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s])
+        criterion = criterion_eval <= 1e-3
 
-        print(f"> criterion = {np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s])}")
+        if criterion_eval > 1e-10:
+            # if there is substantial spectral power in the max frequency
+            # components, we smooth the function with a squared cosine window
+            # to reduce oscillations
+            window = np.cos(np.pi * self.ft.s.imag / (2.*np.abs(self.ft.s[-1])))**2
+        else:
+            window = np.ones_like(self.ft.s)
 
         # compute kernel through quadrature method
         func_vals_t = self.ft.ftInv(
-            func_vals_f[self._slice_quad]
+            window * func_vals_f[self._slice_quad]
         )[1].real * 1e-3 # MOhm/s -> MOhm/ms
         if compute_time_derivative:
             # compute differentiated kernel
             dfunc_vals_t_dt = self.ft.ftInv(
-                self.ft.s * func_vals_f[self._slice_quad]
+                self.ft.s * window * func_vals_f[self._slice_quad]
             )[1].real * 1e-6 # MOhm/s^2 -> MOhm/ms^2
 
         # when the criterion is satified, or if the default method is
@@ -761,11 +769,21 @@ class GreensTreeTime(GreensTree):
 
         # this code will only be reached when `method` is "exp_fit", or when
         # `method` is "" but the criterion is not satisfied
+
+        # we set a custom set of initial poles for the vector fit algorithm
+        initpoles = np.concatenate((
+            np.linspace(.5, 10**1.3, 40)[:-1],
+            np.logspace(
+                1.3, np.log10(self.freqs[self._slice_vfit][-1].imag),
+                num=40, base=10,
+            )
+        ))
+
         # compute kernel as superposition of exponentials in the frequency domain
         f_exp_fitter = ke.fExpFitter()
         alpha, gamma, pairs, rms = f_exp_fitter.fitFExp(
             self.freqs[self._slice_vfit], func_vals_f[self._slice_vfit],
-            deg=40, initpoles='log10',
+            deg=40, initpoles=initpoles,
             realpoles=True, zerostart=False,
             constrained=True, reduce_numexp=False
         )
@@ -805,6 +823,14 @@ class GreensTreeTime(GreensTree):
             One of two locations between which the transfer impedance is computed
         loc2: dict, tuple or `:class:MorphLoc`
             One of two locations between which the transfer impedance is computed
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernel. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernel
 
         Returns
         -------
@@ -822,7 +848,10 @@ class GreensTreeTime(GreensTree):
         )
 
     @morphtree.computationalTreetypeDecorator
-    def calcImpulseResponseMatrix(self, locarg, compute_time_derivative=False):
+    def calcImpulseResponseMatrix(self, locarg,
+            method: Literal["", "exp fit", "quadrature"] = "",
+            compute_time_derivative=False,
+        ):
         """
         Computes the matrix of impulse response kernels at a given set of
         locations for all time-points defined in `self.ft.t` (the input times
@@ -834,6 +863,14 @@ class GreensTreeTime(GreensTree):
             if `list` of locations, specifies the locations for which the
             impulse response kernels are evaluated, if ``string``, specifies the
             name under which a set of location is stored
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernels. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernels
 
         Returns
         -------
@@ -866,6 +903,7 @@ class GreensTreeTime(GreensTree):
                         loc1, loc2,
                         compute_time_derivative=True,
                         _zf=zf_mat[:, ii, jj],
+                        method=method,
                     )
                     dzt_dt_mat[:, jj, ii] = dzt_dt_mat[:, ii, jj]
 
@@ -874,6 +912,7 @@ class GreensTreeTime(GreensTree):
                         loc1, loc2,
                         compute_time_derivative=False,
                         _zf=zf_mat[:, ii, jj],
+                        method=method,
                     )
 
                 zt_mat[:, jj, ii] = zt_mat[:, ii, jj]
@@ -902,8 +941,14 @@ class GreensTreeTime(GreensTree):
             the location of the delta input current pulse
         loc2: Tuple(int, float) or `neat.MorphLoc`
             location of the ion channel response
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernels. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
         compute_time_derivative: bool
-            If ``True``, computes time derivatives of response kernels as well
+            if ``True``, also returns the time derivatives of the kernels
 
         Returns
         -------
@@ -972,8 +1017,14 @@ class GreensTreeTime(GreensTree):
             if `list` of locations, specifies the locations for which the
             ion channel responses are evaluated, if ``string``, specifies the
             name under which a set of location is stored
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernels. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
         compute_time_derivative: bool
-            If ``True``, computes time derivatives of response kernels as well
+            if ``True``, also returns the time derivatives of the kernels
 
         Returns
         -------

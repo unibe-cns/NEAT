@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as pl
 
 import os
+import copy
 import itertools
 
 import pytest
 
-from neat import SOVTree, GreensTree, GreensTreeTime, NeuronSimTree, GreensNode
+from neat import SOVTree, GreensTree, GreensTreeTime, NeuronSimTree, GreensNode, Kernel
 import neat.tools.kernelextraction as ke
 
 import channelcollection_for_tests as channelcollection
@@ -233,6 +234,10 @@ class TestGreensTreeTime():
             # ion channels
             k_chan = channelcollection.Kv3_1()
             self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
+            ca_chan = channelcollection.Ca_HVA()
+            self.tree.addCurrent(ca_chan, 0.792 * 1e6, 132.4579341637009)
+            ca_chan = channelcollection.h()
+            self.tree.addCurrent(ca_chan, 0.008 * 1e6, -43.)
             na_chan = channelcollection.Na_Ta()
             self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
@@ -251,6 +256,8 @@ class TestGreensTreeTime():
         self.tree.setImpedance(self.ft)
 
         zt_mat_gtt = self.tree.calcImpulseResponseMatrix(locs)
+        zt_mat_quad = self.tree.calcImpulseResponseMatrix(locs, method="quadrature")
+        zt_mat_expf = self.tree.calcImpulseResponseMatrix(locs, method="exp fit")
 
         # compute impedance matrix with Green's function
         greens_tree.setImpedance(self.ft.s)
@@ -260,17 +267,17 @@ class TestGreensTreeTime():
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zt_mat_expl[:,ii,jj] = self.ft.ftInv(zf_mat_gtf[:,ii,jj])[1].real * 1e-3
         # simulate the temporal matrix
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix(locs)
+        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix(locs, t_max=self.tmax)
 
         assert np.allclose(
             zt_mat_expl[int(1.5/self.dt):,:,:],
             zt_mat_gtt[int(1.5/self.dt):,:,:],
-            atol=.25
+            atol=.20
         )
         assert np.allclose(
             zt_mat_sim[int(1.5/self.dt):,:,:],
             zt_mat_gtt[int(1.5/self.dt):,:,:],
-            atol=.15
+            atol=.10
         )
 
         if pplot:
@@ -283,7 +290,9 @@ class TestGreensTreeTime():
             for (ii, loc1), (jj, loc2) in itertools.product(enumerate(locs), enumerate(locs)):
                 ax = ax0 if ii == jj else ax1
                 ax.plot(self.ft.t, zt_mat_gtt[:,ii,jj], c=colours[kk%len(colours)], ls="-", lw=.7)
-                ax.plot(self.ft.t, zt_mat_expl[:,ii,jj], c=colours[kk%len(colours)], ls="--", lw=2)
+                ax.plot(self.ft.t, zt_mat_quad[:,ii,jj], c="grey", ls="--", lw=1)
+                ax.plot(self.ft.t, zt_mat_expf[:,ii,jj], c="grey", ls=":", lw=1)
+                ax.plot(self.ft.t, zt_mat_expl[:,ii,jj], c="k", ls="--", lw=1)
                 ax.plot(self.ft.t, zt_mat_sim[:,ii,jj], c=colours[kk%len(colours)], ls=":", lw=3)
                 kk += 1
 
@@ -293,15 +302,10 @@ class TestGreensTreeTime():
         )
         dz_dt_second_order = (zt_mat[2:] - zt_mat[:-2]) / (2. * self.dt)
 
-        print(np.max(np.abs(
-            dz_dt_mat[int(1.5/self.dt+1):-1,:,:] - \
-            dz_dt_second_order[int(1.5/self.dt):,:,:]
-        )))
-
         assert np.allclose(
             dz_dt_mat[int(1.5/self.dt+1):-1,:,:],
             dz_dt_second_order[int(1.5/self.dt):,:,:],
-            atol=.15
+            atol=.20
         )
 
         if pplot:
@@ -324,6 +328,8 @@ class TestGreensTreeTime():
         self.tree.setImpedance(self.ft)
 
         zt_mat_gtt = self.tree.calcImpulseResponseMatrix(locs)
+        zt_mat_quad = self.tree.calcImpulseResponseMatrix(locs, method="quadrature")
+        zt_mat_expf = self.tree.calcImpulseResponseMatrix(locs, method="exp fit")
 
         # compute impedance matrix with Green's function
         greens_tree.setImpedance(self.ft.s)
@@ -349,15 +355,25 @@ class TestGreensTreeTime():
         if pplot:
             colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
             pl.figure("zt_inp")
-            ax0 = pl.gca()
+            ax0 = pl.subplot(121)
+            ax1 = pl.subplot(122)
             pl.figure("zt_trans")
-            ax1 = pl.gca()
+            ax2 = pl.gca()
 
             kk = 0
             for (ii, loc1), (jj, loc2) in itertools.product(enumerate(locs), enumerate(locs)):
-                ax = ax0 if ii == jj else ax1
+                if ii == jj and ii == 0:
+                    ax = ax0
+                elif ii == jj and ii == 1:
+                    ax = ax1
+                elif ii != jj:
+                    ax = ax2
+                else:
+                    raise NotImplementedError("No ax defined for this case")
                 ax.plot(self.ft.t, zt_mat_gtt[:,ii,jj], c=colours[kk%len(colours)], ls="-", lw=.7)
-                ax.plot(self.ft.t, zt_mat_expl[:,ii,jj], c=colours[kk%len(colours)], ls="--", lw=2)
+                ax.plot(self.ft.t, zt_mat_quad[:,ii,jj], c="grey", ls="--", lw=1)
+                ax.plot(self.ft.t, zt_mat_expf[:,ii,jj], c="grey", ls=":", lw=1)
+                ax.plot(self.ft.t, zt_mat_expl[:,ii,jj], c="k", ls="--", lw=1)
                 ax.plot(self.ft.t, zt_mat_sim[:,ii,jj], c=colours[kk%len(colours)], ls=":", lw=3)
                 kk += 1
 
@@ -371,10 +387,10 @@ class TestGreensTreeTime():
         locs = [(1, .05), (5, .45), (5, .5)]
         nl = len(locs)
         idxs_out = [0,1,2]
-        idx_in = 1
+        idx_in = 2
 
         crt_01 = [
-            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="quadrature") \
+            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="") \
             for idx_out in idxs_out
         ]
         crt_01_quad = [
@@ -421,7 +437,7 @@ class TestGreensTreeTime():
                 ax0.plot(res['t'], res['v_m'][idxs_out[ii]], c=css[ii], lw=1., ls="-")
 
                 ax1.plot(t_sim, v_resps[ii], c=css[ii], lw=1., ls="-")
-                ax1.plot(self.ft.t, zt_mat_gtt[:, idxs_out[ii], idx_in], c=css[ii], lw=2, ls="--")
+                ax1.plot(self.ft.t[1:], zt_mat_gtt[1:, idxs_out[ii], idx_in], c=css[ii], lw=2, ls="--")
 
         slice_time = np.s_[int(1.5/self.dt):]
         for ii in range(nl):
@@ -481,19 +497,19 @@ class TestGreensTreeTime():
                     if pplot:
                         print(
                             "qt vs sim:",
-                            np.max(np.abs(q_calc - q_sim)) / np.max(np.abs(q_calc))
+                            np.max(np.abs(q_calc - q_sim)) / np.max(np.abs(q_sim))
                         )
                     assert np.allclose(
                         q_calc, q_sim,
-                        atol=0.35*np.max(np.abs(q_calc))
+                        atol=0.40*np.max(np.abs(q_sim))
                     )
 
                     if pplot:
-                        axes[idx_out].plot(self.ft.t, q_calc, c='r', ls='-', lw=1.)
-                        axes[idx_out].plot(self.ft.t, q_calc_, c='b', ls=':', lw=3.)
-                        # axes[idx_out].plot(self.ft.t, q_calc_expf, c='r', ls='-', lw=1.)
-                        # axes[idx_out].plot(self.ft.t, q_calc_quad, c='b', ls=':', lw=3.)
-                        axes[idx_out].plot(t_sim, q_sim, c='k', ls='--', lw=2.)
+                        axes[idx_out].plot(self.ft.t[1:], q_calc[1:], c='r', ls='-', lw=1.)
+                        axes[idx_out].plot(self.ft.t[1:], q_calc_[1:], c='b', ls='--', lw=1.)
+                        axes[idx_out].plot(self.ft.t[1:], q_calc_expf[1:], c='grey', ls='--', lw=1.)
+                        axes[idx_out].plot(self.ft.t[1:], q_calc_quad[1:], c='grey', ls='-.', lw=2.)
+                        axes[idx_out].plot(t_sim, q_sim, c='k', ls=':', lw=2.)
 
         if pplot:
             pl.show()
@@ -512,16 +528,24 @@ class TestGreensTreeTime():
         c_soma = self.tree[1].c_m * a_soma # uF
         g_soma = self.tree[1].currents['L'][0] * a_soma # uS
 
-        print(-g_soma / c_soma * 1e-3)
-        print(dzt_dt / zt)
+        c_fit = np.linalg.lstsq(dzt_dt[5:, None], -g_soma * zt[5:] * 1e-3)[0][0]
 
-        # np.testing.assert_equal(dzt_dt, -g_soma / c_soma * 1e-3)
+        # check fit result
+        assert np.allclose(c_soma, c_fit, rtol=1e-4)
+        # check whether fit arrays are sufficiently uniform
+        assert np.allclose(c_soma * dzt_dt[5:], -g_soma * zt[5:] * 1e-3, rtol=5e-3)
 
         # test active case
-        self.loadBall(is_active=False)
+        self.loadBall(is_active=True)
         self.tree.setImpedance(self.ft)
-        zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1)
-        crt, dcrt_dt = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=1)
+        zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1, method='')
+        zt_, dzt_dt_ = self.tree.calcZT(loc, loc, compute_time_derivative=1, method='quadrature')
+        crt, dcrt_dt = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=1, method='')
+        crt_ = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=0, method='quadrature')
+
+        # simulate the temporal matrix
+        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix([(1,0.5)])
 
         soma = self.tree[1]
         a_soma = 4. * np.pi * soma.R**2 # cm^2
@@ -529,10 +553,11 @@ class TestGreensTreeTime():
         g_soma = 0
         svar_terms = {}
         for channel_name in soma.currents:
+        # for channel_name in ['L']:
             g, e = soma.currents[channel_name]
 
             if channel_name == 'L':
-                g_soma += g
+                g_soma -= g * a_soma
                 break
 
             # recover the ionchannel object
@@ -543,43 +568,69 @@ class TestGreensTreeTime():
             v, sv = soma._constructChannelArgs(channel)
 
             # add open probability to total conductance
-            g_soma += g * a_soma * channel.computePOpen(v)
+            g_soma -= g * a_soma * channel.computePOpen(v)
 
             # add linearized channel contribution to membrane conductance
             dp_dx = channel.computeDerivatives(v)[0]
 
             svar_terms[channel_name] = {}
             for svar, dp_dx_ in dp_dx.items():
-                svar_terms[channel_name][svar] = g * a_soma * dp_dx_ * (v - e)
+                svar_terms[channel_name][svar] = g * a_soma * dp_dx_ * (e - v)
 
-        print("--- crt ---")
-        for channel_name in crt:
-            print(crt[channel_name].keys())
-        print("--- svar_terms ---")
-        for channel_name in svar_terms:
-            print(svar_terms[channel_name].keys())
+        if pplot:
+            pl.figure("z(t)")
+            ax1 = pl.subplot(121)
+            ax1.set_title("z(t)")
+            ax1.plot(self.ft.t[1:], zt[1:])
+            ax1.plot(self.ft.t[1:], zt_[1:], "k--")
+            ax1.plot(tk, zt_mat_sim[:,0,0], ":", c="Grey", lw=2)
+            ax2 = pl.subplot(122)
+            ax2.set_title("dz_dt(t)")
+            ax2.plot(self.ft.t[1:], dzt_dt[1:])
+            ax2.plot(self.ft.t[1:], dzt_dt_[1:], "k--")
 
-        print(svar_terms)
+        ef = ke.ExpFitter()
 
+        if pplot:
+            for channel_name in crt:
+                pl.figure(f"{channel_name}")
+                for svar, resp in crt[channel_name].items():
+                    pl.plot(self.ft.t[1:], resp[1:], label=str(svar))
+                    pl.plot(self.ft.t[1:], crt_[channel_name][svar][1:], label=str(svar), c="Grey", ls=":", lw=2)
+
+                    a, c, rms = ef.PronyExpFit(20, self.ft.t, resp)
+                    kresp = Kernel({'a': -a, 'c': c})(self.ft.t)
+
+                    pl.plot(self.ft.t[1:], kresp[1:], 'k--')
+
+                pl.legend(loc=0)
+
+        # construct product of system matrix with impedance kernel matrix
         arr_aux = g_soma * zt
         for channel_name in crt:
             for svar_name in crt[channel_name]:
-                print(channel_name, svar_name)
                 arr_aux += svar_terms[channel_name][svar_name] * crt[channel_name][svar_name]
 
-        print(arr_aux / dzt_dt)
-        print(c_soma)
+        if pplot:
+            pl.figure()
+            ax1 = pl.subplot(121)
+            ax1.plot(self.ft.t[1:], arr_aux[1:] / c_soma)
+            ax1.plot(self.ft.t[1:], dzt_dt[1:] * 1e3, "k--")
+            ax2 = pl.subplot(122)
+            ax2.plot(self.ft.t[1:], arr_aux[1:] / dzt_dt[1:] *1e-3)
+            ax2.axhline(c_soma, ls="--", c="k")
+            ax2.set_ylim((-2000, 2000))
 
-        pl.figure()
-        ax1 = pl.subplot(121)
-        ax1.plot(self.ft.t, arr_aux)
-        ax2 = pl.subplot(122)
-        ax2.plot(self.ft.t, arr_aux / dzt_dt)
 
-        pl.show()
+        c_fit = np.linalg.lstsq(dzt_dt[5:,None], arr_aux[5:] * 1e-3, rcond=None)[0][0]
+        if pplot:
+            print(f"c_soma = {c_soma} uF, c_fit = {c_fit} uF")
 
-        # crt, dcrt_dt = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=1)
+        # check fit result
+        assert np.allclose(c_soma, c_fit, rtol=1e-3)
 
+        if pplot:
+            pl.show()
 
 
 if __name__ == '__main__':

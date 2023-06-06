@@ -915,9 +915,12 @@ class NeuronSimTree(PhysTree):
         return z_mat
 
     def calcImpedanceKernelMatrix(self, locarg, i_amp=0.001,
-                                                dt_pulse=0.1, t_max=100.):
+            dt_pulse=0.1, dstep=-2, t_max=100.
+        ):
         locs = self._convertLocArgToLocs(locarg)
-        zk_mat = np.zeros((len(tk), len(locs), len(locs)))
+        nt = int(t_max / self.dt)
+        i0 = int(dt_pulse / self.dt)
+        zk_mat = np.zeros((nt, len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
                 loc1 = locs[jj]
@@ -926,13 +929,13 @@ class NeuronSimTree(PhysTree):
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
-                res = self.run(t_max)
+                res = self.run(t_max+dt_pulse)
                 self.deleteModel()
                 # voltage deflections
-                v_trans = res['v_m'][1][1:] - self[loc1['node']].e_eq
+                v_trans = res['v_m'][1][i0+dstep:-1+dstep] - self[loc1['node']].e_eq
                 # compute impedances
                 zk_mat[:, ii, jj] = v_trans / (i_amp * dt_pulse)
-        return tk, zk_mat
+        return res['t'][i0+dstep:-1+dstep], zk_mat
 
 
 class NeuronCompartmentNode(NeuronSimNode):
