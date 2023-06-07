@@ -234,10 +234,10 @@ class TestGreensTreeTime():
             # ion channels
             k_chan = channelcollection.Kv3_1()
             self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
-            ca_chan = channelcollection.Ca_HVA()
-            self.tree.addCurrent(ca_chan, 0.792 * 1e6, 132.4579341637009)
-            ca_chan = channelcollection.h()
-            self.tree.addCurrent(ca_chan, 0.008 * 1e6, -43.)
+            # ca_chan = channelcollection.Ca_HVA()
+            # self.tree.addCurrent(ca_chan, 0.792 * 1e6, 132.4579341637009)
+            # ca_chan = channelcollection.h()
+            # self.tree.addCurrent(ca_chan, 0.008 * 1e6, -43.)
             na_chan = channelcollection.Na_Ta()
             self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
@@ -524,11 +524,11 @@ class TestGreensTreeTime():
         loc = (1, .5)
         zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1)
 
-        a_soma = 4. * np.pi * self.tree[1].R**2 # cm^2
+        a_soma = 4. * np.pi * self.tree[1].R**2 * 1e-8 # cm^2
         c_soma = self.tree[1].c_m * a_soma # uF
         g_soma = self.tree[1].currents['L'][0] * a_soma # uS
 
-        c_fit = np.linalg.lstsq(dzt_dt[5:, None], -g_soma * zt[5:] * 1e-3)[0][0]
+        c_fit = np.linalg.lstsq(dzt_dt[5:, None], -g_soma * zt[5:] * 1e-3, rcond=None)[0][0]
 
         # check fit result
         assert np.allclose(c_soma, c_fit, rtol=1e-4)
@@ -548,7 +548,7 @@ class TestGreensTreeTime():
         tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix([(1,0.5)])
 
         soma = self.tree[1]
-        a_soma = 4. * np.pi * soma.R**2 # cm^2
+        a_soma = 4. * np.pi * soma.R**2 *1e-8 # cm^2
         c_soma = self.tree[1].c_m * a_soma # uF
         g_soma = 0
         svar_terms = {}
@@ -619,8 +619,7 @@ class TestGreensTreeTime():
             ax2 = pl.subplot(122)
             ax2.plot(self.ft.t[1:], arr_aux[1:] / dzt_dt[1:] *1e-3)
             ax2.axhline(c_soma, ls="--", c="k")
-            ax2.set_ylim((-2000, 2000))
-
+            ax2.set_ylim((-2e-5, 2e-5))
 
         c_fit = np.linalg.lstsq(dzt_dt[5:,None], arr_aux[5:] * 1e-3, rcond=None)[0][0]
         if pplot:

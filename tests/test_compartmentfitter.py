@@ -611,6 +611,33 @@ class TestCompartmentFitter():
         with pytest.raises(AssertionError):
             self._checkAllCurrProps(ctree_cm_1a, ctree_cm_1b)
 
+    def testCFitFromZPoint(self):
+        self.loadBall()
+        cfit = CompartmentFitter(self.tree,
+            cache_name='cfitfromztest', cache_path='neatcache/', recompute_cache=True,
+        )
+        cfit.setCTree([(1.,.5)])
+        # fit the passive steady state model
+        cfit.fitPassive(
+            use_all_channels=False
+        )
+        # fit the ion channels
+        cfit.fitChannels(parallel=False)
+        # fit the capacitance
+        cfit.fitCapacitanceFromZ()
+
+        a_soma = 4. * np.pi * self.tree[1].R**2 * 1e-8 # cm^2
+        ca_soma = self.tree[1].c_m * a_soma # uF
+
+        ca_fit = cfit.ctree[0].ca
+
+        # check fit result
+        assert np.allclose(c_soma, c_fit, rtol=1e-5)
+
+    def testCFitFromZPas(self):
+        self.loadTTree()
+
+
 
 def test_expansionpoints():
     kv3_1 = channelcollection.Kv3_1()
@@ -636,14 +663,15 @@ def test_expansionpoints():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    tcf.testTreeStructure()
-    tcf.testCreateTreeGF()
-    tcf.testChannelFitMats()
-    tcf.testPassiveFit()
-    tcf.testRecalcImpedanceMatrix()
-    tcf.testSynRescale()
-    tcf.testFitModel()
-    tcf.testPickling()
-    tcf.testParallel(w_benchmark=True)
-    tcf.testCacheing()
-    test_expansionpoints()
+    # tcf.testTreeStructure()
+    # tcf.testCreateTreeGF()
+    # tcf.testChannelFitMats()
+    # tcf.testPassiveFit()
+    # tcf.testRecalcImpedanceMatrix()
+    # tcf.testSynRescale()
+    # tcf.testFitModel()
+    # tcf.testPickling()
+    # tcf.testParallel(w_benchmark=True)
+    # tcf.testCacheing()
+    tcf.testCFitFromZPoint()
+    # test_expansionpoints()

@@ -409,7 +409,7 @@ class CompartmentNode(SNode):
         return i_tot
 
     def calcLinearStatevarTerms(self, channel_storage,
-                freqs=0., v=None, channel_names=None):
+                v=None, channel_names=None):
         """
         Contribution of linearized ion channel to conductance matrix
 
@@ -445,9 +445,9 @@ class CompartmentNode(SNode):
             # add linearized channel contribution to membrane conductance
             dp_dx = channel.computeDerivatives(v, **sv)[0]
 
-            svar_terms[channel] = {}
+            svar_terms[channel_name] = {}
             for svar, dp_dx_ in dp_dx.items():
-                svar_terms[channel][svar] = g * dp_dx_ * (e - v)
+                svar_terms[channel_name][svar] = g * dp_dx_ * (e - v)
 
         return svar_terms
 
@@ -1673,45 +1673,43 @@ class CompartmentTree(STree):
         Parameters
         ----------
         zt_mat: `np.ndarray` of ``shape=(t,k,k)
-            The impedance kernel matrix
+            The impedance kernel matrix from the full model
         dz_dt_mat: `np.ndarray` of ``shape=(t,k,k)
-            The matrix with time derivatives of the impedance kernels
+            The matrix with time derivatives of the impedance kernels from the
+            full model
         qt_mat: list of dict of dict of `np.ndarray`
-            The linearized responses of all channels to current pulse input,
-            can be accessed as
-            [location_index][channel_name][statevar_name][time, input loc]
+            The linearized responses of all channels to current pulse input from
+            the full model, should be indexed as
+            `[location_index][channel_name][statevar_name][time, input loc]`
         """
         # permutation of input matrices to tree
         perm_inds = self._permuteToTreeInds()
-        zt_mat = self._permuteToTree(z_mat_fit)
-        dz_dt_mat = self._permuteToTree(dz_dt_mat_fit)
+        zt_mat = self._permuteToTree(zt_mat)
+        dz_dt_mat = self._permuteToTree(dz_dt_mat)
 
         # compute passive matrix
-        g_mat = -ctree.calcConductanceMatrix(indexing='tree')
-        # compute channel linearization matrix
-        c_mat = self._computeChannelContributions()
-
-        # matrix product for passive terms
-        zg_prod = np.einsum("lk,tkn->tln", g_mat, z_mat_fit) * 1e-3
+        g_mat = -self.calcConductanceMatrix(indexing='tree')
+        # matrix product for passive conductance terms
+        zg_prod = np.einsum("lk,tkn->tln", g_mat, zt_mat) * 1e-3
 
         # explicit matrix product for channel terms
         cq_prod = np.zeros_like(zg_prod)
         for ii, node in enumerate(self):
 
-            c_resps = node.calcLinearStatevarTerms()
+            c_resps = node.calcLinearStatevarTerms(self.channel_storage)
             for channel_name, c_resp in c_resps.items():
+
                 for svar, arg1 in c_resp.items():
-                    arg2 = self._permuteToTree(
-                        qt_mat[perm_inds[ii]][channel_name][svar]
-                    )
+
+                    arg2 = qt_mat[perm_inds[ii]][channel_name][svar][:,perm_inds]
                     cq_prod[:,ii,:] += arg1 * arg2 * 1e-3
 
-        c_vec = np.zeros(len(ctree))
-        for ii in range(len(ctree)):
+        c_vec = np.zeros(len(self))
+        for ii in range(len(self)):
             m1 = dz_dt_mat[:,ii,:].reshape((-1,1))
             m2 = (zg_prod[:,ii,:] + cq_prod[:,ii,:]).reshape((-1,))
 
-            c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
+            c_val = np.linalg.lstsq(m1[5:,:], m2[5:], rcond=None)[0].real
             c_vec[ii] = c_val
 
         self._toTreeC(c_vec)

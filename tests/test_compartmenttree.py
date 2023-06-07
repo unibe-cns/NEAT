@@ -240,6 +240,9 @@ class TestCompartmentTree():
         taus_fit2 = np.array([n.ca / n.currents['L'][0] for n in ctree])
         assert np.allclose(taus_orig, taus_fit2, atol=.3)
 
+    def testCFitFromZ(self):
+        pass
+
     def fitBallAndStick(self, n_loc=20):
         self.loadBallAndStick()
         # define locations

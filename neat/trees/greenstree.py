@@ -955,7 +955,7 @@ class GreensTreeTime(GreensTree):
         dict of dict of `np.ndarray`
             The linearized responses of all channels at loc2 to the delta
             current pulse input. Can be accessed as:
-            [channel_name][statevar_name][time]
+            `[channel_name][statevar_name][time]`
         """
         self._checkInstantiated()
         loc1 = MorphLoc(loc1, self)
@@ -1031,7 +1031,7 @@ class GreensTreeTime(GreensTree):
         List of dict of dict of `np.ndarray`
             The linearized responses of all channels to current pulse input,
             can be accessed as
-            [output loc index][channel name][statevar name][time, input loc index]
+            `[output loc index][channel name][statevar name][time, input loc index]`
         """
         locs = self._convertLocArgToLocs(locarg)
 
