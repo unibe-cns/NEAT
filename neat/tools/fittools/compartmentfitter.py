@@ -990,16 +990,6 @@ class CompartmentFitter(object):
         tree.setEEq(self.getEEq("tree"))
         tree.setCompTree(eps=1e-2)
         # set the impedances for kernel calculation
-        t_fit = np.array([
-                # 0.2, 0.4, 0.6, 0.8, 1.0,
-                # 2.0, 4.0, 6.0, 8.0, 10.,
-                # 5., 6., 7., 8., 9. ,10.,
-                11., 12., 13., 14., 15.,
-                16., 17., 18., 19., 20.,
-                22., 24., 26., 28. ,30.,
-                # 32., 34., 36., 38., 40.,
-                # 50., 60., 70., 80.
-        ])
         tree.setImpedancesInTree(self.cfg.t_fit)
 
         # compute the response kernel matrices necessary for the fit
