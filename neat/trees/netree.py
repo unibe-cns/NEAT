@@ -121,6 +121,9 @@ class Kernel(object):
             return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
                    'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
 
+    def __repr__(self):
+        return repr({'a': self.a, 'c': self.c})
+
     def t(self, t_arr):
         """
         Evaluates the kernel in the time domain
@@ -250,6 +253,28 @@ class NETNode(SNode):
     def _setSharedRootInd(self, ind):
         self._root_ind = self._node_inds.index(ind)
 
+    def __str__(self, with_parent=True, with_morph_info=False):
+        node_str = super().__str__(with_parent=with_parent)
+
+        node_str += f' --- ' \
+            f' loc inds: {str(self.loc_inds)}' \
+            f', newloc inds: {str(self.newloc_inds)}' \
+            f', z_bar = {self.z_bar} MOhm'
+
+        return node_str
+
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "loc_inds": self.loc_inds,
+            "newloc_inds": self.newloc_inds,
+            "z_kernel": repr(self.z_kernel)
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
+
 
 class NET(STree):
     """
@@ -259,12 +284,6 @@ class NET(STree):
     """
     def __init__(self, root=None):
         super().__init__(root)
-
-    def __str__(self):
-        string = 'NET\n'
-        for node in self:
-            string += '  > ' + str(node) + '\n'
-        return string
 
     def _createCorrespondingNode(self, node_index):
         """

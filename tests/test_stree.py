@@ -74,6 +74,28 @@ class TestSTree():
         nodeset = set([node for node in self.tree.__iter__(self.nodelist[1])])
         assert nodeset == set(self.nodelist[1:])
 
+    def testStringRepresentations(self):
+        self.createTree()
+
+        node_str = "SNode 0, Parent: None"
+        node_repr = \
+            "{'node index': 0, 'parent index': -1, 'content': '{}'}"
+        assert str(self.tree[0]) == node_str
+        assert repr(self.tree[0]) == node_repr
+
+        tree_str = ">>> STree\n" \
+            "    SNode 0, Parent: None\n" \
+            "    SNode 1, Parent: 0\n" \
+            "    SNode 2, Parent: 1\n" \
+            "    SNode 3, Parent: 1"
+        tree_repr = "["\
+            "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
+            "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", " \
+            "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", " \
+            "\"{'node index': 3, 'parent index': 1, 'content': '{}'}\"]"
+        assert tree_str == str(self.tree)
+        assert tree_repr == repr(self.tree)
+
     def testNodeCounting(self):
         self.createTree()
         assert len(self.tree) == 4
@@ -243,6 +265,7 @@ class TestSTree():
 
 if __name__ == '__main__':
     tst = TestSTree()
-    tst.testPaths()
-    tst.testBifurcationNodes()
-    tst.testDegreeOrderDepthNode()
+    tst.testStringRepresentations()
+    # tst.testPaths()
+    # tst.testBifurcationNodes()
+    # tst.testDegreeOrderDepthNode()

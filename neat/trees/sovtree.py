@@ -375,8 +375,6 @@ class SOVTree(PhysTree):
         # the recursion has passed node, the mu functions can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            # node._setMuFunctions()
-            print(node)
             node._setZerosPoles(maxspace_freq=maxspace_freq)
             if not self.isRoot(node):
                 self._SOVFromLeaf(pnode, leafs, count=count+1,

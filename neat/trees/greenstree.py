@@ -16,6 +16,7 @@ from typing import Literal
 from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
+from .stree import STree
 from .netree import Kernel
 from ..channels import ionchannels
 from ..tools import kernelextraction as ke
@@ -336,6 +337,16 @@ class GreensNode(PhysNode):
                    (self.z_cd * np.sinh(self.gammaL*(1.-x1)) + np.cosh(self.gammaL*(1.-x1))) / \
                    self.wrongskian
 
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "expansion_points": self.expansion_points,
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
+
 
 class SomaGreensNode(GreensNode):
     def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
@@ -383,6 +394,17 @@ class GreensTree(PhysTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super().__init__(file_n=file_n, types=types)
         self.freqs = None
+
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            'freqs': self.freqs
+        })
+        return repr_dict
+
+    def __repr__(self):
+        repr_str = STree.__repr__(self)
+        return repr_str + repr(self._getReprDict())
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """

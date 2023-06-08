@@ -60,7 +60,6 @@ class CompartmentNode(SNode):
         # compartment params
         self.ca = ca   # capacitance (uF)
         self.g_c = g_c # coupling conductance (uS)
-        # self.g_l = g_l # leak conductance (uS)
         self.e_eq = e_eq # equilibrium potential (mV)
         self.conc_eqs = {} # equilibrium concentration values (mM)
         self.currents = {'L': [g_l, e_eq]} # ion channel conductance (uS) and reversals (mV)
@@ -502,6 +501,38 @@ class CompartmentNode(SNode):
         g, e = self.currents[channel_name]
         return g * p_open * (v - e)
 
+    def __str__(self, with_parent=True, with_morph_info=False):
+        node_str = super().__str__(with_parent=with_parent)
+
+        node_str += f" --- " \
+            f"loc_ind = {self._loc_ind}, " \
+            f"g_c = {self.g_c} uS, " \
+            f"ca = {self.ca} uF/cm^2, " \
+            f"e_eq = {self.e_eq} mV, "
+
+        node_str += ', '.join([
+            f'(g_{c} = {g} uS/cm^2, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
+        ])
+
+        return node_str
+
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "loc_ind": self._loc_ind,
+            "ca": self.ca,
+            "g_c": self.g_c,
+            "e_eq": self.e_eq,
+            "conc_eqs": self.conc_eqs,
+            "currents": self.currents,
+            "concmechs": self.concmechs,
+            "expansion_points": self.expansion_points,
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
+
 
 class CompartmentTree(STree):
     """
@@ -514,6 +545,15 @@ class CompartmentTree(STree):
         self.channel_storage = {}
         # for fitting the model
         self.resetFitData()
+
+    def _getReprDict(self):
+        ckeys = list(self.channel_storage.keys())
+        ckeys.sort()
+        return {"channel_storage": ckeys}
+
+    def __repr__(self):
+        repr_str = super().__repr__()
+        return repr_str + repr(self._getReprDict())
 
     def _createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
         """
@@ -1704,12 +1744,15 @@ class CompartmentTree(STree):
                     arg2 = qt_mat[perm_inds[ii]][channel_name][svar][:,perm_inds]
                     cq_prod[:,ii,:] += arg1 * arg2 * 1e-3
 
+
         c_vec = np.zeros(len(self))
         for ii in range(len(self)):
             m1 = dz_dt_mat[:,ii,:].reshape((-1,1))
             m2 = (zg_prod[:,ii,:] + cq_prod[:,ii,:]).reshape((-1,))
 
-            c_val = np.linalg.lstsq(m1[5:,:], m2[5:], rcond=None)[0].real
+            print("!!!", m1.shape)
+            c_val = np.linalg.lstsq(m1[0:,:], m2[0:], rcond=None)[0].real
+            # c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
             c_vec[ii] = c_val
 
         self._toTreeC(c_vec)

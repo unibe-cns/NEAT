@@ -275,17 +275,38 @@ class PhysNode(MorphNode):
 
         self.currents['L'] = [g_l, v + i_tot / g_l]
 
-    def __str__(self, with_parent=False, with_children=False):
-        node_string = super(PhysNode, self).__str__()
+    def __str__(self, with_parent=True, with_morph_info=False):
+        if with_morph_info:
+            node_str = super().__str__(with_parent=with_parent)
+        else:
+            node_str = super(MorphNode, self).__str__(with_parent=with_parent)
 
-        if self.parent_node is not None:
-            node_string += ', Parent: ' + super(PhysNode, self.parent_node).__str__()
+        node_str += f" --- " \
+            f"r_a = {self.r_a} MOhm*cm, " \
+            f"c_m = {self.c_m} uF/cm^2, " \
+            f"e_eq = {self.e_eq} mV, "
+        if self.g_shunt > 1e-10:
+            f"g_shunt = {self.g_shunt} uS,"
+        node_str += ', '.join([
+            f'(g_{c} = {g} uS/cm^2, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
+        ])
+        return node_str
 
-        node_string += ' --- (r_a = ' + str(self.r_a) + ' MOhm*cm, ' + \
-                       ', '.join(['g_' + cname + ' = ' + str(cpar[0]) + ' uS/cm^2' \
-                            for cname, cpar in self.currents.items()]) + \
-                       ', c_m = ' + str(self.c_m) + ' uF/cm^2)'
-        return node_string
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "currents": self.currents,
+            "concmechs": self.concmechs,
+            "c_m": self.c_m,
+            "r_a": self.r_a,
+            "g_shunt": self.g_shunt,
+            "e_eq": self.e_eq,
+            "conc_eqs": self.conc_eqs,
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
 
 
 class PhysTree(MorphTree):
@@ -311,6 +332,15 @@ class PhysTree(MorphTree):
         for node in self:
             node.setPhysiology(1.0, 100./1e6)
         self.channel_storage = {}
+
+    def _getReprDict(self):
+        ckeys = list(self.channel_storage.keys())
+        ckeys.sort()
+        return {"channel_storage": ckeys}
+
+    def __repr__(self):
+        repr_str = super().__repr__()
+        return repr_str + repr(self._getReprDict())
 
     def _resetChannelStorage(self):
         new_channel_storage = {}

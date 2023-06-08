@@ -33,6 +33,20 @@ class TestCompartmentTree():
         # do SOV calculation
         self.tree.calcSOVEquations()
 
+    def testStringRepresentation(self):
+        # create simple compartment tree
+        self.loadTTree()
+        locs = [(1, 0.5), (4, 0.5)]
+        ctree = self.tree.createCompartmentTree(locs)
+        assert str(ctree) == ">>> CompartmentTree\n" \
+            "    CompartmentNode 0, Parent: None --- loc_ind = 0, g_c = 0.0 uS, ca = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 0.01 uS/cm^2, e_L = -75.0 mV)\n" \
+            "    CompartmentNode 1, Parent: 0 --- loc_ind = 1, g_c = 0.0 uS, ca = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 0.01 uS/cm^2, e_L = -75.0 mV)"
+
+        assert repr(ctree) == "[" \
+            "\"{'node index': 0, 'parent index': -1, 'content': '{}', 'loc_ind': 0, 'ca': 1.0, 'g_c': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'currents': {'L': [0.01, -75.0]}, 'concmechs': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 1, 'parent index': 0, 'content': '{}', 'loc_ind': 1, 'ca': 1.0, 'g_c': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'currents': {'L': [0.01, -75.0]}, 'concmechs': {}, 'expansion_points': {}}\"" \
+            "]{'channel_storage': []}"
+
     def testTreeDerivation(self):
         self.loadTTree()
         # locations
@@ -192,10 +206,6 @@ class TestCompartmentTree():
         ctree_2.computeGMC(z_mat_2, channel_names=['L'])
         ctree_3.computeGMC(z_mat_3, channel_names=['L'])
         ctree_4.computeGMC(z_mat_4, channel_names=['L'])
-        # compare both models
-        assert str(ctree_1) == str(ctree_2)
-        assert str(ctree_1) == str(ctree_3)
-        assert str(ctree_1) == str(ctree_4)
         # compare impedance matrices
         z_fit_1 = ctree_1.calcImpedanceMatrix(self.freqs)
         z_fit_2 = ctree_2.calcImpedanceMatrix(self.freqs)
@@ -609,16 +619,17 @@ class TestCompartmentTreePlotting():
 
 if __name__ == '__main__':
     tcomp = TestCompartmentTree()
-    tcomp.testTreeDerivation()
-    tcomp.testFitting()
-    tcomp.testReordering()
-    tcomp.testLocationMapping()
+    # tcomp.testStringRepresentation()
+    # tcomp.testTreeDerivation()
+    # tcomp.testFitting()
+    # tcomp.testReordering()
+    # tcomp.testLocationMapping()
     tcomp.testGSSFit()
-    tcomp.testCFit()
-    tcomp.testPasFunctionality()
-    tcomp.testChannelFit()
+    # tcomp.testCFit()
+    # tcomp.testPasFunctionality()
+    # tcomp.testChannelFit()
 
-    tplot = TestCompartmentTreePlotting()
-    tplot.testPlot(pshow=True)
+    # tplot = TestCompartmentTreePlotting()
+    # tplot.testPlot(pshow=True)
 
 

@@ -30,6 +30,34 @@ class TestPhysTree():
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
             self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
 
+    def testStringRepresentation(self):
+        self.loadTree()
+
+        # gmax as potential as float
+        e_rev = 100.
+        g_max = 100.
+        channel = channelcollection.TestChannel2()
+        self.tree.addCurrent(channel, g_max, e_rev)
+
+        assert str(self.tree) == ">>> PhysTree\n" \
+            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
+
+        assert repr(self.tree) == "[" \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\"" \
+        "]"\
+        "{'channel_storage': ['TestChannel2']}"
+
+
 
     def testLeakDistr(self):
         self.loadTree(reinitialize=1)
@@ -263,7 +291,8 @@ class TestPhysTree():
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
-    tphys.testLeakDistr()
-    tphys.testPhysiologySetting()
-    tphys.testMembraneFunctions()
-    tphys.testCompTree()
+    tphys.testStringRepresentation()
+    # tphys.testLeakDistr()
+    # tphys.testPhysiologySetting()
+    # tphys.testMembraneFunctions()
+    # tphys.testCompTree()

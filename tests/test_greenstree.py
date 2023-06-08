@@ -70,6 +70,35 @@ class TestGreensTree():
         self.sovtree.setCompTree()
         self.sovtree.calcSOVEquations()
 
+    def testStringRepresentation(self):
+        self.loadTTree()
+
+        # gmax as potential as float
+        e_rev = 100.
+        g_max = 100.
+        channel = channelcollection.TestChannel2()
+        self.tree.addCurrent(channel, g_max, e_rev)
+        self.tree.setCompTree()
+        self.tree.setImpedance(np.array([0.,100.])*1j)
+        self.tree.treetype = "original"
+
+        assert str(self.tree) == ">>> GreensTree\n" \
+            "    SomaGreensNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    GreensNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    GreensNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    GreensNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
+
+        assert repr(self.tree) == "[" \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\"" \
+        "]{'channel_storage': ['TestChannel2'], 'freqs': array([0.  +0.j, 0.+100.j])}"
+
     def testBasicProperties(self):
         self.loadTTree()
         # test Fourrier impedance matrix
@@ -633,13 +662,14 @@ class TestGreensTreeTime():
 
 
 if __name__ == '__main__':
-    # tgt = TestGreensTree()
+    tgt = TestGreensTree()
+    tgt.testStringRepresentation()
     # tgt.testBasicProperties()
     # tgt.testValues()
 
-    tgtt = TestGreensTreeTime()
+    # tgtt = TestGreensTreeTime()
     # tgtt.testPassiveKernels(pplot=True)
     # tgtt.testActiveKernels(pplot=True)
     # tgtt.testChannelResponses()
-    tgtt.testExponentialDerivative()
+    # tgtt.testExponentialDerivative()
 
