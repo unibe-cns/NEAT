@@ -263,10 +263,10 @@ class TestGreensTreeTime():
             # ion channels
             k_chan = channelcollection.Kv3_1()
             self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
-            # ca_chan = channelcollection.Ca_HVA()
-            # self.tree.addCurrent(ca_chan, 0.792 * 1e6, 132.4579341637009)
-            # ca_chan = channelcollection.h()
-            # self.tree.addCurrent(ca_chan, 0.008 * 1e6, -43.)
+            ca_chan = channelcollection.Ca_HVA()
+            self.tree.addCurrent(ca_chan, 0.792 * 1e6, 132.4579341637009)
+            ca_chan = channelcollection.h()
+            self.tree.addCurrent(ca_chan, 0.008 * 1e6, -43.)
             na_chan = channelcollection.Na_Ta()
             self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
         # fit leak current
@@ -275,6 +275,13 @@ class TestGreensTreeTime():
         self.tree.setEEq(-75.)
         # set computational tree
         self.tree.setCompTree()
+
+    def testStringRepresentation(self):
+        self.loadBall(1)
+
+        assert repr(self.tree) == "[" \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 12.0, 'swc_type': 1, 'currents': {'Kv3_1': [766000.0, -85.0], 'Ca_HVA': [792000.0, 132.4579341637009], 'h': [8000.0, -43.0], 'Na_Ta': [1710000.0, 50.0], 'L': [20.0, -3493.27059648586]}, 'concmechs': {}, 'c_m': 0.8, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'expansion_points': {}}\"" \
+        "]{'channel_storage': ['Ca_HVA', 'Kv3_1', 'Na_Ta', 'h'], 'freqs': None, 't': None}"
 
     def testPassiveKernels(self, pplot=False):
         self.loadTTree()
@@ -667,7 +674,8 @@ if __name__ == '__main__':
     # tgt.testBasicProperties()
     # tgt.testValues()
 
-    # tgtt = TestGreensTreeTime()
+    tgtt = TestGreensTreeTime()
+    tgtt.testStringRepresentation()
     # tgtt.testPassiveKernels(pplot=True)
     # tgtt.testActiveKernels(pplot=True)
     # tgtt.testChannelResponses()

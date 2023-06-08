@@ -711,6 +711,14 @@ class GreensTreeTime(GreensTree):
     def __init__(self, file_n=None, types=[1,3,4]):
         super().__init__(file_n=file_n, types=types)
 
+    def _getReprDict(self):
+        t = self.ft.t if self.ft is not None else None
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            't': t
+        })
+        return repr_dict
+
     def _checkInstantiated(self):
         if self.freqs_vfit is None or self.ft is None:
             raise AttributeError(
@@ -736,15 +744,17 @@ class GreensTreeTime(GreensTree):
             # reasonable parameters for FourrierTools
             self.ft = ke.FourrierTools(t_inp, fmax=7., base=10., num=200)
 
-    def setImpedance(self, t_inp):
+    def _setFreqAndTimeArrays(self, t_inp):
         self._setDefaultFreqarrayVectorFit()
         self._setDefaultFreqarrayQuadrature(t_inp)
 
-        # frequencies `self.freqs` will be set by parent class `setImpedance()`
-        # function. We define the slices that index them seperately already
         self._slice_vfit = np.s_[:len(self.freqs_vfit)]
         self._slice_quad = np.s_[len(self.freqs_vfit):]
-        super().setImpedance(np.concatenate((self.freqs_vfit, self.ft.s)))
+        self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
+
+    def setImpedance(self, t_inp):
+        self._setFreqAndTimeArrays(t_inp)
+        super().setImpedance(self.freqs)
 
     def _inverseFourrier(self, func_vals_f,
             method: Literal["", "exp fit", "quadrature"] = "",

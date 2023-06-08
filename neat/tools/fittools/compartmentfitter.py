@@ -85,48 +85,6 @@ def make_hash(o):
     return nonnegative_hash(tuple(frozenset(sorted(new_o.items()))))
 
 
-def maybe_execute_funcs(
-    tree, file_name,
-    funcs_args_kwargs=[],
-    recompute_cache=False, save_cache=True, pprint=False,
-):
-    try:
-        # ensure that the funcs are recomputed if 'recompute' is true
-        if recompute_cache:
-            raise IOError
-
-        with open(file_name, 'rb') as file:
-            tree_ = pickle.load(file)
-
-        cache_params_dict = {
-            "cache_name": tree.cache_name,
-            "cache_path": tree.cache_path,
-            "save_cache": tree.save_cache,
-            "recompute_cache": tree.recompute_cache,
-        }
-
-        tree.__dict__.update(tree_.__dict__)
-        # set the original cache parameters
-        tree.__dict__.update(cache_params_dict)
-        del tree_
-
-    except (Exception, IOError, EOFError, KeyError) as err:
-        if pprint:
-            if recompute_cache:
-                logstr = '>>> Force recomputing cache...'
-            else:
-                logstr = '>>> No cache found, recomputing...'
-            print(logstr)
-
-        # execute the functions
-        for func, args, kwargs in funcs_args_kwargs:
-            func(*args, **kwargs)
-
-        if save_cache:
-            with open(file_name, 'wb') as file:
-                pickle.dump(tree, file)
-
-
 def _statevar_is_activating(f_statevar):
     """
     check whether a statevar is activating or inactivating
@@ -238,7 +196,55 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
         return phys_tree
 
 
-class FitTreeGF(GreensTree):
+class FitTree(PhysTree):
+    def maybe_execute_funcs(self,
+        funcs_args_kwargs=[],
+        pprint=False,
+    ):
+
+        file_name = os.path.join(
+            self.cache_path,
+            f"{self.cache_name}cache_{nonnegative_hash(repr(self))}.p",
+        )
+
+        try:
+            # ensure that the funcs are recomputed if 'recompute' is true
+            if self.recompute_cache:
+                raise IOError
+
+            with open(file_name, 'rb') as file:
+                tree_ = pickle.load(file)
+
+            cache_params_dict = {
+                "cache_name": self.cache_name,
+                "cache_path": self.cache_path,
+                "save_cache": self.save_cache,
+                "recompute_cache": self.recompute_cache,
+            }
+
+            self.__dict__.update(tree_.__dict__)
+            # set the original cache parameters
+            self.__dict__.update(cache_params_dict)
+            del tree_
+
+        except (Exception, IOError, EOFError, KeyError) as err:
+            if pprint:
+                if self.recompute_cache:
+                    logstr = '>>> Force recomputing cache...'
+                else:
+                    logstr = '>>> No cache found, recomputing...'
+                print(logstr)
+
+            # execute the functions
+            for func, args, kwargs in funcs_args_kwargs:
+                func(*args, **kwargs)
+
+            if self.save_cache:
+                with open(file_name, 'wb') as file:
+                    pickle.dump(self, file)
+
+
+class FitTreeGF(GreensTree, FitTree):
     def __init__(self, *args,
             recompute_cache=False,
             save_cache=True,
@@ -271,6 +277,10 @@ class FitTreeGF(GreensTree):
             cname_string = ', '.join(list(self.channel_storage.keys()))
             print(f'>>> evaluating impedances with {cname_string}')
 
+        # we set freqs here already because it needs to be included in the
+        # representation to generate a hash
+        self.freqs = np.array(freqs)
+
         if sv_h is not None:
             # check if exansion point for all channels is defined
             assert sv_h.keys() == self.channel_storage.keys()
@@ -281,16 +291,8 @@ class FitTreeGF(GreensTree):
                 for node in self:
                     node.setExpansionPoint(c_name, statevar=sv)
 
-        file_name = os.path.join(
-            self.cache_path,
-            f"{self.cache_name}cache_{str(make_hash([freqs, sv_h, kwargs]))}.p",
-        )
-
-        maybe_execute_funcs(
-            self, file_name,
-            recompute_cache=self.recompute_cache,
+        self.maybe_execute_funcs(
             pprint=pprint,
-            save_cache=self.save_cache,
             funcs_args_kwargs=[
                 (self.setCompTree, [], {}),
                 (self.setImpedance, [freqs], {"pprint": pprint, **kwargs})
@@ -345,7 +347,7 @@ class FitTreeGF(GreensTree):
             self._subtractParentKernels(gammas, pnode.parent_node)
 
 
-class FitTreeC(GreensTreeTime):
+class FitTreeC(GreensTreeTime, FitTree):
     def __init__(self, *args,
             recompute_cache=False,
             save_cache=True,
@@ -376,16 +378,10 @@ class FitTreeC(GreensTreeTime):
             cname_string = ', '.join(list(self.channel_storage.keys()))
             print(f'>>> evaluating response kernels with {cname_string}')
 
-        file_name = os.path.join(
-            self.cache_path,
-            f"{self.cache_name}cache_{str(make_hash([t_arr]))}.p",
-        )
+        self._setFreqAndTimeArrays(t_arr)
 
-        maybe_execute_funcs(
-            self, file_name,
-            recompute_cache=self.recompute_cache,
+        self.maybe_execute_funcs(
             pprint=pprint,
-            save_cache=self.save_cache,
             funcs_args_kwargs=[
                 (self.setCompTree, [], {}),
                 (self.setImpedance, [t_arr], {})
@@ -393,7 +389,7 @@ class FitTreeC(GreensTreeTime):
         )
 
 
-class FitTreeSOV(SOVTree):
+class FitTreeSOV(SOVTree, FitTree):
     def __init__(self,
             *args,
             recompute_cache=False,
@@ -413,16 +409,10 @@ class FitTreeSOV(SOVTree):
         if pprint:
             print(f'>>> evaluating SOV expansion')
 
-        file_name = os.path.join(
-            self.cache_path,
-            f"{self.cache_name}cache_{str(make_hash([maxspace_freq]))}.p",
-        )
+        self.maxspace_freq = maxspace_freq
 
-        maybe_execute_funcs(
-            self, file_name,
-            recompute_cache=self.recompute_cache,
+        self.maybe_execute_funcs(
             pprint=pprint,
-            save_cache=self.save_cache,
             funcs_args_kwargs=[
                 (self.setCompTree, [], {"eps": 1.}),
                 (self.calcSOVEquations, [], {
