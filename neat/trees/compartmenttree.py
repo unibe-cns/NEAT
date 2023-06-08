@@ -1740,19 +1740,22 @@ class CompartmentTree(STree):
             for channel_name, c_resp in c_resps.items():
 
                 for svar, arg1 in c_resp.items():
-
-                    arg2 = qt_mat[perm_inds[ii]][channel_name][svar][:,perm_inds]
-                    cq_prod[:,ii,:] += arg1 * arg2 * 1e-3
-
+                    try:
+                        arg2 = qt_mat[perm_inds[ii]][channel_name][svar][:,perm_inds]
+                        cq_prod[:,ii,:] += arg1 * arg2 * 1e-3
+                    except KeyError:
+                        # the channel is not present at this location in the original
+                        # tree therefor the response can be set to zero and we do
+                        # nothing
+                        pass
 
         c_vec = np.zeros(len(self))
         for ii in range(len(self)):
             m1 = dz_dt_mat[:,ii,:].reshape((-1,1))
             m2 = (zg_prod[:,ii,:] + cq_prod[:,ii,:]).reshape((-1,))
 
-            print("!!!", m1.shape)
-            c_val = np.linalg.lstsq(m1[0:,:], m2[0:], rcond=None)[0].real
-            # c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
+            # c_val = np.linalg.lstsq(m1[:,:], m2[0:], rcond=None)[0].real
+            c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
             c_vec[ii] = c_val
 
         self._toTreeC(c_vec)

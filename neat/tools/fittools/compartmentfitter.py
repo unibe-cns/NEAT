@@ -997,14 +997,10 @@ class CompartmentFitter(object):
                 11., 12., 13., 14., 15.,
                 16., 17., 18., 19., 20.,
                 22., 24., 26., 28. ,30.,
-                32., 34., 36., 38., 40.,
-                50., 60., 70., 80.
+                # 32., 34., 36., 38., 40.,
+                # 50., 60., 70., 80.
         ])
-        # self.dt = 0.025
-        # self.tmax = 100.
-        # # for frequency derivation
-        # t_fit = ke.FourrierTools(np.arange(0.2, self.tmax, self.dt))
-        tree.setImpedancesInTree(t_fit)
+        tree.setImpedancesInTree(self.cfg.t_fit)
 
         # compute the response kernel matrices necessary for the fit
         zt_mat, dzt_dt_mat = tree.calcImpulseResponseMatrix(

@@ -373,7 +373,7 @@ class fExpFitter(Fitter):
 
         return alphanew, c2dnew, pairs
 
-    def reduceSeries(self, s, y, a, c, pairs=None, rtol=1e-2, pprint=True):
+    def reduceSeries(self, s, y, a, c, pairs=None, rtol=1e-2, pprint=False):
         """
         reduce the series of exponentials after the fitting
         """
@@ -1059,7 +1059,7 @@ class FourrierTools(object):
         # I2_[0,:] = s[:,1:] - s[:,:-1] / 1j
         I2 =  np.divide((s[:,1:]-s[:,:-1]).imag * np.exp(s[:,1:]*t) - I2_, 1j*t,
                         out=np.zeros_like(ic[:,:-1]), where=mask_arr)
-        I2[0:1,:] = s[:,1:] * (s[:,1:] - s[:,:-1])
+        # I2[0:1,:] = s[:,1:] * (s[:,1:] - s[:,:-1])
         # compute matrix elements
         ic[:,0] = I1[:,0] - I2[:,0] / (s[:,1] - s[:,0]).imag
         ic[:,1:-1] = I1[:,1:] - I2[:,1:] / (s[:,2:] - s[:,1:-1]).imag + I2[:,:-1] / (s[:,1:-1] - s[:,:-2]).imag

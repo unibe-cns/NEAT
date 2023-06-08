@@ -45,6 +45,15 @@ class DefaultFitting:
         default_factory=lambda: np.logspace(0., 3., 100)*1j # Hz
     )
 
+    # time-points at which to evaluate time domain kernels for capacitance fit
+    t_fit: np.array = field(
+        default_factory=lambda: np.array([
+            11., 12., 13., 14., 15.,
+            16., 17., 18., 19., 20.,
+            22., 24., 26., 28. ,30.,
+        ]) # ms
+    )
+
 
 @dataclass
 class DefaultMechParams:
