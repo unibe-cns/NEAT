@@ -774,6 +774,7 @@ class GreensTreeTime(GreensTree):
         criterion = criterion_eval <= 1e-3
 
         if criterion_eval > 1e-10:
+        # if False:
             # if there is substantial spectral power in the max frequency
             # components, we smooth the function with a squared cosine window
             # to reduce oscillations
@@ -815,22 +816,27 @@ class GreensTreeTime(GreensTree):
         f_exp_fitter = ke.fExpFitter()
         alpha, gamma, pairs, rms = f_exp_fitter.fitFExp(
             self.freqs[self._slice_vfit], func_vals_f[self._slice_vfit],
-            deg=40, initpoles=initpoles,
+            deg=40, initpoles="log10",
             realpoles=True, zerostart=False,
             constrained=True, reduce_numexp=False
         )
         zk = Kernel({'a': alpha*1e-3, 'c': gamma*1e-3})
+        if compute_time_derivative:
+            dzk_dt = zk.diff()
         # linear fit of c in the time domain to the quadrature-computed kernels
         # can improve accuracy
         w = np.concatenate(
             (self.ft.t[self.ft.t < 1.], np.ones_like(self.ft.t[self.ft.t >= 1.]))
         )
-        zk.fit_c(self.ft.t, func_vals_t, w=w)
+        # zk.fit_c(self.ft.t, func_vals_t, w=w)
 
         # evaluate kernel in the time domain
         func_vals_t = zk(self.ft.t)
 
         if compute_time_derivative:
+            # linear fit of c in the time domain to the quadrature-computed kernels
+            # can improve accuracy
+            # dzk_dt.fit_c(self.ft.t, dfunc_vals_t_dt, w=w)
             # compute differentiated kernel
             dfunc_vals_t_dt = zk.diff(self.ft.t)
 

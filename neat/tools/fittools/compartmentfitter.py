@@ -977,6 +977,12 @@ class CompartmentFitter(object):
         return tree
 
     def fitCapacitanceFromZ(self):
+        """
+        Fit the capacitance of the reduced model by a fit derived from the
+        matrix exponential, i.e. by requiring that the derivatives of the
+        impedance kernels equal the matrix product of the system matrix of
+        the reduced model with the impedance kernel matrix of the full model
+        """
         # create a `GreensTreeTime` to compute response kernels
         tree = self.tree.__copy__(
             new_tree=FitTreeC(
@@ -990,8 +996,7 @@ class CompartmentFitter(object):
         tree.setEEq(self.getEEq("tree"))
         tree.setCompTree(eps=1e-2)
         # set the impedances for kernel calculation
-        tree.setImpedancesInTree(self.cfg.t_fit)
-
+        tree.setImpedance(self.cfg.t_fit)
         # compute the response kernel matrices necessary for the fit
         zt_mat, dzt_dt_mat = tree.calcImpulseResponseMatrix(
             'fit locs',
@@ -1003,6 +1008,7 @@ class CompartmentFitter(object):
         )
         # perform the capacitance fit
         self.ctree.setEEq(self.getEEq("fit"))
+        # self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
         self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
 
     def _calcSOVMats(self, locs, pprint=False):

@@ -130,7 +130,7 @@ class Kernel(object):
 
         Parameters
         ----------
-        t_arr: np.array of float
+        t_arr: `np.array` of `float`
             the time array in ``ms`` at which the kernel is evaluated
 
         Returns
@@ -140,9 +140,32 @@ class Kernel(object):
         """
         return self(t_arr)
 
-    def diff(self, t_arr):
-        return np.dot(-self.a[np.newaxis,:] * np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
-                      self.c[:,np.newaxis]).flatten().real
+    def diff(self, t_arr=None):
+        """
+        Computes the time derivative of the kernel. If a time array is provided,
+        returns an array of corresponding kernel values. If nothing is provided,
+        returns a kernel representing the time derivative.
+
+        Parameters
+        ----------
+        t_arr: `np.array` (optional)
+            the time array
+
+        Returns
+        -------
+        `np.array` or `neat.Kernel`
+            the differentiated kernel
+        """
+        if t_arr is None:
+            return Kernel({
+                'a': self.a,
+                'c': -self.a * self.c,
+            })
+        else:
+            return np.dot(
+                -self.a[np.newaxis,:] * np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
+                self.c[:,np.newaxis]
+            ).flatten().real
 
     def ft(self, s_arr):
         """

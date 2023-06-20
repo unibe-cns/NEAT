@@ -1730,7 +1730,7 @@ class CompartmentTree(STree):
         # compute passive matrix
         g_mat = -self.calcConductanceMatrix(indexing='tree')
         # matrix product for passive conductance terms
-        zg_prod = np.einsum("lk,tkn->tln", g_mat, zt_mat) * 1e-3
+        zg_prod = np.einsum("lk,tkn->tln", g_mat, zt_mat)
 
         # explicit matrix product for channel terms
         cq_prod = np.zeros_like(zg_prod)
@@ -1742,21 +1742,21 @@ class CompartmentTree(STree):
                 for svar, arg1 in c_resp.items():
                     try:
                         arg2 = qt_mat[perm_inds[ii]][channel_name][svar][:,perm_inds]
-                        cq_prod[:,ii,:] += arg1 * arg2 * 1e-3
+                        cq_prod[:,ii,:] += arg1 * arg2
                     except KeyError:
                         # the channel is not present at this location in the original
-                        # tree therefor the response can be set to zero and we do
+                        # tree, therefor the response can be set to zero and we do
                         # nothing
                         pass
 
         c_vec = np.zeros(len(self))
         for ii in range(len(self)):
-            m1 = dz_dt_mat[:,ii,:].reshape((-1,1))
-            m2 = (zg_prod[:,ii,:] + cq_prod[:,ii,:]).reshape((-1,))
+            m1 = dz_dt_mat[:,ii,ii].reshape((-1,1))
+            m2 = (zg_prod[:,ii,ii] + cq_prod[:,ii,ii]).reshape((-1,))
 
-            # c_val = np.linalg.lstsq(m1[:,:], m2[0:], rcond=None)[0].real
             c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
-            c_vec[ii] = c_val
+            # c_val = so.nnls(m1, m2)[0].real
+            c_vec[ii] = max(c_val * 1e-3, 1e-10)
 
         self._toTreeC(c_vec)
 
