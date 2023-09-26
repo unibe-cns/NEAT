@@ -121,14 +121,17 @@ class Kernel(object):
             return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
                    'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
 
+    def __repr__(self):
+        return repr({'a': self.a, 'c': self.c})
+
     def t(self, t_arr):
         """
         Evaluates the kernel in the time domain
 
         Parameters
         ----------
-        t_arr: np.array of float
-            the time array at which the kernel is evaluated
+        t_arr: `np.array` of `float`
+            the time array in ``ms`` at which the kernel is evaluated
 
         Returns
         -------
@@ -137,9 +140,32 @@ class Kernel(object):
         """
         return self(t_arr)
 
-    def diff(self, t_arr):
-        return np.dot(-self.a[np.newaxis,:] * np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
-                      self.c[:,np.newaxis]).flatten().real
+    def diff(self, t_arr=None):
+        """
+        Computes the time derivative of the kernel. If a time array is provided,
+        returns an array of corresponding kernel values. If nothing is provided,
+        returns a kernel representing the time derivative.
+
+        Parameters
+        ----------
+        t_arr: `np.array` (optional)
+            the time array
+
+        Returns
+        -------
+        `np.array` or `neat.Kernel`
+            the differentiated kernel
+        """
+        if t_arr is None:
+            return Kernel({
+                'a': self.a,
+                'c': -self.a * self.c,
+            })
+        else:
+            return np.dot(
+                -self.a[np.newaxis,:] * np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
+                self.c[:,np.newaxis]
+            ).flatten().real
 
     def ft(self, s_arr):
         """
@@ -148,7 +174,7 @@ class Kernel(object):
         Parameters
         ----------
         s_arr: np.array of complex
-            The frequencies (Hz) at which the kernel is to be evaluated
+            The frequencies in ``Hz`` at which the kernel is to be evaluated
 
         Returns
         -------
@@ -158,6 +184,28 @@ class Kernel(object):
         """
         return np.sum(self.c[:,None]*1e3 / (self.a[:,None]*1e3 + s_arr[None,:]), 0)
 
+    def fit_c(self, t_arr, func_arr, w=None):
+        """
+        Perform a linear least squares fit of the exponential prefactors in the
+        time domain
+
+        Parameters
+        ----------
+        t_arr: `np.array` of float
+            the time array in ``ms`` at which the kernel is evaluated
+        k_arr: `np.array` of float
+            the to be fitted kernel array
+
+        Returns
+        -------
+        `np.ndarray` of float (`ndim = 2`)
+            The feature matrix
+        """
+        if w is None:
+            w = np.ones_like(t_arr)
+        A = np.exp(-t_arr[:,None] * self.a[None,:])
+
+        self.c = np.linalg.lstsq(w[:,None]*A, w*func_arr, rcond=None)[0]
 
 class NETNode(SNode):
     """
@@ -228,6 +276,28 @@ class NETNode(SNode):
     def _setSharedRootInd(self, ind):
         self._root_ind = self._node_inds.index(ind)
 
+    def __str__(self, with_parent=True, with_morph_info=False):
+        node_str = super().__str__(with_parent=with_parent)
+
+        node_str += f' --- ' \
+            f' loc inds: {str(self.loc_inds)}' \
+            f', newloc inds: {str(self.newloc_inds)}' \
+            f', z_bar = {self.z_bar} MOhm'
+
+        return node_str
+
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "loc_inds": self.loc_inds,
+            "newloc_inds": self.newloc_inds,
+            "z_kernel": repr(self.z_kernel)
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
+
 
 class NET(STree):
     """
@@ -237,12 +307,6 @@ class NET(STree):
     """
     def __init__(self, root=None):
         super().__init__(root)
-
-    def __str__(self):
-        string = 'NET\n'
-        for node in self:
-            string += '  > ' + str(node) + '\n'
-        return string
 
     def _createCorrespondingNode(self, node_index):
         """

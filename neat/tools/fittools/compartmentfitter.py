@@ -12,7 +12,7 @@ from matplotlib.lines import Line2D
 
 from ...trees.morphtree import MorphLoc
 from ...trees.phystree import PhysTree
-from ...trees.greenstree import GreensTree
+from ...trees.greenstree import GreensTree, GreensTreeTime
 from ...trees.sovtree import SOVTree
 from ...trees.netree import NET, NETNode, Kernel
 from ...channels.ionchannels import SPDict
@@ -83,48 +83,6 @@ def make_hash(o):
         new_o[k] = make_hash(v)
 
     return nonnegative_hash(tuple(frozenset(sorted(new_o.items()))))
-
-
-def maybe_execute_funcs(
-    tree, file_name,
-    funcs_args_kwargs=[],
-    recompute_cache=False, save_cache=True, pprint=False,
-):
-    try:
-        # ensure that the funcs are recomputed if 'recompute' is true
-        if recompute_cache:
-            raise IOError
-
-        with open(file_name, 'rb') as file:
-            tree_ = pickle.load(file)
-
-        cache_params_dict = {
-            "cache_name": tree.cache_name,
-            "cache_path": tree.cache_path,
-            "save_cache": tree.save_cache,
-            "recompute_cache": tree.recompute_cache,
-        }
-
-        tree.__dict__.update(tree_.__dict__)
-        # set the original cache parameters
-        tree.__dict__.update(cache_params_dict)
-        del tree_
-
-    except (Exception, IOError, EOFError, KeyError) as err:
-        if pprint:
-            if recompute_cache:
-                logstr = '>>> Force recomputing cache...'
-            else:
-                logstr = '>>> No cache found, recomputing...'
-            print(logstr)
-
-        # execute the functions
-        for func, args, kwargs in funcs_args_kwargs:
-            func(*args, **kwargs)
-
-        if save_cache:
-            with open(file_name, 'wb') as file:
-                pickle.dump(tree, file)
 
 
 def _statevar_is_activating(f_statevar):
@@ -238,7 +196,55 @@ def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
         return phys_tree
 
 
-class FitTreeGF(GreensTree):
+class FitTree(PhysTree):
+    def maybe_execute_funcs(self,
+        funcs_args_kwargs=[],
+        pprint=False,
+    ):
+
+        file_name = os.path.join(
+            self.cache_path,
+            f"{self.cache_name}cache_{nonnegative_hash(repr(self))}.p",
+        )
+
+        try:
+            # ensure that the funcs are recomputed if 'recompute' is true
+            if self.recompute_cache:
+                raise IOError
+
+            with open(file_name, 'rb') as file:
+                tree_ = pickle.load(file)
+
+            cache_params_dict = {
+                "cache_name": self.cache_name,
+                "cache_path": self.cache_path,
+                "save_cache": self.save_cache,
+                "recompute_cache": self.recompute_cache,
+            }
+
+            self.__dict__.update(tree_.__dict__)
+            # set the original cache parameters
+            self.__dict__.update(cache_params_dict)
+            del tree_
+
+        except (Exception, IOError, EOFError, KeyError) as err:
+            if pprint:
+                if self.recompute_cache:
+                    logstr = '>>> Force recomputing cache...'
+                else:
+                    logstr = '>>> No cache found, recomputing...'
+                print(logstr)
+
+            # execute the functions
+            for func, args, kwargs in funcs_args_kwargs:
+                func(*args, **kwargs)
+
+            if self.save_cache:
+                with open(file_name, 'wb') as file:
+                    pickle.dump(self, file)
+
+
+class FitTreeGF(GreensTree, FitTree):
     def __init__(self, *args,
             recompute_cache=False,
             save_cache=True,
@@ -271,6 +277,10 @@ class FitTreeGF(GreensTree):
             cname_string = ', '.join(list(self.channel_storage.keys()))
             print(f'>>> evaluating impedances with {cname_string}')
 
+        # we set freqs here already because it needs to be included in the
+        # representation to generate a hash
+        self.freqs = np.array(freqs)
+
         if sv_h is not None:
             # check if exansion point for all channels is defined
             assert sv_h.keys() == self.channel_storage.keys()
@@ -281,16 +291,8 @@ class FitTreeGF(GreensTree):
                 for node in self:
                     node.setExpansionPoint(c_name, statevar=sv)
 
-        file_name = os.path.join(
-            self.cache_path,
-            f"{self.cache_name}cache_{str(make_hash([freqs, sv_h, kwargs]))}.p",
-        )
-
-        maybe_execute_funcs(
-            self, file_name,
-            recompute_cache=self.recompute_cache,
+        self.maybe_execute_funcs(
             pprint=pprint,
-            save_cache=self.save_cache,
             funcs_args_kwargs=[
                 (self.setCompTree, [], {}),
                 (self.setImpedance, [freqs], {"pprint": pprint, **kwargs})
@@ -345,7 +347,49 @@ class FitTreeGF(GreensTree):
             self._subtractParentKernels(gammas, pnode.parent_node)
 
 
-class FitTreeSOV(SOVTree):
+class FitTreeC(GreensTreeTime, FitTree):
+    def __init__(self, *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
+        super().__init__(*args, **kwargs)
+
+        self.cache_name = cache_name
+        self.cache_path = cache_path
+        self.save_cache = save_cache
+        self.recompute_cache = recompute_cache
+
+    def setImpedancesInTree(self, t_arr, pprint=False):
+        """
+        Sets the impedances in the tree that are necessary for the evaluation
+        of the response kernels.
+
+        Parameters
+        ----------
+        t_arr: np.ndarray of float
+            The time-points at which to evaluate the response kernels
+        pprint: bool (optional, default is ``False``)
+            Print info
+        """
+        if pprint:
+            cname_string = ', '.join(list(self.channel_storage.keys()))
+            print(f'>>> evaluating response kernels with {cname_string}')
+
+        self._setFreqAndTimeArrays(t_arr)
+
+        self.maybe_execute_funcs(
+            pprint=pprint,
+            funcs_args_kwargs=[
+                (self.setCompTree, [], {}),
+                (self.setImpedance, [t_arr], {})
+            ]
+        )
+
+
+class FitTreeSOV(SOVTree, FitTree):
     def __init__(self,
             *args,
             recompute_cache=False,
@@ -365,16 +409,10 @@ class FitTreeSOV(SOVTree):
         if pprint:
             print(f'>>> evaluating SOV expansion')
 
-        file_name = os.path.join(
-            self.cache_path,
-            f"{self.cache_name}cache_{str(make_hash([maxspace_freq]))}.p",
-        )
+        self.maxspace_freq = maxspace_freq
 
-        maybe_execute_funcs(
-            self, file_name,
-            recompute_cache=self.recompute_cache,
+        self.maybe_execute_funcs(
             pprint=pprint,
-            save_cache=self.save_cache,
             funcs_args_kwargs=[
                 (self.setCompTree, [], {"eps": 1.}),
                 (self.calcSOVEquations, [], {
@@ -937,6 +975,41 @@ class CompartmentFitter(object):
         tree.setCompTree(eps=eps)
 
         return tree
+
+    def fitCapacitanceFromZ(self):
+        """
+        Fit the capacitance of the reduced model by a fit derived from the
+        matrix exponential, i.e. by requiring that the derivatives of the
+        impedance kernels equal the matrix product of the system matrix of
+        the reduced model with the impedance kernel matrix of the full model
+        """
+        # create a `GreensTreeTime` to compute response kernels
+        tree = self.tree.__copy__(
+            new_tree=FitTreeC(
+                cache_path=self.cache_path,
+                cache_name=self.cache_name + "_Zkernels_",
+                save_cache=self.save_cache,
+                recompute_cache=self.recompute_cache,
+            ),
+        )
+        # set the equilibirum potentials in the tree
+        tree.setEEq(self.getEEq("tree"))
+        tree.setCompTree(eps=1e-2)
+        # set the impedances for kernel calculation
+        tree.setImpedance(self.cfg.t_fit)
+        # compute the response kernel matrices necessary for the fit
+        zt_mat, dzt_dt_mat = tree.calcImpulseResponseMatrix(
+            'fit locs',
+            compute_time_derivative=True,
+        )
+        crt_mat = tree.calcChannelResponseMatrix(
+            'fit locs',
+            compute_time_derivative=False,
+        )
+        # perform the capacitance fit
+        self.ctree.setEEq(self.getEEq("fit"))
+        # self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
+        self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
 
     def _calcSOVMats(self, locs, pprint=False):
         """

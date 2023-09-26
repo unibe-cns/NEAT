@@ -60,7 +60,6 @@ class CompartmentNode(SNode):
         # compartment params
         self.ca = ca   # capacitance (uF)
         self.g_c = g_c # coupling conductance (uS)
-        # self.g_l = g_l # leak conductance (uS)
         self.e_eq = e_eq # equilibrium potential (mV)
         self.conc_eqs = {} # equilibrium concentration values (mM)
         self.currents = {'L': [g_l, e_eq]} # ion channel conductance (uS) and reversals (mV)
@@ -408,6 +407,49 @@ class CompartmentNode(SNode):
 
         return i_tot
 
+    def calcLinearStatevarTerms(self, channel_storage,
+                v=None, channel_names=None):
+        """
+        Contribution of linearized ion channel to conductance matrix
+
+        Parameters
+        ----------
+        channel_storage: dict of ion channels
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+        freqs: np.ndarray (ndim = 1, dtype = complex or float) or float or complex
+            The frequencies at which the impedance terms are to be evaluated
+        v: float (optional, default is None which evaluates at `self.e_eq`)
+            The potential at which to compute the total conductance
+        channel_names: list of str
+            The names of the ion channels that have to be included in the
+            conductance term
+
+        Returns
+        -------
+        dict of np.ndarray or float or complex
+            Each entry in the dict is of the same type as ``freqs`` and is the
+            conductance term of a channel
+        """
+        if channel_names is None: channel_names = list(self.currents.keys())
+
+        svar_terms = {}
+        for channel_name in set(channel_names) - set('L'):
+            g, e = self.currents[channel_name]
+
+            # get the ionchannel object
+            channel = channel_storage[channel_name]
+            v, sv = self._constructChannelArgs(channel)
+
+            # add linearized channel contribution to membrane conductance
+            dp_dx = channel.computeDerivatives(v, **sv)[0]
+
+            svar_terms[channel_name] = {}
+            for svar, dp_dx_ in dp_dx.items():
+                svar_terms[channel_name][svar] = g * dp_dx_ * (e - v)
+
+        return svar_terms
+
     def getDrive(self, channel_name, v=None, channel_storage=None):
         v = self.e_eq if v is None else v
         _, e = self.currents[channel_name]
@@ -459,6 +501,38 @@ class CompartmentNode(SNode):
         g, e = self.currents[channel_name]
         return g * p_open * (v - e)
 
+    def __str__(self, with_parent=True, with_morph_info=False):
+        node_str = super().__str__(with_parent=with_parent)
+
+        node_str += f" --- " \
+            f"loc_ind = {self._loc_ind}, " \
+            f"g_c = {self.g_c} uS, " \
+            f"ca = {self.ca} uF/cm^2, " \
+            f"e_eq = {self.e_eq} mV, "
+
+        node_str += ', '.join([
+            f'(g_{c} = {g} uS/cm^2, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
+        ])
+
+        return node_str
+
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "loc_ind": self._loc_ind,
+            "ca": self.ca,
+            "g_c": self.g_c,
+            "e_eq": self.e_eq,
+            "conc_eqs": self.conc_eqs,
+            "currents": self.currents,
+            "concmechs": self.concmechs,
+            "expansion_points": self.expansion_points,
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
+
 
 class CompartmentTree(STree):
     """
@@ -471,6 +545,15 @@ class CompartmentTree(STree):
         self.channel_storage = {}
         # for fitting the model
         self.resetFitData()
+
+    def _getReprDict(self):
+        ckeys = list(self.channel_storage.keys())
+        ckeys.sort()
+        return {"channel_storage": ckeys}
+
+    def __repr__(self):
+        repr_str = super().__repr__()
+        return repr_str + repr(self._getReprDict())
 
     def _createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
         """
@@ -1656,6 +1739,58 @@ class CompartmentTree(STree):
             ca_vec.append((node.currents['L'][0]+np.sum(g_cs)) / alpha)
 
         self._toTreeC(ca_vec)
+
+    def computeCfromZ(self, zt_mat, dz_dt_mat, qt_mat):
+        """
+        Parameters
+        ----------
+        zt_mat: `np.ndarray` of ``shape=(t,k,k)
+            The impedance kernel matrix from the full model
+        dz_dt_mat: `np.ndarray` of ``shape=(t,k,k)
+            The matrix with time derivatives of the impedance kernels from the
+            full model
+        qt_mat: list of dict of dict of `np.ndarray`
+            The linearized responses of all channels to current pulse input from
+            the full model, should be indexed as
+            `[location_index][channel_name][statevar_name][time, input loc]`
+        """
+        # permutation of input matrices to tree
+        perm_inds = self._permuteToTreeInds()
+        zt_mat = self._permuteToTree(zt_mat)
+        dz_dt_mat = self._permuteToTree(dz_dt_mat)
+
+        # compute passive matrix
+        g_mat = -self.calcConductanceMatrix(indexing='tree')
+        # matrix product for passive conductance terms
+        zg_prod = np.einsum("lk,tkn->tln", g_mat, zt_mat)
+
+        # explicit matrix product for channel terms
+        cq_prod = np.zeros_like(zg_prod)
+        for ii, node in enumerate(self):
+
+            c_resps = node.calcLinearStatevarTerms(self.channel_storage)
+            for channel_name, c_resp in c_resps.items():
+
+                for svar, arg1 in c_resp.items():
+                    try:
+                        arg2 = qt_mat[perm_inds[ii]][channel_name][svar][:,perm_inds]
+                        cq_prod[:,ii,:] += arg1 * arg2
+                    except KeyError:
+                        # the channel is not present at this location in the original
+                        # tree, therefor the response can be set to zero and we do
+                        # nothing
+                        pass
+
+        c_vec = np.zeros(len(self))
+        for ii in range(len(self)):
+            m1 = dz_dt_mat[:,ii,ii].reshape((-1,1))
+            m2 = (zg_prod[:,ii,ii] + cq_prod[:,ii,ii]).reshape((-1,))
+
+            c_val = np.linalg.lstsq(m1, m2, rcond=None)[0].real
+            # c_val = so.nnls(m1, m2)[0].real
+            c_vec[ii] = max(c_val * 1e-3, 1e-10)
+
+        self._toTreeC(c_vec)
 
     def computeGChanFromTrace(self, dv_mat, v_mat, i_mat,
                          p_open_channels=None, p_open_other_channels={}, test={},

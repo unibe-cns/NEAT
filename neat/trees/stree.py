@@ -96,14 +96,27 @@ class SNode(object):
     def __setitem__(self, key, value):
         self._content[key] = value
 
-    def __str__(self, with_parent=False, with_children=False):
-        node_string = 'SNode ' + str(self.index)
+    def __str__(self, with_parent=True):
+        parent_idx = self.parent_node.index if self.parent_node is not None else -1
+        node_str = f'{self.__class__.__name__} {self.index}'
         if with_parent:
-            node_string += ', Parent: ' + str(self.parent_node)
-        if with_children:
-            node_string += ', Children:' + \
-                            str([str(cnode) for cnode in self.child_nodes])
-        return node_string
+            pstr = "None" if self.parent_node is None else str(self.parent_node.index)
+            node_str += f", Parent: {pstr}"
+        return node_str
+
+    def _getReprDict(self):
+        """
+        Note that dictionaries maintain insertion order from Python 3.7 onwards
+        """
+        parent_idx = self.parent_node.index if self.parent_node is not None else -1
+        return {
+            "node index": self.index,
+            "parent index": parent_idx,
+            "content": repr(self.content),
+        }
+
+    def __repr__(self):
+        return repr(self._getReprDict())
 
     def __copy__(self, new_node=None):
         """
@@ -252,10 +265,30 @@ class STree(object):
         """
         if node is None:
             node = self.root
-        tree_string = '>>> Tree'
+        tree_string = f'>>> {self.__class__.__name__}'
         for iternode in self.__iter__(node):
             tree_string += '\n    ' + iternode.__str__(with_parent=True)
         return tree_string
+
+
+    def __repr__(self, node=None):
+        """
+        Generate a representation string of the subtree of the given node.
+
+        Beware, if the given node is not in the tree, it will simply iterate
+        over the subtree of the given node.
+
+        Parameters
+        ----------
+            node: `neat.SNode` (optional)
+                The starting node. Defaults to the root
+        """
+        if node is None:
+            node = self.root
+        repr_list = []
+        for iternode in self.__iter__(node):
+            repr_list.append(repr(iternode))
+        return repr(repr_list)
 
     def checkOrdered(self):
         """

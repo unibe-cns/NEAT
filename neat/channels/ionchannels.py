@@ -565,6 +565,45 @@ class IonChannel(object):
         args = self._argsAsList(v, w_statevar=False, **{})
         return self.f_tauinf(*args)
 
+    def computeLinStatevarResponse(self, v, freqs, v_resp, **kwargs):
+        """
+        Combute the linearizations of the individual state variables
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage(s) ``[mV]`` around which to linearize the ion channel
+        freqs float, complex, or `np.ndarray` of float or complex:
+            The frequencies ``[Hz]`` at which to evaluate the linearized contribution
+        v_resp: `np.ndarray` (``dtype=complex``, ``ndim=1``, ``shape=(s,k)``)
+            Linearized voltage responses in the frequency domain, evaluated at
+            ``s`` frequencies and ``k`` locations
+        **kwargs: float or `np.ndarray`
+            Optional values for the state variables and concentrations.
+
+        Returns
+        -------
+        `SPDict` of float, complex or `np.ndarray` of float or complex
+            The linearized current. Key are the state variable name. Shape of
+            each entry is dimension of `freqs` followed by the dimensions of `v`.
+        """
+        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
+
+        # determine the output shape according to numpy broadcasting rules
+        args_aux = [v_resp] + self._argsAsList(v, **kwargs)
+        out_shape = np.broadcast(*args_aux).shape
+
+        lin_svar = SPDict({
+            str(svar): np.zeros(out_shape, dtype=np.array(freqs).dtype) \
+            for svar in self.statevars
+        })
+        for svar, dp_dx_ in dp_dx.items():
+            df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
+            df_dx_ = df_dx[svar] * 1e3 # convert to 1 / s
+            # add to the impedance contribution
+            lin_svar[str(svar)] = df_dv_ / (freqs - df_dx_) * v_resp
+        return lin_svar
+
     def computeLinear(self, v, freqs, **kwargs):
         """
         Combute the contributions of the state variables to the linearized
@@ -853,6 +892,17 @@ class IonChannel(object):
 
         blocks_dict = {block: '' for block in blocks}
 
+
+        func_call_args = ["v_comp real"]
+        for ckey, cval in self.conc.items():
+            func_call_args.append(f"{ckey} real")
+        func_call_args = ", ".join(func_call_args)
+
+        func_args = ["v_comp"]
+        for ckey, cval in self.conc.items():
+            func_args.append(f"c_{ckey}")
+        func_args = ", ".join(func_args)
+
         if 'state' in blocks:
             state_str = '\n' + \
                         '    # state variables %s\n'%cname
@@ -878,8 +928,16 @@ class IonChannel(object):
 
             eq_str = '\n' + \
                      '    # equation %s\n'%cname + \
-                     '    inline %s real = gbar_%s * (%s) * (e_%s - v_comp)\n'%(cname, cname, str(p_open_), cname)
+                     '    inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n'%(cname, cname, str(p_open_), cname)
 
+
+            for var, var_suff, svar in zip(sv, sv_suff, self.statevars):
+                vi = sp.printing.ccode(self.varinf[svar])
+                ti = sp.printing.ccode(self.tauinf[svar])
+
+                eq_str += f"    {var_suff}' = ( {var}_inf_{cname}( {func_args} ) - {var_suff} ) / ( tau_{var}_{cname}( {func_args} ) * 1s )\n"
+
+            eq_str += "\n"
             blocks_dict['equations'] += eq_str
 
         def _customsimplify(expr):
@@ -893,14 +951,17 @@ class IonChannel(object):
             for svar, sv_, sv_suff_ in zip(self.statevars, sv, sv_suff):
                 # substitute possible default values and concentrations
                 varinf_func = self._substituteDefaults(self.varinf[svar])
+                func_args = ["v_comp real"]
                 for ckey, cval in self.conc.items():
-                    varinf_func = varinf_func.subs(ckey, cval)
+                    func_args.append(f"{ckey} real")
+                func_args = ", ".join(func_args)
+                #     varinf_func = varinf_func.subs(ckey, cval)
                 # print activation function to nestml file
                 varinf_func = varinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
                 varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
                 code_str = sp.pycode(varinf_func, fully_qualified_modules=False)
-                func_str += f'function {sv_}_inf_{cname} (v_comp real) real:\n' \
+                func_str += f'function {sv_}_inf_{cname} ({func_call_args}) real:\n' \
                             f'    val real\n' \
                             f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
                             f'    return val\n' \
@@ -915,7 +976,7 @@ class IonChannel(object):
                 tauinf_func = tauinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
                 code_str = sp.pycode(tauinf_func, fully_qualified_modules=False)
-                func_str += f'\nfunction tau_{sv_}_{cname} (v_comp real) real:\n' \
+                func_str += f'\nfunction tau_{sv_}_{cname} ({func_call_args}) real:\n' \
                             f'    val real\n' \
                             f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
                             f'    return val\n' \

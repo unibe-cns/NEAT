@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as pl
+from matplotlib.gridspec import GridSpec
 import os
 
 import pytest
@@ -8,7 +9,7 @@ import copy
 import pickle
 
 from neat import MorphLoc
-from neat import PhysTree, GreensTree, SOVTree
+from neat import PhysTree, GreensTree, GreensTreeTime, SOVTree
 from neat import CompartmentFitter
 import neat.tools.fittools.compartmentfitter as compartmentfitter
 
@@ -71,7 +72,7 @@ class TestCompartmentFitter():
 
     def loadTSegmentTree(self):
         '''
-        Load point neuron model
+        Load T tree model
         '''
         self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'))
         # self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'L23PyrBranco.swc'))
@@ -611,6 +612,149 @@ class TestCompartmentFitter():
         with pytest.raises(AssertionError):
             self._checkAllCurrProps(ctree_cm_1a, ctree_cm_1b)
 
+    def testCFitFromZPoint(self):
+        self.loadBall()
+        cfit = CompartmentFitter(self.tree,
+            cache_name='cfitfromztest', cache_path='neatcache/', recompute_cache=True,
+        )
+        cfit.setCTree([(1.,.5)])
+        # fit the passive steady state model
+        cfit.fitPassive(
+            use_all_channels=False
+        )
+        # fit the ion channels
+        cfit.fitChannels(parallel=False)
+        # fit the capacitance
+        cfit.fitCapacitanceFromZ()
+
+        a_soma = 4. * np.pi * self.tree[1].R**2 * 1e-8 # cm^2
+        ca_soma = self.tree[1].c_m * a_soma # uF
+
+        ca_fit = cfit.ctree[0].ca
+
+        print(ca_soma, ca_fit)
+        # check fit result
+        # assert np.allclose(c_soma, c_fit, rtol=1e-5)
+
+    def testCFitFromZPas(self, n_loc=10):
+        self.loadBallAndStick()
+        # define locations
+        xvals = np.linspace(0., 1., n_loc+1)[1:]
+        locs = [(1, 0.5)] + [(4, x) for x in xvals]
+        # create compartment tree
+        cfit = CompartmentFitter(self.tree,
+            cache_name='cfitfromztest', cache_path='neatcache/', recompute_cache=True,
+        )
+        cfit.setCTree(locs)
+        # fit the passive steady state model
+        cfit.fitPassive(
+            use_all_channels=False
+        )
+        # fit the capacitance
+        cfit.fitCapacitanceFromZ()
+        ctree_from_z = copy.deepcopy(cfit.ctree)
+
+
+        # fit the capacitance
+        cfit.fitCapacitance()
+        ctree_from_sov = copy.deepcopy(cfit.ctree)
+
+
+        print(f"ca from z:   {[n.ca for n in ctree_from_z]}")
+        print(f"ca from sov: {[n.ca for n in ctree_from_sov]}")
+
+        # check if equal to membrane time scale
+        nds = [self.tree[loc[0]] for loc in locs]
+        taus_orig = np.array([n.c_m / n.currents['L'][0] for n in nds])
+        taus_fit_z = np.array([n.ca / n.currents['L'][0] for n in ctree_from_z])
+        taus_fit_sov = np.array([n.ca / n.currents['L'][0] for n in ctree_from_sov])
+
+        print(taus_orig)
+        print(taus_fit_z)
+        print(taus_fit_sov)
+        print(np.max(np.abs(taus_orig - taus_fit_z) / taus_orig))
+        assert np.allclose(taus_orig, taus_fit_z, rtol=5e-2)
+        assert np.allclose(taus_fit_sov, taus_fit_z, rtol=5e-2)
+
+    def testCFitFromZAct(self, pplot=False):
+        self.loadTSegmentTree()
+        locs = [(1,.5), (10, 0.9), (12, 0.9)]
+        nl = len(locs)
+
+        # new capacitance fit method
+        cfit_new = CompartmentFitter(self.tree,
+            cache_name='cfitfromztest', cache_path='neatcache/', recompute_cache=True,
+        )
+        cfit_new.setCTree(locs)
+        # fit the passive steady state model
+        cfit_new.fitPassive(
+            use_all_channels=False
+        )
+        # fit the ion channels
+        cfit_new.fitChannels(pprint=False, parallel=False)
+        # new capacitance fit
+        cfit_new.fitCapacitanceFromZ()
+        ctree_new = cfit_new.ctree
+
+        # old capacitance fit method
+        cfit_old = CompartmentFitter(self.tree,
+            cache_name='cfitfromztest', cache_path='neatcache/', recompute_cache=True,
+        )
+        cfit_old.setCTree(locs)
+        # fit the passive steady state model
+        cfit_old.fitPassive(
+            use_all_channels=False
+        )
+        # fit the capacitances
+        cfit_old.fitCapacitance()
+        # fit the ion channels
+        cfit_old.fitChannels()
+        ctree_old = cfit_old.ctree
+
+        t_arr = np.linspace(.1, 40., 100)
+        gtt = self.tree.__copy__(new_tree=GreensTreeTime())
+        gtt.setImpedance(t_arr)
+        zt_mat_full = gtt.calcImpulseResponseMatrix(locs)
+
+        z_mat_comp_new = ctree_new.calcImpedanceMatrix(gtt.freqs)
+        z_mat_comp_old = ctree_old.calcImpedanceMatrix(gtt.freqs)
+        zt_mat_comp_new = np.zeros_like(zt_mat_full)
+        zt_mat_comp_old = np.zeros_like(zt_mat_full)
+        for ii in range(nl):
+            for jj in range(nl):
+                zt_mat_comp_new[:,ii,jj] = gtt._inverseFourrier(z_mat_comp_new[:,ii,jj],
+                    compute_time_derivative=False
+                )
+                zt_mat_comp_old[:,ii,jj] = gtt._inverseFourrier(z_mat_comp_old[:,ii,jj],
+                    compute_time_derivative=False
+                )
+
+        z_fit_new_diff = np.mean(np.abs(
+            zt_mat_full - zt_mat_comp_new
+        ) / np.max(np.abs(zt_mat_full)))
+        z_fit_old_diff = np.mean(np.abs(
+            zt_mat_full - zt_mat_comp_old
+        ) / np.max(np.abs(zt_mat_full)))
+
+        assert z_fit_new_diff < 0.0015
+        assert z_fit_old_diff < 0.0025
+
+        if pplot:
+            pl.figure()
+            gs = GridSpec(nl,nl)
+            for ii in range(nl):
+                for jj in range(nl):
+                    ax = pl.subplot(gs[ii,jj])
+                    ax.set_title(f"{ii} <-> {jj}")
+                    ax.plot(t_arr, zt_mat_full[:,ii,jj], c='grey')
+                    ax.plot(t_arr, zt_mat_comp_new[:,ii,jj], 'r--')
+                    ax.plot(t_arr, zt_mat_comp_old[:,ii,jj], 'b--')
+
+            pl.tight_layout()
+            pl.show()
+
+
+
 
 def test_expansionpoints():
     kv3_1 = channelcollection.Kv3_1()
@@ -636,14 +780,17 @@ def test_expansionpoints():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    tcf.testTreeStructure()
-    tcf.testCreateTreeGF()
-    tcf.testChannelFitMats()
-    tcf.testPassiveFit()
-    tcf.testRecalcImpedanceMatrix()
-    tcf.testSynRescale()
-    tcf.testFitModel()
-    tcf.testPickling()
-    tcf.testParallel(w_benchmark=True)
-    tcf.testCacheing()
-    test_expansionpoints()
+    # tcf.testTreeStructure()
+    # tcf.testCreateTreeGF()
+    # tcf.testChannelFitMats()
+    # tcf.testPassiveFit()
+    # tcf.testRecalcImpedanceMatrix()
+    # tcf.testSynRescale()
+    # tcf.testFitModel()
+    # tcf.testPickling()
+    # tcf.testParallel(w_benchmark=True)
+    # tcf.testCacheing()
+    # tcf.testCFitFromZPoint()
+    # tcf.testCFitFromZPas()
+    tcf.testCFitFromZAct()
+    # test_expansionpoints()

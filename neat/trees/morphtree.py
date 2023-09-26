@@ -337,9 +337,23 @@ class MorphNode(SNode):
 
     child_nodes = property(getChildNodes, setChildNodes)
 
+    def __str__(self, **kwargs):
+        node_str = super().__str__(**kwargs)
+        node_str += f" --- xyz = [{self.xyz[0]:.3f}, {self.xyz[1]:.3f}, {self.xyz[2]:.3f}] um, " \
+            f"R = {self.R:.2f} um, swc_type = {self.swc_type}"
+        return node_str
 
-    def __str__(self, **kwarg):
-        return super().__str__(**kwarg)
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            'xyz': self.xyz,
+            'R': self.R,
+            'swc_type': self.swc_type,
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
 
 
 class MorphTree(STree):

@@ -11,11 +11,15 @@ Author: W. Wybo
 import numpy as np
 
 import copy
+from typing import Literal
 
 from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
+from .stree import STree
+from .netree import Kernel
 from ..channels import ionchannels
+from ..tools import kernelextraction as ke
 from ..factorydefaults import DefaultPhysiology
 
 
@@ -192,6 +196,50 @@ class GreensNode(PhysNode):
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
+
+    def _calcChannelStatevarLinearTerms(self, freqs, v_resp, channel_storage):
+        """
+        Compute linearized responss of the ion channel state variables, given
+        the linearized voltage responses
+
+        Parameters
+        ----------
+        freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
+            The frequencies at which the impedance is to be evaluated
+        v_resp: `np.ndarray` (``dtype=complex``, ``ndim=1``, ``shape=(s,k)``)
+            Linearized voltage responses in the frequency domain, evaluated at
+            ``s`` frequencies and ``k`` locations
+        channel_storage: dict of ion channels (optional)
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+        use_conc: bool
+            if True, also uses concentration mechanisms to compute linearized
+            membrane impedance
+
+        Returns
+        -------
+        `np.ndarray` (``dtype=complex``, ``ndim=1``)
+            The membrane impedance
+        """
+        svar_terms = {}
+        # loop over all active channels
+        for channel_name in set(self.currents.keys()) - set('L'):
+
+            # recover the ionchannel object
+            channel = channel_storage[channel_name]
+
+            # get voltage(s), state variable expansion point(s) and
+            # concentration(s) around which to linearize the channel
+            v, sv = self._constructChannelArgs(channel)
+
+            # compute linearized channel contribution to membrane impedance
+            svar_terms[channel_name] = channel.computeLinStatevarResponse(
+                v, freqs, v_resp, **sv
+            )
+
+        return svar_terms
+
+
     def _setImpedance(self, freqs, channel_storage, use_conc=False):
         self.counter = 0
         self.z_m = self._calcMembraneImpedance(freqs, channel_storage,
@@ -289,6 +337,16 @@ class GreensNode(PhysNode):
                    (self.z_cd * np.sinh(self.gammaL*(1.-x1)) + np.cosh(self.gammaL*(1.-x1))) / \
                    self.wrongskian
 
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            "expansion_points": self.expansion_points,
+        })
+        return repr_dict
+
+    def __repr__(self):
+        return repr(self._getReprDict())
+
 
 class SomaGreensNode(GreensNode):
     def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
@@ -337,6 +395,17 @@ class GreensTree(PhysTree):
         super().__init__(file_n=file_n, types=types)
         self.freqs = None
 
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            'freqs': self.freqs
+        })
+        return repr_dict
+
+    def __repr__(self):
+        repr_str = STree.__repr__(self)
+        return repr_str + repr(self._getReprDict())
+
     def _createCorrespondingNode(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
@@ -366,7 +435,7 @@ class GreensTree(PhysTree):
         Parameters
         ----------
         freqs: `np.ndarray` (``dtype=complex``, ``ndim=1``)
-            frequencies at which the impedances will be evaluated ``[Hz]``
+            frequencies at which the impedances will be evaluated ``[Hz]``.
         use_conc: bool
             whether or not to incorporate concentrations in the calculation
         pprint: bool (default ``False``)
@@ -486,12 +555,7 @@ class GreensTree(PhysTree):
             frequency, second and third dimensions contain the impedance
             matrix ``[MOhm]`` at that frequency
         """
-        if isinstance(locarg, list):
-            locs = [MorphLoc(loc, self) for loc in locarg]
-        elif isinstance(locarg, str):
-            locs = self.getLocs(locarg)
-        else:
-            raise IOError('`locarg` should be list of locs or string')
+        locs = self._convertLocArgToLocs(locarg)
 
         n_loc = len(locs)
         z_mat = np.zeros((n_loc, n_loc) + self.root.z_in.shape,
@@ -570,6 +634,492 @@ class GreensTree(PhysTree):
         for c_node in node.child_nodes:
             self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
 
+    @morphtree.computationalTreetypeDecorator
+    def calcChannelResponseF(self, loc1, loc2):
+        """
+        Compute linearized ion channel state variable responses in the frequency
+        domain  at `loc2` to a delta current pulse input at `loc1`.
+
+        Parameters
+        ----------
+        loc1: Tuple(int, float) or `neat.MorphLoc`
+            the location of the delta input current pulse
+        loc2: Tuple(int, float) or `neat.MorphLoc`
+            location of the ion channel response
+
+        Returns
+        -------
+        dict of dict of `np.ndarray`
+            The linearized responses of all channels at loc2 to the delta
+            current pulse input. Can be accessed as:
+            [channel_name][statevar_name][frequency]
+        """
+        # cast to morphlocs
+        loc1 = MorphLoc(loc1, self)
+        loc2 = MorphLoc(loc2, self)
+
+        # compute channel responses
+        c_resp = self[loc2['node']]._calcChannelStatevarLinearTerms(
+            self.freqs, self.calcZF(loc1, loc2), self.channel_storage
+        )
+
+        return c_resp
+
+    @morphtree.computationalTreetypeDecorator
+    def calcChannelResponseMatrix(self, locarg):
+        """
+        Compute linearized ion channel state variable response matrix in the
+        frequency domain at all locations in `locarg` to delta current pulse
+        inputs at each of those loctions.
+
+        Note that the matrix is returned as a list of nested dictionaries.
+
+        Parameters
+        ----------
+        locarg: `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            ion channel responses are evaluated, if ``string``, specifies the
+            name under which a set of location is stored
+
+        Returns
+        -------
+        List of dict of dict of `np.ndarray`
+            The linearized responses of all channels to current pulse input,
+            can be accessed as
+            [location_index][channel_name][statevar_name][frequency, input loc]
+        """
+        locs = self._convertLocArgToLocs(locarg)
+        z_mat = self.calcImpedanceMatrix(locs)
+
+        channel_responses = []
+        for ii, loc in enumerate(locs):
+            c_resp = self[loc['node']]._calcChannelStatevarLinearTerms(
+                self.freqs, z_mat[:,ii,:], self.channel_storage
+            )
+            channel_responses.append(c_resp)
+
+        return channel_responses
 
 
+class GreensTreeTime(GreensTree):
+    freqs_vfit = None
+    ft = None
 
+    _slice_vfit = None
+    _slice_quad = None
+
+    def __init__(self, file_n=None, types=[1,3,4]):
+        super().__init__(file_n=file_n, types=types)
+
+    def _getReprDict(self):
+        t = self.ft.t if self.ft is not None else None
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            't': t
+        })
+        return repr_dict
+
+    def _checkInstantiated(self):
+        if self.freqs_vfit is None or self.ft is None:
+            raise AttributeError(
+                "Frequency arrays are not instatiated, call `setImpedance()` first"
+            )
+
+    def _setDefaultFreqarrayVectorFit(self):
+        # reasonable parameters to construct frequency array
+        dt = 0.1*1e-3 # s
+        N = 2**12
+        smax = np.pi/dt # Hz
+        ds = np.pi/(N*dt) # Hz
+
+        # frequency array for vector fitting
+        self.freqs_vfit = np.arange(-smax, smax, ds)*1j  # Hz
+
+    def _setDefaultFreqarrayQuadrature(self, t_inp):
+        # frequency array for time domain evaluation of the kernels through
+        # quadrature is contained in `FourrierTools.s`
+        if isinstance(t_inp, ke.FourrierTools):
+            self.ft = t_inp
+        else:
+            # reasonable parameters for FourrierTools
+            self.ft = ke.FourrierTools(t_inp, fmax=7., base=10., num=200)
+
+    def _setFreqAndTimeArrays(self, t_inp):
+        self._setDefaultFreqarrayVectorFit()
+        self._setDefaultFreqarrayQuadrature(t_inp)
+
+        self._slice_vfit = np.s_[:len(self.freqs_vfit)]
+        self._slice_quad = np.s_[len(self.freqs_vfit):]
+        self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
+
+    def setImpedance(self, t_inp):
+        self._setFreqAndTimeArrays(t_inp)
+        super().setImpedance(self.freqs)
+
+    def _inverseFourrier(self, func_vals_f,
+            method: Literal["", "exp fit", "quadrature"] = "",
+            compute_time_derivative=True,
+        ):
+        if method not in ["", "exp fit", "quadrature"]:
+            raise IOError(
+                "Method should be empty string, 'exp fit' or 'quadrature'"
+            )
+
+        # compute in time domain, method depends on ratio between spectral
+        # power in zero frequency vs max frequency component
+        # typically, this will mean exponential fit is chosen for input
+        # impedances and explicit quadrature for transfer impedances
+        f_arr = func_vals_f[self._slice_quad]
+        criterion_eval = np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s])
+        criterion = criterion_eval <= 1e-3
+
+        if criterion_eval > 1e-10:
+        # if False:
+            # if there is substantial spectral power in the max frequency
+            # components, we smooth the function with a squared cosine window
+            # to reduce oscillations
+            window = np.cos(np.pi * self.ft.s.imag / (2.*np.abs(self.ft.s[-1])))**2
+        else:
+            window = np.ones_like(self.ft.s)
+
+        # compute kernel through quadrature method
+        func_vals_t = self.ft.ftInv(
+            window * func_vals_f[self._slice_quad]
+        )[1].real * 1e-3 # MOhm/s -> MOhm/ms
+        if compute_time_derivative:
+            # compute differentiated kernel
+            dfunc_vals_t_dt = self.ft.ftInv(
+                self.ft.s * window * func_vals_f[self._slice_quad]
+            )[1].real * 1e-6 # MOhm/s^2 -> MOhm/ms^2
+
+        # when the criterion is satified, or if the default method is
+        # overridden to 'quadrature', we always return the the quadrature result
+        if (method == "" and criterion ) or method == "quadrature":
+            if compute_time_derivative:
+                return func_vals_t, dfunc_vals_t_dt
+            else:
+                return func_vals_t
+
+        # this code will only be reached when `method` is "exp_fit", or when
+        # `method` is "" but the criterion is not satisfied
+
+        # we set a custom set of initial poles for the vector fit algorithm
+        initpoles = np.concatenate((
+            np.linspace(.5, 10**1.3, 40)[:-1],
+            np.logspace(
+                1.3, np.log10(self.freqs[self._slice_vfit][-1].imag),
+                num=40, base=10,
+            )
+        ))
+
+        # compute kernel as superposition of exponentials in the frequency domain
+        f_exp_fitter = ke.fExpFitter()
+        alpha, gamma, pairs, rms = f_exp_fitter.fitFExp(
+            self.freqs[self._slice_vfit], func_vals_f[self._slice_vfit],
+            deg=40, initpoles="log10",
+            realpoles=True, zerostart=False,
+            constrained=True, reduce_numexp=False
+        )
+        zk = Kernel({'a': alpha*1e-3, 'c': gamma*1e-3})
+        if compute_time_derivative:
+            dzk_dt = zk.diff()
+        # linear fit of c in the time domain to the quadrature-computed kernels
+        # can improve accuracy
+        w = np.concatenate(
+            (self.ft.t[self.ft.t < 1.], np.ones_like(self.ft.t[self.ft.t >= 1.]))
+        )
+        # zk.fit_c(self.ft.t, func_vals_t, w=w)
+
+        # evaluate kernel in the time domain
+        func_vals_t = zk(self.ft.t)
+
+        if compute_time_derivative:
+            # linear fit of c in the time domain to the quadrature-computed kernels
+            # can improve accuracy
+            # dzk_dt.fit_c(self.ft.t, dfunc_vals_t_dt, w=w)
+            # compute differentiated kernel
+            dfunc_vals_t_dt = zk.diff(self.ft.t)
+
+            return func_vals_t, dfunc_vals_t_dt
+
+        else:
+            return func_vals_t
+
+    @morphtree.computationalTreetypeDecorator
+    def calcZT(self, loc1, loc2,
+            method: Literal["", "exp fit", "quadrature"] = "",
+            compute_time_derivative=True,
+            _zf=None,
+        ):
+        """
+        Computes the impulse response kernel between two locations for all
+        time points in `self.ft.t` (the input times provided to `setImpedance()`).
+
+        Parameters
+        ----------
+        loc1: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        loc2: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernel. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernel
+
+        Returns
+        -------
+        nd.ndarray (dtype = complex, ndim = 1)
+            The transfer impedance ``[MOhm]`` as a function of frequency
+        """
+        self._checkInstantiated()
+
+        # compute impedances in the frequency domain
+        zf = self.calcZF(loc1, loc2) if _zf is None else _zf
+
+        # convert frequency impedances to time domain kernels
+        return self._inverseFourrier(zf, method=method,
+            compute_time_derivative=compute_time_derivative
+        )
+
+    @morphtree.computationalTreetypeDecorator
+    def calcImpulseResponseMatrix(self, locarg,
+            method: Literal["", "exp fit", "quadrature"] = "",
+            compute_time_derivative=False,
+        ):
+        """
+        Computes the matrix of impulse response kernels at a given set of
+        locations for all time-points defined in `self.ft.t` (the input times
+        provided to `setImpedance()`).
+
+        Parameters
+        ----------
+        locarg: `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            impulse response kernels are evaluated, if ``string``, specifies the
+            name under which a set of location is stored
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernels. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernels
+
+        Returns
+        -------
+        `np.ndarray` (``dtype = self.freqs.dtype``, ``ndim = 3``)
+            the matrix of impulse responses, first dimension corresponds to the
+            time axis, second and third dimensions contain the impulse response
+            in ``[MOhm/ms]`` at that frequency
+        """
+        self._checkInstantiated()
+        locs = self._convertLocArgToLocs(locarg)
+
+        nt = len(self.ft.t) # number of time points
+        nl = len(locs) # number of locations
+
+        # compute impedance matrix in frequency domain
+        zf_mat = self.calcImpedanceMatrix(locs)
+
+        zt_mat = np.zeros((nt, nl, nl))
+        if compute_time_derivative:
+            dzt_dt_mat = np.zeros((nt, nl, nl))
+
+        for ii, loc1 in enumerate(locs):
+            for jj, loc2 in enumerate(locs):
+
+                if jj > ii:
+                    break
+
+                if compute_time_derivative:
+                    zt_mat[:, ii, jj], dzt_dt_mat[:, ii, jj] = self.calcZT(
+                        loc1, loc2,
+                        compute_time_derivative=True,
+                        _zf=zf_mat[:, ii, jj],
+                        method=method,
+                    )
+                    dzt_dt_mat[:, jj, ii] = dzt_dt_mat[:, ii, jj]
+
+                else:
+                    zt_mat[:, ii, jj] = self.calcZT(
+                        loc1, loc2,
+                        compute_time_derivative=False,
+                        _zf=zf_mat[:, ii, jj],
+                        method=method,
+                    )
+
+                zt_mat[:, jj, ii] = zt_mat[:, ii, jj]
+
+        if compute_time_derivative:
+            return zt_mat, dzt_dt_mat
+        else:
+            return zt_mat
+
+    @morphtree.computationalTreetypeDecorator
+    def calcChannelResponseT(self, loc1, loc2,
+            method: Literal["", "exp fit", "quadrature"] = "",
+            compute_time_derivative=False,
+            _crf=None,
+        ):
+        """
+        Compute linearized ion channel state variable responses in the time
+        domain  at `loc2` to a delta current pulse input at `loc1`.
+
+        Evaluated time-points are the ones in `self.ft.t` (the input times
+        provided to `setImpedance()`).
+
+        Parameters
+        ----------
+        loc1: Tuple(int, float) or `neat.MorphLoc`
+            the location of the delta input current pulse
+        loc2: Tuple(int, float) or `neat.MorphLoc`
+            location of the ion channel response
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernels. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernels
+
+        Returns
+        -------
+        dict of dict of `np.ndarray`
+            The linearized responses of all channels at loc2 to the delta
+            current pulse input. Can be accessed as:
+            `[channel_name][statevar_name][time]`
+        """
+        self._checkInstantiated()
+        loc1 = MorphLoc(loc1, self)
+        loc2 = MorphLoc(loc2, self)
+
+        # compute impedances in the frequency domain
+        crf = self.calcChannelResponseF(loc1, loc2) if _crf is None else _crf
+
+        crt, dcrt_dt = {}, {}
+        for channel_name in crf:
+
+            crt[channel_name] = {}
+            if compute_time_derivative:
+                dcrt_dt[channel_name] = {}
+
+            for svar_name in crf[channel_name]:
+
+                crt[channel_name][svar_name] = {}
+                if compute_time_derivative:
+                    dcrt_dt[channel_name][svar_name] = {}
+
+                    # convert frequency impedances to time domain kernels
+                    (
+                        crt[channel_name][svar_name],
+                        dcrt_dt[channel_name][svar_name]
+                    ) = self._inverseFourrier(
+                        crf[channel_name][svar_name],
+                        method=method,
+                        compute_time_derivative=compute_time_derivative,
+                    )
+
+                else:
+                    # convert frequency impedances to time domain kernels
+                    crt[channel_name][svar_name] = self._inverseFourrier(
+                        crf[channel_name][svar_name],
+                        method=method,
+                        compute_time_derivative=compute_time_derivative,
+                    )
+
+        if compute_time_derivative:
+            return crt, dcrt_dt
+        else:
+            return crt
+
+    def calcChannelResponseMatrix(self, locarg, compute_time_derivative=False):
+        """
+        Compute linearized ion channel state variable response matrix at all
+        locations in `locarg` to delta current pulse inputs at each of those
+        loctions.
+
+        Evaluated time-points are the ones in `self.ft.t` (the input times
+        provided to `setImpedance()`).
+
+        Note that the matrix is returned as a list of nested dictionaries.
+
+        Parameters
+        ----------
+        locarg: `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            ion channel responses are evaluated, if ``string``, specifies the
+            name under which a set of location is stored
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernels. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernels
+
+        Returns
+        -------
+        List of dict of dict of `np.ndarray`
+            The linearized responses of all channels to current pulse input,
+            can be accessed as
+            `[output loc index][channel name][statevar name][time, input loc index]`
+        """
+        locs = self._convertLocArgToLocs(locarg)
+
+        nt = len(self.ft.t) # number of time points
+        nl = len(locs) # number of locations
+
+        crt_mat, dcrt_dt_mat = [{} for _ in locs], [{} for _ in locs]
+        for ii, loc_out in enumerate(locs):
+            for jj, loc_in in enumerate(locs):
+
+                if compute_time_derivative:
+                    crt_loc1, dcrt_dt_loc1 = self.calcChannelResponseT(
+                        loc_in, loc_out,
+                        compute_time_derivative=True,
+                        method="quadrature",
+                    )
+                else:
+                    crt_loc1 = self.calcChannelResponseT(
+                        loc_in, loc_out,
+                        compute_time_derivative=False,
+                        method="quadrature",
+                    )
+
+                # in the first loop iteration, we initialize all dictionary elements
+                # for this location as arrays filled with zeros
+                if jj == 0:
+                    for channel_name in crt_loc1:
+                        crt_mat[ii][channel_name] = {}
+                        for svar_name in crt_loc1[channel_name]:
+                            crt_mat[ii][channel_name][svar_name] = np.zeros((nt, nl))
+
+                    if compute_time_derivative:
+                        for channel_name in dcrt_dt_loc1:
+                            dcrt_dt_mat[ii][channel_name] = {}
+                            for svar_name in crt_loc1[channel_name]:
+                                crt_mat[ii][channel_name][svar_name] = np.zeros((nt, nl))
+
+                # we fill the arrays with the time domain ion channel responses
+                for channel_name in crt_loc1:
+                    for svar_name in crt_loc1[channel_name]:
+                        crt_mat[ii][channel_name][svar_name][:,jj] = \
+                            crt_loc1[channel_name][svar_name]
+
+                if compute_time_derivative:
+                    for channel_name in dcrt_dt_loc1:
+                        for svar_name in dcrt_dt_loc1[channel_name]:
+                            dcrt_dt_mat[ii][channel_name][svar_name][:,jj] = \
+                                dcrt_dt_loc1[channel_name][svar_name]
+
+        if compute_time_derivative:
+            return crt_mat, dcrt_dt_mat
+        else:
+            return crt_mat

@@ -24,7 +24,7 @@ from .trees.phystree import PhysNode
 from .trees.sovtree import SOVTree
 from .trees.sovtree import SOVNode, SomaSOVNode
 
-from .trees.greenstree import GreensTree
+from .trees.greenstree import GreensTree, GreensTreeTime
 from .trees.greenstree import GreensNode, SomaGreensNode
 
 from .trees.netree import NET
