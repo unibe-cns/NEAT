@@ -96,6 +96,22 @@ class TestSTree():
         assert tree_str == str(self.tree)
         assert tree_repr == repr(self.tree)
 
+    def testHashing(self):
+        self.createTree()
+
+        tree_repr = "["\
+            "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
+            "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", " \
+            "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", " \
+            "\"{'node index': 3, 'parent index': 1, 'content': '{}'}\"]"
+
+        # we check whether the hashes generated with the standard hash function
+        # are consistent
+        assert hash(self.tree) == hash(tree_repr)
+        # we check whether the hash generated with the unique_hash function is
+        # correct, as this hash should be the same in every session
+        assert self.tree.unique_hash() == '758d984d08a36649d0fceb6e5004d05268ea325a53b95ddaf9cbb275930ac56c'
+
     def testNodeCounting(self):
         self.createTree()
         assert len(self.tree) == 4
@@ -266,6 +282,7 @@ class TestSTree():
 if __name__ == '__main__':
     tst = TestSTree()
     tst.testStringRepresentations()
+    tst.testHashing()
     # tst.testPaths()
     # tst.testBifurcationNodes()
     # tst.testDegreeOrderDepthNode()

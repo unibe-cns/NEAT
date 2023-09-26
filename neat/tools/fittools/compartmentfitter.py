@@ -54,37 +54,6 @@ def consecutive(inds):
     return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
 
 
-def nonnegative_hash(o):
-    return ctypes.c_size_t(hash(o)).value
-
-
-def make_hash(o):
-    """
-    Makes a hash from a dictionary, list, tuple or set to any level, that contains
-    only other hashable types (including any lists, tuples, sets, and
-    dictionaries).
-
-    From https://stackoverflow.com/questions/5884066/hashing-a-dictionary
-    """
-    if isinstance(o, (set, tuple, list)):
-
-        return nonnegative_hash(tuple([make_hash(e) for e in o]))
-
-    elif isinstance(o, np.ndarray):
-
-        return nonnegative_hash(o.tobytes())
-
-    elif not isinstance(o, dict):
-
-        return nonnegative_hash(o)
-
-    new_o = copy.deepcopy(o)
-    for k, v in new_o.items():
-        new_o[k] = make_hash(v)
-
-    return nonnegative_hash(tuple(frozenset(sorted(new_o.items()))))
-
-
 def _statevar_is_activating(f_statevar):
     """
     check whether a statevar is activating or inactivating
@@ -204,7 +173,7 @@ class FitTree(PhysTree):
 
         file_name = os.path.join(
             self.cache_path,
-            f"{self.cache_name}cache_{nonnegative_hash(repr(self))}.p",
+            f"{self.cache_name}cache_{self.unique_hash()}.p",
         )
 
         try:

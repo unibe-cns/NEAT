@@ -11,6 +11,7 @@ import numpy as np
 
 import warnings
 import copy
+import hashlib
 from collections import Counter
 from functools import reduce
 
@@ -289,6 +290,31 @@ class STree(object):
         for iternode in self.__iter__(node):
             repr_list.append(repr(iternode))
         return repr(repr_list)
+
+    def __hash__(self):
+        """
+        Generates an integer hash with that standard python `hash` function
+        applied to the representation string
+
+        Returns
+        -------
+            `int`: the hash
+        """
+        return hash(repr(self))
+
+    def unique_hash(self):
+        """
+        Generates a hexadecimal hash based on the hashlib sha25 algorithm
+        applied to the representation string
+
+        Returns
+        -------
+            `str`: the hash string
+        """
+        h = hashlib.new('sha256')
+        h.update(repr(self).encode())
+
+        return h.hexdigest()
 
     def checkOrdered(self):
         """
