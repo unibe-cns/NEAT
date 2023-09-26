@@ -118,7 +118,7 @@ class NestCompartmentTree(CompartmentTree):
 
         return [node._makeCompartmentDict() for node in self]
 
-    def initModel(self, model_name, n, **kwargs):
+    def initModel(self, model_name, n, suffix="_model", **kwargs):
         """
         Initialize n nest instantiations of the current model.
 
@@ -132,7 +132,7 @@ class NestCompartmentTree(CompartmentTree):
         **kwargs
             Keyword arguments to the `nest.Create()` function
         """
-        models = nest.Create(model_name + "_model", n, **kwargs)
+        models = nest.Create(model_name + suffix, n, **kwargs)
         print(self, "\n----\n")
         for sd in self._getCompartmentsStatus():
             print(sd)

@@ -483,6 +483,38 @@ class CompartmentTree(STree):
         """
         return CompartmentNode(index, ca=ca, g_c=g_c, g_l=g_l)
 
+    def getNodesFromLocinds(self, *args):
+        """
+        find the nodes that correspond(s) to a (list of) location
+        index (indices)
+
+        Parameters
+        ----------
+        args: `int` or `list` of `int`
+            location indices
+
+        Returns
+        -------
+        `neat.CompartmentNode` or `list` of `neat.CompartmentNode
+        """
+        nodes = []
+        for idx in args:
+
+            found = False
+            for node in self:
+                if node.loc_ind == idx:
+                    nodes.append(node)
+                    found = True
+                    break
+
+            if not found:
+                raise IndexError(f"Location index {idx} not in tree")
+
+        if len(nodes) == 1:
+            return nodes[0]
+        else:
+            return nodes
+
     def setEEq(self, e_eq, indexing='locs'):
         """
         Set the equilibrium potential at all nodes on the compartment tree
