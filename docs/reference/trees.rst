@@ -343,6 +343,18 @@ Simulate NEURON models
    NeuronSimTree.calcEEq
 
 
+Compute equilibrium potentials and concentrations
+=================================================
+
+.. autoclass:: neat.EquilibriumTree
+
+.. autosummary::
+   :toctree: generated/
+
+   EquilibriumTree.calcEEq
+   EquilibriumTree.setEEq
+
+
 *************
 Other Classes
 *************

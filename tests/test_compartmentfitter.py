@@ -11,7 +11,7 @@ import pickle
 from neat import MorphLoc
 from neat import PhysTree, GreensTree, GreensTreeTime, SOVTree
 from neat import CompartmentFitter
-import neat.tools.fittools.compartmentfitter as compartmentfitter
+import neat.modelreduction.compartmentfitter as compartmentfitter
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
