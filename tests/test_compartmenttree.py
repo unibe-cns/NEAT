@@ -352,7 +352,7 @@ class TestCompartmentTree():
         # compute potassium impedance matrices
         z_mats_k = []
         for e_eq in e_eqs:
-            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setVEP(e_eq)
             greens_tree_k.setCompTree()
             greens_tree_k.setImpedance(self.freqs)
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
@@ -373,7 +373,7 @@ class TestCompartmentTree():
         # compute sodium impedance matrices
         z_mats_na = []
         for ii, sv in enumerate(svs):
-            greens_tree_na.setEEq(e_eqs[ii%len(e_eqs)])
+            greens_tree_na.setVEP(e_eqs[ii%len(e_eqs)])
             greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
             greens_tree_na.setCompTree()
             greens_tree_na.setImpedance(self.freqs)
@@ -382,7 +382,7 @@ class TestCompartmentTree():
         # compute combined impedance matrices
         z_mats_comb = []
         for e_eq in e_eqs:
-            self.greens_tree.setEEq(e_eq)
+            self.greens_tree.setVEP(e_eq)
             self.greens_tree.setCompTree()
             self.greens_tree.setImpedance(self.freqs)
             z_mats_comb.append(self.greens_tree.calcImpedanceMatrix(locs))
@@ -462,18 +462,18 @@ class TestCompartmentTree():
         # compute impedance matrix
         v_h = -42.
         # original
-        self.greens_tree.setEEq(v_h)
+        self.greens_tree.setVEP(v_h)
         self.greens_tree.setCompTree()
         self.greens_tree.setImpedance(freqs)
         z_mat_orig = self.greens_tree.calcImpedanceMatrix([(1.,.5)])
         # potassium
-        greens_tree_k.setEEq(v_h)
+        greens_tree_k.setVEP(v_h)
         greens_tree_k.setCompTree()
         greens_tree_k.setImpedance(freqs)
         z_mat_k = greens_tree_k.calcImpedanceMatrix([(1,.5)])
         # sodium
         greens_tree_na.removeExpansionPoints()
-        greens_tree_na.setEEq(v_h)
+        greens_tree_na.setVEP(v_h)
         greens_tree_na.setCompTree()
         greens_tree_na.setImpedance(freqs)
         z_mat_na = greens_tree_na.calcImpedanceMatrix([(1,.5)])
@@ -525,7 +525,7 @@ class TestCompartmentTree():
         assert np.abs(g_ * (e_eqs[-1] - ctree[0].currents['Na_Ta'][1]) - i_) < 1e-10
 
         # test leak fitting
-        self.greens_tree.setEEq(-75.)
+        self.greens_tree.setVEP(-75.)
         self.greens_tree.setCompTree()
         ctree.setEEq(-75.)
         ctree.removeExpansionPoints()

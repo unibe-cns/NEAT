@@ -74,7 +74,7 @@ class TestNest:
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
-        self.tree.setEEq(-75.)
+        self.tree.setVEP(-75.)
         # set computational tree
         self.tree.setCompTree()
 

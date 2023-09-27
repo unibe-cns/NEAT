@@ -303,15 +303,15 @@ class TestConcMechs:
             sv = node.getExpansionPoint(channel_name).copy()
 
             # if voltage is not in expansion point, use equilibrium potential
-            v = sv.pop('v', node.e_eq)
+            v = sv.pop('v', node.v_ep)
 
             # if concencentration is in expansion point, use it. Otherwise use
-            # concentration in equilibrium concentrations (self.conc_eqs), if
+            # concentration in equilibrium concentrations (self.conc_eps), if
             # it is there. If not, use default concentration.
             ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
             conc = {
                 ion: sv.pop(
-                        ion, node.conc_eqs.copy().pop(ion, CFG.conc[ion])
+                        ion, node.conc_eps.copy().pop(ion, CFG.conc[ion])
                     ) \
                 for ion in ions
             }
@@ -345,15 +345,15 @@ class TestConcMechs:
             sv = node.getExpansionPoint(channel_name).copy()
 
             # if voltage is not in expansion point, use equilibrium potential
-            v = sv.pop('v', node.e_eq)
+            v = sv.pop('v', node.v_ep)
 
             # if concencentration is in expansion point, use it. Otherwise use
-            # concentration in equilibrium concentrations (self.conc_eqs), if
+            # concentration in equilibrium concentrations (self.conc_eps), if
             # it is there. If not, use default concentration.
             ions = [str(ion_) for ion_ in channel.conc] # convert potential sympy symbols to str
             conc = {
                 ion_: sv.pop(
-                        ion_, node.conc_eqs.copy().pop(ion_, CFG.conc[ion_])
+                        ion_, node.conc_eps.copy().pop(ion_, CFG.conc[ion_])
                     ) \
                 for ion_ in ions
             }
@@ -398,13 +398,13 @@ class TestConcMechs:
         eq0 = {'v': res0['v_m'][0][0], 'ca': res0['ca'][0][0]}
         eq2 = {'v': res2['v_m'][0][0], 'ca': res2['ca'][0][0]}
 
-        tree0.setEEq(eq0['v'], node_arg=[tree0[1]])
-        tree1.setEEq(eq0['v'], node_arg=[tree1[1]]) # use eq0 -- without conc
-        tree2.setEEq(eq2['v'], node_arg=[tree2[1]])
+        tree0.setVEP(eq0['v'], node_arg=[tree0[1]])
+        tree1.setVEP(eq0['v'], node_arg=[tree1[1]]) # use eq0 -- without conc
+        tree2.setVEP(eq2['v'], node_arg=[tree2[1]])
 
-        tree0.setConcEq('ca', eq0['ca'], node_arg=[tree0[1]])
-        tree1.setConcEq('ca', eq0['ca'], node_arg=[tree1[1]]) # use eq0 -- without conc
-        tree2.setConcEq('ca', eq2['ca'], node_arg=[tree2[1]])
+        tree0.setConcEP('ca', eq0['ca'], node_arg=[tree0[1]])
+        tree1.setConcEP('ca', eq0['ca'], node_arg=[tree1[1]]) # use eq0 -- without conc
+        tree2.setConcEP('ca', eq2['ca'], node_arg=[tree2[1]])
 
         # test whether computed and simulated open probabilities are the same
         calc_p_open2 = {

@@ -286,7 +286,7 @@ class STree(object):
         """
         if node is None:
             node = self.root
-        repr_list = []
+        repr_list = [self.__class__.__name__]
         for iternode in self.__iter__(node):
             repr_list.append(repr(iternode))
         return repr(repr_list)

@@ -10,8 +10,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
-from ...trees.morphtree import MorphLoc
-from ...trees.phystree import PhysTree
+from ...trees.morphtree import MorphLoc, originalTreetypeDecorator, computationalTreetypeDecorator
+from ...trees.phystree import PhysTree, PhysNode, originalTreeModificationDecorator
 from ...trees.greenstree import GreensTree, GreensTreeTime
 from ...trees.sovtree import SOVTree
 from ...trees.netree import NET, NETNode, Kernel
@@ -128,49 +128,11 @@ def getExpansionPoints(e_hs, channel, only_e_h=False):
     return sv_hs
 
 
-def asPassiveDendrite(phys_tree, factor_lambda=2., t_calibrate=500.):
-        """
-        Set the dendrites to be passive compartments. Channel conductances at
-        the resting potential are added to passive membrane conductance.
-
-        Parameters
-        ----------
-        phys_tree: `neat.PhysTree()`
-            the neuron model
-        factor_lambda: float (optional, defaults to 2.)
-            multiplies the numbers of compartments given by the lambda rule (to
-            compute resting membrane potential)
-        t_calibrate: float (optional, defaults to 500. ms)
-            The calibration time for the model (should reach resting potential)
-
-        Returns
-        -------
-        `neat.PhysTree()`
-        """
-        dt, t_max = .1, 1.
-        # create a biophysical simulation model
-        sim_tree = phys_tree.__copy__(new_tree=neurm.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree.initModel(dt=dt, factor_lambda=factor_lambda, t_calibrate=t_calibrate)
-        sim_tree.storeLocs([(node.index, .5) for node in phys_tree], 'rec locs')
-        res = sim_tree.run(t_max)
-        sim_tree.deleteModel()
-        v_eqs = [v_m[-1] for v_m in res['v_m']]
-        # store the equilbirum potential distribution
-        phys_tree.setEEq(v_eqs)
-        phys_tree.asPassiveMembrane(node_arg='basal')
-        phys_tree.asPassiveMembrane(node_arg='apical')
-        phys_tree.setCompTree(eps=1e-2)
-
-        return phys_tree
-
-
 class FitTree(PhysTree):
     def maybe_execute_funcs(self,
         funcs_args_kwargs=[],
         pprint=False,
     ):
-
         file_name = os.path.join(
             self.cache_path,
             f"{self.cache_name}cache_{self.unique_hash()}.p",
@@ -211,6 +173,137 @@ class FitTree(PhysTree):
             if self.save_cache:
                 with open(file_name, 'wb') as file:
                     pickle.dump(self, file)
+
+
+class EquilibriumNode(PhysNode):
+    """
+    Tree class that allows for the calculation of the equilibrium potential at
+    each node
+
+    Attributes
+    ----------
+    expansion_points: dict {str: np.ndarray}
+        Stores ion channel expansion points for this segment.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+class EquilibriumTree(FitTree):
+    """
+    Tree class that allows for the calculation of the equilibrium potential at
+    each node
+    """
+    def __init__(self, *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
+        super().__init__(*args, **kwargs)
+
+        self.cache_name = cache_name
+        self.cache_path = cache_path
+        self.save_cache = save_cache
+        self.recompute_cache = recompute_cache
+
+    def _createCorrespondingNode(self, node_index, p3d=None,
+                                      c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
+        """
+        Creates a node with the given index corresponding to the tree class.
+
+        Parameters
+        ----------
+            node_index: int
+                index of the new node
+        """
+        return PhysNode(node_index, p3d=p3d)
+
+    def calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+        """
+        Calculates equilibrium potentials and concentrations in the tree.
+        Computes the equilibria through a NEURON simulations without inputs.
+
+        Parameters
+        ----------
+        locarg: `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            equilibrium state evaluated, if ``string``, specifies the
+            name under which a set of locations is stored
+        ions: `iterable` of `str
+            the names of the ions for which the concentration needs to be measured
+        t_max: float
+            duration of the simulation
+        dt: float
+            time-step of the simulation
+        factor_lambda: `float`
+            multiplies the number of compartments suggested by the lambda-rule
+        """
+        locs = self._convertLocArgToLocs(locarg)
+        if ions is None: ions = self.ions
+        # use longer simulation for Eeq fit if concentration mechansims are present
+        t_max = t_max*20. if len(ions) > 0 else t_max
+
+        # create a biophysical simulation model
+        sim_tree_biophys = self.__copy__(new_tree=neurm.NeuronSimTree())
+        # compute equilibrium potentials
+        sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
+        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
+        res_biophys = sim_tree_biophys.run(t_max, record_concentrations=ions)
+        sim_tree_biophys.deleteModel()
+
+        return (
+            np.array([v_m[-1] for v_m in res_biophys['v_m']]),
+            {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
+        )
+
+    def calcEEqTODO(self, locarg, ions=None, method="interp", **kwargs):
+        """
+        Calculates equilibrium potentials and concentrations in the tree.
+
+        Uses either linear interpolations between the stored equilibria at the
+        midpoints of the nodes or computes the equilibria through a NEURON
+        simulation without inputs.
+        """
+        pass
+
+    def _setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+        if ions is None: ions = self.ions
+
+        locs = [(n.index, .5) for n in self]
+        res = self.calcEEq(locs, ions=ions, t_max=500., dt=0.1, factor_lambda=10.)
+
+        for ii, n in enumerate(self):
+            n.setVEP(res[0][ii])
+            for ion, conc in res[1].items():
+                n.setConcEP(ion, conc[ion][ii])
+
+    def setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
+        """
+        Set equilibrium potentials and concentrations in the tree. Computes
+        the equilibria through a NEURON simulation without inputs.
+
+        Parameters
+        ----------
+        ions: `list` of `str
+            the names of the ions for which the concentration needs to be measured
+        t_max: float
+            duration of the simulation
+        dt: float
+            time-step of the simulation
+        factor_lambda: `float`
+            multiplies the number of compartments suggested by the lambda-rule
+        """
+        self.maybe_execute_funcs(
+            pprint=pprint,
+            funcs_args_kwargs=[
+                (
+                    self._setEEq,
+                    (),
+                    dict(ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
+                ),
+            ]
+        )
 
 
 class FitTreeGF(GreensTree, FitTree):
@@ -268,6 +361,7 @@ class FitTreeGF(GreensTree, FitTree):
             ]
         )
 
+    @computationalTreetypeDecorator
     def calcNETSteadyState(self, root_loc=None, dx=5., dz=5.):
         if root_loc is None: root_loc = (1, .5)
         root_loc = MorphLoc(root_loc, self)
@@ -331,6 +425,7 @@ class FitTreeC(GreensTreeTime, FitTree):
         self.save_cache = save_cache
         self.recompute_cache = recompute_cache
 
+    @computationalTreetypeDecorator
     def setImpedancesInTree(self, t_arr, pprint=False):
         """
         Sets the impedances in the tree that are necessary for the evaluation
@@ -374,7 +469,8 @@ class FitTreeSOV(SOVTree, FitTree):
         self.save_cache = save_cache
         self.recompute_cache = recompute_cache
 
-    def setSOVInTree(self, pprint=False, maxspace_freq=100.):
+    @computationalTreetypeDecorator
+    def setSOVInTree(self, maxspace_freq=100., pprint=False):
         if pprint:
             print(f'>>> evaluating SOV expansion')
 
@@ -425,8 +521,27 @@ class CompartmentFitter(object):
             cache_name='', cache_path='',
             save_cache=True, recompute_cache=False,
         ):
-        self.tree = phys_tree.__copy__(new_tree=PhysTree())
+        # cache related params
+        self.cache_name = cache_name
+        self.cache_path = cache_path
+        self.save_cache = save_cache
+        self.recompute_cache = recompute_cache
+
+        if len(cache_path) > 0 and not os.path.isdir(cache_path):
+            os.makedirs(cache_path)
+
+        # original tree
+        self.tree = phys_tree.__copy__(
+            new_tree=EquilibriumTree(
+                cache_path=self.cache_path,
+                cache_name=self.cache_name + "_orig_",
+                save_cache=self.save_cache,
+                recompute_cache=self.recompute_cache,
+            )
+        )
         self.tree.treetype = 'original'
+        # set the equilibrium potentials in the tree
+        self.tree.setEEq()
         # get all channels in the tree
         self.channel_names = self.tree.getChannelsInTree()
 
@@ -436,14 +551,6 @@ class CompartmentFitter(object):
         if concmech_cfg is None:
             self.concmech_cfg = DefaultMechParams()
 
-        # cache related params
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
-
-        if len(cache_path) > 0 and not os.path.isdir(cache_path):
-            os.makedirs(cache_path)
 
         # boolean flag that is reset the first time `self.fitPassive` is called
         self.use_all_channels_for_passive = True
@@ -487,12 +594,6 @@ class CompartmentFitter(object):
             # reversal potential is the same throughout the reduced model
             self.ctree.addCurrent(copy.deepcopy(channel), np.mean(e_revs))
 
-        # find all ions of all concentration mechanisms present in the tree
-        ions = set()
-        for node in self.tree:
-            for ion, concmech in node.concmechs.items():
-                ions.add(ion)
-
         for node in self.ctree:
             loc_idx = node.loc_ind
             concmechs = self.tree[locs[loc_idx]['node']].concmechs
@@ -500,7 +601,7 @@ class CompartmentFitter(object):
             # try to set default parameters as the ones from the original tree
             # if the concmech is not present at the corresponding location,
             # use the default parameters
-            for ion in ions:
+            for ion in self.tree.ions:
                 if ion in concmechs:
                     cparams = {
                         pname: pval for pname, pval in concmechs[ion].items()
@@ -511,7 +612,9 @@ class CompartmentFitter(object):
                     node.addConcMech(ion, **self.concmech_cfg.exp_conc_mech)
 
         # set the equilibirum potentials at fit locations
-        self.setEEq()
+        eq = self.tree.calcEEq('fit locs')
+        self.v_eqs_fit = eq[0]
+        self.cons_eqs_fit = eq[1]
 
     def createTreeGF(self,
             channel_names=[],
@@ -817,27 +920,39 @@ class CompartmentFitter(object):
 
         """
         self.use_all_channels_for_passive = use_all_channels
-
-        # get equilibirum potentials
-        v_eqs_tree = self.getEEq('tree')
-        v_eqs_fit = self.getEEq('fit')
-
         locs = self.tree.getLocs('fit locs')
-        # initialize appropriate greens tree
-        channel_names = list(self.tree.channel_storage.keys()) if use_all_channels \
-                                                               else []
 
         suffix = "_pas_"
         if use_all_channels:
-            suffix = f"_passified_{'_'.join(channel_names)}_"
+            suffix = f"_passified_"
 
-        fit_tree = self.createTreeGF(
-            channel_names,
-            cache_name_suffix=suffix,
-        )
-        fit_tree.setEEq(v_eqs_tree)
-        # set the channels to passive
-        fit_tree.asPassiveMembrane()
+        if use_all_channels:
+            fit_tree = self.tree.__copy__(
+                new_tree=EquilibriumTree(
+                    cache_path=self.cache_path,
+                    cache_name=self.cache_name + suffix,
+                    save_cache=self.save_cache,
+                    recompute_cache=self.recompute_cache,
+                )
+            )
+            # set the channels to passive
+            fit_tree.asPassiveMembrane()
+            # convert to a greens tree for further evaluation
+            fit_tree = fit_tree.__copy__(
+                new_tree=FitTreeGF(
+                    cache_path=self.cache_path,
+                    cache_name=self.cache_name + suffix,
+                    save_cache=self.save_cache,
+                    recompute_cache=self.recompute_cache
+                )
+            )
+            fit_tree.setCompTree()
+        else:
+            fit_tree = self.createTreeGF(
+                [], # empty list of channel to include
+                cache_name_suffix=suffix,
+            )
+
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(freqs=0., pprint=pprint)
         # compute the steady state impedance matrix
@@ -961,8 +1076,6 @@ class CompartmentFitter(object):
                 recompute_cache=self.recompute_cache,
             ),
         )
-        # set the equilibirum potentials in the tree
-        tree.setEEq(self.getEEq("tree"))
         tree.setCompTree(eps=1e-2)
         # set the impedances for kernel calculation
         tree.setImpedance(self.cfg.t_fit)
@@ -976,8 +1089,7 @@ class CompartmentFitter(object):
             compute_time_derivative=False,
         )
         # perform the capacitance fit
-        self.ctree.setEEq(self.getEEq("fit"))
-        # self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
+        self.ctree.setEEq(self.v_eqs_fit)
         self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
 
     def _calcSOVMats(self, locs, pprint=False):
@@ -1342,75 +1454,75 @@ class CompartmentFitter(object):
 
         return net_reduced
 
-    def calcEEq(self, locs, t_max=500., dt=0.1, factor_lambda=10., ions=[]):
-        # create a biophysical simulation model
-        sim_tree_biophys = self.tree.__copy__(new_tree=neurm.NeuronSimTree())
-        # compute equilibrium potentials
-        sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
-        res_biophys = sim_tree_biophys.run(t_max, record_concentrations=ions)
-        sim_tree_biophys.deleteModel()
+    # def calcEEq(self, locs, t_max=500., dt=0.1, factor_lambda=10., ions=[]):
+    #     # create a biophysical simulation model
+    #     sim_tree_biophys = self.tree.__copy__(new_tree=neurm.NeuronSimTree())
+    #     # compute equilibrium potentials
+    #     sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
+    #     sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
+    #     res_biophys = sim_tree_biophys.run(t_max, record_concentrations=ions)
+    #     sim_tree_biophys.deleteModel()
 
-        return (
-            np.array([v_m[-1] for v_m in res_biophys['v_m']]),
-            {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
-        )
+    #     return (
+    #         np.array([v_m[-1] for v_m in res_biophys['v_m']]),
+    #         {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
+    #     )
 
-    def setEEq(self, t_max=500., dt=0.1, factor_lambda=10.):
-        """
-        Set equilibrium potentials, measured from neuron simulation. Sets the
-        `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
-        equilibrium potentials at (the middle of) each node in the original
-        tree and at each of the fit locations
+    # def setEEq(self, t_max=500., dt=0.1, factor_lambda=10.):
+    #     """
+    #     Set equilibrium potentials, measured from neuron simulation. Sets the
+    #     `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
+    #     equilibrium potentials at (the middle of) each node in the original
+    #     tree and at each of the fit locations
 
-        Parameters
-        ----------
-        t_max: float
-            duration of the neuron simulation
-        dt: float
-            time-step of the neuron simulation
-        factor_lambda: int of float
-            if int, signifies the number of segments per section. If float,
-            multiplies the number of segments given by the lambda rule with this
-            number
-        """
-        tree_locs = [MorphLoc((n.index, .5), self.tree) for n in self.tree]
-        fit_locs = self.tree.getLocs('fit locs')
-        # compute equilibrium potentials
-        v_eqs = self.calcEEq(tree_locs + fit_locs,
-                             t_max=t_max, dt=dt, factor_lambda=factor_lambda)[0]
-        # store the equilibrium potentials
-        self.v_eqs_tree = {n.index: v for n, v in zip(self.tree, v_eqs)}
-        self.v_eqs_fit = v_eqs[len(tree_locs):]
+    #     Parameters
+    #     ----------
+    #     t_max: float
+    #         duration of the neuron simulation
+    #     dt: float
+    #         time-step of the neuron simulation
+    #     factor_lambda: int of float
+    #         if int, signifies the number of segments per section. If float,
+    #         multiplies the number of segments given by the lambda rule with this
+    #         number
+    #     """
+    #     tree_locs = [MorphLoc((n.index, .5), self.tree) for n in self.tree]
+    #     fit_locs = self.tree.getLocs('fit locs')
+    #     # compute equilibrium potentials
+    #     v_eqs = self.calcEEq(tree_locs + fit_locs,
+    #                          t_max=t_max, dt=dt, factor_lambda=factor_lambda)[0]
+    #     # store the equilibrium potentials
+    #     self.v_eqs_tree = {n.index: v for n, v in zip(self.tree, v_eqs)}
+    #     self.v_eqs_fit = v_eqs[len(tree_locs):]
 
-    def getEEq(self, e_eqs_type, **kwargs):
-        """
-        Get equilibrium potentials. Specify
-        `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
-        equilibrium potentials at (the middle of) each node in the original
-        tree and at each of the fit locations
+    # def getEEq(self, e_eqs_type, **kwargs):
+    #     """
+    #     Get equilibrium potentials. Specify
+    #     `v_eqs_tree` and `v_eqs_fit` attributes, respectively containing the
+    #     equilibrium potentials at (the middle of) each node in the original
+    #     tree and at each of the fit locations
 
-        Parameters
-        ----------
-        e_eqs_type: 'tree' or 'fit'
-            For 'tree', returns the `v_eqs_tree` attribute, containing the
-            equilibrium potentials at (the middle of) each node in the original
-            tree. For 'fit', returns the `v_eqs_fit` attribute, containing the
-            equilibrium potentials at each of the fit locations.
-        kwargs: When `v_eqs_tree` or `v_eqs_fit`, have not been set, calls
-            ::func::`self.setEEq()` with these `kwargs`
+    #     Parameters
+    #     ----------
+    #     e_eqs_type: 'tree' or 'fit'
+    #         For 'tree', returns the `v_eqs_tree` attribute, containing the
+    #         equilibrium potentials at (the middle of) each node in the original
+    #         tree. For 'fit', returns the `v_eqs_fit` attribute, containing the
+    #         equilibrium potentials at each of the fit locations.
+    #     kwargs: When `v_eqs_tree` or `v_eqs_fit`, have not been set, calls
+    #         ::func::`self.setEEq()` with these `kwargs`
 
-        """
-        if not hasattr(self, 'v_eqs_tree') or not hasattr(self, 'v_eqs_fit'):
-            self.setEEq(**kwargs)
-        if e_eqs_type == 'fit':
-            return self.v_eqs_fit
-        elif e_eqs_type == 'tree':
-            return self.v_eqs_tree
-        else:
-            raise IOError('``e_eqs_type`` should be \'fit\' or \'tree\'')
+    #     """
+    #     if not hasattr(self, 'v_eqs_tree') or not hasattr(self, 'v_eqs_fit'):
+    #         self.setEEq(**kwargs)
+    #     if e_eqs_type == 'fit':
+    #         return self.v_eqs_fit
+    #     elif e_eqs_type == 'tree':
+    #         return self.v_eqs_tree
+    #     else:
+    #         raise IOError('``e_eqs_type`` should be \'fit\' or \'tree\'')
 
-    def fitEEq(self, ions=[], **kwargs):
+    def fitEEq(self, **kwargs):
         """
         Fits the leak potentials of the reduced model to yield the same
         equilibrium potentials as the full model
@@ -1424,17 +1536,10 @@ class CompartmentFitter(object):
         """
         fit_locs = self.tree.getLocs('fit locs')
 
-        # compute equilibrium potentials
-        eqs = self.calcEEq(
-            fit_locs,
-            ions=ions,
-            **kwargs
-        )
-
         # set the equilibria
-        self.ctree.setEEq(eqs[0])
-        for ion in ions:
-            self.ctree.setConcEq(ion, eqs[1][ion])
+        self.ctree.setEEq(self.v_eqs_fit)
+        for ion in self.tree.ions:
+            self.ctree.setConcEq(ion, self.conc_eqs[ion])
 
         # fit the leak
         self.ctree.fitEL()
@@ -1444,7 +1549,6 @@ class CompartmentFitter(object):
     def fitModel(self,
         loc_arg,
         alpha_inds=[0], use_all_channels_for_passive=True,
-        fit_ions=['ca'],
         pprint=False, parallel=False,
     ):
         """
@@ -1460,9 +1564,6 @@ class CompartmentFitter(object):
             Indices of all mode time-scales to be included in the fit
         use_all_channels_for_passive: bool (optional, default ``True``)
             Uses all channels in the tree to compute coupling conductances
-        fit_ions: List[str]
-            Ions for which the associated concentration mechanisms have to be
-            fitted.
         pprint:  bool
             whether to print information
         parallel:  bool
@@ -1490,16 +1591,11 @@ class CompartmentFitter(object):
         self.fitChannels(pprint=pprint, parallel=parallel)
 
         # fit the concentration mechansims
-        fit_ions_ = []
-        for ion in fit_ions:
+        for ion in self.tree.ions:
             found = self.fitConcentration(ion, fit_tau=False, pprint=pprint)
-            if found:
-                fit_ions_.append(ion)
 
-        # use longer simulation for Eeq fit if concentration mechansims are present
-        t_max = 10000. if len(fit_ions_) > 0 else 500.
         # fit the resting potentials
-        self.fitEEq(ions=fit_ions_, t_max=t_max)
+        self.fitEEq()
 
         return self.ctree
 
@@ -1515,23 +1611,14 @@ class CompartmentFitter(object):
             channel_names = list(self.tree.channel_storage.keys())
         suffix = '_'.join(channel_names)
 
-        # compute equilibirum potentials
-        all_locs = [(n.index, .5) for n in self.tree]
-        e_eqs = self.calcEEq(all_locs + locs)[0]
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(
             channel_names=channel_names,
             cache_name_suffix=f"_{'_'.join(channel_names)}_",
         )
-        for ii, node in enumerate(greens_tree):
-            node.setEEq(e_eqs[ii])
         greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
         # compute the impedance matrix of the synapse locations
         z_mat = greens_tree.calcImpedanceMatrix(locs, explicit_method=False)
-
-        # get the reversal potentials of the synapse locations
-        n_all = len(self.tree)
-        e_eqs = e_eqs[n_all:]
 
         # compute the ZG matrix
         gd_mat = np.diag(g_syns)
@@ -1587,24 +1674,19 @@ class CompartmentFitter(object):
         cg_syns = np.concatenate((np.zeros(n_comp), np.array(g_syns)))
         comp_inds, g_syns, e_revs = np.array(comp_inds), np.array(g_syns), np.array(e_revs)
 
-        # compute equilibirum potentials
-        all_locs = [(n.index, .5) for n in self.tree]
-        e_eqs = self.calcEEq(all_locs + cs_locs)[0]
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(
             channel_names=channel_names,
             cache_name_suffix=f"_{'_'.join(channel_names)}_",
         )
-        for ii, node in enumerate(greens_tree):
-            node.setEEq(e_eqs[ii])
         greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
         # compute the impedance matrix of the synapse locations
         z_mat = greens_tree.calcImpedanceMatrix(cs_locs, explicit_method=False)
         zc_mat = z_mat[:n_comp, :n_comp]
 
         # get the reversal potentials of the synapse locations
-        n_all = len(self.tree)
-        e_cs = e_eqs[n_all:n_all+n_comp]
+        e_eqs = self.tree.calcEEq(cs_locs)[0]
+        e_cs = e_eqs[:n_comp]
         e_ss = e_eqs[-n_syn:]
 
         # compute the ZG matrix
@@ -1672,15 +1754,11 @@ class CompartmentFitter(object):
         if channel_names is None:
             channel_names = list(self.tree.channel_storage.keys())
 
-        # compute equilibirum potentials
-        e_eqs = self.getEEq('tree')
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.createTreeGF(
             channel_names=channel_names,
             cache_name_suffix=f"_{'_'.join(channel_names)}_at_rest_",
         )
-        for ii, node in enumerate(greens_tree):
-            node.setEEq(e_eqs[ii])
         greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
 
         # process input

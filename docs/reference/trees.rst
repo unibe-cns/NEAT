@@ -266,7 +266,7 @@ Physiology Tree
    :toctree: generated/
 
    PhysTree.asPassiveMembrane
-   PhysTree.setEEq
+   PhysTree.setVEP
    PhysTree.setPhysiology
    PhysTree.setLeakCurrent
    PhysTree.addCurrent
@@ -383,9 +383,6 @@ Individual fit functions.
    CompartmentFitter.fitChannels
    CompartmentFitter.fitConcentration
    CompartmentFitter.fitCapacitance
-   CompartmentFitter.setEEq
-   CompartmentFitter.getEEq
-   CompartmentFitter.fitEEq
    CompartmentFitter.fitSynRescale
 
 

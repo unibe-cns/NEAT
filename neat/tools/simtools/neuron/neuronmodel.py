@@ -147,7 +147,7 @@ class NeuronSimNode(PhysNode):
         if self.g_shunt > 1e-10:
             shunt = h.Shunt(compartment(1.))
             shunt.g = self.g_shunt # uS
-            shunt.e = self.e_eq    # mV
+            shunt.e = self.v_ep    # mV
             return shunt
         else:
             return None
@@ -867,7 +867,7 @@ class NeuronSimTree(PhysTree):
 
         return res
 
-    def calcEEq(self, t_dur=100., set_e_eq=True):
+    def calcEEq(self, t_dur=100., set_v_ep=True):
         """
         Compute the equilibrium potentials in the middle (``x=0.5``) of each node.
 
@@ -875,16 +875,16 @@ class NeuronSimTree(PhysTree):
         ----------
         t_dur: float (optional, default ``100.`` ms)
             The duration of the simulation
-        set_e_eq: bool (optional, default ``True``)
-            Store the equilibrium potential as the ``PhysNode.e_eq`` attribute
+        set_v_ep: bool (optional, default ``True``)
+            Store the equilibrium potential as the ``PhysNode.v_ep`` attribute
         """
         self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
                        v_init=self.v_init, factor_lambda=self.factor_lambda)
         self.storeLocs([(n.index, 0.5) for n in self], name='rec locs')
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
-        if set_e_eq:
-            for (node, e) in zip(self, v_eq): node.setEEq(e_eq)
+        if set_v_ep:
+            for (node, e) in zip(self, v_eq): node.setVEP(v_ep)
 
 
         return v_eq
@@ -902,7 +902,7 @@ class NeuronSimTree(PhysTree):
                 res = self.run(t_dur)
                 self.deleteModel()
                 # voltage deflections
-                # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].e_eq
+                # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].v_ep
                 v_trans = res['v_m'][1][-int(1./self.dt)] - res['v_m'][1][0]
                 # compute impedances
                 z_mat[ii, jj] = v_trans / i_amp
@@ -932,7 +932,7 @@ class NeuronSimTree(PhysTree):
                 res = self.run(t_max+dt_pulse)
                 self.deleteModel()
                 # voltage deflections
-                v_trans = res['v_m'][1][i0+dstep:-1+dstep] - self[loc1['node']].e_eq
+                v_trans = res['v_m'][1][i0+dstep:-1+dstep] - self[loc1['node']].v_ep
                 # compute impedances
                 zk_mat[:, ii, jj] = v_trans / (i_amp * dt_pulse)
         return res['t'][i0+dstep:-1+dstep], zk_mat

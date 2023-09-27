@@ -48,12 +48,12 @@ class TestPhysTree():
             "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
 
         assert repr(self.tree) == "[" \
-            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
-            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
-            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
-            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
-            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\", " \
-            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eqs': {}}\"" \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\"" \
         "]"\
         "{'channel_storage': ['TestChannel2']}"
 
@@ -109,22 +109,22 @@ class TestPhysTree():
 
         # equilibrium potential as float
         e_eq = -75.
-        self.tree.setEEq(e_eq)
+        self.tree.setVEP(e_eq)
         for node in self.tree:
             assert np.abs(node.e_eq - e_eq) < 1e-10
         # equilibrium potential as dict
         e_eq = {1:-75., 4:-74., 5:-73., 6:-72., 7:-71., 8:-70.}
-        self.tree.setEEq(e_eq)
+        self.tree.setVEP(e_eq)
         for node in self.tree:
             assert np.abs(node.e_eq - e_eq[node.index]) < 1e-10
         # equilibrium potential as function
         e_eq = lambda x: -70. + 0.1*x
-        self.tree.setEEq(e_eq)
+        self.tree.setVEP(e_eq)
         for node in self.tree:
             assert np.abs(node.e_eq - e_eq(d2s[node.index])) < 1e-10
         # as wrong type
         with pytest.raises(TypeError):
-            self.tree.setEEq([])
+            self.tree.setVEP([])
             self.tree.setPhysiology([], [])
 
         # leak as float
@@ -187,7 +187,7 @@ class TestPhysTree():
         # passive parameters
         c_m = 1.; r_a = 100.*1e-6; e_eq = -75.
         self.tree.setPhysiology(c_m, r_a)
-        self.tree.setEEq(e_eq)
+        self.tree.setVEP(e_eq)
         # channel
         p_open =  .9 * .3**3 * .5**2 + .1 * .4**2 * .6**1 # TestChannel2
         g_chan, e_chan = 100., 100.
@@ -291,8 +291,8 @@ class TestPhysTree():
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
-    tphys.testStringRepresentation()
+    # tphys.testStringRepresentation()
     # tphys.testLeakDistr()
     # tphys.testPhysiologySetting()
     # tphys.testMembraneFunctions()
-    # tphys.testCompTree()
+    tphys.testCompTree()

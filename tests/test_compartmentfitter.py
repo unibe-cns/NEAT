@@ -66,7 +66,7 @@ class TestCompartmentFitter():
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
-        self.tree.setEEq(-75.)
+        self.tree.setVEP(-75.)
         # set computational tree
         self.tree.setCompTree()
 
@@ -91,7 +91,7 @@ class TestCompartmentFitter():
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
-        self.tree.setEEq(-75.)
+        self.tree.setVEP(-75.)
         # set computational tree
         self.tree.setCompTree()
 
@@ -156,7 +156,7 @@ class TestCompartmentFitter():
         # compute potassium impedance matrices
         z_mats_k = []
         for e_eq in e_eqs:
-            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setVEP(e_eq)
             greens_tree_k.setCompTree()
             greens_tree_k.setImpedance(freqs)
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
@@ -178,7 +178,7 @@ class TestCompartmentFitter():
         # compute sodium impedance matrices
         z_mats_na = []
         for sv, eh in zip(svs, e_eqs_):
-            greens_tree_na.setEEq(eh)
+            greens_tree_na.setVEP(eh)
             greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
             greens_tree_na.setCompTree()
             greens_tree_na.setImpedance(freqs)
@@ -222,7 +222,6 @@ class TestCompartmentFitter():
         fit_mats_cm_na = cm.evalChannel('Na_Ta', parallel=False)
         fit_mats_cm_k = cm.evalChannel('Kv3_1', parallel=False)
         fit_mats_control_na, fit_mats_control_k = self.reduceExplicit()
-
 
         # test whether potassium fit matrices agree
         for fm_cm, fm_control in zip(fit_mats_cm_k, fit_mats_control_k):
@@ -364,7 +363,7 @@ class TestCompartmentFitter():
         greens_tree = cm.createTreeGF(
             channel_names=[],
         )
-        greens_tree.setEEq(-75.)
+        greens_tree.setVEP(-75.)
         greens_tree.setImpedancesInTree(freqs=0., pprint=True)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
@@ -387,7 +386,7 @@ class TestCompartmentFitter():
         greens_tree = cm.createTreeGF(
             channel_names=list(cm.tree.channel_storage.keys()),
         )
-        greens_tree.setEEq(-75.)
+        greens_tree.setVEP(-75.)
         greens_tree.setImpedancesInTree(freqs=0., pprint=True)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
@@ -411,7 +410,7 @@ class TestCompartmentFitter():
         greens_tree = cm.createTreeGF(
             channel_names=[],
         )
-        greens_tree.setEEq(-75.)
+        greens_tree.setVEP(-75.)
         greens_tree.setImpedancesInTree(freqs=0.)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs+syn_locs)
         # analytical synapse scale factors
@@ -449,7 +448,7 @@ class TestCompartmentFitter():
         # compute potassium impedance matrices
         z_mats_k = []
         for e_eq in e_eqs:
-            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setVEP(e_eq)
             greens_tree_k.setCompTree()
             greens_tree_k.setImpedance(freqs)
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
@@ -471,7 +470,7 @@ class TestCompartmentFitter():
         # compute sodium impedance matrices
         z_mats_na = []
         for ii, sv in enumerate(svs):
-            greens_tree_na.setEEq(e_eqs[ii%len(e_eqs)])
+            greens_tree_na.setVEP(e_eqs[ii%len(e_eqs)])
             greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
             greens_tree_na.setCompTree()
             greens_tree_na.setImpedance(freqs)
@@ -755,7 +754,6 @@ class TestCompartmentFitter():
 
 
 
-
 def test_expansionpoints():
     kv3_1 = channelcollection.Kv3_1()
     na_ta = channelcollection.Na_Ta()
@@ -782,14 +780,14 @@ if __name__ == '__main__':
     tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
-    # tcf.testChannelFitMats()
+    tcf.testChannelFitMats()
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
     # tcf.testPickling()
     # tcf.testParallel(w_benchmark=True)
-    tcf.testCacheing()
+    # tcf.testCacheing()
     # tcf.testCFitFromZPoint()
     # tcf.testCFitFromZPas()
     # tcf.testCFitFromZAct()

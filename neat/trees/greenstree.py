@@ -27,7 +27,7 @@ CFG = DefaultPhysiology()
 
 
 class GreensNode(PhysNode):
-    '''
+    """
     Node that stores quantities and defines functions to implement the impedance
     matrix calculation based on Koch's algorithm (Koch & Poggio, 1985).
 
@@ -35,7 +35,7 @@ class GreensNode(PhysNode):
     ----------
     expansion_points: dict {str: np.ndarray}
         Stores ion channel expansion points for this segment.
-    '''
+    """
     def __init__(self, index, p3d):
         super().__init__(index, p3d)
         self.expansion_points = {}
@@ -51,7 +51,7 @@ class GreensNode(PhysNode):
 
         Note that when adding an ion channel to the node, the default expansion
         point setting is to linearize around the asymptotic values for the state
-        variables at the equilibrium potential store in `self.e_eq`.
+        variables at the equilibrium potential store in `self.v_ep`.
         Hence, this function only needs to be called to change that setting.
 
         Parameters
@@ -78,11 +78,11 @@ class GreensNode(PhysNode):
         linearization in computed.
 
         For voltage, checks if 'v' key is in `self.expansion_points`, otherwise
-        defaults to `self.e_eq`.
+        defaults to `self.v_ep`.
 
         For concentrations, checks if the ion is in `self.expansion_points`,
         otherwise checks if a concentration of the ion is given in
-        `self.conc_eqs`, and otherwise defaults to the factory default in
+        `self.conc_eps`, and otherwise defaults to the factory default in
         `neat.channels.ionchannels`.
 
         Parameters
@@ -100,15 +100,15 @@ class GreensNode(PhysNode):
         sv = self.getExpansionPoint(channel.__class__.__name__).copy()
 
         # if voltage is not in expansion point, use equilibrium potential
-        v = sv.pop('v', self.e_eq)
+        v = sv.pop('v', self.v_ep)
 
         # if concencentration is in expansion point, use it. Otherwise use
-        # concentration in equilibrium concentrations (self.conc_eqs), if
+        # concentration in equilibrium concentrations (self.conc_eps), if
         # it is there. If not, use default concentration.
         ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
         conc = {
             ion: sv.pop(
-                    ion, self.conc_eqs.copy().pop(ion, CFG.conc[ion])
+                    ion, self.conc_eps.copy().pop(ion, CFG.conc[ion])
                 ) \
             for ion in ions
         }

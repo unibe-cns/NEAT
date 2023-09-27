@@ -56,7 +56,7 @@ class PhysNode(MorphNode):
         Segment's equilibrium potential
     """
     def __init__(self, index, p3d=None,
-                       c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
+                       c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
         super().__init__(index, p3d)
         self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
         self.concmechs = {}
@@ -64,8 +64,8 @@ class PhysNode(MorphNode):
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt # uS
-        self.e_eq = e_eq # mV
-        self.conc_eqs = {} # equilibrium concentration values (mM)
+        self.v_ep = v_ep # mV
+        self.conc_eps = {} # equilibrium concentration values (mM)
 
     def setPhysiology(self, c_m, r_a, g_shunt=0.):
         """
@@ -118,7 +118,7 @@ class PhysNode(MorphNode):
             warnings.warn('These parameters do not match any NEAT concentration ' + \
                           'mechanism, no concentration mechanism has been added', UserWarning)
 
-    def setEEq(self, e_eq):
+    def setVEP(self, v_ep):
         """
         Set the equilibrium potential at the node.
 
@@ -127,7 +127,7 @@ class PhysNode(MorphNode):
         e_eq: float
             the equilibrium potential (mV)
         """
-        self.e_eq = e_eq
+        self.v_ep = v_ep
 
     def setConcEq(self, ion, conc):
         """
@@ -140,7 +140,7 @@ class PhysNode(MorphNode):
         conc: float
             the concentration value (mM)
         """
-        self.conc_eqs[ion] = conc
+        self.conc_eps[ion] = conc
 
     def fitLeakCurrent(self, channel_storage, e_eq_target=-75., tau_m_target=10.):
         """
@@ -167,7 +167,7 @@ class PhysNode(MorphNode):
         g_l = self.c_m / tau_m_target - gsum
         e_l = e_eq_target - i_eq / g_l
         self.currents['L'] = [g_l, e_l]
-        self.e_eq = e_eq_target
+        self.v_ep = e_eq_target
 
     def getGTot(self, channel_storage, channel_names=None, v=None):
         """
@@ -182,7 +182,7 @@ class PhysNode(MorphNode):
                 conductance calculation
             channel_storage: dict {``channel_name``: `channel_instance`}
                 dict where all ion channel objects present on the node are stored
-            v: float (optional, defaults to `self.e_eq`)
+            v: float (optional, defaults to `self.v_ep`)
                 the potential (in mV) at which to compute the membrane conductance
 
         Returns
@@ -192,7 +192,7 @@ class PhysNode(MorphNode):
         """
         if channel_names is None:
             channel_names = channel_names = list(self.currents.keys())
-        v = self.e_eq if v is None else v
+        v = self.v_ep if v is None else v
 
         g_tot = 0.
         for channel_name in set(self.currents.keys()) & set(channel_names):
@@ -218,7 +218,7 @@ class PhysNode(MorphNode):
                 conductance calculation
             channel_storage: dict {``channel_name``: `channel_instance`}
                 dict where all ion channel objects present on the node are stored
-            v: float (optional, defaults to `self.e_eq`)
+            v: float (optional, defaults to `self.v_ep`)
                 the potential (in mV) at which to compute the membrane conductance
 
         Returns
@@ -228,7 +228,7 @@ class PhysNode(MorphNode):
         """
         if channel_names is None:
             channel_names = channel_names = list(self.currents.keys())
-        v = self.e_eq if v is None else v
+        v = self.v_ep if v is None else v
 
         i_tot = 0.
         for channel_name in set(self.currents.keys()) & set(channel_names):
@@ -249,7 +249,7 @@ class PhysNode(MorphNode):
         if "L" not in channel_names:
             channel_names.append("L")
 
-        v = self.e_eq if v is None else v
+        v = self.v_ep if v is None else v
 
         # compute the total conductance of the to be passified channels
         g_l = self.getGTot(channel_storage, channel_names=channel_names, v=v)
@@ -284,7 +284,7 @@ class PhysNode(MorphNode):
         node_str += f" --- " \
             f"r_a = {self.r_a} MOhm*cm, " \
             f"c_m = {self.c_m} uF/cm^2, " \
-            f"e_eq = {self.e_eq} mV, "
+            f"v_ep = {self.v_ep} mV, "
         if self.g_shunt > 1e-10:
             f"g_shunt = {self.g_shunt} uS,"
         node_str += ', '.join([
@@ -300,8 +300,8 @@ class PhysNode(MorphNode):
             "c_m": self.c_m,
             "r_a": self.r_a,
             "g_shunt": self.g_shunt,
-            "e_eq": self.e_eq,
-            "conc_eqs": self.conc_eqs,
+            "v_ep": self.v_ep,
+            "conc_eps": self.conc_eps,
         })
         return repr_dict
 
@@ -332,6 +332,7 @@ class PhysTree(MorphTree):
         for node in self:
             node.setPhysiology(1.0, 100./1e6)
         self.channel_storage = {}
+        self.ions = set()
 
     def _getReprDict(self):
         ckeys = list(self.channel_storage.keys())
@@ -353,7 +354,7 @@ class PhysTree(MorphTree):
         self.channel_storage = new_channel_storage
 
     def _createCorrespondingNode(self, node_index, p3d=None,
-                                      c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
+                                      c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -402,32 +403,40 @@ class PhysTree(MorphTree):
         return val
 
     @originalTreeModificationDecorator
-    def setEEq(self, e_eq_distr, node_arg=None):
+    def setVEP(self, v_ep_distr, node_arg=None):
         """
-        Set the equilibrium potentials throughout the tree
+        Set the voltage expansion points throughout the tree.
+
+        Note that these need not correspond to the actual equilibrium potentials
+        in the absence of input, but rather the (node-specific) voltage around
+        which the possible expansions are computed.
 
         Parameters
         ----------
-        e_eq_distr: float, dict or :func:`float -> float`
-            The equilibrium potentials [mV]
+        v_ep_distr: float, dict or :func:`float -> float`
+            The expansion point potentials [mV]
         """
         for node in self._convertNodeArgToNodes(node_arg):
-            e = self._distr2Float(e_eq_distr, node, argname='`e_eq_distr`')
-            node.setEEq(e)
+            e = self._distr2Float(v_ep_distr, node, argname='`v_ep_distr`')
+            node.setVEP(e)
 
     @originalTreeModificationDecorator
-    def setConcEq(self, ion, conc_eq_distr, node_arg=None):
+    def setConcEP(self, ion, conc_eq_distr, node_arg=None):
         """
-        Set the equilibrium concentrations in the tree
+        Set the concentration expansion points throughout the tree.
+
+        Note that these need not correspond to the actual equilibrium concentrations
+        in the absence of input, but rather the (node-specific) concentrations around
+        which the possible expansions are computed.
 
         Parameters
         ----------
         conc_eq_distr: float, dict or :func:`float -> float`
-            The equilibrium concentrations [mM]
+            The expansion point concentrations [mM]
         """
         for node in self._convertNodeArgToNodes(node_arg):
             conc = self._distr2Float(conc_eq_distr, node, argname='`conc_eq_distr`')
-            node.setConcEq(ion, conc)
+            node.setConcEP(ion, conc)
 
     @originalTreeModificationDecorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
@@ -556,6 +565,7 @@ class PhysTree(MorphTree):
             see documentation of :func:`MorphTree._convertNodeArgToNodes`.
             Defaults to None
         """
+        self.ions.add(ion)
         for node in self._convertNodeArgToNodes(node_arg):
             node.addConcMech(ion, params=params)
 
