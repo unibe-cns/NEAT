@@ -88,7 +88,7 @@ class TestSTree():
             "    SNode 1, Parent: 0\n" \
             "    SNode 2, Parent: 1\n" \
             "    SNode 3, Parent: 1"
-        tree_repr = "["\
+        tree_repr = "['STree', "\
             "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
             "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", " \
             "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", " \
@@ -99,7 +99,7 @@ class TestSTree():
     def testHashing(self):
         self.createTree()
 
-        tree_repr = "["\
+        tree_repr = "['STree', "\
             "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
             "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", " \
             "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", " \
@@ -110,7 +110,7 @@ class TestSTree():
         assert hash(self.tree) == hash(tree_repr)
         # we check whether the hash generated with the unique_hash function is
         # correct, as this hash should be the same in every session
-        assert self.tree.unique_hash() == '758d984d08a36649d0fceb6e5004d05268ea325a53b95ddaf9cbb275930ac56c'
+        assert self.tree.unique_hash() == 'd2a693df13fd87b89b4ecb4166713cb9dcd90a13743bcfc8311a3d3d75e854e9'
 
     def testNodeCounting(self):
         self.createTree()

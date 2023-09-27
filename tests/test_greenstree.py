@@ -90,7 +90,7 @@ class TestGreensTree():
             "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
             "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
 
-        assert repr(self.tree) == "[" \
+        assert repr(self.tree) == "['GreensTree', " \
             "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
             "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
             "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \

@@ -175,18 +175,19 @@ class FitTree(PhysTree):
                     pickle.dump(self, file)
 
 
-class EquilibriumNode(PhysNode):
-    """
-    Tree class that allows for the calculation of the equilibrium potential at
-    each node
+# class EquilibriumNode(PhysNode):
+#     """
+#     Tree class that allows for the calculation of the equilibrium potential at
+#     each node
 
-    Attributes
-    ----------
-    expansion_points: dict {str: np.ndarray}
-        Stores ion channel expansion points for this segment.
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+#     Attributes
+#     ----------
+#     expansion_points: dict {str: np.ndarray}
+#         Stores ion channel expansion points for this segment.
+#     """
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
 
 class EquilibriumTree(FitTree):
     """
@@ -207,17 +208,17 @@ class EquilibriumTree(FitTree):
         self.save_cache = save_cache
         self.recompute_cache = recompute_cache
 
-    def _createCorrespondingNode(self, node_index, p3d=None,
-                                      c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
-        """
-        Creates a node with the given index corresponding to the tree class.
+    # def _createCorrespondingNode(self, node_index, p3d=None,
+    #                                   c_m=1., r_a=100*1e-6, g_shunt=0., e_eq=-75.):
+    #     """
+    #     Creates a node with the given index corresponding to the tree class.
 
-        Parameters
-        ----------
-            node_index: int
-                index of the new node
-        """
-        return PhysNode(node_index, p3d=p3d)
+    #     Parameters
+    #     ----------
+    #         node_index: int
+    #             index of the new node
+    #     """
+    #     return PhysNode(node_index, p3d=p3d)
 
     def calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         """
@@ -276,7 +277,7 @@ class EquilibriumTree(FitTree):
         for ii, n in enumerate(self):
             n.setVEP(res[0][ii])
             for ion, conc in res[1].items():
-                n.setConcEP(ion, conc[ion][ii])
+                n.setConcEP(ion, conc[ii])
 
     def setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
         """
@@ -614,7 +615,7 @@ class CompartmentFitter(object):
         # set the equilibirum potentials at fit locations
         eq = self.tree.calcEEq('fit locs')
         self.v_eqs_fit = eq[0]
-        self.cons_eqs_fit = eq[1]
+        self.conc_eqs_fit = eq[1]
 
     def createTreeGF(self,
             channel_names=[],
@@ -1539,7 +1540,7 @@ class CompartmentFitter(object):
         # set the equilibria
         self.ctree.setEEq(self.v_eqs_fit)
         for ion in self.tree.ions:
-            self.ctree.setConcEq(ion, self.conc_eqs[ion])
+            self.ctree.setConcEq(ion, self.conc_eqs_fit[ion])
 
         # fit the leak
         self.ctree.fitEL()

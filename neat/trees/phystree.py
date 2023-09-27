@@ -129,7 +129,7 @@ class PhysNode(MorphNode):
         """
         self.v_ep = v_ep
 
-    def setConcEq(self, ion, conc):
+    def setConcEP(self, ion, conc):
         """
         Set the equilibrium concentration value at this node
 

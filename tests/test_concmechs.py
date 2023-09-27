@@ -693,12 +693,12 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    tcm.testSpiking(pplot=True)
-    tcm.testImpedance(pplot=True)
+    # tcm.testSpiking(pplot=True)
+    # tcm.testImpedance(pplot=True)
     tcm.testFittingBall(pplot=True)
-    tcm.testTauFitBall(pplot=True)
-    tcm.testFittingBallAndStick(pplot=True)
-    tcm.testLocalizedConcMechPasAxon()
-    tcm.testLocalizedConcMechActAxon()
+    # tcm.testTauFitBall(pplot=True)
+    # tcm.testFittingBallAndStick(pplot=True)
+    # tcm.testLocalizedConcMechPasAxon()
+    # tcm.testLocalizedConcMechActAxon()
 
 

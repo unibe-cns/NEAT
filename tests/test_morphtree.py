@@ -58,7 +58,7 @@ class TestMorphTree():
             "    MorphNode 8, Parent: 7 --- xyz = [100.000, -100.000, 0.000] um, R = 0.50 um, swc_type = 4"
         assert str(self.tree) == tree_str
 
-        repr_str = "[" \
+        repr_str = "['MorphTree', " \
             "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1}\", " \
             "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4}\", " \
             "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4}\", " \

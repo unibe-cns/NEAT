@@ -64,7 +64,7 @@ class TestNeuron():
                 1
         """
         v_eq = -75.
-        self.dt = 0.1
+        self.dt = 0.025
         self.tmax = 100.
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
@@ -608,12 +608,12 @@ class TestReducedNeuron():
 
 if __name__ == '__main__':
     tn = TestNeuron()
-    tn.testPassive(pplot=True)
+    # tn.testPassive(pplot=Trsue)
     tn.testActive()
-    tn.testChannelRecording()
+    # tn.testChannelRecording()
 
-    trn = TestReducedNeuron()
-    trn.testGeometry1()
-    trn.testImpedanceProperties1()
-    trn.testGeometry2()
-    trn.testImpedanceProperties2()
+    # trn = TestReducedNeuron()
+    # trn.testGeometry1()
+    # trn.testImpedanceProperties1()
+    # trn.testGeometry2()
+    # trn.testImpedanceProperties2()

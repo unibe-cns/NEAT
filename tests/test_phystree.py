@@ -40,20 +40,20 @@ class TestPhysTree():
         self.tree.addCurrent(channel, g_max, e_rev)
 
         assert str(self.tree) == ">>> PhysTree\n" \
-            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
+            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
+            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
 
-        assert repr(self.tree) == "[" \
-            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
-            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
-            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
-            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
-            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\", " \
-            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'e_eq': -75.0, 'conc_eps': {}}\"" \
+        assert repr(self.tree) == "['PhysTree', " \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\"" \
         "]"\
         "{'channel_storage': ['TestChannel2']}"
 
@@ -68,7 +68,7 @@ class TestPhysTree():
         for node in self.tree:
             assert np.abs(node.c_m - 1.0) < 1e-9
             assert np.abs(node.currents['L'][0] - 1. / (10.*1e-3)) < 1e-9
-            assert np.abs(node.e_eq + 75.) < 1e-9
+            assert np.abs(node.v_ep + 75.) < 1e-9
         # create complex distribution
         tau_distr = lambda x: x + 100.
         for node in self.tree:
@@ -78,7 +78,7 @@ class TestPhysTree():
             assert np.abs(node.c_m - 1.0) < 1e-9
             assert np.abs(node.currents['L'][0] - 1. / (tau_distr(d2s)*1e-3)) < \
                    1e-9
-            assert np.abs(node.e_eq + 75.) < 1e-9
+            assert np.abs(node.v_ep + 75.) < 1e-9
 
     def testPhysiologySetting(self):
         self.loadTree(reinitialize=1)
@@ -111,17 +111,17 @@ class TestPhysTree():
         e_eq = -75.
         self.tree.setVEP(e_eq)
         for node in self.tree:
-            assert np.abs(node.e_eq - e_eq) < 1e-10
+            assert np.abs(node.v_ep - e_eq) < 1e-10
         # equilibrium potential as dict
         e_eq = {1:-75., 4:-74., 5:-73., 6:-72., 7:-71., 8:-70.}
         self.tree.setVEP(e_eq)
         for node in self.tree:
-            assert np.abs(node.e_eq - e_eq[node.index]) < 1e-10
+            assert np.abs(node.v_ep - e_eq[node.index]) < 1e-10
         # equilibrium potential as function
         e_eq = lambda x: -70. + 0.1*x
         self.tree.setVEP(e_eq)
         for node in self.tree:
-            assert np.abs(node.e_eq - e_eq(d2s[node.index])) < 1e-10
+            assert np.abs(node.v_ep - e_eq(d2s[node.index])) < 1e-10
         # as wrong type
         with pytest.raises(TypeError):
             self.tree.setVEP([])

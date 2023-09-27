@@ -42,7 +42,7 @@ class TestCompartmentTree():
             "    CompartmentNode 0, Parent: None --- loc_ind = 0, g_c = 0.0 uS, ca = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 0.01 uS/cm^2, e_L = -75.0 mV)\n" \
             "    CompartmentNode 1, Parent: 0 --- loc_ind = 1, g_c = 0.0 uS, ca = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 0.01 uS/cm^2, e_L = -75.0 mV)"
 
-        assert repr(ctree) == "[" \
+        assert repr(ctree) == "['CompartmentTree', " \
             "\"{'node index': 0, 'parent index': -1, 'content': '{}', 'loc_ind': 0, 'ca': 1.0, 'g_c': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'currents': {'L': [0.01, -75.0]}, 'concmechs': {}, 'expansion_points': {}}\", " \
             "\"{'node index': 1, 'parent index': 0, 'content': '{}', 'loc_ind': 1, 'ca': 1.0, 'g_c': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'currents': {'L': [0.01, -75.0]}, 'concmechs': {}, 'expansion_points': {}}\"" \
             "]{'channel_storage': []}"
