@@ -19,6 +19,9 @@ Basic tree
    STree.__iter__
    STree.__str__
    STree.__copy__
+   STree.__repr__
+   STree.__hash__
+   STree.unique_hash
    STree.checkOrdered
    STree.getNodes
    STree.nodes
@@ -48,7 +51,6 @@ Basic tree
    STree.downBifurcationNode
    STree.getBifurcationNodes
    STree.getNearestNeighbours
-   STree.__copy__
 
 
 .. autoclass:: neat.SNode
