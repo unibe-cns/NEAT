@@ -520,11 +520,11 @@ class CompartmentNode(SNode):
         repr_dict = super()._getReprDict()
         repr_dict.update({
             "loc_ind": self._loc_ind,
-            "ca": self.ca,
-            "g_c": self.g_c,
-            "e_eq": self.e_eq,
+            "ca": f"{self.ca:1.6g}",
+            "g_c": f"{self.g_c:1.6g}",
+            "e_eq": f"{self.e_eq:1.6g}",
             "conc_eqs": self.conc_eqs,
-            "currents": self.currents,
+            "currents": {c: (f"{g:1.6g}, {e:1.6g}") for c, (g, e) in self.currents.items()},
             "concmechs": self.concmechs,
             "expansion_points": self.expansion_points,
         })

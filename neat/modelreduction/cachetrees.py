@@ -23,6 +23,17 @@ except ModuleNotFoundError:
 
 
 class FitTree(PhysTree):
+    def set_cache_params(self,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+        ):
+        self.cache_name = cache_name
+        self.cache_path = cache_path
+        self.save_cache = save_cache
+        self.recompute_cache = recompute_cache
+
     def maybe_execute_funcs(self,
         funcs_args_kwargs=[],
         pprint=False,

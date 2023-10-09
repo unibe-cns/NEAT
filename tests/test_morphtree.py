@@ -59,12 +59,12 @@ class TestMorphTree():
         assert str(self.tree) == tree_str
 
         repr_str = "['MorphTree', " \
-            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1}\", " \
-            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4}\", " \
-            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': 1.0, 'swc_type': 4}\", " \
-            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': 0.5, 'swc_type': 4}\", " \
-            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': 1.0, 'swc_type': 4}\", " \
-            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': 0.5, 'swc_type': 4}\""\
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': '0.5', 'swc_type': 4}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': '0.5', 'swc_type': 4}\""\
         "]"
         assert repr(self.tree) == repr_str
 
@@ -735,10 +735,10 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    # tmt.testStringRepresentation()
+    tmt.testStringRepresentation()
     # tmt.testPlotting(pshow=True)
     # tmt.testCompTree0()
-    tmt.testInputArgConversion()
+    # tmt.testInputArgConversion()
     # tmt.testLocFunctionality()
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()

@@ -280,7 +280,7 @@ class SOVTree(PhysTree):
     def _getReprDict(self):
         repr_dict = super()._getReprDict()
         repr_dict.update({
-            'maxspace_freq': self.maxspace_freq
+            'maxspace_freq': f"{self.maxspace_freq:1.6g}"
         })
         return repr_dict
 

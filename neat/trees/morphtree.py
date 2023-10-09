@@ -347,7 +347,7 @@ class MorphNode(SNode):
         repr_dict = super()._getReprDict()
         repr_dict.update({
             'xyz': self.xyz,
-            'R': self.R,
+            'R': f"{self.R:1.6g}",
             'swc_type': self.swc_type,
         })
         return repr_dict

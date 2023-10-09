@@ -295,13 +295,13 @@ class PhysNode(MorphNode):
     def _getReprDict(self):
         repr_dict = super()._getReprDict()
         repr_dict.update({
-            "currents": self.currents,
+            "currents": {c: (f"({g:1.6g}, {e:1.6g})") for c, (g, e) in self.currents.items()},
             "concmechs": self.concmechs,
-            "c_m": self.c_m,
-            "r_a": self.r_a,
-            "g_shunt": self.g_shunt,
-            "v_ep": self.v_ep,
-            "conc_eps": self.conc_eps,
+            "c_m": f"{self.c_m:1.6g}",
+            "r_a": f"{self.r_a:1.6g}",
+            "g_shunt": f"{self.g_shunt:1.6g}",
+            "v_ep": f"{self.v_ep:1.6g}",
+            "conc_eps": {ion: f"{conc:1.6g}" for ion, conc in self.conc_eps.items()},
         })
         return repr_dict
 

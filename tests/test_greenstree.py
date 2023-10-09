@@ -90,14 +90,15 @@ class TestGreensTree():
             "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
             "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
 
-        assert repr(self.tree) == "['GreensTree', " \
-            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 10.0, 'swc_type': 1, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': 1.0, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': 0.5, 'swc_type': 4, 'currents': {'L': [100.0, -75.0], 'TestChannel2': [100.0, 100.0]}, 'concmechs': {}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\"" \
+        repr_str = "['GreensTree', " \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
         "]{'channel_storage': ['TestChannel2'], 'freqs': array([0.  +0.j, 0.+100.j])}"
+        assert repr(self.tree) == repr_str
 
     def testBasicProperties(self):
         self.loadTTree()
@@ -279,9 +280,10 @@ class TestGreensTreeTime():
     def testStringRepresentation(self):
         self.loadBall(1)
 
-        assert repr(self.tree) == "[" \
-            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 12.0, 'swc_type': 1, 'currents': {'Kv3_1': [766000.0, -85.0], 'Ca_HVA': [792000.0, 132.4579341637009], 'h': [8000.0, -43.0], 'Na_Ta': [1710000.0, 50.0], 'L': [20.0, -3493.27059648586]}, 'concmechs': {}, 'c_m': 0.8, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}, 'expansion_points': {}}\"" \
+        repr_str = "['GreensTreeTime', " \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '12', 'swc_type': 1, 'currents': {'Kv3_1': '(766000, -85)', 'Ca_HVA': '(792000, 132.458)', 'h': '(8000, -43)', 'Na_Ta': '(1.71e+06, 50)', 'L': '(20, -3493.27)'}, 'concmechs': {}, 'c_m': '0.8', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
         "]{'channel_storage': ['Ca_HVA', 'Kv3_1', 'Na_Ta', 'h'], 'freqs': None, 't': None}"
+        assert repr(self.tree) == repr_str
 
     def testPassiveKernels(self, pplot=False):
         self.loadTTree()

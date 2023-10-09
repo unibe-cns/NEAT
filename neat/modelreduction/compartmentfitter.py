@@ -270,13 +270,12 @@ class CompartmentFitter(object):
 
         """
         # create new tree and empty channel storage
-        tree = self.tree.__copy__(
-            new_tree=FitTreeGF(
-                cache_path=self.cache_path,
-                cache_name=self.cache_name + cache_name_suffix,
-                save_cache=self.save_cache,
-                recompute_cache=self.recompute_cache,
-            ),
+        tree = self.tree.__copy__(new_tree=FitTreeGF())
+        tree.set_cache_params(
+            cache_path=self.cache_path,
+            cache_name=self.cache_name + cache_name_suffix,
+            save_cache=self.save_cache,
+            recompute_cache=self.recompute_cache,
         )
         tree.channel_storage = {}
         # add the ion channel to the tree
@@ -488,7 +487,7 @@ class CompartmentFitter(object):
         # create the trees with the desired channels and expansion points
         fit_tree = self.createTreeGF(
             channel_names,
-            cache_name_suffix=ion,
+            cache_name_suffix=f"_{ion}_",
         )
 
         # set the impedances in the tree
@@ -558,24 +557,22 @@ class CompartmentFitter(object):
             suffix = f"_passified_"
 
         if use_all_channels:
-            fit_tree = self.tree.__copy__(
-                new_tree=EquilibriumTree(
-                    cache_path=self.cache_path,
-                    cache_name=self.cache_name + suffix,
-                    save_cache=self.save_cache,
-                    recompute_cache=self.recompute_cache,
-                )
+            fit_tree = self.tree.__copy__(new_tree=EquilibriumTree())
+            fit_tree.set_cache_params(
+                cache_path=self.cache_path,
+                cache_name=self.cache_name + "_eq" + suffix,
+                save_cache=self.save_cache,
+                recompute_cache=self.recompute_cache,
             )
             # set the channels to passive
             fit_tree.asPassiveMembrane()
             # convert to a greens tree for further evaluation
-            fit_tree = fit_tree.__copy__(
-                new_tree=FitTreeGF(
-                    cache_path=self.cache_path,
-                    cache_name=self.cache_name + suffix,
-                    save_cache=self.save_cache,
-                    recompute_cache=self.recompute_cache
-                )
+            fit_tree = fit_tree.__copy__(new_tree=FitTreeGF())
+            fit_tree.set_cache_params(
+                cache_path=self.cache_path,
+                cache_name=self.cache_name + "_gf" + suffix,
+                save_cache=self.save_cache,
+                recompute_cache=self.recompute_cache,
             )
             fit_tree.setCompTree(eps=self.cfg.fit_comptree_eps)
         else:
@@ -666,16 +663,15 @@ class CompartmentFitter(object):
         if self.use_all_channels_for_passive:
             cache_name_suffix = '_SOV_allchans_'
         else:
-            cache_name_suffix = 'SOV_only_leak_'
+            cache_name_suffix = '_SOV_only_leak_'
 
         # create new tree and empty channel storage
-        tree = self.tree.__copy__(
-            new_tree=FitTreeSOV(
-                cache_path=self.cache_path,
-                cache_name=self.cache_name + cache_name_suffix,
-                save_cache=self.save_cache,
-                recompute_cache=self.recompute_cache,
-            ),
+        tree = self.tree.__copy__(new_tree=FitTreeSOV())
+        tree.set_cache_params(
+            cache_path=self.cache_path,
+            cache_name=self.cache_name + cache_name_suffix,
+            save_cache=self.save_cache,
+            recompute_cache=self.recompute_cache,
         )
         if not self.use_all_channels_for_passive:
             tree.channel_storage = {}
@@ -699,13 +695,12 @@ class CompartmentFitter(object):
         the reduced model with the impedance kernel matrix of the full model
         """
         # create a `GreensTreeTime` to compute response kernels
-        tree = self.tree.__copy__(
-            new_tree=FitTreeC(
-                cache_path=self.cache_path,
-                cache_name=self.cache_name + "_Zkernels_",
-                save_cache=self.save_cache,
-                recompute_cache=self.recompute_cache,
-            ),
+        tree = self.tree.__copy__(new_tree=FitTreeC())
+        tree.set_cache_params(
+            cache_path=self.cache_path,
+            cache_name=self.cache_name + "_Zkernels_",
+            save_cache=self.save_cache,
+            recompute_cache=self.recompute_cache,
         )
         tree.setCompTree(eps=self.cfg.fit_comptree_eps)
         # set the impedances for kernel calculation
@@ -726,13 +721,12 @@ class CompartmentFitter(object):
 
     def fitCapacitanceFromZ_(self):
         # create a `GreensTreeTime` to compute response kernels
-        tree = self.tree.__copy__(
-            new_tree=FitTreeC(
-                cache_path=self.cache_path,
-                cache_name=self.cache_name + "_Zkernels_",
-                save_cache=self.save_cache,
-                recompute_cache=self.recompute_cache,
-            ),
+        tree = self.tree.__copy__(new_tree=FitTreeC())
+        tree.set_cache_params(
+            cache_path=self.cache_path,
+            cache_name=self.cache_name + "_Zkernels_",
+            save_cache=self.save_cache,
+            recompute_cache=self.recompute_cache,
         )
         tree.setCompTree(eps=self.cfg.fit_comptree_eps)
         # set the impedances for kernel calculation
