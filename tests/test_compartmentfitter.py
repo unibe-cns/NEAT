@@ -596,6 +596,13 @@ class TestCompartmentFitter():
         )
         ctree_cm_1a = cm1.fitModel(locs, parallel=False, use_all_channels_for_passive=False)
         ctree_cm_1b = cm1.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
+
+        sv_h = compartmentfitter.getExpansionPoints(cm1.cfg.e_hs, channelcollection.Na_Ta())
+        tree_na_1 = cm1.createTreeGF(['Na_Ta'])
+        tree_na_1.setImpedancesInTree(
+            freqs=cm1.cfg.freqs,
+            sv_h={'Na_Ta': sv_h}
+        )
         del cm1
 
         cm2 = CompartmentFitter(self.tree,
@@ -603,6 +610,13 @@ class TestCompartmentFitter():
         )
         ctree_cm_2a = cm2.fitModel(locs, parallel=False, use_all_channels_for_passive=False)
         ctree_cm_2b = cm2.fitModel(locs, parallel=False, use_all_channels_for_passive=True)
+
+        sv_h = compartmentfitter.getExpansionPoints(cm2.cfg.e_hs, channelcollection.Na_Ta())
+        tree_na_2 = cm2.createTreeGF(['Na_Ta'])
+        tree_na_2.setImpedancesInTree(
+            freqs=cm2.cfg.freqs,
+            sv_h={'Na_Ta': sv_h}
+        )
         del cm2
 
         self._checkAllCurrProps(ctree_cm_1a, ctree_cm_2a)
@@ -610,6 +624,9 @@ class TestCompartmentFitter():
 
         with pytest.raises(AssertionError):
             self._checkAllCurrProps(ctree_cm_1a, ctree_cm_1b)
+
+        assert tree_na_1.unique_hash() == "0043a3577fc8bbeb08821af2a13654212799a2bed686fc8fd2cd6ca67b788732"
+        assert repr(tree_na_1) == repr(tree_na_2)
 
     def testCFitFromZPoint(self):
         self.loadBall()
@@ -631,15 +648,15 @@ class TestCompartmentFitter():
 
         ca_fit = cfit.ctree[0].ca
 
-        print(ca_soma, ca_fit)
         # check fit result
-        # assert np.allclose(c_soma, c_fit, rtol=1e-5)
+        assert np.allclose(ca_soma, ca_fit, rtol=1e-5)
 
-    def testCFitFromZPas(self, n_loc=10):
+    def testCFitFromZPas(self, n_loc=10, pplot=True):
         self.loadBallAndStick()
         # define locations
         xvals = np.linspace(0., 1., n_loc+1)[1:]
         locs = [(1, 0.5)] + [(4, x) for x in xvals]
+        nl = len(locs)
         # create compartment tree
         cfit = CompartmentFitter(self.tree,
             cache_name='cfitfromztest', cache_path='neatcache/', recompute_cache=True,
@@ -651,13 +668,12 @@ class TestCompartmentFitter():
         )
         # fit the capacitance
         cfit.fitCapacitanceFromZ()
+        # cfit.fitCapacitanceFromZ_()
         ctree_from_z = copy.deepcopy(cfit.ctree)
-
 
         # fit the capacitance
         cfit.fitCapacitance()
         ctree_from_sov = copy.deepcopy(cfit.ctree)
-
 
         print(f"ca from z:   {[n.ca for n in ctree_from_z]}")
         print(f"ca from sov: {[n.ca for n in ctree_from_sov]}")
@@ -668,6 +684,40 @@ class TestCompartmentFitter():
         taus_fit_z = np.array([n.ca / n.currents['L'][0] for n in ctree_from_z])
         taus_fit_sov = np.array([n.ca / n.currents['L'][0] for n in ctree_from_sov])
 
+        t_arr = np.linspace(.1, 40., 100)
+        gtt = self.tree.__copy__(new_tree=GreensTreeTime())
+        gtt.setImpedance(t_arr)
+        zt_mat_full = gtt.calcImpulseResponseMatrix(locs)
+
+        z_mat_comp_from_z = ctree_from_z.calcImpedanceMatrix(gtt.freqs)
+        z_mat_comp_from_sov = ctree_from_sov.calcImpedanceMatrix(gtt.freqs)
+        zt_mat_comp_from_z = np.zeros_like(zt_mat_full)
+        zt_mat_comp_from_sov = np.zeros_like(zt_mat_full)
+        for ii in range(nl):
+            for jj in range(nl):
+                zt_mat_comp_from_z[:,ii,jj] = gtt._inverseFourrier(z_mat_comp_from_z[:,ii,jj],
+                    compute_time_derivative=False
+                )
+                zt_mat_comp_from_sov[:,ii,jj] = gtt._inverseFourrier(z_mat_comp_from_sov[:,ii,jj],
+                    compute_time_derivative=False
+                )
+
+
+        if pplot:
+            pl.figure()
+            gs = GridSpec(nl,nl)
+            for ii in range(nl):
+                for jj in range(nl):
+                    ax = pl.subplot(gs[ii,jj])
+                    ax.set_title(f"{ii} <-> {jj}")
+                    ax.plot(t_arr, zt_mat_full[:,ii,jj], c='grey')
+                    ax.plot(t_arr, zt_mat_comp_from_z[:,ii,jj], 'r--')
+                    ax.plot(t_arr, zt_mat_comp_from_sov[:,ii,jj], 'b--')
+
+            pl.tight_layout()
+            pl.show()
+
+
         print(taus_orig)
         print(taus_fit_z)
         print(taus_fit_sov)
@@ -675,7 +725,7 @@ class TestCompartmentFitter():
         assert np.allclose(taus_orig, taus_fit_z, rtol=5e-2)
         assert np.allclose(taus_fit_sov, taus_fit_z, rtol=5e-2)
 
-    def testCFitFromZAct(self, pplot=False):
+    def testCFitFromZAct(self, pplot=True):
         self.loadTSegmentTree()
         locs = [(1,.5), (10, 0.9), (12, 0.9)]
         nl = len(locs)
@@ -693,7 +743,9 @@ class TestCompartmentFitter():
         cfit_new.fitChannels(pprint=False, parallel=False)
         # new capacitance fit
         cfit_new.fitCapacitanceFromZ()
+        # cfit_new.fitCapacitanceFromZ_()
         ctree_new = cfit_new.ctree
+        print(ctree_new._toVecC())
 
         # old capacitance fit method
         cfit_old = CompartmentFitter(self.tree,
@@ -704,11 +756,13 @@ class TestCompartmentFitter():
         cfit_old.fitPassive(
             use_all_channels=False
         )
-        # fit the capacitances
-        cfit_old.fitCapacitance()
         # fit the ion channels
         cfit_old.fitChannels()
+        # fit the capacitances
+        cfit_old.fitCapacitance()
+        # cfit_old.fitCapacitanceFromZ_()
         ctree_old = cfit_old.ctree
+        print(ctree_old._toVecC())
 
         t_arr = np.linspace(.1, 40., 100)
         gtt = self.tree.__copy__(new_tree=GreensTreeTime())
@@ -735,9 +789,6 @@ class TestCompartmentFitter():
             zt_mat_full - zt_mat_comp_old
         ) / np.max(np.abs(zt_mat_full)))
 
-        assert z_fit_new_diff < 0.0015
-        assert z_fit_old_diff < 0.0025
-
         if pplot:
             pl.figure()
             gs = GridSpec(nl,nl)
@@ -752,6 +803,9 @@ class TestCompartmentFitter():
             pl.tight_layout()
             pl.show()
 
+        print(z_fit_new_diff, z_fit_old_diff)
+        assert z_fit_new_diff < 0.0015
+        assert z_fit_old_diff < 0.0025
 
 
 def test_expansionpoints():
@@ -780,15 +834,15 @@ if __name__ == '__main__':
     tcf = TestCompartmentFitter()
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
-    tcf.testChannelFitMats()
+    # tcf.testChannelFitMats()
     # tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
     # tcf.testPickling()
     # tcf.testParallel(w_benchmark=True)
-    # tcf.testCacheing()
+    tcf.testCacheing()
     # tcf.testCFitFromZPoint()
-    # tcf.testCFitFromZPas()
+    # tcf.testCFitFromZPas(pplot=True)
     # tcf.testCFitFromZAct()
     # test_expansionpoints()

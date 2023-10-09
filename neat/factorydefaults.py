@@ -39,6 +39,9 @@ class DefaultFitting:
         default_factory=lambda: {'ca': np.array([0.000100, 0.000105, 0.000110])}
     )
 
+    # eps parameter for comptree
+    fit_comptree_eps: float = 1e-2
+
     # frequency evaluation
     freqs: float = 0. # Hz
     freqs_tau: np.array = field(
@@ -71,6 +74,13 @@ class DefaultFitting:
     #     22., 24., 26., 28. ,30.,
     #     32., 34., 36., 38., 40.,
     #     50., 60., 70., 80.
+    #     ]) # ms
+    # )
+    # # time-points at which to evaluate time domain kernels for capacitance fit
+    # t_fit: np.array = field(
+    #     default_factory=lambda: np.array([
+    #     11., 12., 13., 14., 15.,
+    #     16., 17., 18., 19., 20.,
     #     ]) # ms
     # )
 

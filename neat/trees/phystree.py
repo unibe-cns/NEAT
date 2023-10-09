@@ -371,7 +371,8 @@ class PhysTree(MorphTree):
         Makes the membrane act as a passive membrane (for the nodes in
         ``node_arg``), channels are assumed to add a conductance of
         g_max * p_open to the membrane conductance, where p_open for each node
-        is evaluated at the equilibrium potential stored in that node.
+        is evaluated at the expansion point potential stored in that node,
+        i.e. `PhysNode.v_ep` (see `PhysTree.setVEP()`).
 
         Parameters
         ----------

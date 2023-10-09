@@ -298,7 +298,7 @@ class CompartmentFitter(object):
             channel_name: self.tree.channel_storage[channel_name] \
             for channel_name in channel_names_newtree
         }
-        tree.setCompTree()
+        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
 
         return tree
 
@@ -577,7 +577,7 @@ class CompartmentFitter(object):
                     recompute_cache=self.recompute_cache
                 )
             )
-            fit_tree.setCompTree()
+            fit_tree.setCompTree(eps=self.cfg.fit_comptree_eps)
         else:
             fit_tree = self.createTreeGF(
                 [], # empty list of channel to include
@@ -687,7 +687,7 @@ class CompartmentFitter(object):
                 node._addCurrent('L', g_l, e_l)
 
         # set the computational tree
-        tree.setCompTree(eps=eps)
+        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
 
         return tree
 
@@ -707,8 +707,9 @@ class CompartmentFitter(object):
                 recompute_cache=self.recompute_cache,
             ),
         )
-        tree.setCompTree(eps=1e-2)
+        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
         # set the impedances for kernel calculation
+        print(self.cfg.t_fit)
         tree.setImpedance(self.cfg.t_fit)
         # compute the response kernel matrices necessary for the fit
         zt_mat, dzt_dt_mat = tree.calcImpulseResponseMatrix(
@@ -722,6 +723,66 @@ class CompartmentFitter(object):
         # perform the capacitance fit
         self.ctree.setEEq(self.v_eqs_fit)
         self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
+
+    def fitCapacitanceFromZ_(self):
+        # create a `GreensTreeTime` to compute response kernels
+        tree = self.tree.__copy__(
+            new_tree=FitTreeC(
+                cache_path=self.cache_path,
+                cache_name=self.cache_name + "_Zkernels_",
+                save_cache=self.save_cache,
+                recompute_cache=self.recompute_cache,
+            ),
+        )
+        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
+        # set the impedances for kernel calculation
+        print(self.cfg.t_fit)
+        t_arr = np.linspace(1., 40., 100)
+        tree.setImpedance(t_arr)
+        # compute the response kernel matrices necessary for the fit
+        zt_mat = tree.calcImpulseResponseMatrix(
+            'fit locs',
+            compute_time_derivative=False,
+        )
+
+        self.ctree.setEEq(self.v_eqs_fit)
+        g_tot = np.array([node.getGTot(self.ctree.channel_storage) for node in self.ctree])
+
+        # original membrane time scales
+        taus_m = []
+        for l in tree.getLocs('fit locs'):
+            g_m = tree[l[0]].getGTot(channel_storage=tree.channel_storage)
+            taus_m.append(tree[l[0]].c_m / g_m)
+        taus_m_orig = self.ctree._permuteToTree(np.array(taus_m))
+
+
+        bounds = [(1e-10, 10 * taus_m_orig[ii] * g_tot[ii]) for ii in range(len(self.ctree))]
+
+        ctree = copy.deepcopy(self.ctree)
+        # breakpoint()
+
+        def objective(c_vec):
+            ctree._toTreeC(c_vec)
+            z_mat_comp = ctree.calcImpedanceMatrix(tree.freqs)
+            zt_mat_comp = np.zeros_like(zt_mat)
+            for ii in range(zt_mat.shape[1]):
+                for jj in range(ii, zt_mat.shape[2]):
+                    zt_mat_comp[:,ii,jj] = tree._inverseFourrier(z_mat_comp[:,ii,jj],
+                        compute_time_derivative=False
+                    )
+                    zt_mat_comp[:,jj,ii] = zt_mat_comp[:,ii,jj]
+            z_err = np.sqrt(np.mean((zt_mat_comp - zt_mat)**2))
+            print(z_err)
+            return z_err
+
+
+        print(self.ctree._toVecC())
+        import scipy.optimize as so
+        res = so.minimize(objective, self.ctree._toVecC(), method="Nelder-Mead", bounds=bounds, options={'maxfev': 200})
+
+        print(res['x'])
+        self.ctree._toTreeC(res['x'])
+
 
     def _calcSOVMats(self, locs, pprint=False):
         """

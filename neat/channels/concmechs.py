@@ -9,6 +9,9 @@ class ConcMech(object):
     def iteritems(self):
         yield None, None
 
+    def __repr__(self):
+        return f"ConcMech(ion={self.ion})"
+
 
 class ExpConcMech(ConcMech):
     def __init__(self, ion, tau, gamma):
@@ -51,5 +54,8 @@ class ExpConcMech(ConcMech):
     def computeLinTauFit(self, freqs):
         return -self.gamma * 1e3 * self.tau, 1e3
 
-    def __str__(self):
-        return 'tau: %.2f ms, gamma: %.6f (ms/nA)'%(self.tau, self.gamma)
+    # def __str__(self):
+    #     return 'tau: %.2f ms, gamma: %.6f (ms/nA)'%(self.tau, self.gamma)
+
+    def __repr__(self):
+        return f"ExpConcMech(ion={self.ion}, gamma={self.gamma:1.6g}, tau={self.tau:1.6g})"

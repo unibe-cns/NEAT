@@ -220,6 +220,7 @@ class TestMorphTree():
         nodes = self.tree._convertNodeArgToNodes(None)
         assert self.tree.nodes == nodes
         nodes = self.tree._convertNodeArgToNodes(self.tree[4])
+        # breakpoint()
         assert self.tree.gatherNodes(self.tree[4]) == nodes
         nodes = self.tree._convertNodeArgToNodes('apical')
         assert self.tree.getNodesInApicalSubtree() == nodes
@@ -230,8 +231,9 @@ class TestMorphTree():
         nodes_ = [self.tree[5], self.tree[7]]
         nodes = self.tree._convertNodeArgToNodes(nodes_)
         assert nodes_ == nodes
-        with pytest.raises(ValueError):
+        with pytest.raises(IOError):
             self.tree._convertNodeArgToNodes('wrong arg')
+        with pytest.raises(IOError):
             self.tree._convertNodeArgToNodes(5)
         # with the computational tree
         self.tree.setCompTree(set_as_primary_tree=1, eps=1.)
@@ -461,7 +463,8 @@ class TestMorphTree():
         # check comptree resetting
         self.tree.setCompTree()
         self.tree.treetype = 'computational'
-        self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
+        with pytest.raises(IOError):
+            self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
         assert self.tree.treetype == 'computational'
         self.tree.treetype = 'original'
         # test loc distribution on nodes
@@ -521,7 +524,7 @@ class TestMorphTree():
             assert 'tag' not in node.content
         locs = self.tree.distributeLocsRandom(10, node_arg='basal', add_soma=0)
         assert len(locs) == 0
-        with pytest.raises(ValueError):
+        with pytest.raises(IOError):
             self.tree.distributeLocsRandom(10, node_arg='bad type')
 
     def testTreeCreation(self):
@@ -732,10 +735,10 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    tmt.testStringRepresentation()
+    # tmt.testStringRepresentation()
     # tmt.testPlotting(pshow=True)
     # tmt.testCompTree0()
-    # tmt.testInputArgConversion()
+    tmt.testInputArgConversion()
     # tmt.testLocFunctionality()
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()

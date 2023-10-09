@@ -239,6 +239,16 @@ class TestConcMechs:
 
         return tree
 
+    def test_repr(self):
+        tree = self.loadBall(w_ca_conc=True)
+
+        repr_str = "['PhysTree', \"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': 12.0, 'swc_type': 1, " \
+            "'currents': {'SKv3_1': [653374.0, -85.0], 'NaTa_t': [3418459.0, 50.0], 'Ca_HVA': [792.0, 132.4579341637009], 'Ca_LVAst': [5574.0, 132.4579341637009], 'SK_E2': [653374.0, -85.0], 'L': [91.0, -62.442793]}, " \
+            "'concmechs': {'ca': ExpConcMech(ion=ca, gamma=4.62765e-10, tau=605.033)}, 'c_m': 1.0, 'r_a': 0.0001, 'g_shunt': 0.0, 'v_ep': -75.0, 'conc_eps': {}}\"]" \
+            "{'channel_storage': ['Ca_HVA', 'Ca_LVAst', 'NaTa_t', 'SK_E2', 'SKv3_1']}"
+
+        assert repr_str == repr(tree)
+
     def _simulate(self, simtree, rec_locs, amp=0.8, dur=100., delay=10., cal=100.):
         # initialize simulation tree
         simtree.initModel(t_calibrate=cal, factor_lambda=10.)
@@ -693,9 +703,10 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
+    tcm.test_repr()
     # tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
-    tcm.testFittingBall(pplot=True)
+    # tcm.testFittingBall(pplot=True)
     # tcm.testTauFitBall(pplot=True)
     # tcm.testFittingBallAndStick(pplot=True)
     # tcm.testLocalizedConcMechPasAxon()

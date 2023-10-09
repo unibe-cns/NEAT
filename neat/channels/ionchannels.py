@@ -280,7 +280,7 @@ class IonChannel(object):
         if not 'varinf' in self.__dict__:
             self.varinf = {}
 
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             key = str(svar)
             if key in (self.varinf.keys() | self.tauinf.keys()):
                 self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
@@ -292,7 +292,7 @@ class IonChannel(object):
 
         # construct the rate functions
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
-            for svar in self.statevars:
+            for svar in self.ordered_statevars:
                 key = str(svar)
                 if key in (self.alpha.keys() | self.beta.keys()):
                     self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
@@ -312,7 +312,7 @@ class IonChannel(object):
         # set the right hand side of the differential equation for
         # state variables
         self.fstatevar = SPDict()
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             self.fstatevar[svar] = (-svar + self.varinf[svar]) / self.tauinf[svar]
 
         # concentrations the ion channel depends on
@@ -329,7 +329,7 @@ class IonChannel(object):
         # from default concentration values
         if not hasattr(self.conc, 'values'):
             self.conc = SPDict({sp.symbols(str(ion)): \
-                                self.cfg.conc[str(ion)] for ion in self.conc})
+                                self.cfg.conc[str(ion)] for ion in list(sorted(self.conc))})
         # sympy concentration symbols
         self.sp_c = [ion for ion in self.conc]
 
@@ -595,7 +595,7 @@ class IonChannel(object):
 
         lin_svar = SPDict({
             str(svar): np.zeros(out_shape, dtype=np.array(freqs).dtype) \
-            for svar in self.statevars
+            for svar in self.ordered_statevars
         })
         for svar, dp_dx_ in dp_dx.items():
             df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
@@ -743,7 +743,7 @@ class IonChannel(object):
         Writes a modfile of the ion channel for simulations with neuron
         """
         cname =  self.__class__.__name__
-        sv = [str(svar) for svar in self.statevars]
+        sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
         e = self._getReversal(e)
 
@@ -828,7 +828,7 @@ class IonChannel(object):
 
         file.write('PROCEDURE rates(v%s) {\n'%concstring)
         file.write('    %s = celsius\n'%str(self.sp_t))
-        for var, svar in zip(sv, self.statevars):
+        for var, svar in zip(sv, self.ordered_statevars):
             vi = sp.printing.ccode(self.varinf[svar], assign_to=f"{var}_inf")
             ti = sp.printing.ccode(self.tauinf[svar], assign_to=f"tau_{var}")
             for repl_pair in repl_pairs:
@@ -884,7 +884,7 @@ class IonChannel(object):
 
     def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'functions'], v_comp=0., g=0., e=None):
         cname =  self.__class__.__name__
-        sv = [str(svar) for svar in self.statevars]
+        sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
         sv_suff = [sv_ + '_' + cname for sv_ in sv]
         e = self._getReversal(e)
@@ -922,7 +922,7 @@ class IonChannel(object):
         if 'equations' in blocks:
             # reformulate open probability in terms of suffixed variables
             p_open_ = self.p_open
-            for svar, sv_ in zip(self.statevars, sv_suff):
+            for svar, sv_ in zip(self.ordered_statevars, sv_suff):
                 p_open_ = p_open_.subs(svar, sp.symbols(sv_))
                 p_open_ = p_open_.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
@@ -931,7 +931,7 @@ class IonChannel(object):
                      '    inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n'%(cname, cname, str(p_open_), cname)
 
 
-            for var, var_suff, svar in zip(sv, sv_suff, self.statevars):
+            for var, var_suff, svar in zip(sv, sv_suff, self.ordered_statevars):
                 vi = sp.printing.ccode(self.varinf[svar])
                 ti = sp.printing.ccode(self.tauinf[svar])
 
@@ -948,7 +948,7 @@ class IonChannel(object):
         if 'functions' in blocks:
             func_str = '\n' + \
                        '# functions %s\n'%cname
-            for svar, sv_, sv_suff_ in zip(self.statevars, sv, sv_suff):
+            for svar, sv_, sv_suff_ in zip(self.ordered_statevars, sv, sv_suff):
                 # substitute possible default values and concentrations
                 varinf_func = self._substituteDefaults(self.varinf[svar])
                 func_args = ["v_comp real"]
@@ -993,11 +993,11 @@ class IonChannel(object):
         substituted for c++ simulation
         """
         c_name = self.__class__.__name__
-        svs = [str(svar) for svar in self.statevars]
+        svs = [str(svar) for svar in self.ordered_statevars]
         # rewrite open probabilities
         p_open_m = self.p_open
         p_open_m_inf = self.p_open
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             p_open_m = p_open_m.subs(svar, sp.symbols('m_' + str(svar)))
             p_open_m_inf = p_open_m_inf.subs(svar, sp.symbols('m_' + str(svar) + '_inf'))
         # substitue concentrations in expression
@@ -1013,7 +1013,7 @@ class IonChannel(object):
         # define class and functions in header file
         fh.write('class %s: public IonChannel{\n'%c_name)
         fh.write('private:' + '\n')
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             sv = sp.printing.ccode(svar)
             fh.write('    double m_%s;\n'%sv)
             fh.write('    double m_%s_inf, m_tau_%s;\n'%(sv, sv))
@@ -1039,7 +1039,7 @@ class IonChannel(object):
 
         # function in cc file
         fcc.write('void %s::calcFunStatevar(double v){\n'%c_name)
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             varinf = self._substituteDefaults(self.varinf[svar])
             tauinf = self._substituteDefaults(self.tauinf[svar])
             sv = str(svar)
@@ -1099,7 +1099,7 @@ class IonChannel(object):
 
         # set voltage values to evaluate at constant voltage during newton iteration
         fcc.write('void %s::setfNewtonConstant(double* vs, int v_size){\n'%c_name)
-        fcc.write('    if(v_size != %d)'%len(self.statevars) + '\n')
+        fcc.write('    if(v_size != %d)'%len(self.ordered_statevars) + '\n')
         fcc.write('        cerr << "input arg [vs] has incorrect size, ' + \
                   'should have same size as number of channel state variables" << endl' + ';\n')
         for ii, svar in enumerate(self.ordered_statevars):
@@ -1109,7 +1109,7 @@ class IonChannel(object):
         # functions for solving Newton iteration
         fcc.write('double %s::fNewton(double v){\n'%c_name)
         p_o = self.p_open
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             sv = 'v_' + str(svar)
             # substitute default parameters
             vi = self._substituteDefaults(self.varinf[svar])
@@ -1130,10 +1130,10 @@ class IonChannel(object):
         fcc.write('}\n')
 
         fcc.write('double %s::DfDvNewton(double v){\n'%c_name)
-        dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.statevars}
+        dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.ordered_statevars}
 
         # print derivatives
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             sv = 'v_' + str(svar)
             v_var = sp.symbols(sv)
 
@@ -1162,7 +1162,7 @@ class IonChannel(object):
             fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
 
         expr_str = ' + '.join(['%s * d%s_dv'%(sp.printing.ccode(dp_o[svar]), str(svar)) \
-                               for svar in self.statevars])
+                               for svar in self.ordered_statevars])
 
         fcc.write('    return -1. * (%s - m_p_open_eq) + (%s) * (m_e_rev - v);\n'%(sp.printing.ccode(self.p_open), expr_str))
         fcc.write('}\n')

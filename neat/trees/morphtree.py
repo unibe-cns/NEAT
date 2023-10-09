@@ -1156,8 +1156,10 @@ class MorphTree(STree):
         list of `neat.MorphNode`
         """
         # convert the input argument to a list of nodes
+        nodes = []
         if node_arg == None:
-            nodes = self.nodes
+            nodes.extend(self.nodes)
+
         elif isinstance(node_arg, MorphNode):
             if self.treetype == 'computational':
                 # assure that a list of computational nodes is returned
@@ -1166,20 +1168,18 @@ class MorphTree(STree):
             else:
                 # assure that a list of original nodes is returned
                 node_arg = self[node_arg.index]
-            nodes = self.gatherNodes(node_arg)
-        elif node_arg == 'apical':
-            nodes = self.getNodesInApicalSubtree()
-        elif node_arg == 'basal':
-            nodes = self.getNodesInBasalSubtree()
-        elif node_arg == 'axonal':
-            nodes = self.getNodesInAxonalSubtree()
-        elif node_arg == 'somatic':
-            nodes = [self[1]]
-        else:
-            try:
-                nodes = []
+            nodes.extend(self.gatherNodes(node_arg))
+
+        elif hasattr(node_arg, "__len__") and len(node_arg) > 0:
+            # if node arg is iterable, it may a string, a list of strings
+            # or a list of nodes
+            check_all_morphnode = True
+            for node in node_arg:
+                if not isinstance(node, MorphNode):
+                    check_all_morphnode = False
+
+            if check_all_morphnode:
                 for node in node_arg:
-                    assert isinstance(node, MorphNode)
                     if self.treetype == 'computational':
                         # assure that a list of computational nodes is returned
                         node_ = self._findCompnodeFromRoot(node)
@@ -1189,11 +1189,42 @@ class MorphTree(STree):
                     else:
                         # assure that a list of original nodes is returned
                         nodes.append(self[node.index])
-            except (AssertionError, TypeError):
-                raise ValueError('input should be (i) `None`, (ii) an instance of '
-                        '`neat.MorphNode`, (iii) one of the following 3 strings '
-                        '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
-                        'collection of instances of :class:MorphNode')
+
+            else:
+                if not isinstance(node_arg, str):
+                    for entry in node_arg:
+                        if entry not in ['apical', 'basal', 'axonal', 'somatic']:
+                            raise IOError(
+                                'input should be (i) `None`, (ii) an instance of '
+                                '`neat.MorphNode`, (iii) one of the following 3 strings '
+                                '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
+                                'collection of instances of :class:MorphNode'
+                            )
+                else:
+                    if node_arg not in ['apical', 'basal', 'axonal', 'somatic']:
+                        raise IOError(
+                                    'input should be (i) `None`, (ii) an instance of '
+                                    '`neat.MorphNode`, (iii) one of the following 3 strings '
+                                    '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
+                                    'collection of instances of :class:MorphNode'
+                                )
+
+                if 'apical' in node_arg:
+                    nodes.extend(self.getNodesInApicalSubtree())
+                if 'basal' in node_arg:
+                    nodes.extend(self.getNodesInBasalSubtree())
+                if 'axonal' in node_arg:
+                    nodes.extend(self.getNodesInAxonalSubtree())
+                if 'somatic' in node_arg:
+                    nodes.extend([self[1]])
+
+        else:
+            raise IOError(
+                'input should be (i) `None`, (ii) an instance of '
+                '`neat.MorphNode`, (iii) one of the following 3 strings '
+                '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
+                'collection of instances of :class:MorphNode'
+            )
 
         return nodes
 
