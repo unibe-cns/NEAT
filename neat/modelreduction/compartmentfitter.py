@@ -238,7 +238,6 @@ class CompartmentFitter(object):
                         pname: pval for pname, pval in concmechs[ion].items()
                     }
                     node.addConcMech(ion, **cparams)
-
                 else:
                     node.addConcMech(ion, **self.concmech_cfg.exp_conc_mech)
 
@@ -246,6 +245,7 @@ class CompartmentFitter(object):
         eq = self.tree.calcEEq('fit locs')
         self.v_eqs_fit = eq[0]
         self.conc_eqs_fit = eq[1]
+        print("!!!", self.conc_eqs_fit)
 
     def createTreeGF(self,
             channel_names=[],

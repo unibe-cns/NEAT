@@ -1196,8 +1196,8 @@ class MorphTree(STree):
                         if entry not in ['apical', 'basal', 'axonal', 'somatic']:
                             raise IOError(
                                 'input should be (i) `None`, (ii) an instance of '
-                                '`neat.MorphNode`, (iii) one of the following 3 strings '
-                                '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
+                                '`neat.MorphNode`, (iii) one of the following 4 strings '
+                                '\'somatic\', \'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
                                 'collection of instances of :class:MorphNode'
                             )
                 else:
@@ -1205,7 +1205,7 @@ class MorphTree(STree):
                         raise IOError(
                                     'input should be (i) `None`, (ii) an instance of '
                                     '`neat.MorphNode`, (iii) one of the following 3 strings '
-                                    '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
+                                    '\'somatic\', \'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
                                     'collection of instances of :class:MorphNode'
                                 )
 

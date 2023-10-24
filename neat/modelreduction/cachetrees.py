@@ -43,6 +43,8 @@ class FitTree(PhysTree):
             f"{self.cache_name}cache_{self.unique_hash()}.p",
         )
 
+        print(f"\n>>>> {self.__class__.__name__} --> {file_name} <<<<")
+
         try:
             # ensure that the funcs are recomputed if 'recompute' is true
             if self.recompute_cache:
@@ -50,6 +52,8 @@ class FitTree(PhysTree):
 
             with open(file_name, 'rb') as file:
                 tree_ = pickle.load(file)
+
+            print("    !!! loading tree !!!")
 
             cache_params_dict = {
                 "cache_name": self.cache_name,
@@ -70,6 +74,8 @@ class FitTree(PhysTree):
                 else:
                     logstr = '>>> No cache found, recomputing...'
                 print(logstr)
+
+            print("    !!! recomputing tree !!!")
 
             # execute the functions
             for func, args, kwargs in funcs_args_kwargs:
@@ -102,7 +108,7 @@ class EquilibriumTree(FitTree):
         self.save_cache = save_cache
         self.recompute_cache = recompute_cache
 
-    def calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         """
         Calculates equilibrium potentials and concentrations in the tree.
         Computes the equilibria through a NEURON simulations without inputs.
@@ -140,21 +146,84 @@ class EquilibriumTree(FitTree):
             {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
         )
 
-    def calcEEqTODO(self, locarg, ions=None, method="interp", **kwargs):
+    def calcEEq(self, locarg, ions=None, method="interp", L_eps=20., **kwargs):
         """
         Calculates equilibrium potentials and concentrations in the tree.
 
         Uses either linear interpolations between the stored equilibria at the
         midpoints of the nodes or computes the equilibria through a NEURON
         simulation without inputs.
+
+        Parameters
+        ----------
+        locarg: `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            equilibrium state evaluated, if ``string``, specifies the
+            name under which a set of locations is stored
+        ions: `iterable` of `str
+            the names of the ions for which the concentration needs to be measured
+        method: Literal: 'interp' or 'sim'
+            whether to use interpolation or simulation. Defaults to simulation if
+            distance is larger than `L_eps`
+        L_eps: float
+            maximum distance (um) above which the method defaults to interpolation
         """
-        pass
+        if ions is None: ions = self.ions
+        locs = self._convertLocArgToLocs(locarg)
+        ref_locs = [(n.index, .5) for n in self]
+        self.storeLocs(ref_locs, name="ref locs")
+
+        e_eqs = []
+        conc_eqs = {ion: [] for ion in ions}
+
+        if method == "interp":
+            idxs0 = self.getNearestLocinds(locs, "ref locs", direction=1)
+            idxs1 = self.getNearestLocinds(locs, "ref locs", direction=2)
+
+            for loc, idx0, idx1 in zip(locs, idxs0, idxs1):
+
+                L0 = self.pathLength(loc, ref_locs[idx0])
+                L1 = self.pathLength(loc, ref_locs[idx1])
+
+                if L0 < 1e-10 and L1 < 1e-10:
+                    # both neighbour locations are the same
+                    e_eqs.append(self[ref_locs[idx0][0]].v_ep)
+
+                    for ion in ions:
+                        # linear interpolation to compute the equilibrium concentration
+                        conc_eqs[ion].append(self[ref_locs[idx0][0]].conc_eps[ion])
+
+                elif L0 < L_eps and L1 < L_eps:
+                    v_ep0 = self[ref_locs[idx0][0]].v_ep
+                    v_ep1 = self[ref_locs[idx1][0]].v_ep
+
+                    # linear interpolation to compute the equilibrium potential
+                    e_eqs.append((v_ep0 * L1 + v_ep1 * L0) / (L1 + L0))
+
+                    for ion in ions:
+                        c_ep0 = self[ref_locs[idx0][0]].conc_eps[ion]
+                        c_ep1 = self[ref_locs[idx0][0]].conc_eps[ion]
+
+                        # linear interpolation to compute the equilibrium concentration
+                        conc_eqs[ion].append((c_ep0 * L1 + c_ep1 * L0) / (L1 + L0))
+
+                else:
+                    break
+
+        if len(e_eqs) < len(locs):
+            return self._calcEEq(locarg, ions=ions, **kwargs)
+
+        else:
+            return (
+                np.array(e_eqs),
+                {ion: np.array(conc_eq) for ion, conc_eq in conc_eqs.items()}
+            )
 
     def _setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         if ions is None: ions = self.ions
 
         locs = [(n.index, .5) for n in self]
-        res = self.calcEEq(locs, ions=ions, t_max=500., dt=0.1, factor_lambda=10.)
+        res = self._calcEEq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
 
         for ii, n in enumerate(self):
             n.setVEP(res[0][ii])

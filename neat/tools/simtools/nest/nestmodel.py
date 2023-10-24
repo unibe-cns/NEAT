@@ -1,9 +1,14 @@
 from ....trees.compartmenttree import CompartmentTree, CompartmentNode
+from ....factorydefaults import DefaultPhysiology
 
 import numpy as np
 
 import warnings
 import subprocess
+
+
+CFG = DefaultPhysiology()
+
 
 try:
     import nest
@@ -76,6 +81,14 @@ class NestCompartmentNode(CompartmentNode):
         e_dict = {
             f'e_{key}': self.currents[key][1] for key in self.currents if key != 'L'
         }
+        c_dict = {}
+        for ion, concmech in self.concmechs.items():
+            c_dict.update({
+                f'gamma_{ion}': concmech.gamma,
+                f'tau_{ion}': concmech.tau,
+                f'inf_{ion}': concmech.inf,
+            })
+
         p_dict = {
             'g_L': self.currents['L'][0],
             'e_L': self.currents['L'][1],
@@ -84,6 +97,7 @@ class NestCompartmentNode(CompartmentNode):
         }
         p_dict.update(g_dict)
         p_dict.update(e_dict)
+        p_dict.update(c_dict)
 
         if self.parent_node is None:
             parent_idx = -1
@@ -133,9 +147,6 @@ class NestCompartmentTree(CompartmentTree):
             Keyword arguments to the `nest.Create()` function
         """
         models = nest.Create(model_name + suffix, n, **kwargs)
-        print(self, "\n----\n")
-        for sd in self._getCompartmentsStatus():
-            print(sd)
         models.compartments = self._getCompartmentsStatus()
 
         return models

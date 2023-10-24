@@ -845,7 +845,7 @@ class IonChannel(object):
 
         return modname
 
-    def _create_nestml_funcstr(self, code_str, n_spaces=0, indent=4):
+    def _create_nestml_funcstr(self, code_str, n_spaces=0, indent=8):
         """
         This function is used to recursively expand if... else... statements
         across multiple lines, as by default the single line version is printed
@@ -873,16 +873,16 @@ class IonChannel(object):
             code_str = \
                 " "*indent   + f"if {ast.unparse(ifexp.test)}:\n" + \
                 " "*n_spaces + f"{cond_1_str}" + \
-                " "*n_spaces + f"else:\n" + \
-                " "*n_spaces + f"{cond_0_str}" + \
-                " "*n_spaces + f"end\n"
+                " "*indent + f"else:\n" + \
+                " "*n_spaces + f"{cond_0_str}"
+                # " "*n_spaces + f"end\n"
         else:
             code_str = \
                 " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
 
         return code_str
 
-    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'functions'], v_comp=0., g=0., e=None):
+    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=0., g=0., e=None):
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
@@ -905,17 +905,17 @@ class IonChannel(object):
 
         if 'state' in blocks:
             state_str = '\n' + \
-                        '    # state variables %s\n'%cname
+                        '        # state variables %s\n'%cname
             for sv_, sv_key in zip(sv_suff, sv):
-                state_str += '    %s real = %.8f\n'%(sv_, sv_init[sv_key])
+                state_str += '        %s real = %.8f\n'%(sv_, sv_init[sv_key])
 
             blocks_dict['state'] += state_str
 
         if 'parameters' in blocks:
             param_str = '\n' + \
-                        '    # parameters %s\n'%cname + \
-                        '    gbar_%s real = %.2f\n'%(cname, g) + \
-                        '    e_%s real = %.2f\n'%(cname, e)
+                        '        # parameters %s\n'%cname + \
+                        '        gbar_%s real = %.2f\n'%(cname, g) + \
+                        '        e_%s real = %.2f\n'%(cname, e)
 
             blocks_dict['parameters'] += param_str
 
@@ -927,15 +927,15 @@ class IonChannel(object):
                 p_open_ = p_open_.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
             eq_str = '\n' + \
-                     '    # equation %s\n'%cname + \
-                     '    inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n'%(cname, cname, str(p_open_), cname)
+                     '        # equation %s\n'%cname + \
+                     '        inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n'%(cname, cname, str(p_open_), cname)
 
 
             for var, var_suff, svar in zip(sv, sv_suff, self.ordered_statevars):
                 vi = sp.printing.ccode(self.varinf[svar])
                 ti = sp.printing.ccode(self.tauinf[svar])
 
-                eq_str += f"    {var_suff}' = ( {var}_inf_{cname}( {func_args} ) - {var_suff} ) / ( tau_{var}_{cname}( {func_args} ) * 1s )\n"
+                eq_str += f"        {var_suff}' = ( {var}_inf_{cname}( {func_args} ) - {var_suff} ) / ( tau_{var}_{cname}( {func_args} ) * 1s )\n"
 
             eq_str += "\n"
             blocks_dict['equations'] += eq_str
@@ -945,9 +945,9 @@ class IonChannel(object):
 
         from sympy import pycode
 
-        if 'functions' in blocks:
+        if 'function' in blocks:
             func_str = '\n' + \
-                       '# functions %s\n'%cname
+                       '    # functions %s\n'%cname
             for svar, sv_, sv_suff_ in zip(self.ordered_statevars, sv, sv_suff):
                 # substitute possible default values and concentrations
                 varinf_func = self._substituteDefaults(self.varinf[svar])
@@ -961,11 +961,11 @@ class IonChannel(object):
                 varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
                 code_str = sp.pycode(varinf_func, fully_qualified_modules=False)
-                func_str += f'function {sv_}_inf_{cname} ({func_call_args}) real:\n' \
-                            f'    val real\n' \
-                            f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
-                            f'    return val\n' \
-                            f'end\n'
+                func_str += f'    function {sv_}_inf_{cname} ({func_call_args}) real:\n' \
+                            f'        val real\n' \
+                            f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
+                            f'        return val\n\n'
+                            # f'end\n'
 
                 # substitute possible default values and concentrations
                 tauinf_func = self._substituteDefaults(self.tauinf[svar])
@@ -976,13 +976,13 @@ class IonChannel(object):
                 tauinf_func = tauinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
 
                 code_str = sp.pycode(tauinf_func, fully_qualified_modules=False)
-                func_str += f'\nfunction tau_{sv_}_{cname} ({func_call_args}) real:\n' \
-                            f'    val real\n' \
-                            f'{self._create_nestml_funcstr(code_str, n_spaces=4)}' \
-                            f'    return val\n' \
-                            f'end\n'
+                func_str += f'\n    function tau_{sv_}_{cname} ({func_call_args}) real:\n' \
+                            f'        val real\n' \
+                            f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
+                            f'        return val\n\n'
+                            # f'end\n'
 
-            blocks_dict['functions'] += func_str
+            blocks_dict['function'] += func_str
 
         return blocks_dict
 

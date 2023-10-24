@@ -115,6 +115,17 @@ output: spike
 )
 
 
+PERMITTED_BLOCK_NAMES = [
+    'parameters',
+    'state',
+    'equations',
+    'function',
+    'internals',
+    'input',
+    'output',
+]
+
+
 def stripVComp(contents):
     ss = "v_comp real"
     idx = None
@@ -144,7 +155,6 @@ def _getIndexOfBlock(contents, block_name):
         else:
             kk += 1
 
-
     return kk
 
 
@@ -153,12 +163,13 @@ def getBlockString(contents, block_name):
         c0 = _getIndexOfBlock(contents, block_name)
         s0 = contents[c0].index(block_name) + len(block_name+":")
 
-        c1 = _getIndexOfBlock(contents[c0:], "end") + c0
-        s1 = contents[c1].index("end")
+        c1 = min([
+            _getIndexOfBlock(contents[c0+1:], block_name) + c0 \
+            for block_name in PERMITTED_BLOCK_NAMES
+        ])
 
         block_str = contents[c0][s0:] + \
                     ''.join(contents[c0+1:c1]) + \
-                    contents[c1][:s1] + \
                     '\n'
     except IndexError as e:
         warnings.warn("\'%s\' block not found in .nestml file")
@@ -169,20 +180,24 @@ def getBlockString(contents, block_name):
 
 def getFunctionsString(contents):
     function_str = ""
+
     try:
         kk = 0
         while kk < len(contents):
             c0 = _getIndexOfBlock(contents[kk:], "function") + kk
             s0 = contents[c0].index("function")
-            # print("\n",contents[kk:])
 
-            c1 = _getIndexOfBlock(contents[c0:], "end") + c0
-            s1 = contents[c1].index("end") + len("end")
+            c1 = min([
+                    _getIndexOfBlock(contents[c0+1:], block_name) + c0 \
+                    for block_name in PERMITTED_BLOCK_NAMES
+                ] + [_getIndexOfBlock(contents[c0+1:], "function") + c0]
+            )
 
-            function_str += contents[c0][s0:] + \
-                            ''.join(contents[c0+1:c1]) + \
-                            contents[c1][:s1] + \
-                            '\n'
+            function_str += "\n    " + \
+                    contents[c0][s0:] + \
+                    ''.join(contents[c0+1:c1]) + \
+                    '\n'
+
             # move further, functions are assumed to at least occupy one line each
             kk = c1 + 1
 
@@ -199,13 +214,12 @@ def parseNestmlFile(f_name):
         contents = file.readlines()
 
     stripComments(contents)
-    stripVComp(contents)
 
-    blocks = copy.deepcopy(BLOCKS_EMPTY)
+    blocks = dict(zip(PERMITTED_BLOCK_NAMES, [""]*len(PERMITTED_BLOCK_NAMES)))
     for block_name in blocks:
-        if block_name != "output" and block_name != "functions":
+        if block_name != "output" and block_name != "function":
             blocks[block_name] += getBlockString(contents, block_name)
-        elif block_name == "functions":
+        elif block_name == "function":
             blocks[block_name] += getFunctionsString(contents)
 
     return blocks
@@ -214,15 +228,21 @@ def parseNestmlFile(f_name):
 def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
                       write_blocks=['parameters', 'state', 'equations',
                                     'inputs', 'output', 'functions']):
-    idx = blocks['state'].find("state:") + 6
-    blocks['state'] = blocks['state'][:idx] + \
-                      "\n    v_comp real = %.8f \n"%v_comp + \
-                      blocks['state'][idx:]
+    # idx = blocks['state'].find("state:") + 6
+    # blocks['state'] = blocks['state'][:idx] + \
+    #                   "\n    v_comp real = %.8f \n"%v_comp + \
+    #                   blocks['state'][idx:]
 
     for block, blockstr in blocks.items():
-        if block != 'functions' and block != 'output':
-            blocks[block] = block + ":\n" + blockstr + 'end\n\n'
-            # blocks[block] = blockstr + 'end\n\n'
+        breakpoint()
+        if block != 'function' and block != 'output':
+            blocks[block] = f"\n    {block}:\n{blockstr}"
+            if block == 'state' and not 'v_comp' in blockstr:
+                blocks[block] += f'\n        v_comp real = {v_comp}'
+            blocks[block] += "\n\n"
+
+        elif block == 'output':
+            blocks[block] = "\n    output:\n        spike\n\n"
 
     fname = os.path.join(path_name, neuron_name + ".nestml")
 
@@ -230,7 +250,7 @@ def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
     file.write('\nneuron %s:\n'%neuron_name)
     for blockstr in blocks.values():
         file.write(blockstr)
-    file.write('\nend')
+    # file.write('\nend')
     file.close()
 
     return fname

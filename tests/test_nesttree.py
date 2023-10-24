@@ -40,14 +40,13 @@ class TestNest:
             cn.loc_ind = ii
 
     def testModelConstruction(self):
-        loadNestModel("default")
         with pytest.raises(nestexceptions.NESTErrors.DynamicModuleManagementError):
             loadNestModel("default")
 
         self.loadTwoCompartmentModel()
 
         nct = self.ctree.__copy__(new_tree=NestCompartmentTree())
-        cm_model = nct.initModel("default", 1)
+        cm_model = nct.initModel("cm_default", 1, suffix="")
 
         compartments_info = cm_model.compartments
         assert compartments_info[0]["comp_idx"] == 0
@@ -102,7 +101,7 @@ class TestNest:
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
-            "receptor_type": "AMPA",
+            "receptor_type": "i_AMPA",
             "params": {"e_AMPA": 0., "tau_r_AMPA": .2, "tau_d_AMPA": 3.},
         }]
         sg = nest.Create('spike_generator', 1, {'spike_times': [220., 223., 240.]})
@@ -155,12 +154,9 @@ class TestNest:
         tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
         na_chan = channelcollection.NaTa_t()
         tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
-        # ca_chan = channelcollection.Ca_HVA()
-        # tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        # tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
-        # sk_chan = channelcollection.SK_E2()
-        # tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
-        # tree.addCurrent(sk_chan, 0.196957 * 1e6, -85., node_arg="axonal")
+        ca_chan = channelcollection.Ca_HVA()
+        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
         # passive leak current
         tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
         tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
@@ -189,7 +185,7 @@ class TestNest:
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
-            "receptor_type": "AMPA",
+            "receptor_type": "i_AMPA",
             "params": {"e_AMPA": 0., "tau_r_AMPA": .2, "tau_d_AMPA": 3.},
         }]
         sg = nest.Create('spike_generator', 1, {'spike_times': [220., 223., 240.]})
@@ -217,11 +213,11 @@ class TestNest:
         res_nest['v_comp2'] = res_nest['v_comp2'][idx0:]
         v0 = res_nest['v_comp0'][0]
 
-        # assert np.allclose(
-        #     res_nest['v_comp0'],
-        #     res_neuron['v_m'][0][2:],
-        #     atol=1.
-        # )
+        assert np.allclose(
+            res_nest['v_comp0'],
+            res_neuron['v_m'][0][2:],
+            atol=1.
+        )
 
         if pplot:
             pl.figure(figsize=(15,6))
@@ -250,9 +246,11 @@ class TestNest:
         k_chan = channelcollection.SKv3_1()
         tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
         na_chan = channelcollection.NaTa_t()
-        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
+        # tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
+        tree.addCurrent(na_chan, 0.15 * 1e6, 50., node_arg=[tree[1]])
         ca_chan = channelcollection.Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        # tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.addCurrent(ca_chan, 0.005 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         # passive leak current
         tree.fitLeakCurrent(-70., 15.)
 
@@ -262,11 +260,11 @@ class TestNest:
         self.ctree = cfit.fitModel(locs)
 
     def testDendNestNeuronComparison(self, pplot=False):
-        dt = 1.
+        dt = .01
         tmax = 400.
-        t0 = 0.
+        tcal = 200.
         t1 = 200.
-        idx0 = int(t0/dt)
+        idx0 = int(tcal/dt)
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
@@ -279,7 +277,7 @@ class TestNest:
         print(clocs)
         print(self.ctree)
         csimtree_neuron = createReducedNeuronModel(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=0.)
+        csimtree_neuron.initModel(dt=dt, t_calibrate=tcal)
         csimtree_neuron.storeLocs(clocs, name='rec locs')
         csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
@@ -289,8 +287,8 @@ class TestNest:
 
         print(res_neuron['chan'].keys())
 
-        res_neuron['t'] = res_neuron['t'][idx0:] - res_neuron['t'][idx0]
-        res_neuron['v_m'] = res_neuron['v_m'][:,idx0:]
+        # res_neuron['t'] = res_neuron['t'][idx0:] - res_neuron['t'][idx0]
+        # res_neuron['v_m'] = res_neuron['v_m'][:,idx0:]
 
         print(res_neuron['v_m'].shape)
 
@@ -308,7 +306,7 @@ class TestNest:
             "receptor_type": "i_AMPA",
             "params": {"e_AMPA": 0., "tau_r_AMPA": .2, "tau_d_AMPA": 3.},
         }]
-        sg = nest.Create('spike_generator', 1, {'spike_times': [t1 + 20., t1 + 23., t1 + 40.]})
+        sg = nest.Create('spike_generator', 1, {'spike_times': [tcal + t1 + 20., tcal + t1 + 23., tcal + t1 + 40.]})
         nest.Connect(sg, nestmodel,
             syn_spec={
                 'synapse_model': 'static_synapse',
@@ -317,7 +315,7 @@ class TestNest:
                 'receptor_type': 0,
             }
         )
-        sg_ = nest.Create('spike_generator', 1, {'spike_times': [t1 + 70., t1 + 74., t1 + 85.]})
+        sg_ = nest.Create('spike_generator', 1, {'spike_times': [tcal + t1 + 70., tcal + t1 + 74., tcal + t1 + 85.]})
         nest.Connect(sg_, nestmodel,
             syn_spec={
                 'synapse_model': 'static_synapse',
@@ -340,7 +338,7 @@ class TestNest:
         print('>>> Simulating the NEST model for ' + str(tmax) + ' ms. <<<')
         nest.Prepare()
         start = time.process_time()
-        nest.Run(tmax)
+        nest.Run(tmax+tcal)
         stop = time.process_time()
         nest.Cleanup()
         print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')
@@ -351,6 +349,10 @@ class TestNest:
         res_nest['times'] = res_nest['times'][idx0:] - res_nest['times'][idx0]
         for ii in range(len(self.ctree)):
             res_nest[f'v_comp{ii}'] = res_nest[f'v_comp{ii}'][idx0:]
+            res_nest[f'h_Ca_HVA{ii}'] = res_nest[f'h_Ca_HVA{ii}'][idx0:]
+            res_nest[f'm_Ca_HVA{ii}'] = res_nest[f'm_Ca_HVA{ii}'][idx0:]
+            res_nest[f'h_NaTa_t{ii}'] = res_nest[f'h_NaTa_t{ii}'][idx0:]
+            res_nest[f'm_NaTa_t{ii}'] = res_nest[f'm_NaTa_t{ii}'][idx0:]
 
         print("!!!", len(res_nest[f'v_comp{0}']))
 
@@ -411,9 +413,9 @@ class TestNest:
 
 if __name__ == "__main__":
     tn = TestNest()
-    # tn.testModelConstruction()
-    # tn.testSingleCompNestNeuronComparison(pplot=True)
-    # tn.testMultiCompNestNeuronComparison(pplot=True)
+    tn.testModelConstruction()
+    tn.testSingleCompNestNeuronComparison(pplot=True)
+    tn.testAxonNestNeuronComparison(pplot=True)
     tn.testDendNestNeuronComparison(pplot=True)
 
     # ca_act()

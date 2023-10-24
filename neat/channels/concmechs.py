@@ -1,5 +1,10 @@
+from ..factorydefaults import DefaultPhysiology
+
 import sympy as sp
 import numpy as np
+
+
+CFG = DefaultPhysiology()
 
 
 class ConcMech(object):
@@ -14,36 +19,27 @@ class ConcMech(object):
 
 
 class ExpConcMech(ConcMech):
-    def __init__(self, ion, tau, gamma):
+    def __init__(self, ion, tau, gamma, inf=None):
         self.tau = tau # ms
         self.gamma = gamma # mM / (nA*ms)
+
+        if inf is None:
+            self.inf = CFG.conc[ion]
+        else:
+            self.inf = inf
+
         super().__init__(ion)
 
     def __str__(self):
         return f"ExpConcMech(ion={self.ion}, gamma={self.gamma}, tau={self.tau})"
 
-    # def __getitem__(self, key):
-    #     if key in ['tau', 'gamma']:
-    #         return self.__dict__['key']
-    #     else:
-    #         raise KeyError(
-    #             "ExpConcMech only has \'tau\' or \'gamma\' as valid keys"
-    #         )
-
-    # def __setitem__(self, key, value):
-    #     if key in ['tau', 'gamma']:
-    #         self.__dict__[key] = value
-    #     else:
-    #         raise KeyError(
-    #             "ExpConcMech only has \'tau\' or \'gamma\' as valid keys"
-    #         )
-
     def iteritems(self):
         yield 'gamma', self.gamma
         yield 'tau', self.tau
+        yield 'inf', self.inf
 
     def items(self):
-        return [('gamma', self.gamma), ('tau', self.tau)]
+        return [('gamma', self.gamma), ('tau', self.tau), ('inf', self.inf)]
 
     def computeLinear(self, freqs):
         return -self.gamma * 1e3 / (freqs + 1e3 / self.tau)
@@ -58,4 +54,4 @@ class ExpConcMech(ConcMech):
     #     return 'tau: %.2f ms, gamma: %.6f (ms/nA)'%(self.tau, self.gamma)
 
     def __repr__(self):
-        return f"ExpConcMech(ion={self.ion}, gamma={self.gamma:1.6g}, tau={self.tau:1.6g})"
+        return f"ExpConcMech(ion={self.ion}, gamma={self.gamma:1.6g}, tau={self.tau:1.6g}, inf={self.inf:1.6g})"

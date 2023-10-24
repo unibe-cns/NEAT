@@ -507,11 +507,11 @@ class CompartmentNode(SNode):
         node_str += f" --- " \
             f"loc_ind = {self._loc_ind}, " \
             f"g_c = {self.g_c} uS, " \
-            f"ca = {self.ca} uF/cm^2, " \
+            f"ca = {self.ca} uF, " \
             f"e_eq = {self.e_eq} mV, "
 
         node_str += ', '.join([
-            f'(g_{c} = {g} uS/cm^2, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
+            f'(g_{c} = {g} uS, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
         ])
 
         return node_str
@@ -581,7 +581,12 @@ class CompartmentTree(STree):
         `neat.CompartmentNode` or `list` of `neat.CompartmentNode
         """
         nodes = []
-        for idx in args:
+
+        idxs = args[0]
+        if isinstance(idxs, int):
+            idxs = [idxs]
+
+        for idx in idxs:
 
             found = False
             for node in self:
@@ -597,6 +602,16 @@ class CompartmentTree(STree):
             return nodes[0]
         else:
             return nodes
+
+    def _resetChannelStorage(self):
+        new_channel_storage = {}
+        for node in self:
+            for channel_name in node.currents:
+                if channel_name not in new_channel_storage and \
+                   channel_name != "L":
+                    new_channel_storage[channel_name] = self.channel_storage[channel_name]
+
+        self.channel_storage = new_channel_storage
 
     def setEEq(self, e_eq, indexing='locs'):
         """

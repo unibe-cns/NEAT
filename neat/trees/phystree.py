@@ -14,6 +14,10 @@ import warnings
 from . import morphtree
 from .morphtree import MorphNode, MorphTree
 from ..channels import concmechs, ionchannels
+from ..factorydefaults import DefaultPhysiology
+
+
+CFG = DefaultPhysiology()
 
 
 def originalTreeModificationDecorator(fun):
@@ -99,6 +103,33 @@ class PhysNode(MorphNode):
             the reversal potential of the current (mV)
         """
         self.currents[channel_name] = [g_max, e_rev]
+
+    def _constructConcArgs(self, channel):
+        """
+        Returns the concentration expansion point for the channel, around which
+        the conductance is computed.
+
+        Checks if the ion concentration is in
+        `self.conc_eps`, and otherwise defaults to the factory default in
+        `neat.factorydefaults.DefaultPhysiology`.
+
+        Parameters
+        ----------
+        channel: `neat.IonChannel` object
+            the ion channel
+
+        Returns
+        -------
+        conc: dict ({str: np.ndarray})
+            The concentrations at the expansion points.
+        """
+        # if concencentration is in expansion point, use it. Otherwise use
+        # concentration in equilibrium concentrations (self.conc_eps), if
+        # it is there. If not, use default concentration.
+        ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
+        conc = {ion: self.conc_eps.copy().pop(ion, CFG.conc[ion]) for ion in ions}
+
+        return conc
 
     def addConcMech(self, ion, params={}):
         """
@@ -192,16 +223,17 @@ class PhysNode(MorphNode):
         """
         if channel_names is None:
             channel_names = channel_names = list(self.currents.keys())
-        v = self.v_ep if v is None else v
 
         g_tot = 0.
         for channel_name in set(self.currents.keys()) & set(channel_names):
             g, e = self.currents[channel_name]
+            v = self.v_ep if v is None else v
 
             if channel_name == 'L':
                 g_tot += g
             else:
-                g_tot += g * channel_storage[channel_name].computePOpen(v)
+                conc = self._constructConcArgs(channel_storage[channel_name])
+                g_tot += g * channel_storage[channel_name].computePOpen(v, **conc)
 
         return g_tot
 
@@ -228,17 +260,19 @@ class PhysNode(MorphNode):
         """
         if channel_names is None:
             channel_names = channel_names = list(self.currents.keys())
-        v = self.v_ep if v is None else v
 
         i_tot = 0.
         for channel_name in set(self.currents.keys()) & set(channel_names):
             g, e = self.currents[channel_name]
+            v = self.v_ep if v is None else v
 
             if channel_name == 'L':
                 i_tot += g * (v - e)
             else:
-                p_open = channel_storage[channel_name].computePOpen(v)
+                conc = self._constructConcArgs(channel_storage[channel_name])
+                p_open = channel_storage[channel_name].computePOpen(v, **conc)
                 i_tot += g * p_open * (v - e)
+
 
         return i_tot
 

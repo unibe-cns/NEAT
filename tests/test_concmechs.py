@@ -9,6 +9,15 @@ import subprocess
 
 import pytest
 
+
+try:
+    import nest
+    import nest.lib.hl_api_exceptions as nestexceptions
+    from neat import NestCompartmentTree
+    WITH_NEST = True
+except ImportError as e:
+    WITH_NEST = False
+
 from neat import PhysTree, GreensTree, NeuronSimTree, CompartmentFitter
 from neat import createReducedNeuronModel
 import neat.channels.ionchannels as ionchannels
@@ -17,6 +26,7 @@ from neat.factorydefaults import DefaultPhysiology
 from channelcollection_for_tests import *
 import channel_installer
 channel_installer.load_or_install_neuron_testchannels()
+channel_installer.load_or_install_nest_testchannels()
 
 
 CFG = DefaultPhysiology()
@@ -244,12 +254,12 @@ class TestConcMechs:
 
         repr_str = "['PhysTree', \"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '12', 'swc_type': 1, " \
             "'currents': {'SKv3_1': '(653374, -85)', 'NaTa_t': '(3.41846e+06, 50)', 'Ca_HVA': '(792, 132.458)', 'Ca_LVAst': '(5574, 132.458)', 'SK_E2': '(653374, -85)', 'L': '(91, -62.4428)'}, " \
-            "'concmechs': {'ca': ExpConcMech(ion=ca, gamma=4.62765e-10, tau=605.033)}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}}\"]" \
+            "'concmechs': {'ca': ExpConcMech(ion=ca, gamma=4.62765e-10, tau=605.033, inf=0.0001)}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}}\"]" \
             "{'channel_storage': ['Ca_HVA', 'Ca_LVAst', 'NaTa_t', 'SK_E2', 'SKv3_1']}"
 
         assert repr_str == repr(tree)
 
-    def _simulate(self, simtree, rec_locs, amp=0.8, dur=100., delay=10., cal=100.):
+    def _simulate(self, simtree, rec_locs, amp=0.8, dur=100., delay=10., cal=100., rec_currs=["ca", "k"]):
         # initialize simulation tree
         simtree.initModel(t_calibrate=cal, factor_lambda=10.)
         simtree.storeLocs(rec_locs, name='rec locs')
@@ -261,7 +271,7 @@ class TestConcMechs:
         res = simtree.run(1.5*dur,
             record_from_channels=True,
             record_concentrations=["ca"],
-            record_currents=["ca", "k"],
+            record_currents=rec_currs,
             spike_rec_loc=rec_locs[0],
         )
 
@@ -700,16 +710,107 @@ class TestConcMechs:
         tree = self.loadNoCaAxonTree(gamma_factor=1e3)
         self._runLocalizedConcMech(tree)
 
+    def _simulateNest(self, simtree, loc_idxs, amp=0.8, dur=100., delay=10., cal=100.):
+        dt = .025
+        idx0 = int(cal / dt)
+        nest.ResetKernel()
+        nest.SetKernelStatus(dict(resolution=dt))
+
+        # create the model
+        nestmodel = simtree.initModel("multichannel_test", 1)
+
+        # step current input
+        dcg = nest.Create("step_current_generator",
+            {
+                "amplitude_times": [cal+dt, cal+delay, cal+delay+dur],
+                "amplitude_values": [0., amp, 0.],
+            }
+        )
+        nest.Connect(dcg, nestmodel,
+            syn_spec={
+                "synapse_model": "static_synapse",
+                "weight": 1.0,
+                "delay": 0.1,
+                "receptor_type": loc_idxs[0],
+            }
+        )
+
+        # voltage recording
+        mm = nest.Create('multimeter', 1,
+            {
+                'record_from': [f"v_comp{idx}" for idx in loc_idxs] + [f"c_ca{idx}" for idx in loc_idxs],
+                'interval': dt
+            }
+        )
+        nest.Connect(mm, nestmodel)
+
+        # simulate
+        nest.Simulate(cal + 1.5 * dur)
+
+        res_nest = nest.GetStatus(mm, 'events')[0]
+        for key, arr in res_nest.items():
+            res_nest[key] = arr[idx0:]
+        res_nest['times'] -= cal
+
+        return res_nest
+
+    @pytest.mark.skipif(WITH_NEST, reason="NEST not installed")
+    def testNestNeuronSimBall(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
+        locs = [(1,.5)]
+
+        tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
+
+        cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
+        ctree = cfit.fitModel(locs)
+
+        clocs = ctree.getEquivalentLocs()
+        cidxs = [n.index for n in ctree]
+
+        res_neuron = self._simulate(createReducedNeuronModel(ctree),
+            clocs, amp=amp, dur=20000., delay=1000., cal=10000.,
+            rec_currs=['ca'],
+        )
+
+        res_nest = self._simulateNest(ctree.__copy__(new_tree=NestCompartmentTree()),
+            cidxs, amp=amp, dur=20000., delay=1000., cal=10000.
+        )
+
+        assert np.allclose(
+            res_neuron['v_m'][0][0:-5],
+            res_nest['v_comp0'],
+            atol=0.3,
+        )
+        assert np.allclose(
+            res_neuron['ca'][0][0:-5],
+            res_nest['c_ca0'],
+            atol=1e-8,
+        )
+
+        if pplot:
+            pl.figure("nest--neuron")
+            ax = pl.subplot(211)
+
+            ax.plot(res_neuron['t'], res_neuron['v_m'][0], "r-", lw=1)
+            ax.plot(res_nest['times'], res_nest['v_comp0'], "b--", lw=1.3)
+
+            ax = pl.subplot(212)
+
+            ax.plot(res_neuron['t'], res_neuron['ca'][0], "r-", lw=1)
+            ax.plot(res_nest['times'], res_nest['c_ca0'], "b--", lw=1.3)
+
+            pl.show()
+
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
     tcm.testStringRepresentation()
-    # tcm.testSpiking(pplot=True)
-    # tcm.testImpedance(pplot=True)
-    # tcm.testFittingBall(pplot=True)
-    # tcm.testTauFitBall(pplot=True)
-    # tcm.testFittingBallAndStick(pplot=True)
-    # tcm.testLocalizedConcMechPasAxon()
-    # tcm.testLocalizedConcMechActAxon()
+    tcm.testSpiking(pplot=True)
+    tcm.testImpedance(pplot=True)
+    tcm.testFittingBall(pplot=True)
+    tcm.testTauFitBall(pplot=True)
+    tcm.testFittingBallAndStick(pplot=True)
+    tcm.testLocalizedConcMechPasAxon()
+    tcm.testLocalizedConcMechActAxon()
+    tcm.testNestNeuronSimBall(pplot=True)
 
 

@@ -215,6 +215,7 @@ class TestPhysTree():
         i_pas = self.tree[1].currents['L'][0] * (-30. - self.tree[1].currents['L'][1]) + \
                 g_chan*p_open * (-30. - e_chan)
         i_pas_ = self.tree[1].getITot(self.tree.channel_storage)
+        g_pas_ = self.tree[1].getGTot(self.tree.channel_storage)
         # check that total current is zero at equilibrium
         assert np.abs(i_pas) < 1e-10
         assert np.abs(i_pas_) < 1e-10
@@ -292,8 +293,8 @@ class TestPhysTree():
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
-    tphys.testStringRepresentation()
+    # tphys.testStringRepresentation()
     # tphys.testLeakDistr()
     # tphys.testPhysiologySetting()
-    # tphys.testMembraneFunctions()
+    tphys.testMembraneFunctions()
     # tphys.testCompTree()
