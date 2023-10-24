@@ -274,8 +274,6 @@ class TestNest:
         dend_idx = 9
 
         clocs = [(ii, .5) for ii in range(len(self.ctree))]
-        print(clocs)
-        print(self.ctree)
         csimtree_neuron = createReducedNeuronModel(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=tcal)
         csimtree_neuron.storeLocs(clocs, name='rec locs')
@@ -284,13 +282,6 @@ class TestNest:
         csimtree_neuron.addDoubleExpSynapse(clocs[dend_idx], .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
         res_neuron = csimtree_neuron.run(tmax, record_from_channels=True, pprint=True)
-
-        print(res_neuron['chan'].keys())
-
-        # res_neuron['t'] = res_neuron['t'][idx0:] - res_neuron['t'][idx0]
-        # res_neuron['v_m'] = res_neuron['v_m'][:,idx0:]
-
-        print(res_neuron['v_m'].shape)
 
         csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
