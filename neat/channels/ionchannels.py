@@ -875,7 +875,6 @@ class IonChannel(object):
                 " "*n_spaces + f"{cond_1_str}" + \
                 " "*indent + f"else:\n" + \
                 " "*n_spaces + f"{cond_0_str}"
-                # " "*n_spaces + f"end\n"
         else:
             code_str = \
                 " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
@@ -965,7 +964,6 @@ class IonChannel(object):
                             f'        val real\n' \
                             f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
                             f'        return val\n\n'
-                            # f'end\n'
 
                 # substitute possible default values and concentrations
                 tauinf_func = self._substituteDefaults(self.tauinf[svar])
@@ -980,7 +978,6 @@ class IonChannel(object):
                             f'        val real\n' \
                             f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
                             f'        return val\n\n'
-                            # f'end\n'
 
             blocks_dict['function'] += func_str
 

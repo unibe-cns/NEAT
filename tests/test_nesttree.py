@@ -66,10 +66,6 @@ class TestNest:
         self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
         na_chan = channelcollection.Na_Ta()
         self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
-        # k_chan = channelcollection.Kv3_1()
-        # self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
-        # na_chan = channelcollection.Na_Ta()
-        # self.tree.addCurrent(na_chan, 1.5*1e6, 50.)
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
@@ -326,16 +322,10 @@ class TestNest:
         })
         nest.Connect(mm, nestmodel)
         # simulate
-        print('>>> Simulating the NEST model for ' + str(tmax) + ' ms. <<<')
         nest.Prepare()
-        start = time.process_time()
         nest.Run(tmax+tcal)
-        stop = time.process_time()
         nest.Cleanup()
-        print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')
         res_nest = nest.GetStatus(mm, 'events')[0]
-
-        print("!!!", len(res_nest[f'v_comp{0}']))
 
         res_nest['times'] = res_nest['times'][idx0:] - res_nest['times'][idx0]
         for ii in range(len(self.ctree)):
@@ -345,14 +335,11 @@ class TestNest:
             res_nest[f'h_NaTa_t{ii}'] = res_nest[f'h_NaTa_t{ii}'][idx0:]
             res_nest[f'm_NaTa_t{ii}'] = res_nest[f'm_NaTa_t{ii}'][idx0:]
 
-        print("!!!", len(res_nest[f'v_comp{0}']))
-
         for ii in range(len(self.ctree)):
             v0 = res_nest[f'v_comp{ii}'][0]
             v_maxdiff = np.max(np.abs(res_nest[f'v_comp{ii}'] - res_neuron['v_m'][ii,2:]))
             v_meandiff = np.mean(np.abs(res_nest[f'v_comp{ii}'] - res_neuron['v_m'][ii,2:]))
-            print(v_maxdiff, "    ", v_meandiff)
-            # assert v_maxdiff < 3. and v_meandiff < 0.004
+            assert v_maxdiff < 1.5 and v_meandiff < 0.005
 
         if pplot:
             pl.figure('v', figsize=(15,6))
@@ -408,5 +395,3 @@ if __name__ == "__main__":
     tn.testSingleCompNestNeuronComparison(pplot=True)
     tn.testAxonNestNeuronComparison(pplot=True)
     tn.testDendNestNeuronComparison(pplot=True)
-
-    # ca_act()
