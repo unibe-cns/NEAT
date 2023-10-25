@@ -117,7 +117,6 @@ def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
                       write_blocks=['parameters', 'state', 'equations',
                                     'inputs', 'output', 'functions']):
     for block, blockstr in blocks.items():
-        breakpoint()
         if block != 'function' and block != 'output':
             blocks[block] = f"\n    {block}:\n{blockstr}"
             if block == 'state' and not 'v_comp' in blockstr:
