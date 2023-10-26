@@ -546,7 +546,7 @@ class TestConcMechs:
         cnode = ctree[0]
         A = 4. * np.pi * (node.R * 1e-4)**2
 
-        # check channels
+        # check fitting
         for channel_name in node.currents:
             # check conductances
             assert np.abs(
@@ -580,10 +580,15 @@ class TestConcMechs:
 
         if pplot:
             pl.figure()
-            ax = pl.gca()
+            ax = pl.subplot(121)
 
             ax.plot(res_full['t'], res_full['v_m'][0], 'b')
             ax.plot(res_reduced['t'], res_reduced['v_m'][0], 'r--')
+
+            ax = pl.subplot(122)
+
+            ax.plot(res_full['t'], res_full['ca'][0], 'b')
+            ax.plot(res_reduced['t'], res_reduced['ca'][0], 'r--')
 
             pl.show()
 
@@ -803,14 +808,14 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    tcm.testStringRepresentation()
-    tcm.testSpiking(pplot=True)
-    tcm.testImpedance(pplot=True)
+    # tcm.testStringRepresentation()
+    # tcm.testSpiking(pplot=True)
+    # tcm.testImpedance(pplot=True)
     tcm.testFittingBall(pplot=True)
-    tcm.testTauFitBall(pplot=True)
-    tcm.testFittingBallAndStick(pplot=True)
-    tcm.testLocalizedConcMechPasAxon()
-    tcm.testLocalizedConcMechActAxon()
-    tcm.testNestNeuronSimBall(pplot=True)
+    # tcm.testTauFitBall(pplot=True)
+    # tcm.testFittingBallAndStick(pplot=True)
+    # tcm.testLocalizedConcMechPasAxon()
+    # tcm.testLocalizedConcMechActAxon()
+    # tcm.testNestNeuronSimBall(pplot=True, amp=2.0)
 
 

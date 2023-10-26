@@ -53,6 +53,7 @@ except ModuleNotFoundError:
 from .tools.kernelextraction import FourrierTools
 
 from .channels.ionchannels import IonChannel
+from .channels.concmechs import ExpConcMech
 
 from .modelreduction.compartmentfitter import CompartmentFitter
 from .modelreduction.cachetrees import EquilibriumTree

@@ -19,7 +19,7 @@ class ConcMech(object):
 
 
 class ExpConcMech(ConcMech):
-    def __init__(self, ion, tau, gamma, inf=None):
+    def __init__(self, ion, tau=100., gamma=1e-15, inf=None):
         self.tau = tau # ms
         self.gamma = gamma # mM / (nA*ms)
 
@@ -31,7 +31,7 @@ class ExpConcMech(ConcMech):
         super().__init__(ion)
 
     def __str__(self):
-        return f"ExpConcMech(ion={self.ion}, gamma={self.gamma}, tau={self.tau})"
+        return f"ExpConcMech(ion={self.ion}, gamma={self.gamma}, tau={self.tau}, inf={self.inf})"
 
     def iteritems(self):
         yield 'gamma', self.gamma
@@ -55,3 +55,26 @@ class ExpConcMech(ConcMech):
 
     def __repr__(self):
         return f"ExpConcMech(ion={self.ion}, gamma={self.gamma:1.6g}, tau={self.tau:1.6g}, inf={self.inf:1.6g})"
+
+    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], channels=[]):
+        ion = self.ion
+        ion_channels = [chan for chan in channels if chan.ion == ion]
+        blocks_dict = {block: "\n" for block in blocks}
+
+        if 'state' in blocks:
+            blocks_dict['state'] += f"        c_{ion} real = {self.inf}\n"
+
+        if "parameters" in blocks:
+            blocks_dict["parameters"] += \
+                f"        gamma_{ion} real = {self.gamma}\n" + \
+                f"        tau_{ion} real = {self.tau} ms\n" + \
+                f"        inf_{ion} real = {self.inf}\n"
+
+        if "equations" in blocks:
+            blocks_dict["equations"] += \
+                f"        c_{ion}' = (inf_{ion} - c_{ion}) / (tau_{ion} * 1s) + " + \
+                f"gamma_{ion} * ({' + '.join([f'i_{chan.__class__.__name__}' for chan in ion_channels])}) @mechanism::concentration\n"
+
+        return blocks_dict
+
+

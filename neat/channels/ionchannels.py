@@ -861,20 +861,20 @@ class IonChannel(object):
             # if test is True
             cond_1_str = self._create_nestml_funcstr(
                 ast.unparse(ifexp.body),
-                n_spaces=n_spaces+indent,
-                indent=indent
+                n_spaces=n_spaces,
+                indent=n_spaces+indent
             )
             # if test is False
             cond_0_str = self._create_nestml_funcstr(
                 ast.unparse(ifexp.orelse),
-                n_spaces=n_spaces+indent,
-                indent=indent
+                n_spaces=n_spaces,
+                indent=n_spaces+indent
             )
             code_str = \
-                " "*indent   + f"if {ast.unparse(ifexp.test)}:\n" + \
-                " "*n_spaces + f"{cond_1_str}" + \
+                " "*indent + f"if {ast.unparse(ifexp.test)}:\n" + \
+                    f"{cond_1_str}" + \
                 " "*indent + f"else:\n" + \
-                " "*n_spaces + f"{cond_0_str}"
+                    f"{cond_0_str}"
         else:
             code_str = \
                 " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"

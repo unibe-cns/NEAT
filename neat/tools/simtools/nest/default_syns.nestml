@@ -22,16 +22,8 @@ neuron default_syns:
         NMDA_ratio real = 2.0      # NMDA_ratio
 
 
-        # parameters Ca conentration mech
-        gamma_ca real = 0.04627
-        tau_ca real = 605.03 ms
-        inf_ca real = 0.0001
-
     state:
         v_comp real = 0.00000000
-
-        # state variable Ca concentration
-        c_ca real = 0.0001
 
     equations:
         kernel g_AMPA = g_norm_AMPA * ( - exp(-t / tau_r_AMPA) + exp(-t / tau_d_AMPA) )
@@ -48,9 +40,6 @@ neuron default_syns:
         inline i_AMPA_NMDA real = convolve(g_AN_AMPA, spikes_AN) * (e_AN_AMPA - v_comp) + NMDA_ratio * \
                                 convolve(g_AN_NMDA, spikes_AN) * (e_AN_NMDA - v_comp) / (1. + 0.3 * exp( -.1 * v_comp )) @mechanism::receptor
 
-
-        # equations Ca concentration mechanism
-        c_ca' = (inf_ca - c_ca) / (tau_ca *1s) + gamma_ca * (i_Ca_HVA + i_Ca_LVAst) @mechanism::concentration
 
     internals:
         tp_AMPA real = (tau_r_AMPA * tau_d_AMPA) / (tau_d_AMPA - tau_r_AMPA) * ln( tau_d_AMPA / tau_r_AMPA )

@@ -8,7 +8,7 @@ import importlib
 import subprocess
 
 
-from neat import IonChannel
+from neat import IonChannel, ExpConcMech
 from neat.tools.simtools.nest import nestml_tools
 
 
@@ -190,7 +190,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
     )
 
 
-def _compileNest(model_name, path_neat, channels, path_nestresource=None):
+def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=['ca']):
     from pynestml.frontend.pynestml_frontend import generate_nest_compartmental_target
 
     # assert that `model_name` is a pure name
@@ -223,6 +223,13 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None):
 
         for block, blockstr in blocks_.items():
             blocks[block] = blockstr + blocks[block]
+
+    for ion in ions:
+        concmech = ExpConcMech(ion)
+        blocks_ = concmech.writeNestmlBlocks(channels=channels)
+
+        for block, blockstr in blocks_.items():
+            blocks[block] = blocks[block] + blockstr
 
     # create directory to install nestml files
     if not os.path.exists(path_for_nestml_compilation):
