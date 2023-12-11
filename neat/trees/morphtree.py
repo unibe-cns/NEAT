@@ -122,9 +122,6 @@ class MorphLoc(object):
             else:
                 self.loc = loc
         elif isinstance(loc, MorphLoc):
-            # self.__dict__.update({key: copy.deepcopy(val)
-            #                       for key, val in loc.__dict__.iteritems()
-            #                       if key != 'reftree'})
             self.loc = loc.loc
             self.reftree = reftree
         else:
@@ -1665,7 +1662,8 @@ class MorphTree(STree):
                 name under which the reference list is stored
             direction: int
                 flag to indicate whether to search in both directions (0), only
-                in the up direction (1) or in the down direction (2).
+                in the direction of the root (1) or in the direction away from
+                the root (2).
 
         Returns
         -------
@@ -2859,18 +2857,18 @@ class MorphTree(STree):
         return roots[rootind]
 
     @originalTreetypeDecorator
-    def createNewTree(self, name, fake_soma=False, store_loc_inds=False):
+    def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
-        relation is stored in `L` attribute of `neat.MorphNode`, using the `p3d`
+        relation is stored in `L` attribute of `neat.MorphNode`, the `p3d`
         attribute containing the 3d coordinates does not maintain distances)
 
         Parameters
         ----------
-            name: string
-                the name under which the locations are stored that should be
-                used to create the new tree
+            loc_arg: list of `neat.MorphLoc` or string
+                the locations. If list of locs, they will be stored under the name
+                `new_tree`
             fake_soma: bool (default `False`)
                 if `True`, finds the common root of the set of locations and
                 uses that as the soma of the new tree. If `False`, the real soma
@@ -2884,7 +2882,13 @@ class MorphTree(STree):
             `neat.MorphTree`
                 The new tree.
         """
-        self._tryName(name)
+        if isinstance(loc_arg, str):
+            name = loc_arg
+            self._tryName(name)
+        else:
+            name = 'new tree'
+            self.storeLocs(loc_arg, name)
+
         nids = self.getNodeIndices(name)
         # create new tree
         new_tree = self.__class__()

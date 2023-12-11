@@ -9,10 +9,12 @@ Author: W. Wybo
 
 import numpy as np
 
+import copy
 import warnings
 
 from . import morphtree
-from .morphtree import MorphNode, MorphTree
+from .morphtree import MorphNode, MorphTree, MorphLoc
+from .morphtree import computationalTreetypeDecorator, originalTreetypeDecorator
 from ..channels import concmechs, ionchannels
 from ..factorydefaults import DefaultPhysiology
 
@@ -62,12 +64,13 @@ class PhysNode(MorphNode):
     def __init__(self, index, p3d=None,
                        c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
         super().__init__(index, p3d)
+        # biophysical parameters
         self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
         self.concmechs = {}
-        # biophysical parameters
         self.c_m = c_m # uF/cm^2
         self.r_a = r_a # MOhm*cm
         self.g_shunt = g_shunt # uS
+        # expansion points
         self.v_ep = v_ep # mV
         self.conc_eps = {} # equilibrium concentration values (mM)
 
@@ -678,71 +681,154 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    # @morphtree.originalTreetypeDecorator
-    # def _calcFdMatrix(self, dx=10.):
-    #     matdict = {}
-    #     locs = [{'node': 1, 'x': 0.}]
-    #     # set the first element
-    #     soma = self.tree.root
-    #     matdict[(0,0)] = 4.0*np.pi*soma.R**2 * soma.G
-    #     # recursion
-    #     cnodes = root.getChildNodes()[2:]
-    #     numel_l = [1]
-    #     for cnode in cnodes:
-    #         if not is_changenode(cnode):
-    #             cnode = find_previous_changenode(cnode)[0]
-    #         self._fdMatrixFromRoot(cnode, root, 0, numel_l, locs, matdict, dx=dx)
-    #     # create the matrix
-    #     FDmat = np.zeros((len(locs), len(locs)))
-    #     for ind in matdict:
-    #         FDmat[ind] = matdict[ind]
+    @originalTreetypeDecorator
+    def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
+        """
+        Creates a new tree where the locs of a given 'name' are now the nodes.
+        Distance relations between locations are maintained (note that this
+        relation is stored in `L` attribute of `neat.MorphNode`, the `p3d`
+        attribute containing the 3d coordinates does not maintain distances).
+        Physiological parameters are copied from the original node on which the
+        new node is located.
 
-    #     return FDmat, locs # caution, not the reduced locs yet
+        Parameters
+        ----------
+            loc_arg: list of `neat.MorphLoc` or string
+                the locations. If list of locs, they will be stored under the name
+                `new_tree`
+            fake_soma: bool (default `False`)
+                if `True`, finds the common root of the set of locations and
+                uses that as the soma of the new tree. If `False`, the real soma
+                is used.
+            store_loc_inds: bool (default `False`)
+                store the index of each location in the `content` attribute of the
+                new node (under the key 'loc ind')
 
-    # def _fdMatrixFromRoot(self, node, pnode, ibranch, numel_l, locs, matdict, dx=10.*1e-4):
-    #     numel = numel_l[0]
-    #     # distance between the two nodes and radius of the cylinder
-    #     radius *= node.R*1e-4; length *= node.L*1e-4
-    #     num = np.around(length/dx)
-    #     xvals = np.linspace(0.,1.,max(num+1,2))
-    #     dx_ = xvals[1]*length
-    #     # set the first element
-    #     matdict[(ibranch,numel)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(ibranch,ibranch)] += np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(numel,numel)] = 2.*np.pi*radius**2 / (node.r_a*dx_)
-    #     matdict[(numel,ibranch)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #     locs.append({'node': node._index, 'x': xvals[1]})
-    #     # set the other elements
-    #     if len(xvals) > 2:
-    #         i = 0; j = 0
-    #         if len(xvals) > 3:
-    #             for x in xvals[2:-1]:
-    #                 j = i+1
-    #                 matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #                 matdict[(numel+j,numel+j)] = 2. * np.pi*radius**2 / (node.r_a*dx_)
-    #                                            # + 2.*np.pi*radius*dx_*node.G
-    #                 matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #                 locs.append({'node': node._index, 'x': x})
-    #                 i += 1
-    #         # set the last element
-    #         j = i+1
-    #         matdict[(numel+i,numel+j)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+j)] = np.pi*radius**2 / (node.r_a*dx_)
-    #         matdict[(numel+j,numel+i)] = - np.pi*radius**2 / (node.r_a*dx_)
-    #         locs.append({'node': node._index, 'x': 1.})
-    #     numel_l[0] = numel+len(xvals)-1
-    #     # assert numel_l[0] == len(locs)
-    #     # if node is leaf, then implement other bc
-    #     if len(xvals) > 2:
-    #         ibranch = numel+j
-    #     else:
-    #         ibranch = numel
-    #     # move on the further elements
-    #     for cnode in node.child_nodes:
-    #         self._fdMatrixFromRoot(cnode, node, ibranch, numel_l, locs, matdict, dx=dx)
+        Returns
+        -------
+            `neat.MorphTree`
+                The new tree.
+        """
+        if isinstance(loc_arg, str):
+            name = loc_arg
+            self._tryName(name)
+        else:
+            name = 'new tree'
+            self.storeLocs(loc_arg, name)
 
+        new_tree = super().createNewTree(name,
+            fake_soma=fake_soma, store_loc_inds=True
+        )
+        new_locs = self.getLocs(name)
 
+        new_channels = set()
+        new_ions = set()
+        for new_node in new_tree:
+            loc = new_locs[new_node.content["loc ind"]]
+            orig_node = self[loc['node']]
 
+            new_node.currents = copy.deepcopy(orig_node.currents)
+            new_node.concmechs = copy.deepcopy(orig_node.concmechs)
 
+            new_channels.update(set(new_node.currents.keys()))
+            new_ions.update(set(new_node.concmechs.keys()))
 
+        new_tree.channel_storage = {
+            cname: channel for cname, channel in self.channel_storage.items() \
+            if cname in new_channels
+        }
+        new_tree.ions = new_ions
+
+        return new_tree
+
+    @computationalTreetypeDecorator
+    def createFiniteDifferenceTree(self,
+                    dx_max=15., name='dont store'):
+        """
+        Create a ::class::`neat.CompartmentTree` whose parameters implement the
+        second order finite difference approximation for the morphology.
+
+        Parameters
+        ----------
+        dx_max: float
+            Maximum distance step between compartments (in [um]). By default,
+            each node of this tree will correspond to at least one compartment,
+            and thus one node in the comparment tree. If the length of a node
+            exceeds `dx_max`, there will be the smallest possible number of
+            equally spaced comparments so that the distance between them does
+            not exceed `dx_max`. Note that if the computational tree is active,
+            the computational nodes will be taken as a reference for placing
+            the compartment locations.
+        name: string
+            If given, stores the compartment locations in this tree
+
+        Returns
+        -------
+        comptree: ::class::`neat.CompartmentTree`
+            The compartment tree
+        locs: list of ::class::`neat.MorphLoc`
+            The location corresponding to the compartments of the finite
+            difference approximation
+        """
+        set_as_comploc = self.treetype == 'computational'
+
+        # create the list of compartment locations for FD approximation
+        locs = []
+        for node in self:
+            if self.isRoot(node):
+                locs.append(MorphLoc((node.index, .5), self,
+                                     set_as_comploc=set_as_comploc))
+            else:
+                n_comp = np.ceil(node.L / dx_max).astype(int)
+
+                for cc in range(1,n_comp+1):
+                    new_loc = MorphLoc((node.index, cc/n_comp), self,
+                                       set_as_comploc=set_as_comploc)
+                    locs.append(new_loc)
+
+        aux_tree = self.createNewTree(locs)
+        fd_tree = self.createCompartmentTree(locs)
+
+        if name != 'dont store':
+            self.storeLocs(locs, name)
+
+        for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
+            # set the location index in `locs` to which the compartment
+            # corresponds
+            fd_node._loc_ind = ii
+
+            # unit conversion [um] -> [cm]
+            R_ = aux_node.R * 1e-4
+            L_ = aux_node.L * 1e-4
+
+            if fd_tree.isRoot(fd_node):
+                # for the soma we apply the spherical approximation
+                surf = 4. * np.pi * R_**2
+            else:
+                # for other nodes we apply the cylindrical approximation
+                # but take only half of it (half for the current node, half
+                # for the parent
+                surf = 2. * np.pi * R_ * L_ / 2.
+
+            # set finite difference values for current node
+            fd_node.ca = surf * aux_node.c_m
+            fd_node.currents = {
+                chan: (surf * g, e) for chan, (g, e) in aux_node.currents.items()
+            }
+            if not fd_tree.isRoot(fd_node):
+                fd_node.g_c = np.pi * R_**2 / (aux_node.r_a * L_)
+
+                # add finite difference contributions to parent
+                fd_parent = fd_node.parent_node
+                fd_parent.ca += surf * aux_node.c_m
+                for chan in aux_node.currents:
+                    fd_parent.currents[chan] = (
+                        fd_parent.currents[chan][0] + surf * aux_node.currents[chan][0],
+                        aux_node.currents[chan][1]
+                    )
+
+        # reset the indices to the order they appear in a depth-first iteration
+        fd_tree.resetIndices()
+
+        return fd_tree, locs
 

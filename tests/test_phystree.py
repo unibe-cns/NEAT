@@ -6,6 +6,7 @@ import pytest
 import copy
 
 from neat import PhysTree, PhysNode
+from neat import CompartmentFitter
 
 import channelcollection_for_tests as channelcollection
 
@@ -244,7 +245,6 @@ class TestPhysTree():
             assert np.abs(node.currents['L'][0] - g_pas) < 1e-10
             assert np.abs(node.getITot(tree.channel_storage)) < 1e-10
 
-
     def testCompTree(self):
         self.loadTree(reinitialize=1, segments=True)
 
@@ -290,11 +290,82 @@ class TestPhysTree():
         self.tree.treetype = 'computational'
         assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
+    def testFiniteDiffTree(self, rtol_param=1e-3, rtol_dx=1e-10):
+        self.loadTree(reinitialize=1, segments=1)
+        # set capacitance, axial resistance
+        c_m = 1.; r_a = 100.*1e-6
+        self.tree.setPhysiology(c_m, r_a)
+        # set leak current
+        g_l, e_l = 100., -75.
+        self.tree.setLeakCurrent(g_l, e_l)
+        # set computational tree
+        self.tree.setCompTree()
+
+        def _checkDX(ctree, locs, dx):
+            for n1 in ctree:
+                if not ctree.isRoot(n1):
+                    l_ = self.tree.pathLength(
+                        locs[n1.loc_ind], locs[n1.parent_node.loc_ind]
+                    )
+                    assert l_ <= dx + rtol_dx
+
+        # test structure
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=100.)
+        assert len(ctree_fd) == len(locs_fd)
+        assert len(ctree_fd) == 10
+        _checkDX(ctree_fd, locs_fd, dx=100.)
+
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=101.)
+        assert len(ctree_fd) == len(locs_fd)
+        assert len(ctree_fd) == 10
+        _checkDX(ctree_fd, locs_fd, dx=101.)
+
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=60.)
+        assert len(ctree_fd) == len(locs_fd)
+        assert len(ctree_fd) == 18
+        _checkDX(ctree_fd, locs_fd, dx=60.)
+
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=40.)
+        assert len(ctree_fd) == len(locs_fd)
+        assert len(ctree_fd) == 24
+        _checkDX(ctree_fd, locs_fd, dx=40.)
+
+        # create finite difference for conductance values test
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=10.)
+        assert len(ctree_fd) == len(locs_fd)
+        assert len(ctree_fd) == 91 # soma + 9 segments with 10 compartments each
+        _checkDX(ctree_fd, locs_fd, dx=10.)
+
+        # fit a compartmenttree to the same locations
+        ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=22.)
+        cfit = CompartmentFitter(self.tree)
+        ctree_fit = cfit.fitModel(locs_fd)
+
+        # check whether both trees have the same parameters
+        for node_fd, node_fit in zip(ctree_fd, ctree_fit):
+
+            # test capacitance match
+            assert np.abs(node_fd.ca - node_fit.ca) < \
+                                rtol_param * np.max([node_fd.ca, node_fit.ca])
+
+            # test coupling cond match
+            if not ctree_fd.isRoot(node_fd):
+                assert np.abs(node_fd.g_c - node_fit.g_c) < \
+                                    rtol_param * np.max([node_fd.g_c, node_fit.g_c])
+
+            # test leak current match
+            for key in node_fd.currents:
+                g_fd = node_fd.currents[key][0]
+                g_fit = node_fit.currents[key][0]
+                assert np.abs(g_fd - g_fit) < \
+                                rtol_param * np.max([g_fd, g_fit])
+
 
 if __name__ == '__main__':
     tphys = TestPhysTree()
     # tphys.testStringRepresentation()
     # tphys.testLeakDistr()
     # tphys.testPhysiologySetting()
-    tphys.testMembraneFunctions()
+    # tphys.testMembraneFunctions()
     # tphys.testCompTree()
+    tphys.testFiniteDiffTree()
