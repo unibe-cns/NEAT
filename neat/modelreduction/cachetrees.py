@@ -43,7 +43,8 @@ class FitTree(PhysTree):
             f"{self.cache_name}cache_{self.unique_hash()}.p",
         )
 
-        print(f"\n>>>> {self.__class__.__name__} --> {file_name} <<<<")
+        if pprint:
+            print(f"\n>>>> Saving {self.__class__.__name__} to:\n    {file_name}\n<<<<")
 
         try:
             # ensure that the funcs are recomputed if 'recompute' is true
@@ -52,8 +53,6 @@ class FitTree(PhysTree):
 
             with open(file_name, 'rb') as file:
                 tree_ = pickle.load(file)
-
-            print("    !!! loading tree !!!")
 
             cache_params_dict = {
                 "cache_name": self.cache_name,
@@ -74,8 +73,6 @@ class FitTree(PhysTree):
                 else:
                     logstr = '>>> No cache found, recomputing...'
                 print(logstr)
-
-            print("    !!! recomputing tree !!!")
 
             # execute the functions
             for func, args, kwargs in funcs_args_kwargs:

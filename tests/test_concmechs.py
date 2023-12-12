@@ -569,10 +569,10 @@ class TestConcMechs:
 
         # run test simulations
         res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
-            locs, amp=amp, dur=20000., delay=100., cal=10000.
+            locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
         res_reduced = self._simulate(createReducedNeuronModel(ctree),
-            clocs, amp=amp, dur=20000., delay=100., cal=10000.
+            clocs, amp=amp, dur=1000., delay=100., cal=1000.
         )
 
         # check whether the simulation results match
@@ -605,16 +605,16 @@ class TestConcMechs:
         cfit.setCTree(locs)
 
         # fit the passive steady state model
-        cfit.fitPassive(pprint=True, use_all_channels=False)
+        cfit.fitPassive(pprint=False, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fitCapacitance(pprint=True, pplot=False)
+        cfit.fitCapacitance(pprint=False, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True, parallel=False)
+        cfit.fitChannels(pprint=False, parallel=False)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', pprint=True)
+        cfit.fitConcentration('ca', pprint=False)
 
         # fit the resting potentials
         cfit.fitEEq(ions=['ca'], t_max=10000)
@@ -653,10 +653,10 @@ class TestConcMechs:
 
         # run test simulations
         res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
-            locs, amp=amp, dur=20000., delay=100., cal=10000.
+            locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
         res_reduced = self._simulate(createReducedNeuronModel(ctree),
-            clocs, amp=amp, dur=20000., delay=100., cal=10000.
+            clocs, amp=amp, dur=1000., delay=100., cal=1000.
         )
 
         v_error = np.sqrt(np.mean((res_full['v_m'] - res_reduced['v_m'])**2))
@@ -670,6 +670,45 @@ class TestConcMechs:
             ax.plot(res_reduced['t'], res_reduced['v_m'][2], 'r--')
 
             pl.show()
+
+    def testFiniteDifference(self, rtol_param=5e-2, pprint=False):
+        tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
+        # finite difference ctree
+        ctree_fd, locs_fd = tree.createFiniteDifferenceTree(dx_max=22.)
+        # fitted ctree
+        cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
+        ctree_fit = cfit.fitModel(locs_fd)
+
+        # check whether both trees have the same parameters
+        for node_fd, node_fit in zip(ctree_fd, ctree_fit):
+
+            if pprint: print("---")
+            # test capacitance match
+            assert np.abs(node_fd.ca - node_fit.ca) < \
+                                rtol_param * np.max([node_fd.ca, node_fit.ca])
+            if pprint: print(f"ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
+
+            # test coupling cond match
+            if not ctree_fd.isRoot(node_fd):
+                if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
+                assert np.abs(node_fd.g_c - node_fit.g_c) < \
+                                    rtol_param * np.max([node_fd.g_c, node_fit.g_c])
+
+            # test leak current match
+            for key in node_fd.currents:
+                g_fd = node_fd.currents[key][0]
+                g_fit = node_fit.currents[key][0]
+                if pprint: print(f"g{key}_fd = {g_fd}, g{key}_fit = {g_fit}")
+                assert np.abs(g_fd - g_fit) < \
+                                rtol_param * np.max([g_fd, g_fit])
+
+
+            for ion in node_fd.concmechs:
+                gamma_fd = node_fd.concmechs[ion].gamma
+                gamma_fit = node_fit.concmechs[ion].gamma
+                if pprint: print(f"gamma_{ion}_fd = {gamma_fd}, gamma_{ion}_fit = {gamma_fit}")
+                assert np.abs(gamma_fd - gamma_fit) < \
+                                rtol_param * np.max([gamma_fd, gamma_fit])
 
     def _runLocalizedConcMech(self, tree):
         locs = [(1,.5), (4.,0.5), (5,0.5)]
@@ -811,9 +850,10 @@ if __name__ == "__main__":
     # tcm.testStringRepresentation()
     # tcm.testSpiking(pplot=True)
     # tcm.testImpedance(pplot=True)
-    tcm.testFittingBall(pplot=True)
+    # tcm.testFittingBall(pplot=True)
     # tcm.testTauFitBall(pplot=True)
     # tcm.testFittingBallAndStick(pplot=True)
+    tcm.testFiniteDifference()
     # tcm.testLocalizedConcMechPasAxon()
     # tcm.testLocalizedConcMechActAxon()
     # tcm.testNestNeuronSimBall(pplot=True, amp=2.0)

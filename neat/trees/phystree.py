@@ -18,7 +18,6 @@ from .morphtree import computationalTreetypeDecorator, originalTreetypeDecorator
 from ..channels import concmechs, ionchannels
 from ..factorydefaults import DefaultPhysiology
 
-
 CFG = DefaultPhysiology()
 
 
@@ -760,7 +759,8 @@ class PhysTree(MorphTree):
             the computational nodes will be taken as a reference for placing
             the compartment locations.
         name: string
-            If given, stores the compartment locations in this tree
+            If given, stores the compartment locations in this tree. Default
+            is to not store the locations.
 
         Returns
         -------
@@ -815,6 +815,7 @@ class PhysTree(MorphTree):
             fd_node.currents = {
                 chan: (surf * g, e) for chan, (g, e) in aux_node.currents.items()
             }
+
             if not fd_tree.isRoot(fd_node):
                 fd_node.g_c = np.pi * R_**2 / (aux_node.r_a * L_)
 
@@ -822,10 +823,25 @@ class PhysTree(MorphTree):
                 fd_parent = fd_node.parent_node
                 fd_parent.ca += surf * aux_node.c_m
                 for chan in aux_node.currents:
+                    g_parent = fd_parent.currents[chan][0] if chan in fd_parent.currents else 0.
                     fd_parent.currents[chan] = (
-                        fd_parent.currents[chan][0] + surf * aux_node.currents[chan][0],
+                        g_parent + surf * aux_node.currents[chan][0],
                         aux_node.currents[chan][1]
                     )
+
+        # set concentration mechanisms in separate pass
+        for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
+            for ion in aux_node.concmechs:
+                ion_factors_aux = 0.
+                ion_factors_fd = 0.
+
+                for cname in aux_node.currents:
+                    if cname != 'L' and self.channel_storage[cname].ion == ion:
+                        ion_factors_aux += aux_node.currents[cname][0]
+                        ion_factors_fd += fd_node.currents[cname][0]
+
+                fd_node.concmechs[ion] = copy.deepcopy(aux_node.concmechs[ion])
+                fd_node.concmechs[ion].gamma *= ion_factors_aux / ion_factors_fd
 
         # reset the indices to the order they appear in a depth-first iteration
         fd_tree.resetIndices()

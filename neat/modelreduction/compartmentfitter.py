@@ -245,7 +245,6 @@ class CompartmentFitter(object):
         eq = self.tree.calcEEq('fit locs')
         self.v_eqs_fit = eq[0]
         self.conc_eqs_fit = eq[1]
-        print("!!!", self.conc_eqs_fit)
 
     def createTreeGF(self,
             channel_names=[],
@@ -414,7 +413,7 @@ class CompartmentFitter(object):
 
         return self.ctree
 
-    def fitConcentration(self, ion, fit_tau=False, pprint=False):
+    def fitConcentration_(self, ion, fit_tau=False, pprint=False):
         """
         Fits the concentration mechanisms parameters associate with the `ion`
         ion type.
@@ -531,6 +530,74 @@ class CompartmentFitter(object):
             )
 
         return 1
+
+
+    def _calibrateConcmechs(self, ion, orig_node, comp_node):
+        """
+        Set the `gamma` factor of the concentration mechanism based on the ratio
+        of fitted conducances over original conductances permeable to the
+        associated ion
+
+        Parameters
+        ----------
+        orig_node: `neat.PhysNode`
+            the original node corresponding to the location of the compartment
+        comp_node: `neat.CompartmentNode`
+            the fitted compartment node
+        """
+        channel_storage = self.tree.channel_storage
+        currents_orig = copy.deepcopy(orig_node.currents)
+        currents_comp = copy.deepcopy(comp_node.currents)
+
+        # compute g_max for the ion
+        g_ion_orig, g_ion_comp = 0., 0.
+        for cname in orig_node.currents:
+
+            if cname in channel_storage and ion == channel_storage[cname].ion:
+                g_ion_orig += currents_orig.pop(cname, [0., 0.])[0]
+                g_ion_comp += currents_comp.pop(cname, [0., 0.])[0]
+
+        comp_node.concmechs[ion].gamma = \
+            orig_node.concmechs[ion].gamma * g_ion_orig / g_ion_comp
+
+    def fitConcentration(self, ion, fit_tau=False, pprint=False):
+        """
+        Fits the concentration mechanisms parameters associate with the `ion`
+        ion type.
+
+        Parameters
+        ----------
+        ion: str
+            The ion type that is to be fitted (e.g. 'ca').
+        fit_tau: bool (default ``False``)
+            If ``True``, fits the time-scale of the concentration mechansims. If
+            ``False``, tries to take the time-scale from the corresponding
+            location in the original tree. However, if no concentration
+            mechanism is present at the corresponding location, than the default
+            time-scale from `neat.factorydefaults` is taken.
+        pprint: bool (default ``False``)
+            Whether to print fit information.
+
+        Returns
+        -------
+        bool
+            `False` when no concentration mech for `ion` was found in the tree,
+            `True` otherwise
+        """
+        has_concmech = False
+        for node in self.tree:
+            if ion in node.concmechs:
+                has_concmech = True
+                break
+        if not has_concmech:
+            return 0
+
+        orig_nodes = [self.tree[loc["node"]] for loc in self.tree.getLocs("fit locs")]
+        comp_nodes = self.ctree.getNodesFromLocinds(list(range(len(self.tree.getLocs("fit locs")))))
+
+        for orig_node, comp_node in zip(orig_nodes, comp_nodes):
+            self._calibrateConcmechs(ion, orig_node, comp_node)
+
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
