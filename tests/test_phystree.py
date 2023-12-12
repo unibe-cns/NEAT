@@ -292,7 +292,7 @@ class TestPhysTree():
         self.tree.treetype = 'computational'
         assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
-    def testFiniteDiffTree(self, rtol_param=2e-3, rtol_dx=1e-10):
+    def testFiniteDiffTree(self, rtol_param=2e-3, rtol_dx=1e-10, pprint=False):
         self.loadTree(reinitialize=1, segments=1)
         # set capacitance, axial resistance
         c_m = 1.; r_a = 100.*1e-6
@@ -346,7 +346,9 @@ class TestPhysTree():
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
 
+            if pprint: print("---")
             # test capacitance match
+            if pprint: print(f"ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
             assert np.abs(node_fd.ca - node_fit.ca) < \
                                 rtol_param * np.max([node_fd.ca, node_fit.ca])
 
@@ -385,16 +387,10 @@ class TestPhysTree():
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
 
-            # print("---")
-            # # breakpoint()
-            # # test capacitance match
-            # # assert np.abs(node_fd.ca - node_fit.ca) < \
-            # #                     rtol_param * np.max([node_fd.ca, node_fit.ca])
-            # print(f"ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
-
+            if pprint: print("---")
             # test coupling cond match
             if not ctree_fd.isRoot(node_fd):
-                # print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
+                if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
                 assert np.abs(node_fd.g_c - node_fit.g_c) < \
                                     rtol_param * np.max([node_fd.g_c, node_fit.g_c])
 
@@ -402,10 +398,9 @@ class TestPhysTree():
             for key in node_fd.currents:
                 g_fd = node_fd.currents[key][0]
                 g_fit = node_fit.currents[key][0]
-                # print(f"g{key}_fd = {g_fd}, g{key}_fit = {g_fit}")
+                if pprin: print(f"g{key}_fd = {g_fd}, g{key}_fit = {g_fit}")
                 assert np.abs(g_fd - g_fit) < \
                                 rtol_param * np.max([g_fd, g_fit])
-
 
 
 if __name__ == '__main__':
