@@ -179,33 +179,42 @@ class EquilibriumTree(FitTree):
 
             for loc, idx0, idx1 in zip(locs, idxs0, idxs1):
 
-                L0 = self.pathLength(loc, ref_locs[idx0])
-                L1 = self.pathLength(loc, ref_locs[idx1])
+                if idx0 is None:
+                    # locs[idx0] more distal than leaf ref loc
+                    e_eqs.append(self[ref_locs[idx1][0]].v_ep)
 
-                if L0 < 1e-10 and L1 < 1e-10:
-                    # both neighbour locations are the same
+                elif idx1 is None:
+                    # locs[idx1] more distal than leaf ref loc
                     e_eqs.append(self[ref_locs[idx0][0]].v_ep)
 
-                    for ion in ions:
-                        # linear interpolation to compute the equilibrium concentration
-                        conc_eqs[ion].append(self[ref_locs[idx0][0]].conc_eps[ion])
-
-                elif L0 < L_eps and L1 < L_eps:
-                    v_ep0 = self[ref_locs[idx0][0]].v_ep
-                    v_ep1 = self[ref_locs[idx1][0]].v_ep
-
-                    # linear interpolation to compute the equilibrium potential
-                    e_eqs.append((v_ep0 * L1 + v_ep1 * L0) / (L1 + L0))
-
-                    for ion in ions:
-                        c_ep0 = self[ref_locs[idx0][0]].conc_eps[ion]
-                        c_ep1 = self[ref_locs[idx0][0]].conc_eps[ion]
-
-                        # linear interpolation to compute the equilibrium concentration
-                        conc_eqs[ion].append((c_ep0 * L1 + c_ep1 * L0) / (L1 + L0))
-
                 else:
-                    break
+                    L0 = self.pathLength(loc, ref_locs[idx0])
+                    L1 = self.pathLength(loc, ref_locs[idx1])
+
+                    if L0 < 1e-10 and L1 < 1e-10:
+                        # both neighbour locations are the same
+                        e_eqs.append(self[ref_locs[idx0][0]].v_ep)
+
+                        for ion in ions:
+                            # linear interpolation to compute the equilibrium concentration
+                            conc_eqs[ion].append(self[ref_locs[idx0][0]].conc_eps[ion])
+
+                    elif L0 < L_eps and L1 < L_eps:
+                        v_ep0 = self[ref_locs[idx0][0]].v_ep
+                        v_ep1 = self[ref_locs[idx1][0]].v_ep
+
+                        # linear interpolation to compute the equilibrium potential
+                        e_eqs.append((v_ep0 * L1 + v_ep1 * L0) / (L1 + L0))
+
+                        for ion in ions:
+                            c_ep0 = self[ref_locs[idx0][0]].conc_eps[ion]
+                            c_ep1 = self[ref_locs[idx0][0]].conc_eps[ion]
+
+                            # linear interpolation to compute the equilibrium concentration
+                            conc_eqs[ion].append((c_ep0 * L1 + c_ep1 * L0) / (L1 + L0))
+
+                    else:
+                        break
 
         if len(e_eqs) < len(locs):
             return self._calcEEq(locarg, ions=ions, **kwargs)
