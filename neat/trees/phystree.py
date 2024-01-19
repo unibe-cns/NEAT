@@ -816,6 +816,10 @@ class PhysTree(MorphTree):
                 chan: (surf * g, e) for chan, (g, e) in aux_node.currents.items()
             }
 
+            for chan in aux_node.currents:
+                if chan not in fd_tree.channel_storage and chan in self.channel_storage:
+                    fd_tree.channel_storage[chan] = copy.deepcopy(self.channel_storage[chan])
+
             if not fd_tree.isRoot(fd_node):
                 fd_node.g_c = np.pi * R_**2 / (aux_node.r_a * L_)
 
@@ -825,9 +829,6 @@ class PhysTree(MorphTree):
                     fd_parent.ca += surf * aux_node.c_m
 
                     for chan in aux_node.currents:
-
-                        if chan not in fd_tree.channel_storage and chan in self.channel_storage:
-                            fd_tree.channel_storage[chan] = copy.deepcopy(self.channel_storage[chan])
 
                         g_parent = fd_parent.currents[chan][0] if chan in fd_parent.currents else 0.
                         fd_parent.currents[chan] = (
