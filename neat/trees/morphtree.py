@@ -2221,7 +2221,7 @@ class MorphTree(STree):
         Returns
         -------
         list of `neat.MorphLoc`
-            the bifurcation locs
+            the extended location list
         """
         locs = self._parseLocArg(loc_arg)
         # get the bifurcation locs

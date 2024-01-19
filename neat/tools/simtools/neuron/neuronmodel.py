@@ -859,7 +859,7 @@ class NeuronSimTree(PhysTree):
                 res['chan'][channel_name]['p_open'] = channel.computePOpen(res['v_m'], **sv)
         # cast spike recording to numpy array
         if 'spikes' in res:
-            res['spikes'] = np.array(list(res['spikes']))
+            res['spikes'] = np.array(list(res['spikes'])) - self.t_calibrate
             self.spike_detector = None
             del self.spike_detector
 

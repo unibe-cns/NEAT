@@ -531,7 +531,6 @@ class CompartmentFitter(object):
 
         return 1
 
-
     def _calibrateConcmechs(self, ion, orig_node, comp_node):
         """
         Set the `gamma` factor of the concentration mechanism based on the ratio
@@ -545,6 +544,9 @@ class CompartmentFitter(object):
         comp_node: `neat.CompartmentNode`
             the fitted compartment node
         """
+        if ion not in orig_node.concmechs:
+            return
+
         channel_storage = self.tree.channel_storage
         currents_orig = copy.deepcopy(orig_node.currents)
         currents_comp = copy.deepcopy(comp_node.currents)
@@ -557,8 +559,17 @@ class CompartmentFitter(object):
                 g_ion_orig += currents_orig.pop(cname, [0., 0.])[0]
                 g_ion_comp += currents_comp.pop(cname, [0., 0.])[0]
 
-        comp_node.concmechs[ion].gamma = \
-            orig_node.concmechs[ion].gamma * g_ion_orig / g_ion_comp
+        try:
+            comp_node.concmechs[ion].gamma = \
+                orig_node.concmechs[ion].gamma * g_ion_orig / g_ion_comp
+
+        except ZeroDivisionError:
+            # no Ca current so we rescale based on leak
+            # maybe concmech can be removed at this node?
+            g_l_orig = orig_node.currents['L'][0]
+            g_l_comp = comp_node.currents['L'][0]
+            comp_node.concmechs[ion].gamma = \
+                orig_node.concmechs[ion].gamma * g_l_orig / g_l_comp
 
     def fitConcentration(self, ion, fit_tau=False, pprint=False):
         """
@@ -597,7 +608,6 @@ class CompartmentFitter(object):
 
         for orig_node, comp_node in zip(orig_nodes, comp_nodes):
             self._calibrateConcmechs(ion, orig_node, comp_node)
-
 
     def fitPassive(self, use_all_channels=True, recompute=False, pprint=False):
         """
@@ -798,6 +808,7 @@ class CompartmentFitter(object):
         tree.setCompTree(eps=self.cfg.fit_comptree_eps)
         # set the impedances for kernel calculation
         print(self.cfg.t_fit)
+        # t_arr = np.concatenate((np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7 ,0.8, 0.9]), np.linspace(1., 40., 100)))
         t_arr = np.linspace(1., 40., 100)
         tree.setImpedance(t_arr)
         # compute the response kernel matrices necessary for the fit
@@ -814,35 +825,43 @@ class CompartmentFitter(object):
         for l in tree.getLocs('fit locs'):
             g_m = tree[l[0]].getGTot(channel_storage=tree.channel_storage)
             taus_m.append(tree[l[0]].c_m / g_m)
-        taus_m_orig = self.ctree._permuteToTree(np.array(taus_m))
+        taus_m = np.array(taus_m)
+        # taus_m_orig = self.ctree._permuteToTree(np.array(taus_m))
+
+        print("!!!", taus_m)
+
+        self.fitCapacitance()
+
+        print("Ca before:", self.ctree._toVecC())
+        self.ctree.computeCfromZ_(zt_mat, taus_m, t_arr*1e-3)
+        print("Ca after:", self.ctree._toVecC())
+
+        # bounds = [(1e-10, 10 * taus_m_orig[ii] * g_tot[ii]) for ii in range(len(self.ctree))]
+
+        # ctree = copy.deepcopy(self.ctree)
+        # # breakpoint()
+
+        # def objective(c_vec):
+        #     ctree._toTreeC(c_vec)
+        #     z_mat_comp = ctree.calcImpedanceMatrix(tree.freqs)
+        #     zt_mat_comp = np.zeros_like(zt_mat)
+        #     for ii in range(zt_mat.shape[1]):
+        #         for jj in range(ii, zt_mat.shape[2]):
+        #             zt_mat_comp[:,ii,jj] = tree._inverseFourrier(z_mat_comp[:,ii,jj],
+        #                 compute_time_derivative=False
+        #             )
+        #             zt_mat_comp[:,jj,ii] = zt_mat_comp[:,ii,jj]
+        #     z_err = np.sqrt(np.mean((zt_mat_comp - zt_mat)**2))
+        #     print(z_err)
+        #     return z_err
 
 
-        bounds = [(1e-10, 10 * taus_m_orig[ii] * g_tot[ii]) for ii in range(len(self.ctree))]
+        # print(self.ctree._toVecC())
+        # import scipy.optimize as so
+        # res = so.minimize(objective, self.ctree._toVecC(), method="Nelder-Mead", bounds=bounds, options={'maxfev': 200})
 
-        ctree = copy.deepcopy(self.ctree)
-        # breakpoint()
-
-        def objective(c_vec):
-            ctree._toTreeC(c_vec)
-            z_mat_comp = ctree.calcImpedanceMatrix(tree.freqs)
-            zt_mat_comp = np.zeros_like(zt_mat)
-            for ii in range(zt_mat.shape[1]):
-                for jj in range(ii, zt_mat.shape[2]):
-                    zt_mat_comp[:,ii,jj] = tree._inverseFourrier(z_mat_comp[:,ii,jj],
-                        compute_time_derivative=False
-                    )
-                    zt_mat_comp[:,jj,ii] = zt_mat_comp[:,ii,jj]
-            z_err = np.sqrt(np.mean((zt_mat_comp - zt_mat)**2))
-            print(z_err)
-            return z_err
-
-
-        print(self.ctree._toVecC())
-        import scipy.optimize as so
-        res = so.minimize(objective, self.ctree._toVecC(), method="Nelder-Mead", bounds=bounds, options={'maxfev': 200})
-
-        print(res['x'])
-        self.ctree._toTreeC(res['x'])
+        # print(res['x'])
+        # self.ctree._toTreeC(res['x'])
 
 
     def _calcSOVMats(self, locs, pprint=False):

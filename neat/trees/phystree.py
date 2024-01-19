@@ -821,13 +821,14 @@ class PhysTree(MorphTree):
 
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
-                fd_parent.ca += surf * aux_node.c_m
-                for chan in aux_node.currents:
-                    g_parent = fd_parent.currents[chan][0] if chan in fd_parent.currents else 0.
-                    fd_parent.currents[chan] = (
-                        g_parent + surf * aux_node.currents[chan][0],
-                        aux_node.currents[chan][1]
-                    )
+                if not fd_tree.isRoot(fd_parent):
+                    fd_parent.ca += surf * aux_node.c_m
+                    for chan in aux_node.currents:
+                        g_parent = fd_parent.currents[chan][0] if chan in fd_parent.currents else 0.
+                        fd_parent.currents[chan] = (
+                            g_parent + surf * aux_node.currents[chan][0],
+                            aux_node.currents[chan][1]
+                        )
 
         # set concentration mechanisms in separate pass
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
@@ -836,6 +837,9 @@ class PhysTree(MorphTree):
                 ion_factors_fd = 0.
 
                 for cname in aux_node.currents:
+                    if cname not in fd_tree.channel_storage:
+                        fd_tree.channel_storage[cname] = copy.deepcopy(self.channel_storage[cname])
+
                     if cname != 'L' and self.channel_storage[cname].ion == ion:
                         ion_factors_aux += aux_node.currents[cname][0]
                         ion_factors_fd += fd_node.currents[cname][0]

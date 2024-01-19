@@ -7,7 +7,7 @@ File contains:
 Author: W. Wybo
 """
 
-
+import torch
 import numpy as np
 import scipy.linalg as la
 import scipy.optimize as so
@@ -449,6 +449,75 @@ class CompartmentNode(SNode):
                 svar_terms[channel_name][svar] = g * dp_dx_ * (e - v)
 
         return svar_terms
+
+    def _addLinearSystemTerms(self,
+            cc,
+            V2V, Y2V, V2Y, Y2Y,
+            channel_storage,
+            channel_names=None
+        ):
+        """
+        Contribution of linearized ion channel to conductance matrix
+
+        Parameters
+        ----------
+        channel_storage: dict of ion channels
+            The ion channels that have been initialized already. If not
+            provided, a new channel is initialized
+        freqs: np.ndarray (ndim = 1, dtype = complex or float) or float or complex
+            The frequencies at which the impedance terms are to be evaluated
+        v: float (optional, default is None which evaluates at `self.e_eq`)
+            The potential at which to compute the total conductance
+        channel_names: list of str
+            The names of the ion channels that have to be included in the
+            conductance term
+
+        Returns
+        -------
+        dict of np.ndarray or float or complex
+            Each entry in the dict is of the same type as ``freqs`` and is the
+            conductance term of a channel
+        """
+        if channel_names is None: channel_names = list(self.currents.keys())
+
+        ii = self.index
+        if self.parent_node != None:
+            pp = self.parent_node.index
+            V2V[pp,pp] -= self.g_c
+            V2V[ii,pp] += self.g_c
+            V2V[pp,ii] += self.g_c
+        V2V[ii,ii] -= self.currents['L'][0] + self.g_c
+
+        for channel_name in set(channel_names) - set('L'):
+            g, e = self.currents[channel_name]
+
+            # get the ionchannel object
+            channel = channel_storage[channel_name]
+            v, sv = self._constructChannelArgs(channel)
+            n_sv = len(channel.statevars)
+            sv_idxs = list(range(cc, cc+n_sv))
+
+            # add linearized channel contribution to membrane conductance
+            p_o = channel.computePOpen(v, **sv)
+            dp_dx, df_dv, df_dx = channel.computeDerivatives(v, **sv)
+
+            dp_dx = np.array([dp_dx[sv] for sv in channel.ordered_statevars])
+            df_dv = np.array([df_dv[sv] for sv in channel.ordered_statevars])
+            df_dx = np.array([df_dx[sv] for sv in channel.ordered_statevars])
+
+            V2V[ii,ii] -= g * p_o
+            Y2V[ii,cc:cc+n_sv] += g * dp_dx * (e - v)
+            V2Y[cc:cc+n_sv,ii] += df_dv * 1e3 # convert to 1 / s
+            Y2Y[sv_idxs, sv_idxs] += df_dx * 1e3 # convert to 1 / s
+
+            cc += n_sv
+
+        for child in self.child_nodes:
+            child._addLinearSystemTerms(cc,
+                V2V, Y2V, V2Y, Y2Y,
+                channel_storage
+            )
+
 
     def getDrive(self, channel_name, v=None, channel_storage=None):
         v = self.e_eq if v is None else v
@@ -986,6 +1055,7 @@ class CompartmentTree(STree):
 
         return s_mat
 
+
     def calcEigenvalues(self, indexing='tree'):
         """
         Calculates the eigenvalues and eigenvectors of the passive system
@@ -1008,6 +1078,7 @@ class CompartmentTree(STree):
         if indexing == 'locs':
             ca_vec = self._permuteToLocs(ca_vec)
         mat /= ca_vec[:,None]
+        print(mat)
         # compute the eigenvalues
         alphas, phimat = la.eig(mat)
         if max(np.max(np.abs(alphas.imag)), np.max(np.abs(phimat.imag))) < 1e-5:
@@ -1018,6 +1089,158 @@ class CompartmentTree(STree):
         alphas /= -1e3
         phimat_inv /= ca_vec[None,:] * 1e3
         return alphas, phimat, phimat_inv
+
+
+    def _calcLinearSystemMatrix(self, channel_names=None):
+        """
+        Assume node indices correspond to their order in a depth-first iteration,
+        i.e. by using `STree.resetIndices()`.
+        """
+        assert self.checkOrdered()
+
+        N_ = len(self)
+        C_ = sum([
+            len(self.channel_storage[cname].statevars) \
+            for node in self for cname in node.currents.keys() if cname != 'L'
+        ])
+
+        if channel_names is None:
+            channel_names = ['L'] + list(self.channel_storage.keys())
+
+        V2V = np.zeros((N_, N_))
+        Y2V = np.zeros((N_, C_))
+        V2Y = np.zeros((C_, N_))
+        Y2Y = np.zeros((C_, C_))
+
+        self.root._addLinearSystemTerms(
+            0,
+            V2V, Y2V, V2Y, Y2Y,
+            self.channel_storage,
+            channel_names=channel_names
+        )
+
+        return np.block([
+            [V2V, Y2V],
+            [V2Y, Y2Y]
+        ])
+
+    # def calcImpulseResponseMatrix(self):
+
+
+    def computeCfromZ_(self, Z_orig, tau_0, t_arr,
+            rtol=1e-2, max_iter=100, lr=1e-12,
+            channel_names=None
+        ):
+        """
+        Parameters
+        ----------
+        zt_mat: `np.ndarray` of ``shape=(t,k,k)
+            The impedance kernel matrix from the full model
+        """
+        N_ = len(self)
+        # set up the necessary tensors
+        Z_orig = torch.tensor(self._permuteToTree(Z_orig))
+        t_arr = torch.tensor(t_arr)
+        A_mat = torch.tensor(self._calcLinearSystemMatrix(
+            channel_names=channel_names
+        ))
+
+        def func(c_):
+            """
+            The objective function to be minimized
+            """
+            A_aux = A_mat.clone()
+            A_aux[:N_,:N_] /= c_[:,None]
+
+            Z_fit = torch.matrix_exp(A_aux[None,:,:] * t_arr[:,None,None])[:,:N_,:N_]
+            Z_fit = Z_fit / c_[None,None,:]
+            Z_fit *= 1e-3 # convert [MOhm/s] to [MOhm/ms]
+
+            return torch.mean((Z_fit - Z_orig)**2)
+
+
+        def lineSearch(c0_, alpha=1.):
+            """
+            Simple line search to determine the step-size in the first step
+            """
+            # starting conditions
+            f0_ = func(c0_)
+            f1_ = f0_ + 1
+            # compute gradient
+            f0_.backward()
+            dfdc0_ = c0_.grad.clone()
+
+            while f1_ > f0_:
+                c0_.grad.data.zero_()
+
+                # single gradient step
+                c1_ = c0_.detach() - alpha * dfdc0_
+
+                if torch.min(c1_) < 0.:
+                    alpha /= 2.
+                    continue
+
+                c1_.requires_grad = True
+                f1_ = func(c1_)
+
+                if torch.max(f1_) > 1e20:
+                    raise OverflowError("Issues with convergence")
+
+                f1_.backward()
+
+                if f1_ > f0_:
+                    alpha /= 10.
+
+                print(f"> step -1 --> loss={f1_} | old loss {f0_} | stepsize = {alpha}")
+                # print(f"> step -1 --> loss={f1_} | old loss {f0_} | c_vec = {c1_} | stepsize = {alpha}")
+
+            return (c0_, dfdc0_, f0_), (c1_, c1_.grad.clone(), f1_)
+
+        # initial capacitance vector
+        tau_0 = torch.tensor(self._permuteToTree(tau_0))
+        # c0 = torch.tensor(
+        #     [tau_0[ii] * node.getGTot(channel_storage=self.channel_storage) for ii, node in enumerate(self)],
+        #     requires_grad=True
+        # )
+        # # c0 = 10.*c0
+        c0 = torch.tensor(self._toVecC(),
+            requires_grad=True
+        )
+
+        # initial line search
+        (c0, dfdc0, f0), (c1, dfdc1, f1) = lineSearch(c0, alpha=1e-15)
+
+        # main optimization loop
+        for step in range(max_iter):
+            c0.grad.data.zero_()
+            c1.grad.data.zero_()
+
+            # Barzilai-Borwein step size
+            dg = dfdc1 - dfdc0
+            alpha = torch.abs((c1.detach() - c0.detach()) @ dg) / (dg @ dg)
+            # apply a graident step
+            c0, dfdc0, f0 = c1, dfdc1, f1
+
+            # print("----")
+            (c0, dfdc0, f0), (c1, dfdc1, f1) = lineSearch(c0, alpha=alpha)
+            # c1 = c0.detach() - alpha * dfdc0
+            # c1.requires_grad = True
+            # breakpoint(al)
+            # f1 = func(c1)
+            # f1.backward()
+            # dfdc1 = c1.grad.clone()
+            if torch.max(f1) > 1e20:
+                raise OverflowError("Issues with convergence")
+
+            if torch.abs(f1 - f0) < 1e-10 * torch.max(f1):
+                break
+
+            # breakpoint()
+
+            print(f"> step {step} --> loss={f1} | stepsize = {alpha}")
+            # print(f"> step {step} --> loss={f1} | c_vec = {c1} | stepsize = {alpha}")
+
+        self._toTreeC(c1.detach().numpy())
 
     def _calcConvolution(self, dt, inputs):
         """

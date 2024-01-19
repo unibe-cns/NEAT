@@ -667,8 +667,8 @@ class TestCompartmentFitter():
             use_all_channels=False
         )
         # fit the capacitance
-        cfit.fitCapacitanceFromZ()
-        # cfit.fitCapacitanceFromZ_()
+        # cfit.fitCapacitanceFromZ()
+        cfit.fitCapacitanceFromZ_()
         ctree_from_z = copy.deepcopy(cfit.ctree)
 
         # fit the capacitance
@@ -742,8 +742,8 @@ class TestCompartmentFitter():
         # fit the ion channels
         cfit_new.fitChannels(pprint=False, parallel=False)
         # new capacitance fit
-        cfit_new.fitCapacitanceFromZ()
-        # cfit_new.fitCapacitanceFromZ_()
+        # cfit_new.fitCapacitanceFromZ()
+        cfit_new.fitCapacitanceFromZ_()
         ctree_new = cfit_new.ctree
         print(ctree_new._toVecC())
 
@@ -841,8 +841,8 @@ if __name__ == '__main__':
     # tcf.testFitModel()
     # tcf.testPickling()
     # tcf.testParallel(w_benchmark=True)
-    tcf.testCacheing()
+    # tcf.testCacheing()
     # tcf.testCFitFromZPoint()
     # tcf.testCFitFromZPas(pplot=True)
-    # tcf.testCFitFromZAct()
+    tcf.testCFitFromZAct()
     # test_expansionpoints()
