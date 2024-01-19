@@ -823,7 +823,12 @@ class PhysTree(MorphTree):
                 fd_parent = fd_node.parent_node
                 if not fd_tree.isRoot(fd_parent):
                     fd_parent.ca += surf * aux_node.c_m
+
                     for chan in aux_node.currents:
+
+                        if chan not in fd_tree.channel_storage and chan in self.channel_storage:
+                            fd_tree.channel_storage[chan] = copy.deepcopy(self.channel_storage[chan])
+
                         g_parent = fd_parent.currents[chan][0] if chan in fd_parent.currents else 0.
                         fd_parent.currents[chan] = (
                             g_parent + surf * aux_node.currents[chan][0],
@@ -837,9 +842,6 @@ class PhysTree(MorphTree):
                 ion_factors_fd = 0.
 
                 for cname in aux_node.currents:
-                    if cname not in fd_tree.channel_storage:
-                        fd_tree.channel_storage[cname] = copy.deepcopy(self.channel_storage[cname])
-
                     if cname != 'L' and self.channel_storage[cname].ion == ion:
                         ion_factors_aux += aux_node.currents[cname][0]
                         ion_factors_fd += fd_node.currents[cname][0]
