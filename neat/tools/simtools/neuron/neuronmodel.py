@@ -121,7 +121,10 @@ class NeuronSimNode(PhysNode):
         # insert membrane currents
         for key, current in self.currents.items():
             if current[0] > 1e-10:
-                compartment.insert(mechname[key])
+                try:
+                    compartment.insert(mechname[key])
+                except ValueError as e:
+                    raise ValueError(str(e) + f" {mechname[key]}")
                 for seg in compartment:
                     exec('seg.' + mechname[key] + '.g = ' + str(current[0]) + '*1e-6') # uS/cm^2 --> S/cm^2
                     exec('seg.' + mechname[key] + '.e = ' + str(current[1])) # mV
@@ -784,8 +787,11 @@ class NeuronSimTree(PhysTree):
                 curr_name = f"i{c_ion}"
                 res[curr_name] = []
                 for loc in self.getLocs('rec locs'):
-                    res[curr_name].append(h.Vector())
-                    exec(f'res[curr_name][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name})')
+                    try:
+                        res[curr_name].append(h.Vector())
+                        exec(f'res[curr_name][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name})')
+                    except AttributeError:
+                        res[c_ion].append([])
         # record voltage derivative
         if record_v_deriv:
             res['dv_dt'] = []

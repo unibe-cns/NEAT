@@ -652,7 +652,7 @@ class CompartmentTree(STree):
         nodes = []
 
         idxs = args[0]
-        if isinstance(args, int):
+        if isinstance(idxs, int):
             idxs = [idxs]
 
         for idx in idxs:

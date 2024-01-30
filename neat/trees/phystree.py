@@ -726,6 +726,14 @@ class PhysTree(MorphTree):
             loc = new_locs[new_node.content["loc ind"]]
             orig_node = self[loc['node']]
 
+            # copy over physiological parameters
+            new_node.c_m = orig_node.c_m
+            new_node.r_a = orig_node.r_a
+            new_node.g_shunt = orig_node.g_shunt
+
+            new_node.v_ep = orig_node.v_ep
+            new_node.conc_eps = copy.deepcopy(orig_node.conc_eps)
+
             new_node.currents = copy.deepcopy(orig_node.currents)
             new_node.concmechs = copy.deepcopy(orig_node.concmechs)
 
@@ -793,6 +801,14 @@ class PhysTree(MorphTree):
             self.storeLocs(locs, name)
 
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
+            print(f"{aux_node.content['loc ind']} =?= {fd_node.loc_ind}")
+        # for ii, fd_node in enumerate(fd_tree):
+        #     # loc_ind = fd_node.loc_ind
+        #     loc = locs[fd_node.loc_ind]
+        #     for aux_node in aux_tree:
+        #         if aux_node.content["loc ind"] == fd_node.loc_ind:
+        #             break
+
             # set the location index in `locs` to which the compartment
             # corresponds
             fd_node._loc_ind = ii
@@ -825,15 +841,25 @@ class PhysTree(MorphTree):
 
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
-                if not fd_tree.isRoot(fd_parent):
+                # if not fd_tree.isRoot(fd_parent):
+                if True:
                     fd_parent.ca += surf * aux_node.c_m
 
                     for chan in aux_node.currents:
+                        g_node = surf * aux_node.currents[chan][0]
+                        e_node = aux_node.currents[chan][1]
 
-                        g_parent = fd_parent.currents[chan][0] if chan in fd_parent.currents else 0.
+                        if chan in fd_parent.currents:
+                            g_parent = fd_parent.currents[chan][0]
+                            e_parent = fd_parent.currents[chan][1]
+                        else:
+                            g_parent = 0.
+                            e_parent = aux_node.currents[chan][1]
+
                         fd_parent.currents[chan] = (
-                            g_parent + surf * aux_node.currents[chan][0],
-                            aux_node.currents[chan][1]
+                            g_parent + g_node,
+                            (g_parent * e_parent + g_node * e_node) / (g_parent + g_node)
+                            # e_parent
                         )
 
         # set concentration mechanisms in separate pass

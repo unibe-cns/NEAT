@@ -3034,6 +3034,7 @@ class MorphTree(STree):
         xs = self.xs[name]
         # check which locinds are on the branch
         ninds = self.getLocindsOnNode(name, node)
+        print(f"Node {node.index}: xs = {xs[ninds]}")
         for loc_ind in ninds:
             index = len(new_nodes)
             # make new node

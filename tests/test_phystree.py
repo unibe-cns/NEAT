@@ -380,6 +380,8 @@ class TestPhysTree():
         # set computational tree
         self.tree.setCompTree()
 
+        # print(4*np.pi*self.tree[1].R**2*self.tree[1].currents['L'][0]*1e-8)
+
         # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.createFiniteDifferenceTree(dx_max=22.)
         cfit = CompartmentFitter(self.tree, save_cache=False)
@@ -398,7 +400,7 @@ class TestPhysTree():
             for key in node_fd.currents:
                 g_fd = node_fd.currents[key][0]
                 g_fit = node_fit.currents[key][0]
-                if pprin: print(f"g{key}_fd = {g_fd}, g{key}_fit = {g_fit}")
+                if pprint: print(f"g{key}_fd = {g_fd}, g{key}_fit = {g_fit}")
                 assert np.abs(g_fd - g_fit) < \
                                 rtol_param * np.max([g_fd, g_fit])
 
@@ -410,4 +412,4 @@ if __name__ == '__main__':
     # tphys.testPhysiologySetting()
     # tphys.testMembraneFunctions()
     # tphys.testCompTree()
-    tphys.testFiniteDiffTree()
+    tphys.testFiniteDiffTree(pprint=True)
