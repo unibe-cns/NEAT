@@ -801,17 +801,7 @@ class PhysTree(MorphTree):
             self.storeLocs(locs, name)
 
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
-            print(f"{aux_node.content['loc ind']} =?= {fd_node.loc_ind}")
-        # for ii, fd_node in enumerate(fd_tree):
-        #     # loc_ind = fd_node.loc_ind
-        #     loc = locs[fd_node.loc_ind]
-        #     for aux_node in aux_tree:
-        #         if aux_node.content["loc ind"] == fd_node.loc_ind:
-        #             break
-
-            # set the location index in `locs` to which the compartment
-            # corresponds
-            fd_node._loc_ind = ii
+            assert aux_node.content['loc ind'] == fd_node.loc_ind
 
             # unit conversion [um] -> [cm]
             R_ = aux_node.R * 1e-4
@@ -841,8 +831,8 @@ class PhysTree(MorphTree):
 
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
-                # if not fd_tree.isRoot(fd_parent):
-                if True:
+                if not fd_tree.isRoot(fd_parent):
+                # if True:
                     fd_parent.ca += surf * aux_node.c_m
 
                     for chan in aux_node.currents:
@@ -859,7 +849,6 @@ class PhysTree(MorphTree):
                         fd_parent.currents[chan] = (
                             g_parent + g_node,
                             (g_parent * e_parent + g_node * e_node) / (g_parent + g_node)
-                            # e_parent
                         )
 
         # set concentration mechanisms in separate pass
@@ -875,9 +864,6 @@ class PhysTree(MorphTree):
 
                 fd_node.concmechs[ion] = copy.deepcopy(aux_node.concmechs[ion])
                 fd_node.concmechs[ion].gamma *= ion_factors_aux / ion_factors_fd
-
-        # reset the indices to the order they appear in a depth-first iteration
-        fd_tree.resetIndices()
 
         return fd_tree, locs
 

@@ -652,8 +652,10 @@ class CompartmentTree(STree):
         nodes = []
 
         idxs = args[0]
+        was_int = False
         if isinstance(idxs, int):
             idxs = [idxs]
+            was_int = True
 
         for idx in idxs:
 
@@ -667,7 +669,7 @@ class CompartmentTree(STree):
             if not found:
                 raise IndexError(f"Location index {idx} not in tree")
 
-        if isinstance(idxs, int):
+        if was_int:
             return nodes[0]
         else:
             return nodes
