@@ -677,7 +677,7 @@ class NeuronSimTree(PhysTree):
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
             record_from_channels=False, record_v_deriv=False,
             record_concentrations=[], record_currents=[],
-            spike_rec_loc=None,
+            spike_rec_loc=None, spike_rec_thr=-20.,
             pprint=False):
         """
         Run the NEURON simulation. Records at all locations stored
@@ -713,8 +713,10 @@ class NeuronSimTree(PhysTree):
             Record ion currents at locations stored under 'rec locs'
             Accessible as `np.ndarray` in the output dict with as key the ion's
             name
-        record_spikes: bool (default ``False``)
-            Record the output spike times
+        spike_rec_loc: `neat.MorphLoc` (default ``None``)
+            Record the output spike times from this location
+        spike_rec_thr: float
+            Spike threshold
 
         Returns
         -------
@@ -799,13 +801,13 @@ class NeuronSimTree(PhysTree):
                 res['dv_dt'].append(h.Vector())
                 # res['dv_dt'][-1].deriv(res['v_m'][ii], self.dt)
         if spike_rec_loc is not None:
-            # add spike detector at soma
+            # add spike detector at spike_rec_loc
             self.spike_detector = h.NetCon(
                 self.sections[spike_rec_loc[0]](spike_rec_loc[1])._ref_v,
                 None,
                 sec=self.sections[spike_rec_loc[0]]
             )
-            self.spike_detector.threshold = -20.
+            self.spike_detector.threshold = spike_rec_thr
             res['spikes'] = h.Vector()
             self.spike_detector.record(res['spikes'])
 

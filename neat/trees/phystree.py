@@ -846,10 +846,13 @@ class PhysTree(MorphTree):
                             g_parent = 0.
                             e_parent = aux_node.currents[chan][1]
 
-                        fd_parent.currents[chan] = (
-                            g_parent + g_node,
-                            (g_parent * e_parent + g_node * e_node) / (g_parent + g_node)
-                        )
+                        if g_parent + g_node > 1e-10:
+                            fd_parent.currents[chan] = (
+                                g_parent + g_node,
+                                (g_parent * e_parent + g_node * e_node) / (g_parent + g_node)
+                            )
+                        else:
+                            fd_parent.currents[chan] = (0., e_parent)
 
         # set concentration mechanisms in separate pass
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
