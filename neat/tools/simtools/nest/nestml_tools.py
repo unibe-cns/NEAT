@@ -48,11 +48,11 @@ def _getIndexOfBlock(contents, block_name):
 
 def getBlockString(contents, block_name):
     try:
-        c0 = _getIndexOfBlock(contents, block_name)
+        c0 = _getIndexOfBlock(contents, block_name+":")
         s0 = contents[c0].index(block_name) + len(block_name+":")
 
         c1 = min([
-            _getIndexOfBlock(contents[c0+1:], block_name) + c0 \
+            _getIndexOfBlock(contents[c0+1:], block_name+":") + c0 \
             for block_name in PERMITTED_BLOCK_NAMES
         ])
 
@@ -115,7 +115,7 @@ def parseNestmlFile(f_name):
 
 def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
                       write_blocks=['parameters', 'state', 'equations',
-                                    'inputs', 'output', 'functions']):
+                                    'input', 'output', 'functions']):
     for block, blockstr in blocks.items():
         if block != 'function' and block != 'output':
             blocks[block] = f"\n    {block}:\n{blockstr}"

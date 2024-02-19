@@ -57,6 +57,7 @@ neuron default_syns:
         tp_AN_NMDA real = (tau_r_AN_NMDA * tau_d_AN_NMDA) / (tau_d_AN_NMDA - tau_r_AN_NMDA) * ln( tau_d_AN_NMDA / tau_r_AN_NMDA )
         g_norm_AN_NMDA real =  1. / ( -exp( -tp_AN_NMDA / tau_r_AN_NMDA ) + exp( -tp_AN_NMDA / tau_d_AN_NMDA ) )
 
+
 #    function XX(v_comp real) real:
 #        return v_comp + 1.
 
