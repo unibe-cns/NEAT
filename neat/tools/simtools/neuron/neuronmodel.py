@@ -738,29 +738,34 @@ class NeuronSimTree(PhysTree):
         # simulation time recorder
         res = {'t': h.Vector()}
         res['t'].record(h._ref_t, dt_rec)
+
         # voltage recorders
         res['v_m'] = []
         for loc in self.getLocs('rec locs'):
             res['v_m'].append(h.Vector())
             res['v_m'][-1].record(self.sections[loc['node']](loc['x'])._ref_v, dt_rec)
+
         # synapse current recorders
         if record_from_syns:
             res['i_syn'] = []
             for syn in self.syns:
                 res['i_syn'].append(h.Vector())
                 res['i_syn'][-1].record(syn._ref_i, dt_rec)
+
         # current clamp current recorders
         if record_from_iclamps:
             res['i_clamp'] = []
             for iclamp in self.iclamps:
                 res['i_clamp'].append(h.Vector())
                 res['i_clamp'][-1].record(iclamp._ref_i, dt_rec)
+
         # voltage clamp current recorders
         if record_from_vclamps:
             res['i_vclamp'] = []
             for vclamp in self.vclamps:
                 res['i_vclamp'].append(h.Vector())
                 res['i_vclamp'][-1].record(vclamp._ref_i, dt_rec)
+
         # channel state variable recordings
         if record_from_channels:
             res['chan'] = {}
@@ -776,33 +781,39 @@ class NeuronSimTree(PhysTree):
                         elif xx > 1. - 1e-3: xx -= 1e-3
                         # create the recorder
                         try:
-                            rec = h.Vector()
-                            exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +f', {dt_rec})')
-                            res['chan'][channel_name][var].append(rec)
+                            rec_vec = h.Vector()
+                            exec('rec_vec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +f', {dt_rec})')
                         except AttributeError:
                             # the channel does not exist here
-                            res['chan'][channel_name][var].append([])
+                            rec_vec = None
+                            rec_vec = []
+                        res['chan'][channel_name][var].append(rec_vec)
+
         if len(record_concentrations) > 0:
             for c_ion in record_concentrations:
                 res[c_ion] = []
                 for loc in self.getLocs('rec locs'):
-                    print(loc)
                     try:
-                        res[c_ion].append(h.Vector())
-                        exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + f'i, {dt_rec})')
+                        rec_vec = h.Vector()
+                        exec('rec_vec.record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + f'i, {dt_rec})')
                     except AttributeError:
-                        print(f"no {c_ion} concentration detected")
-                        res[c_ion].append([])
+                        rec_vec = None
+                        rec_vec = []
+                    res[c_ion].append(rec_vec)
+
         if len(record_currents) > 0:
             for c_ion in record_currents:
                 curr_name = f"i{c_ion}"
                 res[curr_name] = []
                 for loc in self.getLocs('rec locs'):
                     try:
-                        res[curr_name].append(h.Vector())
-                        exec(f'res[curr_name][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name}, {dt_rec})')
+                        rec_vec = h.Vector()
+                        exec(f'rec_vec.record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name}, {dt_rec})')
                     except AttributeError:
-                        res[c_ion].append([])
+                        rec_vec = None
+                        rec_vec = []
+                    res[curr_name].append(rec_vec)
+
         # record voltage derivative
         if record_v_deriv:
             res['dv_dt'] = []

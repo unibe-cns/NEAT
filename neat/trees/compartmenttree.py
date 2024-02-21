@@ -1632,6 +1632,7 @@ class CompartmentTree(STree):
         # least squares fit
         res = so.nnls(mat_feature, vec_target)[0]
         c_vec = res + c_lim
+
         self._toTreeC(c_vec)
 
     def _fitResAction(self, action, mat_feature, vec_target, weight,

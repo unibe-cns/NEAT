@@ -252,6 +252,25 @@ class TestNeuron():
         assert res['chan']['TestChannel2']['a11'].shape == (n_loc, n_step)
         assert res['chan']['TestChannel2']['p_open'].shape == (n_loc, n_step)
 
+    def testRecordingTimestep(self):
+        self.loadTTreeTestChannel()
+        # set of locations
+        locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
+        # test simulation 1
+        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.storeLocs(locs, name='rec locs')
+        res1 = self.neurontree.run(10., downsample=10, dt_rec=None, record_from_channels=True)
+        self.neurontree.deleteModel()
+        # test simulation 2
+        self.loadTTreeTestChannel()
+        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.storeLocs(locs, name='rec locs')
+        res2 = self.neurontree.run(10., downsample=1, dt_rec=1., record_from_channels=True)
+        self.neurontree.deleteModel()
+
+        assert len(res1['t']) == len(res2['t'])
+        assert res1['v_m'].shape == res2['v_m'].shape
+
 
 class TestReducedNeuron():
     def addLocinds(self):
@@ -609,8 +628,9 @@ class TestReducedNeuron():
 if __name__ == '__main__':
     tn = TestNeuron()
     # tn.testPassive(pplot=Trsue)
-    tn.testActive()
+    # tn.testActive()
     # tn.testChannelRecording()
+    tn.testRecordingTimestep()
 
     # trn = TestReducedNeuron()
     # trn.testGeometry1()

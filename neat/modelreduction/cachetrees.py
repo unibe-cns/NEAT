@@ -135,7 +135,7 @@ class EquilibriumTree(FitTree):
         # compute equilibrium potentials
         sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
         sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
-        res_biophys = sim_tree_biophys.run(t_max, record_concentrations=ions)
+        res_biophys = sim_tree_biophys.run(t_max, dt_rec=20., record_concentrations=ions)
         sim_tree_biophys.deleteModel()
 
         return (
@@ -143,7 +143,7 @@ class EquilibriumTree(FitTree):
             {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
         )
 
-    def calcEEq(self, locarg, ions=None, method="interp", L_eps=20., **kwargs):
+    def calcEEq(self, locarg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
         """
         Calculates equilibrium potentials and concentrations in the tree.
 
@@ -164,6 +164,8 @@ class EquilibriumTree(FitTree):
             distance is larger than `L_eps`
         L_eps: float
             maximum distance (um) above which the method defaults to interpolation
+        pprint: bool
+            Whether or not to print additional information
         """
         if ions is None: ions = self.ions
         locs = self._convertLocArgToLocs(locarg)
@@ -174,31 +176,39 @@ class EquilibriumTree(FitTree):
         conc_eqs = {ion: [] for ion in ions}
 
         if method == "interp":
-            print("> computing e_eq through interpolation")
+            if pprint:
+                print("> computing e_eq through interpolation")
+
             idxs0 = self.getNearestLocinds(locs, "ref locs", direction=1)
             idxs1 = self.getNearestLocinds(locs, "ref locs", direction=2)
 
             for loc, idx0, idx1 in zip(locs, idxs0, idxs1):
 
-                if idx0 is None:
-                    # locs[idx0] more distal than leaf ref loc
-                    e_eqs.append(self[ref_locs[idx1][0]].v_ep)
+                if idx0 is None or idx1 is None:
+                    if idx0 is None and idx1 is None:
+                        # ref locs probably not defined, computations should be redone
+                        break
 
-                elif idx1 is None:
-                    # locs[idx1] more distal than leaf ref loc
-                    e_eqs.append(self[ref_locs[idx0][0]].v_ep)
+                    idx = idx0 if idx0 is not None else idx1
+
+                    # locs[idx0] more distal than leaf ref loc
+                    e_eqs.append(self[ref_locs[idx][0]].v_ep)
+
+                    for ion in ions:
+                        conc_eqs[ion].append(self[ref_locs[idx][0]].conc_eps[ion])
 
                 else:
                     L0 = self.pathLength(loc, ref_locs[idx0])
                     L1 = self.pathLength(loc, ref_locs[idx1])
 
-                    if L0 < 1e-10 and L1 < 1e-10:
+                    if L0 < 1e-10 or L1 < 1e-10:
+                        idx = idx0 if L0 < L1 else idx1
                         # both neighbour locations are the same
-                        e_eqs.append(self[ref_locs[idx0][0]].v_ep)
+                        e_eqs.append(self[ref_locs[idx][0]].v_ep)
 
                         for ion in ions:
                             # linear interpolation to compute the equilibrium concentration
-                            conc_eqs[ion].append(self[ref_locs[idx0][0]].conc_eps[ion])
+                            conc_eqs[ion].append(self[ref_locs[idx][0]].conc_eps[ion])
 
                     elif L0 < L_eps and L1 < L_eps:
                         v_ep0 = self[ref_locs[idx0][0]].v_ep
@@ -218,10 +228,16 @@ class EquilibriumTree(FitTree):
                         break
 
         if len(e_eqs) < len(locs):
-            print("> computing e_eq through interpolation failed, simulating")
+            if pprint:
+                print("> computing e_eq through interpolation failed, simulating")
             return self._calcEEq(locarg, ions=ions, **kwargs)
 
         else:
+            if pprint:
+                print("> equilibria:")
+                for ii, loc in enumerate(locs):
+                    conc_eq_str = str({ion: f"{conc_eq[ii]:.8f}" for ion, conc_eq in conc_eqs.items()})
+                    print(f"    loc {loc}: e_eq = {e_eqs[ii]:.2f} mV, {conc_eq_str}")
             return (
                 np.array(e_eqs),
                 {ion: np.array(conc_eq) for ion, conc_eq in conc_eqs.items()}

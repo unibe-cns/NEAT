@@ -186,7 +186,7 @@ class CompartmentFitter(object):
         # boolean flag that is reset the first time `self.fitPassive` is called
         self.use_all_channels_for_passive = True
 
-    def setCTree(self, loc_arg, extend_w_bifurc=True):
+    def setCTree(self, loc_arg, extend_w_bifurc=True, pprint=False):
         """
         Store an initial `neat.CompartmentTree`, providing a tree
         structure scaffold for the fit for a given set of locations. The
@@ -201,6 +201,8 @@ class CompartmentFitter(object):
             To extend the compartment locations with all intermediate
             bifurcations (see documentation of
             :func:`MorphTree.extendWithBifurcationLocs`).
+        pprint: bool
+            whether to print additional info
         """
         locs = self.tree._parseLocArg(loc_arg)
         if extend_w_bifurc:
@@ -242,7 +244,7 @@ class CompartmentFitter(object):
                     node.addConcMech(ion, **self.concmech_cfg.exp_conc_mech)
 
         # set the equilibirum potentials at fit locations
-        eq = self.tree.calcEEq('fit locs')
+        eq = self.tree.calcEEq('fit locs', pprint=pprint)
         self.v_eqs_fit = eq[0]
         self.conc_eqs_fit = eq[1]
 
@@ -350,7 +352,7 @@ class CompartmentFitter(object):
         )
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)[None,:,:,:]
-        print(channel_name, "\n", z_mats)
+
         # compute the fit matrices for all holding potentials
         fit_mats = []
         for ii, e_h in enumerate(sv_h['v']):
@@ -1057,7 +1059,7 @@ class CompartmentFitter(object):
         `neat.CompartmentTree`
             The reduced tree containing the fitted parameters
         """
-        self.setCTree(loc_arg)
+        self.setCTree(loc_arg, pprint=pprint)
 
         # fit the passive steady state model
         self.fitPassive(
