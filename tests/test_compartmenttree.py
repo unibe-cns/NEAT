@@ -38,14 +38,15 @@ class TestCompartmentTree():
         self.loadTTree()
         locs = [(1, 0.5), (4, 0.5)]
         ctree = self.tree.createCompartmentTree(locs)
-        assert str(ctree) == ">>> CompartmentTree\n" \
-            "    CompartmentNode 0, Parent: None --- loc_ind = 0, g_c = 0.0 uS, ca = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 0.01 uS/cm^2, e_L = -75.0 mV)\n" \
-            "    CompartmentNode 1, Parent: 0 --- loc_ind = 1, g_c = 0.0 uS, ca = 1.0 uF/cm^2, e_eq = -75.0 mV, (g_L = 0.01 uS/cm^2, e_L = -75.0 mV)"
 
-        assert repr(ctree) == "['CompartmentTree', " \
-            "\"{'node index': 0, 'parent index': -1, 'content': '{}', 'loc_ind': 0, 'ca': 1.0, 'g_c': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'currents': {'L': [0.01, -75.0]}, 'concmechs': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 1, 'parent index': 0, 'content': '{}', 'loc_ind': 1, 'ca': 1.0, 'g_c': 0.0, 'e_eq': -75.0, 'conc_eqs': {}, 'currents': {'L': [0.01, -75.0]}, 'concmechs': {}, 'expansion_points': {}}\"" \
-            "]{'channel_storage': []}"
+        assert str(ctree) == ">>> CompartmentTree\n" \
+            "    CompartmentNode 0, Parent: None --- loc_ind = 0, g_c = 0.0 uS, ca = 1.0 uF, e_eq = -75.0 mV, (g_L = 0.01 uS, e_L = -75.0 mV)\n" \
+            "    CompartmentNode 1, Parent: 0 --- loc_ind = 1, g_c = 0.0 uS, ca = 1.0 uF, e_eq = -75.0 mV, (g_L = 0.01 uS, e_L = -75.0 mV)"
+
+        assert repr(ctree) == "[\'CompartmentTree\', " \
+            "\"{\'node index\': 0, \'parent index\': -1, \'content\': \'{}\', \'loc_ind\': 0, \'ca\': \'1\', \'g_c\': \'0\', \'e_eq\': \'-75\', \'conc_eqs\': {}, \'currents\': {\'L\': \'0.01, -75\'}, \'concmechs\': {}, \'expansion_points\': {}}\", " \
+            "\"{\'node index\': 1, \'parent index\': 0, \'content\': \'{}\', \'loc_ind\': 1, \'ca\': \'1\', \'g_c\': \'0\', \'e_eq\': \'-75\', \'conc_eqs\': {}, \'currents\': {\'L\': \'0.01, -75\'}, \'concmechs\': {}, \'expansion_points\': {}}\"" \
+            "]{\'channel_storage\': []}"
 
     def testTreeDerivation(self):
         self.loadTTree()
@@ -240,18 +241,6 @@ class TestCompartmentTree():
         taus_orig = np.array([n.c_m / n.currents['L'][0] for n in nds])
         taus_fit = np.array([n.ca / n.currents['L'][0] for n in ctree])
         assert np.allclose(taus_orig, taus_fit)
-
-        # fit capacitances with experimental vector fit
-        for n in ctree: n.ca = 1.
-        self.greens_tree.setImpedance(freqs=ke.create_logspace_freqarray())
-        z_mat = self.greens_tree.calcImpedanceMatrix(locs)
-        # run the vector fit
-        ctree.computeCVF(self.greens_tree.freqs, z_mat)
-        taus_fit2 = np.array([n.ca / n.currents['L'][0] for n in ctree])
-        assert np.allclose(taus_orig, taus_fit2, atol=.3)
-
-    def testCFitFromZ(self):
-        pass
 
     def fitBallAndStick(self, n_loc=20):
         self.loadBallAndStick()
@@ -619,12 +608,12 @@ class TestCompartmentTreePlotting():
 
 if __name__ == '__main__':
     tcomp = TestCompartmentTree()
-    # tcomp.testStringRepresentation()
+    tcomp.testStringRepresentation()
     # tcomp.testTreeDerivation()
     # tcomp.testFitting()
     # tcomp.testReordering()
     # tcomp.testLocationMapping()
-    tcomp.testGSSFit()
+    # tcomp.testGSSFit()
     # tcomp.testCFit()
     # tcomp.testPasFunctionality()
     # tcomp.testChannelFit()

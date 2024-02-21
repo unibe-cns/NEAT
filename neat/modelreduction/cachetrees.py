@@ -44,7 +44,7 @@ class FitTree(PhysTree):
         )
 
         if pprint:
-            print(f"\n>>>> Saving {self.__class__.__name__} to:\n    {file_name}\n<<<<")
+            print(f"\n>>>> Cache file for {self.__class__.__name__}:\n    {file_name}\n<<<<")
 
         try:
             # ensure that the funcs are recomputed if 'recompute' is true
@@ -174,6 +174,7 @@ class EquilibriumTree(FitTree):
         conc_eqs = {ion: [] for ion in ions}
 
         if method == "interp":
+            print("> computing e_eq through interpolation")
             idxs0 = self.getNearestLocinds(locs, "ref locs", direction=1)
             idxs1 = self.getNearestLocinds(locs, "ref locs", direction=2)
 
@@ -217,6 +218,7 @@ class EquilibriumTree(FitTree):
                         break
 
         if len(e_eqs) < len(locs):
+            print("> computing e_eq through interpolation failed, simulating")
             return self._calcEEq(locarg, ions=ions, **kwargs)
 
         else:

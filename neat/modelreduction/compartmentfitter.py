@@ -172,7 +172,7 @@ class CompartmentFitter(object):
         )
         self.tree.treetype = 'original'
         # set the equilibrium potentials in the tree
-        self.tree.setEEq()
+        self.tree.setEEq(pprint=True)
         # get all channels in the tree
         self.channel_names = self.tree.getChannelsInTree()
 
@@ -249,6 +249,7 @@ class CompartmentFitter(object):
     def createTreeGF(self,
             channel_names=[],
             cache_name_suffix='',
+            unmasked_nodes=None,
         ):
         """
         Create a `FitTreeGF` copy of the old tree, but only with the
@@ -262,12 +263,19 @@ class CompartmentFitter(object):
             new tree.
         recompute_cache: bool
             Whether or not to force recompute the impedance caches
+        unmasked_nodes: 'node_arg' (see documentation of `MorphTree._convertNodeArgToNodes`)
+            The nodes where the channels in `channel_names` will be initialized
+            to non-zero values
 
         Returns
         -------
         `FitTreeGF()`
 
         """
+        unmasked_node_indices = [
+            node.index for node in self.tree._convertNodeArgToNodes(unmasked_nodes)
+        ]
+
         # create new tree and empty channel storage
         tree = self.tree.__copy__(new_tree=FitTreeGF())
         tree.set_cache_params(
@@ -284,6 +292,10 @@ class CompartmentFitter(object):
             g_l, e_l = node_orig.currents['L']
             # add the current to the tree
             node._addCurrent('L', g_l, e_l)
+
+            if node.index not in unmasked_node_indices:
+                continue
+
             for channel_name in channel_names:
                 try:
                     g_max, e_rev = node_orig.currents[channel_name]
@@ -300,8 +312,7 @@ class CompartmentFitter(object):
 
         return tree
 
-    def evalChannel(self, channel_name,
-                          recompute=False, pprint=False, parallel=True, max_workers=None):
+    def evalChannel(self, channel_name, recompute=False, pprint=False):
         """
         Evaluate the impedance matrix for the model restricted to a single ion
         channel type.
@@ -339,7 +350,7 @@ class CompartmentFitter(object):
         )
         # compute the impedance matrix for this activation level
         z_mats = fit_tree.calcImpedanceMatrix(locs)[None,:,:,:]
-
+        print(channel_name, "\n", z_mats)
         # compute the fit matrices for all holding potentials
         fit_mats = []
         for ii, e_h in enumerate(sv_h['v']):
@@ -352,7 +363,7 @@ class CompartmentFitter(object):
             m_f, v_t = self.ctree.computeGSingleChanFromImpedance(
                 channel_name, z_mats[:,ii,:,:], e_h, np.array([self.cfg.freqs]),
                 sv=sv, other_channel_names=['L'],
-                all_channel_names=self.channel_names,
+                all_channel_names=[channel_name],#self.channel_names,
                 action='return'
             )
 
@@ -366,9 +377,22 @@ class CompartmentFitter(object):
         w_norm = 1. / np.sum([w_f for _, _, w_f in fit_mats])
         for _, _, w_f in fit_mats: w_f /= w_norm
 
+        # store the fit matrices
+        for m_f, v_t, w_f in fit_mats:
+            if not (
+                np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()
+            ):
+                self.ctree._fitResAction(
+                    'store', m_f, v_t, w_f,
+                    channel_names=[channel_name]
+                )
+
+        # run the fit
+        self.ctree.runFit()
+
         return fit_mats
 
-    def fitChannels(self, recompute=False, pprint=False, parallel=True):
+    def fitChannels(self, recompute=False, pprint=False):
         """
         Fit the active ion channel parameters
 
@@ -381,155 +405,10 @@ class CompartmentFitter(object):
         parallel:  bool (optional, defaults to ``True``)
             whether the models are evaluated in parallel
         """
-        # create the fit matrices for each channel
-        n_arg = len(self.channel_names)
-
-        if n_arg == 0:
-            return self.ctree
-
-        args_list = [self.channel_names,
-                     [recompute for _ in range(n_arg)],
-                     [pprint for _ in range(n_arg)],
-                     [parallel for _ in range(n_arg)],
-                    ]
-        if parallel:
-            max_workers = min(n_arg, cpu_count())
-            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
-                fit_mats_ = list(pool.map(self.evalChannel, *args_list))
-        else:
-            fit_mats_ = [self.evalChannel(*args) for args in zip(*args_list)]
-        fit_mats = [f_m for f_ms in fit_mats_ for f_m in f_ms]
-        # store the fit matrices
-        for m_f, v_t, w_f in fit_mats:
-            if not (
-                np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()
-            ):
-                self.ctree._fitResAction(
-                    'store', m_f, v_t, w_f,
-                    channel_names=self.channel_names
-                )
-        # run the fit
-        self.ctree.runFit()
+        for channel_name in self.channel_names:
+            self.evalChannel(channel_name, recompute=recompute, pprint=pprint)
 
         return self.ctree
-
-    def fitConcentration_(self, ion, fit_tau=False, pprint=False):
-        """
-        Fits the concentration mechanisms parameters associate with the `ion`
-        ion type.
-
-        Parameters
-        ----------
-        ion: str
-            The ion type that is to be fitted (e.g. 'ca').
-        fit_tau: bool (default ``False``)
-            If ``True``, fits the time-scale of the concentration mechansims. If
-            ``False``, tries to take the time-scale from the corresponding
-            location in the original tree. However, if no concentration
-            mechanism is present at the corresponding location, than the default
-            time-scale from `neat.factorydefaults` is taken.
-        pprint: bool (default ``False``)
-            Whether to print fit information.
-
-        Returns
-        -------
-        bool
-            `False` when no concentration mech for `ion` was found in the tree,
-            `True` otherwise
-        """
-        # check if concmech for ion exists in original tree,
-        # if not, skip the rest
-        has_concmech = False
-        for node in self.tree:
-            if ion in node.concmechs:
-                has_concmech = True
-                break
-        if not has_concmech:
-            return 0
-
-        for ion, conc_hs in self.cfg.conc_hs_cm.items():
-            assert len(conc_hs) == len(self.cfg.e_hs_cm)
-        nh = len(self.cfg.e_hs_cm)
-
-        locs = self.tree.getLocs('fit locs')
-
-        # get lists of linearisation holding potentials
-        e_hs_aux_act, e_hs_aux_inact = getTwoVariableHoldingPotentials(self.cfg.e_hs_cm)
-        conc_ehs = {ion: np.array(
-            [c_ion for c_ion in self.cfg.conc_hs_cm[ion]] + \
-            [c_ion for c_ion in self.cfg.conc_hs_cm[ion] for _ in range(nh)]
-        )}
-
-        # only retain channels involved with the ion
-        channel_names = []
-        sv_hs = {}
-        for cname, chan in self.tree.channel_storage.items():
-
-            if chan.ion == ion:
-                channel_names.append(cname)
-
-                sv_h = getExpansionPoints(e_hs_aux_act, chan, only_e_h=True)
-                sv_hs[cname] = sv_h
-
-            elif ion in chan.conc:
-                channel_names.append(cname)
-
-                args = chan._argsAsList(
-                    e_hs_aux_act, w_statevar=False, **conc_ehs
-                )
-                sv_h = chan.f_varinf(*args)
-                sv_h[ion] = conc_ehs[ion]
-                sv_h['v'] = e_hs_aux_act
-
-                sv_hs[cname] = sv_h
-
-        # create the trees with the desired channels and expansion points
-        fit_tree = self.createTreeGF(
-            channel_names,
-            cache_name_suffix=f"_{ion}_",
-        )
-
-        # set the impedances in the tree
-        fit_tree.setImpedancesInTree(
-            freqs=self.cfg.freqs, sv_h=sv_hs, pprint=pprint, use_conc=False,
-        )
-        # compute the impedance matrix for this activation level
-        z_mats = fit_tree.calcImpedanceMatrix(locs)
-
-        # set the impedances in the tree
-        fit_tree.setImpedancesInTree(
-            freqs=self.cfg.freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
-        )
-        # compute the impedance matrix for this activation level
-        z_mats = fit_tree.calcImpedanceMatrix(locs)
-
-        # fit the concentration mechanism
-        self.ctree.computeConcMechGamma(
-            z_mats, self.cfg.freqs, ion,
-            sv_s=sv_hs, channel_names=channel_names,
-        )
-
-        if fit_tau:
-            # add dimensions for broadcasting
-            freqs = self.cfg.freqs_tau[None,:]
-            for c_name in sv_hs:
-                sv_hs[c_name] = {
-                    key: val_arr[:,None] for key, val_arr in sv_hs[c_name].items()
-                }
-
-            # set the impedances in the tree
-            fit_tree.setImpedancesInTree(
-                freqs=freqs, sv_h=sv_hs, pprint=pprint, use_conc=True,
-            )
-            # compute the impedance matrix for this activation level
-            z_mats = fit_tree.calcImpedanceMatrix(locs)
-
-            self.ctree.computeConcMechTau(
-                z_mats, freqs, ion,
-                sv_s=sv_hs, channel_names=channel_names,
-            )
-
-        return 1
 
     def _calibrateConcmechs(self, ion, orig_node, comp_node):
         """
@@ -722,7 +601,7 @@ class CompartmentFitter(object):
 
         return self.ctree
 
-    def createTreeSOV(self, eps=1.):
+    def createTreeSOV(self):
         """
         Create a `SOVTree` copy of the old tree
 
@@ -763,106 +642,6 @@ class CompartmentFitter(object):
         tree.setCompTree(eps=self.cfg.fit_comptree_eps)
 
         return tree
-
-    def fitCapacitanceFromZ(self):
-        """
-        Fit the capacitance of the reduced model by a fit derived from the
-        matrix exponential, i.e. by requiring that the derivatives of the
-        impedance kernels equal the matrix product of the system matrix of
-        the reduced model with the impedance kernel matrix of the full model
-        """
-        # create a `GreensTreeTime` to compute response kernels
-        tree = self.tree.__copy__(new_tree=FitTreeC())
-        tree.set_cache_params(
-            cache_path=self.cache_path,
-            cache_name=self.cache_name + "_Zkernels_",
-            save_cache=self.save_cache,
-            recompute_cache=self.recompute_cache,
-        )
-        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
-        # set the impedances for kernel calculation
-        print(self.cfg.t_fit)
-        tree.setImpedance(self.cfg.t_fit)
-        # compute the response kernel matrices necessary for the fit
-        zt_mat, dzt_dt_mat = tree.calcImpulseResponseMatrix(
-            'fit locs',
-            compute_time_derivative=True,
-        )
-        crt_mat = tree.calcChannelResponseMatrix(
-            'fit locs',
-            compute_time_derivative=False,
-        )
-        # perform the capacitance fit
-        self.ctree.setEEq(self.v_eqs_fit)
-        self.ctree.computeCfromZ(zt_mat, dzt_dt_mat, crt_mat)
-
-    def fitCapacitanceFromZ_(self):
-        # create a `GreensTreeTime` to compute response kernels
-        tree = self.tree.__copy__(new_tree=FitTreeC())
-        tree.set_cache_params(
-            cache_path=self.cache_path,
-            cache_name=self.cache_name + "_Zkernels_",
-            save_cache=self.save_cache,
-            recompute_cache=self.recompute_cache,
-        )
-        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
-        # set the impedances for kernel calculation
-        print(self.cfg.t_fit)
-        # t_arr = np.concatenate((np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7 ,0.8, 0.9]), np.linspace(1., 40., 100)))
-        t_arr = np.linspace(1., 40., 100)
-        tree.setImpedance(t_arr)
-        # compute the response kernel matrices necessary for the fit
-        zt_mat = tree.calcImpulseResponseMatrix(
-            'fit locs',
-            compute_time_derivative=False,
-        )
-
-        self.ctree.setEEq(self.v_eqs_fit)
-        g_tot = np.array([node.getGTot(self.ctree.channel_storage) for node in self.ctree])
-
-        # original membrane time scales
-        taus_m = []
-        for l in tree.getLocs('fit locs'):
-            g_m = tree[l[0]].getGTot(channel_storage=tree.channel_storage)
-            taus_m.append(tree[l[0]].c_m / g_m)
-        taus_m = np.array(taus_m)
-        # taus_m_orig = self.ctree._permuteToTree(np.array(taus_m))
-
-        print("!!!", taus_m)
-
-        self.fitCapacitance()
-
-        print("Ca before:", self.ctree._toVecC())
-        self.ctree.computeCfromZ_(zt_mat, taus_m, t_arr*1e-3)
-        print("Ca after:", self.ctree._toVecC())
-
-        # bounds = [(1e-10, 10 * taus_m_orig[ii] * g_tot[ii]) for ii in range(len(self.ctree))]
-
-        # ctree = copy.deepcopy(self.ctree)
-        # # breakpoint()
-
-        # def objective(c_vec):
-        #     ctree._toTreeC(c_vec)
-        #     z_mat_comp = ctree.calcImpedanceMatrix(tree.freqs)
-        #     zt_mat_comp = np.zeros_like(zt_mat)
-        #     for ii in range(zt_mat.shape[1]):
-        #         for jj in range(ii, zt_mat.shape[2]):
-        #             zt_mat_comp[:,ii,jj] = tree._inverseFourrier(z_mat_comp[:,ii,jj],
-        #                 compute_time_derivative=False
-        #             )
-        #             zt_mat_comp[:,jj,ii] = zt_mat_comp[:,ii,jj]
-        #     z_err = np.sqrt(np.mean((zt_mat_comp - zt_mat)**2))
-        #     print(z_err)
-        #     return z_err
-
-
-        # print(self.ctree._toVecC())
-        # import scipy.optimize as so
-        # res = so.minimize(objective, self.ctree._toVecC(), method="Nelder-Mead", bounds=bounds, options={'maxfev': 200})
-
-        # print(res['x'])
-        # self.ctree._toTreeC(res['x'])
-
 
     def _calcSOVMats(self, locs, pprint=False):
         """
@@ -1292,7 +1071,7 @@ class CompartmentFitter(object):
             self.fitPassiveLeak(pprint=pprint)
 
         # fit the ion channels
-        self.fitChannels(pprint=pprint, parallel=parallel)
+        self.fitChannels(pprint=pprint)
 
         # fit the concentration mechansims
         for ion in self.tree.ions:
