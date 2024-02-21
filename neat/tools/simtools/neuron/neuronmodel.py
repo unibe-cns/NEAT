@@ -673,7 +673,7 @@ class NeuronSimTree(PhysTree):
         self.vecstims.append(vecstim)
         self.netcons.append(netcon)
 
-    def run(self, t_max, downsample=1,
+    def run(self, t_max, downsample=1, dt_rec=None,
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
             record_from_channels=False, record_v_deriv=False,
             record_concentrations=[], record_currents=[],
@@ -689,6 +689,9 @@ class NeuronSimTree(PhysTree):
             Duration of the simulation
         downsample: int (> 0)
             Records the state of the model every `downsample` time-steps
+        dt_rec: float or None
+            recording time step (if `None` is given, defaults to the simulation
+            time-step)
         record_from_syns: bool (default ``False``)
             Record currents of synapstic point processes (in `self.syns`).
             Accessible as `np.ndarray` in the output dict under key 'i_syn'
@@ -728,32 +731,36 @@ class NeuronSimTree(PhysTree):
             set to ``True``
         """
         assert isinstance(downsample, int) and downsample > 0
+        if dt_rec is None:
+            dt_rec = self.dt
+        indstart = int(self.t_calibrate / dt_rec)
+
         # simulation time recorder
         res = {'t': h.Vector()}
-        res['t'].record(h._ref_t)
+        res['t'].record(h._ref_t, dt_rec)
         # voltage recorders
         res['v_m'] = []
         for loc in self.getLocs('rec locs'):
             res['v_m'].append(h.Vector())
-            res['v_m'][-1].record(self.sections[loc['node']](loc['x'])._ref_v)
+            res['v_m'][-1].record(self.sections[loc['node']](loc['x'])._ref_v, dt_rec)
         # synapse current recorders
         if record_from_syns:
             res['i_syn'] = []
             for syn in self.syns:
                 res['i_syn'].append(h.Vector())
-                res['i_syn'][-1].record(syn._ref_i)
+                res['i_syn'][-1].record(syn._ref_i, dt_rec)
         # current clamp current recorders
         if record_from_iclamps:
             res['i_clamp'] = []
             for iclamp in self.iclamps:
                 res['i_clamp'].append(h.Vector())
-                res['i_clamp'][-1].record(iclamp._ref_i)
+                res['i_clamp'][-1].record(iclamp._ref_i, dt_rec)
         # voltage clamp current recorders
         if record_from_vclamps:
             res['i_vclamp'] = []
             for vclamp in self.vclamps:
                 res['i_vclamp'].append(h.Vector())
-                res['i_vclamp'][-1].record(vclamp._ref_i)
+                res['i_vclamp'][-1].record(vclamp._ref_i, dt_rec)
         # channel state variable recordings
         if record_from_channels:
             res['chan'] = {}
@@ -770,7 +777,7 @@ class NeuronSimTree(PhysTree):
                         # create the recorder
                         try:
                             rec = h.Vector()
-                            exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +')')
+                            exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +f', {dt_rec})')
                             res['chan'][channel_name][var].append(rec)
                         except AttributeError:
                             # the channel does not exist here
@@ -779,10 +786,12 @@ class NeuronSimTree(PhysTree):
             for c_ion in record_concentrations:
                 res[c_ion] = []
                 for loc in self.getLocs('rec locs'):
+                    print(loc)
                     try:
                         res[c_ion].append(h.Vector())
-                        exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + 'i)')
+                        exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + f'i, {dt_rec})')
                     except AttributeError:
+                        print(f"no {c_ion} concentration detected")
                         res[c_ion].append([])
         if len(record_currents) > 0:
             for c_ion in record_currents:
@@ -791,7 +800,7 @@ class NeuronSimTree(PhysTree):
                 for loc in self.getLocs('rec locs'):
                     try:
                         res[curr_name].append(h.Vector())
-                        exec(f'res[curr_name][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name})')
+                        exec(f'res[curr_name][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name}, {dt_rec})')
                     except AttributeError:
                         res[c_ion].append([])
         # record voltage derivative
@@ -828,20 +837,20 @@ class NeuronSimTree(PhysTree):
         # compute derivative
         if 'dv_dt' in res:
             for ii, loc in enumerate(self.getLocs('rec locs')):
-                res['dv_dt'][ii].deriv(res['v_m'][ii], h.dt, 2)
-                res['dv_dt'][ii] = np.array(res['dv_dt'][ii])[self.indstart:][::downsample]
+                res['dv_dt'][ii].deriv(res['v_m'][ii], dt_rec, 2)
+                res['dv_dt'][ii] = np.array(res['dv_dt'][ii])[indstart:][::downsample]
             res['dv_dt'] = np.array(res['dv_dt'])
         # cast recordings into numpy arrays
-        res['t'] = np.array(res['t'])[self.indstart:][::downsample] - self.t_calibrate
+        res['t'] = np.array(res['t'])[indstart:][::downsample] - self.t_calibrate
         for key in set(res.keys()) - {'t', 'chan', 'dv_dt', 'spikes'}:
             if key in res and len(res[key]) > 0:
                 arrlist = []
                 for reslist in res[key]:
-                    arr = np.array(reslist)[self.indstart:][::downsample] \
+                    arr = np.array(reslist)[indstart:][::downsample] \
                         if len(reslist) > 0 else np.zeros_like(res['t'])
                     arrlist.append(arr)
                 res[key] = np.array(arrlist)
-                # res[key] = np.array([np.array(reslist)[self.indstart:][::downsample] \
+                # res[key] = np.array([np.array(reslist)[indstart:][::downsample] \
                 #                      for reslist in res[key]])
                 if key in ('i_syn', 'i_clamp', 'i_vclamp'):
                     res[key] *= -1.
@@ -853,7 +862,7 @@ class NeuronSimTree(PhysTree):
                     var = str(varname)
                     for ind1 in range(len(self.getLocs('rec locs'))):
                         res['chan'][channel_name][var][ind1] = \
-                                np.array(res['chan'][channel_name][var][ind1])[self.indstart:][::downsample]
+                                np.array(res['chan'][channel_name][var][ind1])[indstart:][::downsample]
                         if len(res['chan'][channel_name][var][ind1]) == 0:
                             res['chan'][channel_name][var][ind1] = np.zeros_like(res['t'])
                     res['chan'][channel_name][var] = \
