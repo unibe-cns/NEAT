@@ -5,10 +5,12 @@ File contains:
 
 Authors: W. Wybo
 """
+import dill
 import numpy as np
 
 import os
 import pickle
+
 
 from ..trees.morphtree import computationalTreetypeDecorator
 from ..trees.phystree import PhysTree
@@ -52,7 +54,7 @@ class FitTree(PhysTree):
                 raise IOError
 
             with open(file_name, 'rb') as file:
-                tree_ = pickle.load(file)
+                tree_ = dill.load(file)
 
             cache_params_dict = {
                 "cache_name": self.cache_name,
@@ -80,7 +82,7 @@ class FitTree(PhysTree):
 
             if self.save_cache:
                 with open(file_name, 'wb') as file:
-                    pickle.dump(self, file)
+                    dill.dump(self, file)
 
 
 class EquilibriumTree(FitTree):
