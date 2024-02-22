@@ -566,9 +566,12 @@ class PhysTree(MorphTree):
         """
         if not isinstance(channel, ionchannels.IonChannel):
             raise IOError('`channel` argmument needs to be of class `neat.IonChannel`')
-
         channel_name = channel.__class__.__name__
-        self.channel_storage[channel_name] = channel
+
+        nodes_with_channel = self._convertNodeArgToNodes(node_arg)
+        if len(nodes_with_channel) > 0:
+            self.channel_storage[channel_name] = channel
+
         # add the ion channel to the nodes
         for node in self._convertNodeArgToNodes(node_arg):
             g_max = self._distr2Float(g_max_distr, node, argname='`g_max_distr`')
