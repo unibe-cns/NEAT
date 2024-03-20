@@ -2666,7 +2666,7 @@ class MorphTree(STree):
         if isinstance(locargs, dict):
             if 'zorder' not in locargs:
                 locargs['zorder'] = 1e4
-                locargs = [locargs for _ in marklocs]
+            locargs = [locargs for _ in marklocs]
         else:
             assert len(locargs) == len(marklocs)
             for locarg in locargs:
