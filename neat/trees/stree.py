@@ -592,6 +592,9 @@ class STree(object):
         ----------
             node: `neat.SNode`
                 root of the sub tree
+            new_tree: `neat.STree` or derived class
+                the type of tree in which the nodes of the subtree are to be
+                copied
 
         Returns
         -------
@@ -849,7 +852,7 @@ class STree(object):
         elif len(node.child_nodes) == 0:
             return None
         else:
-            self.bifurcationNodeFromRoot(node.child_nodes[0])
+            return self.bifurcationNodeFromRoot(node.child_nodes[0])
 
     def getBifurcationNodes(self, nodes):
         """

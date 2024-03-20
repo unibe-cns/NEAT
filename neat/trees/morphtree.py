@@ -2663,7 +2663,7 @@ class MorphTree(STree):
         # very high so that they are always in the foreground
         self.storeLocs(marklocs, 'plotlocs')
         xs = self.xs['plotlocs']
-        if type(locargs) == dict:
+        if isinstance(locargs, dict):
             if 'zorder' not in locargs:
                 locargs['zorder'] = 1e4
                 locargs = [locargs for _ in marklocs]
