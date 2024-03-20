@@ -1643,10 +1643,8 @@ class CompartmentTree(STree):
             vec_res = np.maximum(vec_res, 0.)
             # set the conductances
             if 'channel_names' in kwargs:
-                print(f"> with channels {kwargs['channel_names']}\n-----\n")
                 self._toTreeGM(vec_res, channel_names=kwargs['channel_names'])
             elif 'ion' in kwargs:
-                print(f"> with ion {kwargs['ion']}\n------\n")
                 self._toTreeConc(vec_res, kwargs['ion'], param_type=kwargs['param_type'])
             else:
                 raise IOError('Provide \'channel_names\' or \'ion\' as keyword argument')
