@@ -602,7 +602,8 @@ class STree(object):
             Subtree of with ``node`` as root
         """
         if new_tree is None:
-            new_tree = STree()
+            new_tree = self.__class__()
+
 
         new_node = new_tree._createCorrespondingNode(node.index)
         node.__copy__(new_node=new_node)
