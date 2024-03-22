@@ -78,6 +78,7 @@ class NestCompartmentNode(CompartmentNode):
         g_dict = {
             f'gbar_{key}': self.currents[key][0] for key in self.currents if key != 'L'
         }
+
         e_dict = {
             f'e_{key}': self.currents[key][1] for key in self.currents if key != 'L'
         }

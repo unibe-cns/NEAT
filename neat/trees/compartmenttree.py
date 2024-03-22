@@ -1263,9 +1263,14 @@ class CompartmentTree(STree):
         return np.array(g_list)
 
     def _toTreeGM(self, g_vec, channel_names):
+
         kk = 0 # counter
         for ii, node in enumerate(self):
             for channel_name in channel_names:
+                # leack conductance is not allowed to be zero
+                if channel_name == 'L':
+                    g_vec[kk] = max(g_vec[kk], 1e-8)
+
                 node.currents[channel_name][0] = g_vec[kk]
                 kk += 1
 
@@ -1405,7 +1410,8 @@ class CompartmentTree(STree):
         # linear regression fit
         res = la.lstsq(mat_feature, vec_target)
         res = res[0].real
-        g_vec = np.maximum(res, 0.)
+        # coupling and leak conductances are not allowed to be zero
+        g_vec = np.maximum(res, 1e-8)
         # res = so.nnls(mat_feature, vec_target)
         # g_vec = res[0].real
         # set the conductances

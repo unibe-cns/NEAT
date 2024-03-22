@@ -604,7 +604,6 @@ class STree(object):
         if new_tree is None:
             new_tree = self.__class__()
 
-
         new_node = new_tree._createCorrespondingNode(node.index)
         node.__copy__(new_node=new_node)
         new_node.setParentNode(None)
