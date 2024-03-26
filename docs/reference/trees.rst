@@ -19,6 +19,9 @@ Basic tree
    STree.__iter__
    STree.__str__
    STree.__copy__
+   STree.__repr__
+   STree.__hash__
+   STree.unique_hash
    STree.checkOrdered
    STree.getNodes
    STree.nodes
@@ -48,7 +51,6 @@ Basic tree
    STree.downBifurcationNode
    STree.getBifurcationNodes
    STree.getNearestNeighbours
-   STree.__copy__
 
 
 .. autoclass:: neat.SNode
@@ -75,6 +77,8 @@ Compartment Tree
    CompartmentTree.computeGMC
    CompartmentTree.computeGChanFromImpedance
    CompartmentTree.computeGSingleChanFromImpedance
+   CompartmentTree.computeConcMechGamma
+   CompartmentTree.computeConcMechTau
    CompartmentTree.computeC
    CompartmentTree.resetFitData
    CompartmentTree.runFit
@@ -264,7 +268,7 @@ Physiology Tree
    :toctree: generated/
 
    PhysTree.asPassiveMembrane
-   PhysTree.setEEq
+   PhysTree.setVEP
    PhysTree.setPhysiology
    PhysTree.setLeakCurrent
    PhysTree.addCurrent
@@ -341,6 +345,18 @@ Simulate NEURON models
    NeuronSimTree.calcEEq
 
 
+Compute equilibrium potentials and concentrations
+=================================================
+
+.. autoclass:: neat.EquilibriumTree
+
+.. autosummary::
+   :toctree: generated/
+
+   EquilibriumTree.calcEEq
+   EquilibriumTree.setEEq
+
+
 *************
 Other Classes
 *************
@@ -379,10 +395,8 @@ Individual fit functions.
    CompartmentFitter.fitPassive
    CompartmentFitter.evalChannel
    CompartmentFitter.fitChannels
+   CompartmentFitter.fitConcentration
    CompartmentFitter.fitCapacitance
-   CompartmentFitter.setEEq
-   CompartmentFitter.getEEq
-   CompartmentFitter.fitEEq
    CompartmentFitter.fitSynRescale
 
 

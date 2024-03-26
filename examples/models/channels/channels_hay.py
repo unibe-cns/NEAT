@@ -15,6 +15,8 @@ class h_HAY(IonChannel):
         self.alpha['m'] = '0.001 * 6.43 * (v + 154.9) / (exp((v + 154.9) / 11.9) - 1.)'
         self.beta['m']  = '0.001 * 193. * exp(v / 33.1)'
 
+        self.e = -43.
+
 
 class Na_Ta(IonChannel):
     """

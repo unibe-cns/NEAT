@@ -12,12 +12,16 @@ from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
 from neat import NeuronSimTree, createReducedNeuronModel
 import neat.tools.kernelextraction as ke
-from neat.channels.channelcollection import channelcollection
+
+import channelcollection_for_tests as channelcollection
+import channel_installer
+channel_installer.load_or_install_neuron_testchannels()
 
 
-MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
-
-
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
                 'ForestGreen',  'DarkOliveGreen', 'DarkGoldenRod',
                 'DarkOrange', 'Coral', 'Red', 'Sienna', 'Black', 'DarkGrey']
@@ -60,7 +64,7 @@ class TestNeuron():
                 1
         """
         v_eq = -75.
-        self.dt = 0.1
+        self.dt = 0.025
         self.tmax = 100.
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
@@ -247,6 +251,25 @@ class TestNeuron():
         assert res['chan']['TestChannel2']['a10'].shape == (n_loc, n_step)
         assert res['chan']['TestChannel2']['a11'].shape == (n_loc, n_step)
         assert res['chan']['TestChannel2']['p_open'].shape == (n_loc, n_step)
+
+    def testRecordingTimestep(self):
+        self.loadTTreeTestChannel()
+        # set of locations
+        locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
+        # test simulation 1
+        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.storeLocs(locs, name='rec locs')
+        res1 = self.neurontree.run(10., downsample=10, dt_rec=None, record_from_channels=True)
+        self.neurontree.deleteModel()
+        # test simulation 2
+        self.loadTTreeTestChannel()
+        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.storeLocs(locs, name='rec locs')
+        res2 = self.neurontree.run(10., downsample=1, dt_rec=1., record_from_channels=True)
+        self.neurontree.deleteModel()
+
+        assert len(res1['t']) == len(res2['t'])
+        assert res1['v_m'].shape == res2['v_m'].shape
 
 
 class TestReducedNeuron():
@@ -604,12 +627,13 @@ class TestReducedNeuron():
 
 if __name__ == '__main__':
     tn = TestNeuron()
-    tn.testPassive(pplot=True)
-    tn.testActive()
-    tn.testChannelRecording()
+    # tn.testPassive(pplot=Trsue)
+    # tn.testActive()
+    # tn.testChannelRecording()
+    tn.testRecordingTimestep()
 
-    trn = TestReducedNeuron()
-    trn.testGeometry1()
-    trn.testImpedanceProperties1()
-    trn.testGeometry2()
-    trn.testImpedanceProperties2()
+    # trn = TestReducedNeuron()
+    # trn.testGeometry1()
+    # trn.testImpedanceProperties1()
+    # trn.testGeometry2()
+    # trn.testImpedanceProperties2()

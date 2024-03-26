@@ -28,6 +28,18 @@ class TestNET():
             self.net.addNodeWithParent(node_l4, node_b2)
             self.net.addNodeWithParent(node_l5, node_b1)
 
+    def testStringRepresentation(self):
+        self.loadTree()
+
+        assert str(self.net) == f">>> NET\n" \
+            f"    NETNode 0, Parent: None ---  loc inds: [0, 1, 2, 3, 4, 5], newloc inds: [], z_bar = 1.0 MOhm\n" \
+            f"    NETNode 1, Parent: 0 ---  loc inds: [0], newloc inds: [0], z_bar = 1.0 MOhm\n" \
+            f"    NETNode 2, Parent: 0 ---  loc inds: [1, 2, 3, 4, 5], newloc inds: [1], z_bar = 1.0 MOhm\n" \
+            f"    NETNode 3, Parent: 2 ---  loc inds: [2, 3, 4], newloc inds: [2], z_bar = 1.0 MOhm\n" \
+            f"    NETNode 4, Parent: 3 ---  loc inds: [3], newloc inds: [3], z_bar = 1.0 MOhm\n" \
+            f"    NETNode 5, Parent: 3 ---  loc inds: [4], newloc inds: [4], z_bar = 1.0 MOhm\n" \
+            f"    NETNode 6, Parent: 2 ---  loc inds: [5], newloc inds: [5], z_bar = 1.0 MOhm"
+
     def testNodeFunctionalities(self):
         self.loadTree()
         node_r = self.net.root
@@ -155,8 +167,9 @@ class TestNET():
 
 if __name__ == '__main__':
     tnet = TestNET()
-    tnet.testNodeFunctionalities()
-    tnet.testKernels()
-    tnet.testBasic()
-    tnet.testCompartmentalization()
-    tnet.testPlotting(pshow=1)
+    tnet.testStringRepresentation()
+    # tnet.testNodeFunctionalities()
+    # tnet.testKernels()
+    # tnet.testBasic()
+    # tnet.testCompartmentalization()
+    # tnet.testPlotting(pshow=1)

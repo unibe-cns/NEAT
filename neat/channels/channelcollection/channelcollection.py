@@ -1,3 +1,5 @@
+import sympy as sp
+
 from neat.channels.ionchannels import IonChannel
 
 
@@ -43,6 +45,25 @@ class TestChannel2(IonChannel):
                        'a10': '2.', 'a11': '2.'}
         # default reversal
         self.e = -23.
+
+
+class PiecewiseChannel(IonChannel):
+    def define(self):
+        # open probability
+        self.p_open = 'a+b'
+        # state variables
+        v = sp.symbols('v')
+        self.varinf = {
+            'a': sp.Piecewise((0.1, v < -50.), (0.9, True)),
+            'b': sp.Piecewise((0.8, v < -50.), (0.2, True))
+        }
+        self.tauinf = {
+            'a': sp.Piecewise((10., v < -50.), (20., True)),
+            'b': sp.Piecewise((.1, v < -50.), (50., True))
+        }
+        # default reversal
+        self.e = -28.
+
 
 
 class Na_Ta(IonChannel):

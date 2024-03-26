@@ -288,6 +288,7 @@ class poleFinder:
                 inner_sum -= self.contour_integral(fun=inner_integrand, contour=inner_contour)
         else:
             inner_sum = 0.
+
         # compute the contour integral
         if compute_maxpsum:
             a, b = self.contour_integral(fun=integrand, compute_maxpsum=compute_maxpsum)
@@ -384,20 +385,49 @@ class poleFinder:
             #         return False
         return True
 
+
+    def check_for_nonnumeric(self):
+        """
+        check if dfun(s) / fun(s) contains non-numeric values over the contour
+        """
+        if self.make_arrays:
+            fun_arrs = self.contour.fun_arrs
+        else:
+            ts = [np.linspace(0., 1., int(N)) for N in self.countour.N_eval]
+            fun_arrs = [self.dfun(t)/self.fun(t) for t in ts]
+
+        contains_nan = [
+            np.isnan(fun_arrs[ii]).any() \
+            for ii in range(len(fun_arrs))
+        ]
+        contains_inf = [
+            not np.isfinite(fun_arrs[ii]).all() \
+            for ii in range(len(fun_arrs))
+        ]
+        # return True if the contour contains nan or infs
+        return (np.any(contains_nan) or np.any(contains_inf))
+
+
     def test_contour(self, eps=1e-5, pprint=False):
         """
         Test if the contour integration on this contour is inaccurate (i.e. deviates
         from n for n in Z by more than eps). 
         """
-        pol_unity = monicPolynomial([])
-        p_unity = pol_unity.f_polynomial()
-        residue = self.inner_prod(p_unity, p_unity)
-        N = int(round(residue.real))
-        accuracy = np.abs(N - residue)
-        if pprint:
-            print('residue =', residue)
+        # function integrity check by checking if nans or infs occur on contour
+        if self.check_for_nonnumeric():
+            # if the contour has nans or infs, return False, the test has failed
+            return False
 
-        return accuracy < eps
+        else:
+            pol_unity = monicPolynomial([])
+            p_unity = pol_unity.f_polynomial()
+            residue = self.inner_prod(p_unity, p_unity)
+            N = int(round(residue.real))
+            accuracy = np.abs(N - residue)
+            if pprint:
+                print('residue =', residue)
+
+            return accuracy < eps
 
     def find_zeros(self, pprint=False):
         """
@@ -702,6 +732,7 @@ def find_zeros_on_segment(zeros, zmultiplicities, xmin, xmax, fun, dfun, poles, 
     Auxiliary recursive function to find the zeros on a segment with sufficient accuracy. Decrease the contour radius 
     untill sufficient accuracy is reached
     """
+    # print(f">>> xmin, xmax: {xmin}, {xmax}")
     cc = circularContour(radius=(xmax-xmin)/2., center=(xmax+xmin)/2.+0j, N_eval=1e2)
     PF = poleFinder(fun=fun, dfun=dfun, global_poles={'poles': poles, 'pmultiplicities': pmultiplicities},
                             make_arrays=True, use_known_zeros=False, contour=cc)

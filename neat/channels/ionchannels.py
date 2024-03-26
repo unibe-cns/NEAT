@@ -2,19 +2,41 @@ import sympy as sp
 import numpy as np
 
 import os
+import ast
 import warnings
 
-CONC_DICT = {'na': 10.,  # mM
-             'k': 54.4,  # mM
-             'ca': 1e-4,  # 1e-4
-             }
+from ..factorydefaults import DefaultPhysiology
 
-TEMP_DEFAULT = 36.
+# CONC_DICT = {
+#     'na': 10.,  # mM
+#     'k': 54.4,  # mM
+#     'ca': 1e-4,  # mM
+# }
 
-E_ION_DICT = {'na': 50.,
-              'k': -85.,
-              'ca': 50.,
-             }
+# TEMP_DEFAULT = 36.
+
+# E_ION_DICT = {
+#     'na': 50.,
+#     'k': -85.,
+#     'ca': 50.,
+# }
+
+
+class IfExpVisitor(ast.NodeVisitor):
+    """
+    Returns the first `IfExp` node in the ast, signalling an if statement
+    """
+    def __init__(self):
+        self.ifexp_node = None
+
+    def visit_IfExp(self, node):
+        self.ifexp_node = node
+
+    def findIfExpNode(self, node):
+        self.visit(node)
+        return_node = self.ifexp_node
+        self.ifexp_node = None
+        return return_node
 
 
 class _func(object):
@@ -81,6 +103,15 @@ def _insert_function_prefixes(string, prefix='np',
     return string
 
 
+def _broadcast(fun):
+    """
+    This function is to be used in together with `sympy.lambdify` to ensure that
+    lambda functions generated from constant expressions are broadcast to the
+    input shape
+    """
+    return lambda *x: np.broadcast_arrays(fun(*x), *x)[0]
+
+
 class SPDict(dict):
     """
     Dictionary that accepts both strings and similarly name sympy symbols as keys
@@ -93,6 +124,10 @@ class SPDict(dict):
                 return super(SPDict, self).__getitem__(str(key))
             else:
                 return super(SPDict, self).__getitem__(sp.symbols(key))
+
+    def __contains__(self, key):
+        return super().__contains__(key) or \
+               super().__contains__(sp.symbols(key))
 
 
 class CallDict(SPDict):
@@ -200,12 +235,15 @@ class IonChannel(object):
     >>>         # temperature factor for reaction rates
     >>>         self.q10 = '2.3^((temp - 23.)/10.)'
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
         """
         Will give an ``AttributeError`` if initialized as is. Should only be
         initialized from its' derived classes that implement specific ion
         channel types.
         """
+        # initialize default configuration
+        self.cfg = DefaultPhysiology()
+
         # define the channel based on user specified state variables and activations
         self.define()
 
@@ -220,8 +258,11 @@ class IonChannel(object):
 
         # sympy temperature symbols
         assert len(self.q10.free_symbols) <= 1
-        self.sp_t = list(self.q10.free_symbols)[0] if len(self.q10.free_symbols) > 0 else \
-                    sp.symbols('temp')
+        if len(self.q10.free_symbols) > 0:
+            assert str(list(self.q10.free_symbols)[0]) == "temp"
+            self.sp_t = list(self.q10.free_symbols)[0]
+        else:
+            self.sp_t = sp.symbols('temp')
 
         # the voltage variable
         self.sp_v = sp.symbols('v')
@@ -229,35 +270,49 @@ class IonChannel(object):
         # extract the state variables
         self.p_open = sp.sympify(self.p_open)
         self.statevars = self.p_open.free_symbols
+        # if voltage occurs directly in open probability,
+        # remove it from statevars
+        if self.sp_v in self.statevars:
+            self.statevars.remove(self.sp_v)
+
+        if not 'tauinf' in self.__dict__:
+            self.tauinf = {}
+        if not 'varinf' in self.__dict__:
+            self.varinf = {}
+
+        for svar in self.ordered_statevars:
+            key = str(svar)
+            if key in (self.varinf.keys() | self.tauinf.keys()):
+                self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
+                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False)
+                self.varinf[svar] = sp.simplify(self.varinf[svar])
+                self.tauinf[svar] = sp.simplify(self.tauinf[svar] / self.q10)
+                del self.varinf[key]
+                del self.tauinf[key]
 
         # construct the rate functions
         if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
-            for svar in self.statevars:
+            for svar in self.ordered_statevars:
                 key = str(svar)
-                self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
-                self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
-            # convert to internal representation
-            self.varinf, self.tauinf = {}, {}
-            for svar in self.statevars:
-                key = str(svar)
-                self.varinf[svar] = self.alpha[svar] / (self.alpha[svar] + self.beta[svar])
-                self.tauinf[svar] = (1./self.q10) / (self.alpha[svar] + self.beta[svar])
-        elif 'tauinf' in self.__dict__ and 'varinf' in self.__dict__:
-            for svar in self.statevars:
-                key = str(svar)
-                self.varinf[svar] = sp.sympify(self.varinf[key], evaluate=False)
-                self.tauinf[svar] = sp.sympify(self.tauinf[key], evaluate=False) / self.q10
-                del self.varinf[key]
-                del self.tauinf[key]
-        else:
+                if key in (self.alpha.keys() | self.beta.keys()):
+                    self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
+                    self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
+                    self.varinf[svar] = sp.simplify(self.alpha[svar] / (self.alpha[svar] + self.beta[svar]))
+                    self.tauinf[svar] = sp.simplify((1./self.q10) / (self.alpha[svar] + self.beta[svar]))
+            del self.alpha
+            del self.beta
+
+        # check if rate equations where defined
+        if len(self.varinf) == 0 or len (self.tauinf) == 0:
             raise AttributeError("Necessary attributes not defined, define either " + \
                                  "`alpha` and `beta` or `tauinf` and `varinf`.")
+
         self.varinf, self.tauinf = SPDict(self.varinf), SPDict(self.tauinf)
 
         # set the right hand side of the differential equation for
         # state variables
         self.fstatevar = SPDict()
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             self.fstatevar[svar] = (-svar + self.varinf[svar]) / self.tauinf[svar]
 
         # concentrations the ion channel depends on
@@ -274,22 +329,22 @@ class IonChannel(object):
         # from default concentration values
         if not hasattr(self.conc, 'values'):
             self.conc = SPDict({sp.symbols(str(ion)): \
-                                CONC_DICT[str(ion)] for ion in self.conc})
+                                self.cfg.conc[str(ion)] for ion in list(sorted(self.conc))})
         # sympy concentration symbols
         self.sp_c = [ion for ion in self.conc]
 
         # default parameters
         self.default_params = SPDict({})
         self.default_params[str(self.sp_t)] = self.temp if 'temp' in self.__dict__ else \
-                                              TEMP_DEFAULT
+                                              self.cfg.temp
         try:
             self.default_params['e'] = self.e if 'e' in self.__dict__ else \
-                                       E_ION_DICT[self.ion]
+                                       self.cfg.e_rev[self.ion]
         except KeyError:
             warnings.warn('No default reversal potential defined.')
 
-        # set the lambda functions for efficient numpy evaluation
-        self._lambdifyChannel()
+        # self._lambdifyChannel()
+        self.setDefaultParams(**kwargs)
 
     def __getstate__(self):
         """
@@ -318,6 +373,7 @@ class IonChannel(object):
             Default values for temperature (`temp`), reversal (`e`)
         """
         self.default_params.update(kwargs)
+        # set the lambda functions for efficient numpy evaluation
         self._lambdifyChannel()
 
     def _substituteDefaults(self, expr):
@@ -341,12 +397,17 @@ class IonChannel(object):
         Create lambda functions based on sympy expression for relevant ion
         channel functions
         """
+        from sympy.utilities.autowrap import ufuncify
+        # ufuncify = sp.utilities.autowrap.ufuncify
+
         # arguments for lambda function
+        # if self.__class__.__name__ == "SK_E2":
+        #     breakpoint()
         args = [self.sp_v] + self.ordered_statevars + self.sp_c
         args_ = [self.sp_v] + self.sp_c
 
         # lambdified open probability
-        self.f_p_open = sp.lambdify(args, self.p_open)
+        self.f_p_open = _broadcast(sp.lambdify(args, self.p_open))
         # storatestate variable function
         self.f_statevar = CallDict()
         self.f_varinf, self.f_tauinf = CallDict(), CallDict()
@@ -360,24 +421,24 @@ class IonChannel(object):
             tauinf = self._substituteDefaults(self.tauinf[svar])
 
             # state variable function
-            self.f_statevar = sp.lambdify(args, f_svar)
+            self.f_statevar = _broadcast(sp.lambdify(args, f_svar))
 
             # state variable activation & timescale
-            self.f_varinf[svar] = sp.lambdify(args_, varinf)
-            self.f_tauinf[svar] = sp.lambdify(args_, tauinf)
+            self.f_varinf[svar] = _broadcast(sp.lambdify(args_, varinf))
+            self.f_tauinf[svar] = _broadcast(sp.lambdify(args_, tauinf))
 
             # derivatives of open probability to state variables
-            self.dp_dx[svar] = sp.lambdify(args, sp.diff(self.p_open, svar, 1))
+            self.dp_dx[svar] = _broadcast(sp.lambdify(args, sp.diff(self.p_open, svar, 1)))
 
             # derivatives of state variable function to voltage
-            self.df_dv[svar] = sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1))
+            self.df_dv[svar] = _broadcast(sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1)))
 
             # derivatives of state variable function to state variable
-            self.df_dx[svar] = sp.lambdify(args, sp.diff(f_svar, svar, 1))
+            self.df_dx[svar] = _broadcast(sp.lambdify(args, sp.diff(f_svar, svar, 1)))
 
             # derivatives of state variable function to concentrations
             self.df_dc[svar] = \
-                CallDict({c: sp.lambdify(args, sp.diff(f_svar, c, 1)) \
+                CallDict({c: _broadcast(sp.lambdify(args, sp.diff(f_svar, c, 1))) \
                           for c in self.sp_c})
 
     def _argsAsList(self, v, w_statevar=True, **kwargs):
@@ -503,6 +564,45 @@ class IonChannel(object):
         """
         args = self._argsAsList(v, w_statevar=False, **{})
         return self.f_tauinf(*args)
+
+    def computeLinStatevarResponse(self, v, freqs, v_resp, **kwargs):
+        """
+        Combute the linearizations of the individual state variables
+
+        Parameters
+        ----------
+        v: float or `np.ndarray`
+            The voltage(s) ``[mV]`` around which to linearize the ion channel
+        freqs float, complex, or `np.ndarray` of float or complex:
+            The frequencies ``[Hz]`` at which to evaluate the linearized contribution
+        v_resp: `np.ndarray` (``dtype=complex``, ``ndim=1``, ``shape=(s,k)``)
+            Linearized voltage responses in the frequency domain, evaluated at
+            ``s`` frequencies and ``k`` locations
+        **kwargs: float or `np.ndarray`
+            Optional values for the state variables and concentrations.
+
+        Returns
+        -------
+        `SPDict` of float, complex or `np.ndarray` of float or complex
+            The linearized current. Key are the state variable name. Shape of
+            each entry is dimension of `freqs` followed by the dimensions of `v`.
+        """
+        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
+
+        # determine the output shape according to numpy broadcasting rules
+        args_aux = [v_resp] + self._argsAsList(v, **kwargs)
+        out_shape = np.broadcast(*args_aux).shape
+
+        lin_svar = SPDict({
+            str(svar): np.zeros(out_shape, dtype=np.array(freqs).dtype) \
+            for svar in self.ordered_statevars
+        })
+        for svar, dp_dx_ in dp_dx.items():
+            df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
+            df_dx_ = df_dx[svar] * 1e3 # convert to 1 / s
+            # add to the impedance contribution
+            lin_svar[str(svar)] = df_dv_ / (freqs - df_dx_) * v_resp
+        return lin_svar
 
     def computeLinear(self, v, freqs, **kwargs):
         """
@@ -638,13 +738,14 @@ class IonChannel(object):
         return (e - v) * self.computeLinearConc(v, freqs, ion, **kwargs)
 
 
-    def writeModFile(self, path, g=0., e=0.):
+    def writeModFile(self, path, g=0., e=None):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
         cname =  self.__class__.__name__
-        sv = [str(svar) for svar in self.statevars]
+        sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
+        e = self._getReversal(e)
 
         modname = 'I' + cname + '.mod'
         fname = os.path.join(path, modname)
@@ -673,8 +774,6 @@ class IonChannel(object):
         file.write('PARAMETER {\n')
         file.write('    g = ' + str(g*1e-6) + ' (S/cm2)' + '\n')
         file.write('    e = ' + str(e) + ' (mV)' + '\n')
-        for ion in cs:
-            file.write('    ' + ion + 'i (mM)' + '\n')
         file.write('    celsius (degC)\n')
         file.write('}\n\n')
 
@@ -689,6 +788,8 @@ class IonChannel(object):
         for var in sv:
             file.write('    %s_inf      \n'%var)
             file.write('    tau_%s (ms) \n'%var)
+        for ion in cs:
+            file.write('    ' + ion + 'i (mM)' + '\n')
         file.write('    v (mV)' + '\n')
         file.write('    %s (degC)\n'%(self.sp_t))
         file.write('}\n\n')
@@ -727,19 +828,161 @@ class IonChannel(object):
 
         file.write('PROCEDURE rates(v%s) {\n'%concstring)
         file.write('    %s = celsius\n'%str(self.sp_t))
-        for var, svar in zip(sv, self.statevars):
-            vi = sp.printing.ccode(self.varinf[svar])
-            ti = sp.printing.ccode(self.tauinf[svar])
+        for var, svar in zip(sv, self.ordered_statevars):
+            vi = sp.printing.ccode(self.varinf[svar], assign_to=f"{var}_inf")
+            ti = sp.printing.ccode(self.tauinf[svar], assign_to=f"tau_{var}")
             for repl_pair in repl_pairs:
                 vi = vi.replace(*repl_pair)
                 ti = ti.replace(*repl_pair)
-            file.write('    %s_inf = %s\n'%(var, vi))
-            file.write('    tau_%s = %s\n'%(var, ti))
+            # no ";" in mod-file, add indent
+            vi = vi.replace(";", "").replace("\n", "\n    ")
+            ti = ti.replace(";", "").replace("\n", "\n    ")
+            file.write(f'    {vi}\n')
+            file.write(f'    {ti}\n')
         file.write('}\n\n')
 
         file.close()
 
         return modname
+
+    def _create_nestml_funcstr(self, code_str, n_spaces=0, indent=8):
+        """
+        This function is used to recursively expand if... else... statements
+        across multiple lines, as by default the single line version is printed
+        by `sympy.pycode()` and `ast.unparse()`
+        """
+        tree = ast.parse(code_str)
+        iev = IfExpVisitor()
+        ifexp = iev.findIfExpNode(tree)
+
+        if ifexp is not None:
+            # sanity check
+            assert iev.findIfExpNode(ifexp.test) is None
+            # if test is True
+            cond_1_str = self._create_nestml_funcstr(
+                ast.unparse(ifexp.body),
+                n_spaces=n_spaces,
+                indent=n_spaces+indent
+            )
+            # if test is False
+            cond_0_str = self._create_nestml_funcstr(
+                ast.unparse(ifexp.orelse),
+                n_spaces=n_spaces,
+                indent=n_spaces+indent
+            )
+            code_str = \
+                " "*indent + f"if {ast.unparse(ifexp.test)}:\n" + \
+                    f"{cond_1_str}" + \
+                " "*indent + f"else:\n" + \
+                    f"{cond_0_str}"
+        else:
+            code_str = \
+                " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
+
+        return code_str
+
+    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=0., g=0., e=None):
+        cname =  self.__class__.__name__
+        sv = [str(svar) for svar in self.ordered_statevars]
+        cs = [str(conc) for conc in self.conc]
+        sv_suff = [sv_ + '_' + cname for sv_ in sv]
+        e = self._getReversal(e)
+        sv_init = self.computeVarinf(v_comp)
+
+        blocks_dict = {block: '' for block in blocks}
+
+
+        func_call_args = ["v_comp real"]
+        for ckey, cval in self.conc.items():
+            func_call_args.append(f"{ckey} real")
+        func_call_args = ", ".join(func_call_args)
+
+        func_args = ["v_comp"]
+        for ckey, cval in self.conc.items():
+            func_args.append(f"c_{ckey}")
+        func_args = ", ".join(func_args)
+
+        if 'state' in blocks:
+            state_str = '\n' + \
+                        '        # state variables %s\n'%cname
+            for sv_, sv_key in zip(sv_suff, sv):
+                state_str += '        %s real = %.8f\n'%(sv_, sv_init[sv_key])
+
+            blocks_dict['state'] += state_str
+
+        if 'parameters' in blocks:
+            param_str = '\n' + \
+                        '        # parameters %s\n'%cname + \
+                        '        gbar_%s real = %.2f\n'%(cname, g) + \
+                        '        e_%s real = %.2f\n'%(cname, e)
+
+            blocks_dict['parameters'] += param_str
+
+        if 'equations' in blocks:
+            # reformulate open probability in terms of suffixed variables
+            p_open_ = self.p_open
+            for svar, sv_ in zip(self.ordered_statevars, sv_suff):
+                p_open_ = p_open_.subs(svar, sp.symbols(sv_))
+                p_open_ = p_open_.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+
+            eq_str = '\n' + \
+                     '        # equation %s\n'%cname + \
+                     '        inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n'%(cname, cname, str(p_open_), cname)
+
+
+            for var, var_suff, svar in zip(sv, sv_suff, self.ordered_statevars):
+                vi = sp.printing.ccode(self.varinf[svar])
+                ti = sp.printing.ccode(self.tauinf[svar])
+
+                eq_str += f"        {var_suff}' = ( {var}_inf_{cname}( {func_args} ) - {var_suff} ) / ( tau_{var}_{cname}( {func_args} ) * 1s )\n"
+
+            eq_str += "\n"
+            blocks_dict['equations'] += eq_str
+
+        def _customsimplify(expr):
+            return sp.logcombine(sp.powsimp(sp.expand(expr)))
+
+        from sympy import pycode
+
+        if 'function' in blocks:
+            func_str = '\n' + \
+                       '    # functions %s\n'%cname
+            for svar, sv_, sv_suff_ in zip(self.ordered_statevars, sv, sv_suff):
+                # substitute possible default values and concentrations
+                varinf_func = self._substituteDefaults(self.varinf[svar])
+                func_args = ["v_comp real"]
+                for ckey, cval in self.conc.items():
+                    func_args.append(f"{ckey} real")
+                func_args = ", ".join(func_args)
+                #     varinf_func = varinf_func.subs(ckey, cval)
+                # print activation function to nestml file
+                varinf_func = varinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
+                varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+
+                code_str = sp.pycode(varinf_func, fully_qualified_modules=False)
+                func_str += f'    function {sv_}_inf_{cname} ({func_call_args}) real:\n' \
+                            f'        val real\n' \
+                            f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
+                            f'        return val\n\n'
+
+                # substitute possible default values and concentrations
+                tauinf_func = self._substituteDefaults(self.tauinf[svar])
+                for ckey, cval in self.conc.items():
+                    tauinf_func = tauinf_func.subs(ckey, cval)
+
+                tauinf_func = tauinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
+                tauinf_func = tauinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+
+                code_str = sp.pycode(tauinf_func, fully_qualified_modules=False)
+                func_str += f'\n    function tau_{sv_}_{cname} ({func_call_args}) real:\n' \
+                            f'        val real\n' \
+                            f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
+                            f'        return val\n\n'
+
+            blocks_dict['function'] += func_str
+
+        return blocks_dict
+
 
     def writeCPPCode(self, path):
         """
@@ -747,11 +990,11 @@ class IonChannel(object):
         substituted for c++ simulation
         """
         c_name = self.__class__.__name__
-        svs = [str(svar) for svar in self.statevars]
+        svs = [str(svar) for svar in self.ordered_statevars]
         # rewrite open probabilities
         p_open_m = self.p_open
         p_open_m_inf = self.p_open
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             p_open_m = p_open_m.subs(svar, sp.symbols('m_' + str(svar)))
             p_open_m_inf = p_open_m_inf.subs(svar, sp.symbols('m_' + str(svar) + '_inf'))
         # substitue concentrations in expression
@@ -767,7 +1010,7 @@ class IonChannel(object):
         # define class and functions in header file
         fh.write('class %s: public IonChannel{\n'%c_name)
         fh.write('private:' + '\n')
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             sv = sp.printing.ccode(svar)
             fh.write('    double m_%s;\n'%sv)
             fh.write('    double m_%s_inf, m_tau_%s;\n'%(sv, sv))
@@ -793,7 +1036,7 @@ class IonChannel(object):
 
         # function in cc file
         fcc.write('void %s::calcFunStatevar(double v){\n'%c_name)
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             varinf = self._substituteDefaults(self.varinf[svar])
             tauinf = self._substituteDefaults(self.tauinf[svar])
             sv = str(svar)
@@ -853,7 +1096,7 @@ class IonChannel(object):
 
         # set voltage values to evaluate at constant voltage during newton iteration
         fcc.write('void %s::setfNewtonConstant(double* vs, int v_size){\n'%c_name)
-        fcc.write('    if(v_size != %d)'%len(self.statevars) + '\n')
+        fcc.write('    if(v_size != %d)'%len(self.ordered_statevars) + '\n')
         fcc.write('        cerr << "input arg [vs] has incorrect size, ' + \
                   'should have same size as number of channel state variables" << endl' + ';\n')
         for ii, svar in enumerate(self.ordered_statevars):
@@ -863,7 +1106,7 @@ class IonChannel(object):
         # functions for solving Newton iteration
         fcc.write('double %s::fNewton(double v){\n'%c_name)
         p_o = self.p_open
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             sv = 'v_' + str(svar)
             # substitute default parameters
             vi = self._substituteDefaults(self.varinf[svar])
@@ -884,10 +1127,10 @@ class IonChannel(object):
         fcc.write('}\n')
 
         fcc.write('double %s::DfDvNewton(double v){\n'%c_name)
-        dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.statevars}
+        dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.ordered_statevars}
 
         # print derivatives
-        for svar in self.statevars:
+        for svar in self.ordered_statevars:
             sv = 'v_' + str(svar)
             v_var = sp.symbols(sv)
 
@@ -916,7 +1159,7 @@ class IonChannel(object):
             fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
 
         expr_str = ' + '.join(['%s * d%s_dv'%(sp.printing.ccode(dp_o[svar]), str(svar)) \
-                               for svar in self.statevars])
+                               for svar in self.ordered_statevars])
 
         fcc.write('    return -1. * (%s - m_p_open_eq) + (%s) * (m_e_rev - v);\n'%(sp.printing.ccode(self.p_open), expr_str))
         fcc.write('}\n')

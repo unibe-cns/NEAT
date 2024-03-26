@@ -12,6 +12,10 @@ from ....trees.phystree import PhysTree, PhysNode
 try:
     import neuron
     from neuron import h
+
+    h.load_file("stdlib.hoc") # contains the lambda rule
+    h.load_file("stdrun.hoc") # basic run control
+
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, importing non-functional h module only for doc generation', UserWarning)
     # universal iterable mock object
@@ -55,20 +59,37 @@ except ModuleNotFoundError:
     np.array = array
 
 
-h.load_file("stdlib.hoc") # contains the lambda rule
-h.nrn_load_dll(os.path.join(os.path.dirname(__file__),
-                            platform.machine() + '/.libs/libnrnmech.so')) # load all mechanisms
+def loadNeuronModel(name):
+    path = os.path.join(
+        os.path.dirname(__file__),
+        f'tmp/{name}/{platform.machine()}/.libs/libnrnmech.so'
+    )
+    if os.path.exists(path):
+        h.nrn_load_dll(path) # load all mechanisms
+    else:
+        path_name = os.path.join(os.path.dirname(__file__), 'tmp/')
+        raise FileNotFoundError(
+            f"The NEURON model named \'{name}\' is not installed. "
+            f"Run \'neatmodels -h\' in the terminal for help on "
+            f"installing new NEURON models with NEAT. "
+            f"Installed models will be in \'{path_name}\'."
+        )
 
 
 class MechName(object):
     def __init__(self):
-        self.names = {'L': 'pas', 'ca': 'CaDyn'}
+        self.names = {'L': 'pas'}
+        self.ions = ['ca']
 
     def __getitem__(self, key):
         if key in self.names:
             return self.names[key]
+        elif key in self.ions:
+            return "conc_" + key
         else:
             return 'I' + key
+
+
 mechname = MechName()
 
 
@@ -100,7 +121,10 @@ class NeuronSimNode(PhysNode):
         # insert membrane currents
         for key, current in self.currents.items():
             if current[0] > 1e-10:
-                compartment.insert(mechname[key])
+                try:
+                    compartment.insert(mechname[key])
+                except ValueError as e:
+                    raise ValueError(str(e) + f" {mechname[key]}")
                 for seg in compartment:
                     exec('seg.' + mechname[key] + '.g = ' + str(current[0]) + '*1e-6') # uS/cm^2 --> S/cm^2
                     exec('seg.' + mechname[key] + '.e = ' + str(current[1])) # mV
@@ -109,6 +133,8 @@ class NeuronSimNode(PhysNode):
             compartment.insert(mechname[ion])
             for seg in compartment:
                 for param, value in params.items():
+                    if param == 'gamma':
+                        value *= 1e6
                     exec('seg.' + mechname[ion] + '.' + param + ' = ' + str(value))
         h.pop_section()
 
@@ -124,7 +150,7 @@ class NeuronSimNode(PhysNode):
         if self.g_shunt > 1e-10:
             shunt = h.Shunt(compartment(1.))
             shunt.g = self.g_shunt # uS
-            shunt.e = self.e_eq    # mV
+            shunt.e = self.v_ep    # mV
             return shunt
         else:
             return None
@@ -647,9 +673,11 @@ class NeuronSimTree(PhysTree):
         self.vecstims.append(vecstim)
         self.netcons.append(netcon)
 
-    def run(self, t_max, downsample=1,
+    def run(self, t_max, downsample=1, dt_rec=None,
             record_from_syns=False, record_from_iclamps=False, record_from_vclamps=False,
-            record_from_channels=False, record_v_deriv=False, record_concentrations=[],
+            record_from_channels=False, record_v_deriv=False,
+            record_concentrations=[], record_currents=[],
+            spike_rec_loc=None, spike_rec_thr=-20.,
             pprint=False):
         """
         Run the NEURON simulation. Records at all locations stored
@@ -661,6 +689,9 @@ class NeuronSimTree(PhysTree):
             Duration of the simulation
         downsample: int (> 0)
             Records the state of the model every `downsample` time-steps
+        dt_rec: float or None
+            recording time step (if `None` is given, defaults to the simulation
+            time-step)
         record_from_syns: bool (default ``False``)
             Record currents of synapstic point processes (in `self.syns`).
             Accessible as `np.ndarray` in the output dict under key 'i_syn'
@@ -677,10 +708,18 @@ class NeuronSimTree(PhysTree):
         record_v_deriv: bool (default ``False``)
             Record voltage derivative at locations stored under 'rec locs'
             Accessible as `np.ndarray` in the output dict under key 'dv_dt'
-        record_from_concentrations: bool (default ``False``)
+        record_concentrations: list (default ``[]``)
             Record ion concentration at locations stored under 'rec locs'
             Accessible as `np.ndarray` in the output dict with as key the ion's
             name
+        record_currents: list (default ``[]``)
+            Record ion currents at locations stored under 'rec locs'
+            Accessible as `np.ndarray` in the output dict with as key the ion's
+            name
+        spike_rec_loc: `neat.MorphLoc` (default ``None``)
+            Record the output spike times from this location
+        spike_rec_thr: float
+            Spike threshold
 
         Returns
         -------
@@ -692,32 +731,41 @@ class NeuronSimTree(PhysTree):
             set to ``True``
         """
         assert isinstance(downsample, int) and downsample > 0
+        if dt_rec is None:
+            dt_rec = self.dt
+        indstart = int(self.t_calibrate / dt_rec)
+
         # simulation time recorder
         res = {'t': h.Vector()}
-        res['t'].record(h._ref_t)
+        res['t'].record(h._ref_t, dt_rec)
+
         # voltage recorders
         res['v_m'] = []
         for loc in self.getLocs('rec locs'):
             res['v_m'].append(h.Vector())
-            res['v_m'][-1].record(self.sections[loc['node']](loc['x'])._ref_v)
+            res['v_m'][-1].record(self.sections[loc['node']](loc['x'])._ref_v, dt_rec)
+
         # synapse current recorders
         if record_from_syns:
             res['i_syn'] = []
             for syn in self.syns:
                 res['i_syn'].append(h.Vector())
-                res['i_syn'][-1].record(syn._ref_i)
+                res['i_syn'][-1].record(syn._ref_i, dt_rec)
+
         # current clamp current recorders
         if record_from_iclamps:
             res['i_clamp'] = []
             for iclamp in self.iclamps:
                 res['i_clamp'].append(h.Vector())
-                res['i_clamp'][-1].record(iclamp._ref_i)
+                res['i_clamp'][-1].record(iclamp._ref_i, dt_rec)
+
         # voltage clamp current recorders
         if record_from_vclamps:
             res['i_vclamp'] = []
             for vclamp in self.vclamps:
                 res['i_vclamp'].append(h.Vector())
-                res['i_vclamp'][-1].record(vclamp._ref_i)
+                res['i_vclamp'][-1].record(vclamp._ref_i, dt_rec)
+
         # channel state variable recordings
         if record_from_channels:
             res['chan'] = {}
@@ -733,34 +781,66 @@ class NeuronSimTree(PhysTree):
                         elif xx > 1. - 1e-3: xx -= 1e-3
                         # create the recorder
                         try:
-                            rec = h.Vector()
-                            exec('rec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +')')
-                            res['chan'][channel_name][var].append(rec)
+                            rec_vec = h.Vector()
+                            exec('rec_vec.record(self.sections[loc[0]](xx).' + mechname[channel_name] + '._ref_' + str(var) +f', {dt_rec})')
                         except AttributeError:
                             # the channel does not exist here
-                            res['chan'][channel_name][var].append([])
+                            rec_vec = None
+                            rec_vec = []
+                        res['chan'][channel_name][var].append(rec_vec)
+
         if len(record_concentrations) > 0:
             for c_ion in record_concentrations:
                 res[c_ion] = []
                 for loc in self.getLocs('rec locs'):
-                    res[c_ion].append(h.Vector())
-                    exec('res[c_ion][-1].record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + 'i)')
+                    try:
+                        rec_vec = h.Vector()
+                        exec('rec_vec.record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + f'i, {dt_rec})')
+                    except AttributeError:
+                        rec_vec = None
+                        rec_vec = []
+                    res[c_ion].append(rec_vec)
+
+        if len(record_currents) > 0:
+            for c_ion in record_currents:
+                curr_name = f"i{c_ion}"
+                res[curr_name] = []
+                for loc in self.getLocs('rec locs'):
+                    try:
+                        rec_vec = h.Vector()
+                        exec(f'rec_vec.record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name}, {dt_rec})')
+                    except AttributeError:
+                        rec_vec = None
+                        rec_vec = []
+                    res[curr_name].append(rec_vec)
+
         # record voltage derivative
         if record_v_deriv:
             res['dv_dt'] = []
             for ii, loc in enumerate(self.getLocs('rec locs')):
                 res['dv_dt'].append(h.Vector())
                 # res['dv_dt'][-1].deriv(res['v_m'][ii], self.dt)
+        if spike_rec_loc is not None:
+            # add spike detector at spike_rec_loc
+            self.spike_detector = h.NetCon(
+                self.sections[spike_rec_loc[0]](spike_rec_loc[1])._ref_v,
+                None,
+                sec=self.sections[spike_rec_loc[0]]
+            )
+            self.spike_detector.threshold = spike_rec_thr
+            res['spikes'] = h.Vector()
+            self.spike_detector.record(res['spikes'])
+
 
         # initialize
         # neuron.celsius=37.
-        h.finitialize(self.v_init)
         h.dt = self.dt
+        h.finitialize(self.v_init)
 
         # simulate
         if pprint: print('>>> Simulating the NEURON model for ' + str(t_max) + ' ms. <<<')
         start = time.process_time()
-        neuron.run(t_max + self.t_calibrate)
+        h.continuerun(t_max + self.t_calibrate)
         stop = time.process_time()
         if pprint: print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')
         runtime = stop-start
@@ -768,15 +848,21 @@ class NeuronSimTree(PhysTree):
         # compute derivative
         if 'dv_dt' in res:
             for ii, loc in enumerate(self.getLocs('rec locs')):
-                res['dv_dt'][ii].deriv(res['v_m'][ii], h.dt, 2)
-                res['dv_dt'][ii] = np.array(res['dv_dt'][ii])[self.indstart:][::downsample]
+                res['dv_dt'][ii].deriv(res['v_m'][ii], dt_rec, 2)
+                res['dv_dt'][ii] = np.array(res['dv_dt'][ii])[indstart:][::downsample]
             res['dv_dt'] = np.array(res['dv_dt'])
         # cast recordings into numpy arrays
-        res['t'] = np.array(res['t'])[self.indstart:][::downsample] - self.t_calibrate
-        for key in set(res.keys()) - {'t', 'chan', 'dv_dt'}:
+        res['t'] = np.array(res['t'])[indstart:][::downsample] - self.t_calibrate
+        for key in set(res.keys()) - {'t', 'chan', 'dv_dt', 'spikes'}:
             if key in res and len(res[key]) > 0:
-                res[key] = np.array([np.array(reslist)[self.indstart:][::downsample] \
-                                     for reslist in res[key]])
+                arrlist = []
+                for reslist in res[key]:
+                    arr = np.array(reslist)[indstart:][::downsample] \
+                        if len(reslist) > 0 else np.zeros_like(res['t'])
+                    arrlist.append(arr)
+                res[key] = np.array(arrlist)
+                # res[key] = np.array([np.array(reslist)[indstart:][::downsample] \
+                #                      for reslist in res[key]])
                 if key in ('i_syn', 'i_clamp', 'i_vclamp'):
                     res[key] *= -1.
         # cast channel recordings into numpy arrays
@@ -787,7 +873,7 @@ class NeuronSimTree(PhysTree):
                     var = str(varname)
                     for ind1 in range(len(self.getLocs('rec locs'))):
                         res['chan'][channel_name][var][ind1] = \
-                                np.array(res['chan'][channel_name][var][ind1])[self.indstart:][::downsample]
+                                np.array(res['chan'][channel_name][var][ind1])[indstart:][::downsample]
                         if len(res['chan'][channel_name][var][ind1]) == 0:
                             res['chan'][channel_name][var][ind1] = np.zeros_like(res['t'])
                     res['chan'][channel_name][var] = \
@@ -799,10 +885,17 @@ class NeuronSimTree(PhysTree):
                     var = str(varname)
                     sv[var] = res['chan'][channel_name][var]
                 res['chan'][channel_name]['p_open'] = channel.computePOpen(res['v_m'], **sv)
+        # cast spike recording to numpy array
+        if 'spikes' in res:
+            res['spikes'] = np.array(list(res['spikes'])) - self.t_calibrate
+            self.spike_detector = None
+            del self.spike_detector
+
+        res['runtime'] = runtime
 
         return res
 
-    def calcEEq(self, t_dur=100., set_e_eq=True):
+    def calcEEq(self, t_dur=100., set_v_ep=True):
         """
         Compute the equilibrium potentials in the middle (``x=0.5``) of each node.
 
@@ -810,27 +903,22 @@ class NeuronSimTree(PhysTree):
         ----------
         t_dur: float (optional, default ``100.`` ms)
             The duration of the simulation
-        set_e_eq: bool (optional, default ``True``)
-            Store the equilibrium potential as the ``PhysNode.e_eq`` attribute
+        set_v_ep: bool (optional, default ``True``)
+            Store the equilibrium potential as the ``PhysNode.v_ep`` attribute
         """
         self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
                        v_init=self.v_init, factor_lambda=self.factor_lambda)
         self.storeLocs([(n.index, 0.5) for n in self], name='rec locs')
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
-        if set_e_eq:
-            for (node, e) in zip(self, v_eq): node.setEEq(e_eq)
+        if set_v_ep:
+            for (node, e) in zip(self, v_eq): node.setVEP(v_ep)
 
 
         return v_eq
 
     def calcImpedanceMatrix(self, locarg, i_amp=0.001, t_dur=100., pplot=False):
-        if isinstance(locarg, list):
-            locs = [MorphLoc(loc, self) for loc in locarg]
-        elif isinstance(locarg, str):
-            locs = self.getLocs(locarg)
-        else:
-            raise IOError('`locarg` should be list of locs or string')
+        locs = self._convertLocArgToLocs(locarg)
         z_mat = np.zeros((len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
@@ -840,8 +928,9 @@ class NeuronSimTree(PhysTree):
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_dur)
+                self.deleteModel()
                 # voltage deflections
-                # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].e_eq
+                # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].v_ep
                 v_trans = res['v_m'][1][-int(1./self.dt)] - res['v_m'][1][0]
                 # compute impedances
                 z_mat[ii, jj] = v_trans / i_amp
@@ -854,15 +943,12 @@ class NeuronSimTree(PhysTree):
         return z_mat
 
     def calcImpedanceKernelMatrix(self, locarg, i_amp=0.001,
-                                                dt_pulse=0.1, t_max=100.):
-        tk = np.arange(0., t_max, self.dt)
-        if isinstance(locarg, list):
-            locs = [MorphLoc(loc, self) for loc in locarg]
-        elif isinstance(locarg, str):
-            locs = self.getLocs(locarg)
-        else:
-            raise IOError('`locarg` should be list of locs or string')
-        zk_mat = np.zeros((len(tk), len(locs), len(locs)))
+            dt_pulse=0.1, dstep=-2, t_max=100.
+        ):
+        locs = self._convertLocArgToLocs(locarg)
+        nt = int(t_max / self.dt)
+        i0 = int(dt_pulse / self.dt)
+        zk_mat = np.zeros((nt, len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
                 loc1 = locs[jj]
@@ -871,12 +957,13 @@ class NeuronSimTree(PhysTree):
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
-                res = self.run(t_max)
+                res = self.run(t_max+dt_pulse)
+                self.deleteModel()
                 # voltage deflections
-                v_trans = res['v_m'][1][1:] - self[loc1['node']].e_eq
+                v_trans = res['v_m'][1][i0+dstep:-1+dstep] - self[loc1['node']].v_ep
                 # compute impedances
                 zk_mat[:, ii, jj] = v_trans / (i_amp * dt_pulse)
-        return tk, zk_mat
+        return res['t'][i0+dstep:-1+dstep], zk_mat
 
 
 class NeuronCompartmentNode(NeuronSimNode):
@@ -1022,7 +1109,7 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
                                          for chan, (g, e) in comp_node.currents.items()}
             sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
             for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index]
+                concmech.gamma *= surfaces[comp_node.index] * 1e6
             sim_node.c_m = fake_c_m
             sim_node.r_a = fake_r_a
             sim_node.content['points_3d'] = points[comp_node.index]
@@ -1045,7 +1132,7 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
                                          for chan, (g, e) in comp_node.currents.items()}
             sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
             for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index]
+                concmech.gamma *= surfaces[comp_node.index] * 1e6
             sim_node.c_m = fake_c_m
             sim_node.r_a = fake_r_a
             sim_node.R = radii[comp_node.index]*1e4    # convert to [um]

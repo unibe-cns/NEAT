@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 import os, glob, sys, inspect, shutil, subprocess
+import warnings
+
+
+warnings.warn(
+    "Usage of 'compilechannels' is deprecated. "
+    "It will be removed in a future version in favour of 'neatmodels install' "
+    "which is more general as it contains functionality to list and uninstall "
+    "models, and it supports NESTML model compilation.",
+    DeprecationWarning
+)
 
 
 def loadNEATCorrectPath():
@@ -31,8 +41,8 @@ neat = loadNEATCorrectPath()
 from neat import IonChannel
 
 path_neat = neat.__path__[0]
-path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/mech/')
-path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/')
+path_for_mod_files = os.path.join(path_neat, 'tools/simtools/neuron/tmp/user_model/mech/')
+path_for_compilation = os.path.join(path_neat, 'tools/simtools/neuron/tmp/user_model/')
 
 
 def resetDefaultMech():
@@ -94,3 +104,10 @@ os.chdir(path_for_compilation)
 if os.path.exists("x86_64/"):  # delete old compiled files if exist
     shutil.rmtree("x86_64/")
 subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
+
+print(
+    f'\n------------------------------\n'
+    f'The compiled .mod-files can be loaded into neuron using:\n'
+    f'    neat.loadNeuronModel(user_model)\n'
+    f'------------------------------\n'
+)

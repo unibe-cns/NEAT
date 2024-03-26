@@ -7,7 +7,10 @@ import pytest
 from neat import MorphTree, MorphNode, MorphLoc
 
 
-MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 
 
 class TestMorphTree():
@@ -43,6 +46,28 @@ class TestMorphTree():
         if not hasattr(self, 'tree') or reinitialize:
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
             self.tree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
+
+    def testStringRepresentation(self):
+        self.loadTree()
+        tree_str = f">>> MorphTree\n" \
+            "    MorphNode 1, Parent: None --- xyz = [0.000, 0.000, 0.000] um, R = 10.00 um, swc_type = 1\n" \
+            "    MorphNode 4, Parent: 1 --- xyz = [100.000, 0.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
+            "    MorphNode 5, Parent: 4 --- xyz = [100.000, 50.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
+            "    MorphNode 6, Parent: 5 --- xyz = [100.000, 100.000, 0.000] um, R = 0.50 um, swc_type = 4\n" \
+            "    MorphNode 7, Parent: 4 --- xyz = [100.000, -50.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
+            "    MorphNode 8, Parent: 7 --- xyz = [100.000, -100.000, 0.000] um, R = 0.50 um, swc_type = 4"
+        assert str(self.tree) == tree_str
+
+        repr_str = "['MorphTree', " \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': '0.5', 'swc_type': 4}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': '0.5', 'swc_type': 4}\""\
+        "]"
+        assert repr(self.tree) == repr_str
+
 
     def testLocEquality(self):
         self.loadTree()
@@ -195,6 +220,7 @@ class TestMorphTree():
         nodes = self.tree._convertNodeArgToNodes(None)
         assert self.tree.nodes == nodes
         nodes = self.tree._convertNodeArgToNodes(self.tree[4])
+        # breakpoint()
         assert self.tree.gatherNodes(self.tree[4]) == nodes
         nodes = self.tree._convertNodeArgToNodes('apical')
         assert self.tree.getNodesInApicalSubtree() == nodes
@@ -205,8 +231,9 @@ class TestMorphTree():
         nodes_ = [self.tree[5], self.tree[7]]
         nodes = self.tree._convertNodeArgToNodes(nodes_)
         assert nodes_ == nodes
-        with pytest.raises(ValueError):
+        with pytest.raises(IOError):
             self.tree._convertNodeArgToNodes('wrong arg')
+        with pytest.raises(IOError):
             self.tree._convertNodeArgToNodes(5)
         # with the computational tree
         self.tree.setCompTree(set_as_primary_tree=1, eps=1.)
@@ -245,6 +272,26 @@ class TestMorphTree():
         assert locs[3].comp_loc == {'node': 8, 'x': .25}
         assert locs[4].comp_loc == {'node': 6, 'x': .75}
         assert locs[5].comp_loc == {'node': 8, 'x': .75}
+
+    def testUniqueLocs(self):
+        self.loadTree()
+        locs = [
+            (1.,.5),
+            (4, 0.), (4, .1), (4, 1.),
+                              (5, 0.), (5,.9), (5, 1.),
+                                               (6, 0.), (6, 1.),
+                              (7, 0.), (7, .5), (8, .5),
+        ]
+        unique_locs_groundtruth = [
+            (1,.5),
+                    (4, .1), (4, 1.),
+                                      (5,.9), (5, 1.), (6, 1.),
+                                      (7, .5), (8, .5)
+        ]
+        unique_locs_tested = self.tree.uniqueLocs(locs)
+
+        for loc_tested, loc_groundtruth in zip(unique_locs_tested, unique_locs_groundtruth):
+            assert loc_tested == loc_groundtruth
 
     def testPathLength(self):
         self.loadTree()
@@ -436,7 +483,8 @@ class TestMorphTree():
         # check comptree resetting
         self.tree.setCompTree()
         self.tree.treetype = 'computational'
-        self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
+        with pytest.raises(IOError):
+            self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
         assert self.tree.treetype == 'computational'
         self.tree.treetype = 'original'
         # test loc distribution on nodes
@@ -496,7 +544,7 @@ class TestMorphTree():
             assert 'tag' not in node.content
         locs = self.tree.distributeLocsRandom(10, node_arg='basal', add_soma=0)
         assert len(locs) == 0
-        with pytest.raises(ValueError):
+        with pytest.raises(IOError):
             self.tree.distributeLocsRandom(10, node_arg='bad type')
 
     def testTreeCreation(self):
@@ -649,6 +697,25 @@ class TestMorphTree():
         self.tree.treetype = 'computational'
         for node in self.tree: assert node.index in [1,5,8,10,12]
 
+
+    def testOnePointSoma(self):
+        mtree1 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'onepoint_soma.swc'))
+        mtree3 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
+
+        # one point soma is internally converted to three-point soma, so we test
+        # equivalence of both representations
+        for ii in range(1,6):
+            n1 = mtree1.__getitem__(ii, skip_inds=[])
+            n3 = mtree3.__getitem__(ii, skip_inds=[])
+            xyz1, R1, swc_type1 = n1.xyz, n1.R, n1.swc_type
+            xyz3, R3, swc_type3 = n3.xyz, n3.R, n3.swc_type
+
+            assert np.allclose(xyz1, xyz3)
+            assert np.allclose(R1, R3)
+            assert swc_type1 == swc_type3
+
+
+
     def testThreePointSoma(self):
         mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
 
@@ -688,15 +755,18 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    tmt.testPlotting(pshow=True)
-    tmt.testCompTree0()
-    tmt.testInputArgConversion()
-    tmt.testLocFunctionality()
-    tmt.testLocStorageRetrievalLookup()
-    tmt.testNearestNeighbours()
-    tmt.testCompTree()
+    # tmt.testStringRepresentation()
+    # tmt.testPlotting(pshow=True)
+    # tmt.testCompTree0()
+    # tmt.testInputArgConversion()
+    # tmt.testLocFunctionality()
+    tmt.testUniqueLocs()
+    # tmt.testLocStorageRetrievalLookup()
+    # tmt.testNearestNeighbours()
+    # tmt.testCompTree()
 
-    tmt.testMultiCylinderSoma()
-    tmt.testThreePointSoma()
-    tmt.testWrongSoma()
+    # tmt.testMultiCylinderSoma()
+    # tmt.testOnePointSoma()
+    # tmt.testThreePointSoma()
+    # tmt.testWrongSoma()
 

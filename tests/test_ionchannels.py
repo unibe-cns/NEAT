@@ -2,12 +2,13 @@ import numpy as np
 import sympy as sp
 # import sympy as cse
 
-from neat.channels.channelcollection import channelcollection
-from neat import IonChannel
-
 import pytest
 import pickle
 import os, shutil
+
+from neat import IonChannel
+
+import channelcollection_for_tests as channelcollection
 
 
 class TestChannels():
@@ -155,6 +156,16 @@ def test_broadcasting():
     for ii in range(4):
         assert np.allclose([ll[0,ii], ll[1,ii], ll[2,ii]],
                            [l_[0,ii,0], l_[1,ii,1], l_[2,ii,2]])
+
+    # test braodcasting for piecewise channel
+    pwc = channelcollection.PiecewiseChannel()
+    varinf = pwc.computeVarinf(v)
+    tauinf = pwc.computeTauinf(v)
+
+    assert np.allclose(varinf['a'], np.array([0.1, 0.1, 0.9]))
+    assert np.allclose(varinf['b'], np.array([0.8, 0.8, 0.2]))
+    assert np.allclose(tauinf['a'], np.array([10., 10., 20.]))
+    assert np.allclose(tauinf['b'], np.array([0.1, 0.1, 50.]))
 
 if __name__ == '__main__':
     tcns = TestChannels()

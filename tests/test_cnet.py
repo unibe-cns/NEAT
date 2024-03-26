@@ -6,11 +6,19 @@ import pytest
 from neat import netsim
 from neat import NETNode, NET, Kernel
 from neat import GreensTree, NeuronSimTree, SOVTree
+from neat import loadNeuronModel
 
 from neat.channels.channelcollection import channelcollection
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
+
+# load the default neuron model
+try:
+    loadNeuronModel("default")
+except RuntimeError as e:
+    # the neuron model is already loaded in hoc
+    pass
 
 
 class TestCNET():
@@ -24,7 +32,7 @@ class TestCNET():
         self.greens_tree.setPhysiology(1., 100./1e6)
         self.greens_tree.addCurrent(h_chan, gh, eh)
         self.greens_tree.fitLeakCurrent(v_eq, 10.)
-        self.greens_tree.setEEq(v_eq)
+        self.greens_tree.setVEP(v_eq)
         self.greens_tree_pas = self.greens_tree.__copy__(new_tree=GreensTree())
         self.greens_tree_pas.asPassiveMembrane()
         self.sim_tree = self.greens_tree.__copy__(new_tree=NeuronSimTree())

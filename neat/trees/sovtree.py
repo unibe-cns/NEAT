@@ -14,7 +14,8 @@ import itertools
 import copy
 
 from . import morphtree
-from .morphtree import MorphLoc
+from .stree import STree
+from .morphtree import MorphLoc, MorphNode
 from .phystree import PhysNode, PhysTree
 from .netree import NETNode, NET, Kernel
 
@@ -51,6 +52,23 @@ class SOVNode(PhysNode):
         self.kappa_m    = np.NaN
         self.mu_vals_m  = np.NaN
         self.q_vals_m   = np.NaN
+
+
+    def __str__(self, with_parent=True, with_morph_info=False):
+        if with_morph_info:
+            node_str = super(PhysNode, self).__str__(with_parent=with_parent)
+        else:
+            node_str = super(MorphNode, self).__str__(with_parent=with_parent)
+
+        if hasattr(self, "R_sov"):
+            node_str += f" --- "\
+                f"(g_m = {self.g_m:.8f} uS/cm^2, "\
+                f"tau_m = {self.tau_m:.8f} s, "\
+                f"eps_m = {self.eps_m:.8f}, "\
+                f"R_sov = {self.R_sov:.8f} cm, "\
+                f"L_sov = {self.L_sov:.8f} cm)"\
+
+        return node_str
 
     def q_m(self, x):
         return np.sqrt(self.eps_m*x**2 - 1.)
@@ -257,6 +275,18 @@ class SOVTree(PhysTree):
     """
     def __init__(self, file_n=None, types=[1,3,4]):
         super().__init__(file_n=file_n, types=types)
+        self.maxspace_freq = None
+
+    def _getReprDict(self):
+        repr_dict = super()._getReprDict()
+        repr_dict.update({
+            'maxspace_freq': f"{self.maxspace_freq:1.6g}"
+        })
+        return repr_dict
+
+    def __repr__(self):
+        repr_str = STree.__repr__(self)
+        return repr_str + repr(self._getReprDict())
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """
@@ -335,6 +365,8 @@ class SOVTree(PhysTree):
             roughly corresponds to the maximal spatial frequency of the
             smallest time-scale mode
         """
+        self.maxspace_freq = maxspace_freq
+
         self.tau_0 = np.pi#1.
         for node in self: node._setSOV(self.channel_storage, tau_0=self.tau_0)
         if len(self) > 1:
@@ -361,7 +393,6 @@ class SOVTree(PhysTree):
         # the recursion has passed node, the mu functions can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            # node._setMuFunctions()
             node._setZerosPoles(maxspace_freq=maxspace_freq)
             if not self.isRoot(node):
                 self._SOVFromLeaf(pnode, leafs, count=count+1,
@@ -562,7 +593,9 @@ class SOVTree(PhysTree):
                         improve_input_impedance=False,
                         pprint=False):
         """
-        Construct a Neural Evaluation Tree (NET) for this cell
+        Construct a Neural Evaluation Tree (NET) for this cell. The locations
+        for which impedance values are computed are stored under the name
+        `net eval`
 
         Parameters
         ----------

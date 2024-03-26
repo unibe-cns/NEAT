@@ -24,7 +24,7 @@ from .trees.phystree import PhysNode
 from .trees.sovtree import SOVTree
 from .trees.sovtree import SOVNode, SomaSOVNode
 
-from .trees.greenstree import GreensTree
+from .trees.greenstree import GreensTree, GreensTreeTime
 from .trees.greenstree import GreensNode, SomaGreensNode
 
 from .trees.netree import NET
@@ -35,6 +35,7 @@ from .trees.compartmenttree import CompartmentTree
 from .trees.compartmenttree import CompartmentNode
 
 try:
+    from .tools.simtools.neuron.neuronmodel import loadNeuronModel
     from .tools.simtools.neuron.neuronmodel import NeuronSimTree
     from .tools.simtools.neuron.neuronmodel import NeuronSimNode
     from .tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
@@ -42,10 +43,19 @@ try:
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 
+try:
+    from .tools.simtools.nest.nestmodel import NestCompartmentTree
+    from .tools.simtools.nest.nestmodel import NestCompartmentNode
+    from .tools.simtools.nest.nestmodel import loadNestModel
+except ModuleNotFoundError:
+    warnings.warn('NEST not available', UserWarning)
+
 from .tools.kernelextraction import FourrierTools
 
 from .channels.ionchannels import IonChannel
+from .channels.concmechs import ExpConcMech
 
-from .tools.fittools.compartmentfitter import CompartmentFitter
+from .modelreduction.compartmentfitter import CompartmentFitter
+from .modelreduction.cachetrees import EquilibriumTree
 
 from .__version__ import __version__

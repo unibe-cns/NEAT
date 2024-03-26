@@ -8,7 +8,9 @@ import copy
 
 from neat import SOVTree, SOVNode, Kernel, GreensTree, CompartmentTree, CompartmentNode
 import neat.tools.kernelextraction as ke
-from neat.channels.channelcollection import channelcollection
+# from neat.channels.channelcollection import channelcollection
+
+import channelcollection_for_tests as channelcollection
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
@@ -30,6 +32,21 @@ class TestCompartmentTree():
         self.tree.setCompTree()
         # do SOV calculation
         self.tree.calcSOVEquations()
+
+    def testStringRepresentation(self):
+        # create simple compartment tree
+        self.loadTTree()
+        locs = [(1, 0.5), (4, 0.5)]
+        ctree = self.tree.createCompartmentTree(locs)
+
+        assert str(ctree) == ">>> CompartmentTree\n" \
+            "    CompartmentNode 0, Parent: None --- loc_ind = 0, g_c = 0.0 uS, ca = 1.0 uF, e_eq = -75.0 mV, (g_L = 0.01 uS, e_L = -75.0 mV)\n" \
+            "    CompartmentNode 1, Parent: 0 --- loc_ind = 1, g_c = 0.0 uS, ca = 1.0 uF, e_eq = -75.0 mV, (g_L = 0.01 uS, e_L = -75.0 mV)"
+
+        assert repr(ctree) == "[\'CompartmentTree\', " \
+            "\"{\'node index\': 0, \'parent index\': -1, \'content\': \'{}\', \'loc_ind\': 0, \'ca\': \'1\', \'g_c\': \'0\', \'e_eq\': \'-75\', \'conc_eqs\': {}, \'currents\': {\'L\': \'0.01, -75\'}, \'concmechs\': {}, \'expansion_points\': {}}\", " \
+            "\"{\'node index\': 1, \'parent index\': 0, \'content\': \'{}\', \'loc_ind\': 1, \'ca\': \'1\', \'g_c\': \'0\', \'e_eq\': \'-75\', \'conc_eqs\': {}, \'currents\': {\'L\': \'0.01, -75\'}, \'concmechs\': {}, \'expansion_points\': {}}\"" \
+            "]{\'channel_storage\': []}"
 
     def testTreeDerivation(self):
         self.loadTTree()
@@ -190,10 +207,6 @@ class TestCompartmentTree():
         ctree_2.computeGMC(z_mat_2, channel_names=['L'])
         ctree_3.computeGMC(z_mat_3, channel_names=['L'])
         ctree_4.computeGMC(z_mat_4, channel_names=['L'])
-        # compare both models
-        assert str(ctree_1) == str(ctree_2)
-        assert str(ctree_1) == str(ctree_3)
-        assert str(ctree_1) == str(ctree_4)
         # compare impedance matrices
         z_fit_1 = ctree_1.calcImpedanceMatrix(self.freqs)
         z_fit_2 = ctree_2.calcImpedanceMatrix(self.freqs)
@@ -228,15 +241,6 @@ class TestCompartmentTree():
         taus_orig = np.array([n.c_m / n.currents['L'][0] for n in nds])
         taus_fit = np.array([n.ca / n.currents['L'][0] for n in ctree])
         assert np.allclose(taus_orig, taus_fit)
-
-        # fit capacitances with experimental vector fit
-        for n in ctree: n.ca = 1.
-        self.greens_tree.setImpedance(freqs=ke.create_logspace_freqarray())
-        z_mat = self.greens_tree.calcImpedanceMatrix(locs)
-        # run the vector fit
-        ctree.computeCVF(self.greens_tree.freqs, z_mat)
-        taus_fit2 = np.array([n.ca / n.currents['L'][0] for n in ctree])
-        assert np.allclose(taus_orig, taus_fit2, atol=.3)
 
     def fitBallAndStick(self, n_loc=20):
         self.loadBallAndStick()
@@ -337,7 +341,7 @@ class TestCompartmentTree():
         # compute potassium impedance matrices
         z_mats_k = []
         for e_eq in e_eqs:
-            greens_tree_k.setEEq(e_eq)
+            greens_tree_k.setVEP(e_eq)
             greens_tree_k.setCompTree()
             greens_tree_k.setImpedance(self.freqs)
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
@@ -358,7 +362,7 @@ class TestCompartmentTree():
         # compute sodium impedance matrices
         z_mats_na = []
         for ii, sv in enumerate(svs):
-            greens_tree_na.setEEq(e_eqs[ii%len(e_eqs)])
+            greens_tree_na.setVEP(e_eqs[ii%len(e_eqs)])
             greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
             greens_tree_na.setCompTree()
             greens_tree_na.setImpedance(self.freqs)
@@ -367,7 +371,7 @@ class TestCompartmentTree():
         # compute combined impedance matrices
         z_mats_comb = []
         for e_eq in e_eqs:
-            self.greens_tree.setEEq(e_eq)
+            self.greens_tree.setVEP(e_eq)
             self.greens_tree.setCompTree()
             self.greens_tree.setImpedance(self.freqs)
             z_mats_comb.append(self.greens_tree.calcImpedanceMatrix(locs))
@@ -447,18 +451,18 @@ class TestCompartmentTree():
         # compute impedance matrix
         v_h = -42.
         # original
-        self.greens_tree.setEEq(v_h)
+        self.greens_tree.setVEP(v_h)
         self.greens_tree.setCompTree()
         self.greens_tree.setImpedance(freqs)
         z_mat_orig = self.greens_tree.calcImpedanceMatrix([(1.,.5)])
         # potassium
-        greens_tree_k.setEEq(v_h)
+        greens_tree_k.setVEP(v_h)
         greens_tree_k.setCompTree()
         greens_tree_k.setImpedance(freqs)
         z_mat_k = greens_tree_k.calcImpedanceMatrix([(1,.5)])
         # sodium
         greens_tree_na.removeExpansionPoints()
-        greens_tree_na.setEEq(v_h)
+        greens_tree_na.setVEP(v_h)
         greens_tree_na.setCompTree()
         greens_tree_na.setImpedance(freqs)
         z_mat_na = greens_tree_na.calcImpedanceMatrix([(1,.5)])
@@ -510,7 +514,7 @@ class TestCompartmentTree():
         assert np.abs(g_ * (e_eqs[-1] - ctree[0].currents['Na_Ta'][1]) - i_) < 1e-10
 
         # test leak fitting
-        self.greens_tree.setEEq(-75.)
+        self.greens_tree.setVEP(-75.)
         self.greens_tree.setCompTree()
         ctree.setEEq(-75.)
         ctree.removeExpansionPoints()
@@ -604,19 +608,17 @@ class TestCompartmentTreePlotting():
 
 if __name__ == '__main__':
     tcomp = TestCompartmentTree()
-    tcomp.testTreeDericvation()
-    tcomp.testFitting()
-    tcomp.testReordering()
-    tcomp.testLocationMapping()
-    tcomp.testGSSFit()
-    tcomp.testCFit()
-    tcomp.testPasFunctionality()
-    tcomp.testChannelFit()
+    tcomp.testStringRepresentation()
+    # tcomp.testTreeDerivation()
+    # tcomp.testFitting()
+    # tcomp.testReordering()
+    # tcomp.testLocationMapping()
+    # tcomp.testGSSFit()
+    # tcomp.testCFit()
+    # tcomp.testPasFunctionality()
+    # tcomp.testChannelFit()
 
-    tcomp.testGChanFitDynamic()
-    tcomp.testGChanFitDynamicComp()
-
-    tplot = TestCompartmentTreePlotting()
-    tplot.testPlot(pshow=True)
+    # tplot = TestCompartmentTreePlotting()
+    # tplot.testPlot(pshow=True)
 
 

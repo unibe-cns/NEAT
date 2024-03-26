@@ -11,6 +11,7 @@ import numpy as np
 
 import warnings
 import copy
+import hashlib
 from collections import Counter
 from functools import reduce
 
@@ -96,14 +97,27 @@ class SNode(object):
     def __setitem__(self, key, value):
         self._content[key] = value
 
-    def __str__(self, with_parent=False, with_children=False):
-        node_string = 'SNode ' + str(self.index)
+    def __str__(self, with_parent=True):
+        parent_idx = self.parent_node.index if self.parent_node is not None else -1
+        node_str = f'{self.__class__.__name__} {self.index}'
         if with_parent:
-            node_string += ', Parent: ' + str(self.parent_node)
-        if with_children:
-            node_string += ', Children:' + \
-                            str([str(cnode) for cnode in self.child_nodes])
-        return node_string
+            pstr = "None" if self.parent_node is None else str(self.parent_node.index)
+            node_str += f", Parent: {pstr}"
+        return node_str
+
+    def _getReprDict(self):
+        """
+        Note that dictionaries maintain insertion order from Python 3.7 onwards
+        """
+        parent_idx = self.parent_node.index if self.parent_node is not None else -1
+        return {
+            "node index": self.index,
+            "parent index": parent_idx,
+            "content": repr(self.content),
+        }
+
+    def __repr__(self):
+        return repr(self._getReprDict())
 
     def __copy__(self, new_node=None):
         """
@@ -252,10 +266,55 @@ class STree(object):
         """
         if node is None:
             node = self.root
-        tree_string = '>>> Tree'
+        tree_string = f'>>> {self.__class__.__name__}'
         for iternode in self.__iter__(node):
             tree_string += '\n    ' + iternode.__str__(with_parent=True)
         return tree_string
+
+
+    def __repr__(self, node=None):
+        """
+        Generate a representation string of the subtree of the given node.
+
+        Beware, if the given node is not in the tree, it will simply iterate
+        over the subtree of the given node.
+
+        Parameters
+        ----------
+            node: `neat.SNode` (optional)
+                The starting node. Defaults to the root
+        """
+        if node is None:
+            node = self.root
+        repr_list = [self.__class__.__name__]
+        for iternode in self.__iter__(node):
+            repr_list.append(repr(iternode))
+        return repr(repr_list)
+
+    def __hash__(self):
+        """
+        Generates an integer hash with that standard python `hash` function
+        applied to the representation string
+
+        Returns
+        -------
+            `int`: the hash
+        """
+        return hash(repr(self))
+
+    def unique_hash(self):
+        """
+        Generates a hexadecimal hash based on the hashlib sha25 algorithm
+        applied to the representation string
+
+        Returns
+        -------
+            `str`: the hash string
+        """
+        h = hashlib.new('sha256')
+        h.update(repr(self).encode())
+
+        return h.hexdigest()
 
     def checkOrdered(self):
         """
@@ -533,6 +592,9 @@ class STree(object):
         ----------
             node: `neat.SNode`
                 root of the sub tree
+            new_tree: `neat.STree` or derived class
+                the type of tree in which the nodes of the subtree are to be
+                copied
 
         Returns
         -------
@@ -540,7 +602,7 @@ class STree(object):
             Subtree of with ``node`` as root
         """
         if new_tree is None:
-            new_tree = STree()
+            new_tree = self.__class__()
 
         new_node = new_tree._createCorrespondingNode(node.index)
         node.__copy__(new_node=new_node)
@@ -790,7 +852,7 @@ class STree(object):
         elif len(node.child_nodes) == 0:
             return None
         else:
-            self.bifurcationNodeFromRoot(node.child_nodes[0])
+            return self.bifurcationNodeFromRoot(node.child_nodes[0])
 
     def getBifurcationNodes(self, nodes):
         """
@@ -909,7 +971,7 @@ class STree(object):
         orig_keys = set(self.__dict__.keys())
         copy_keys = orig_keys.intersection(set(new_tree.__dict__.keys()))
         for key in copy_keys:
-            if key not in ['root', '_computational_root', '_original_root']:
+            if key not in ['root', '_root', '_computational_root', '_original_root']:
                 new_tree.__dict__[key] = copy.deepcopy(self.__dict__[key])
 
         return new_tree
@@ -921,3 +983,4 @@ class STree(object):
             new_tree.addNodeWithParent(new_node, new_tree.__getitem__(pnode.index,
                                                                       skip_inds=[]))
             self._recurseCopy(node, new_tree)
+

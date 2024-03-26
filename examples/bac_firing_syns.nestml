@@ -1,0 +1,34 @@
+
+neuron bac_firing_syns:
+
+parameters:
+    # synaptic parameters
+    tau_r_PSC real = 0.5 ms      # Synaptic Time Constant Excitatory Synapse
+    tau_d_PSC real = 5. ms      # Synaptic Time Constant Excitatory Synapse
+    PSC_amp real = .5 nA
+end
+
+state:
+    v_comp real = 0.00000000
+
+end
+equations:
+    kernel g_PSC = g_norm_PSC * ( - exp(-t / tau_r_PSC) + exp(-t / tau_d_PSC) )
+    inline PSC real = convolve(g_PSC, spikes_PSC)
+
+end
+
+internals:
+    tp_PSC real = (tau_r_PSC * tau_d_PSC) / (tau_d_PSC - tau_r_PSC) * ln( tau_d_PSC / tau_r_PSC )
+    g_norm_PSC real =  PSC_amp / ( -exp( -tp_PSC / tau_r_PSC ) + exp( -tp_PSC / tau_d_PSC ) )
+end
+
+
+
+input:
+    spikes_PSC uS <- spike
+end
+
+output: spike
+
+end
