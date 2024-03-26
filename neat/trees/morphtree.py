@@ -141,23 +141,47 @@ class MorphLoc(object):
                 return self.loc[key]
 
     def __eq__(self, other_loc):
-        if type(other_loc) == dict:
-            result = (other_loc['node'] == self.loc['node'])
-            if self.loc['node'] != 1:
-                result *= np.allclose(other_loc['x'], self.loc['x'])
-            return result
-        elif type(other_loc) == tuple:
-            result = (other_loc[0] == self.loc['node'])
-            if self.loc['node'] != 1:
-                   result *= np.allclose(other_loc[1], self.loc['x'])
-            return result
-        elif isinstance(other_loc, MorphLoc):
-            result = (other_loc.loc['node'] == self.loc['node'])
-            if self.loc['node'] != 1:
-                result *= np.allclose(other_loc.loc['x'], self.loc['x'])
-            return result
+        loc1 = self.loc
+        loc2 = MorphLoc(other_loc, self.reftree,
+            set_as_comploc=(self.reftree.treetype == 'computational')
+        )
+
+        # covering all posible combinations
+        if loc1['node'] != 1:
+            if loc2['node'] != 1:
+                if (loc1['x'] < 1e-8) and ((1. - loc2['x']) < 1e-8):
+                    node = self.reftree[loc2['node']]
+                    parent = self.reftree[loc1['node']].parent_node
+                    result = (node.index == parent.index)
+
+                elif (loc2['x'] < 1e-8) and ((1. - loc1['x']) < 1e-8):
+                    node = self.reftree[loc1['node']]
+                    parent = self.reftree[loc2['node']].parent_node
+                    result = (node.index == parent.index)
+
+                else:
+                    result = (loc1['node'] == loc2['node'])
+                    result *= np.allclose(loc1['x'], loc2['x'])
+
+            else:
+                if loc1['x'] < 1e-8:
+                    node = self.reftree[loc1['node']]
+                    result = (node.parent_node.index == 1)
+
         else:
-            return NotImplemented
+            if loc2['node'] != 1:
+                if loc2['x'] < 1e-8:
+                    node = self.reftree[loc2['node']]
+                    result = (node.parent_node.index == 1)
+
+                else:
+                    result = False
+
+            else:
+                result = True
+
+        return result
+
 
     def keys(self):
         return ['node', 'x']
@@ -2252,7 +2276,20 @@ class MorphTree(STree):
             the bifurcation locs
         """
         locs = self._parseLocArg(loc_arg)
+        # for loc in locs:
+            # print(loc)
         locs_ = reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
+
+        # locs_ = []
+        # for loc in locs:
+        #     print("!!!")
+        #     for ll in locs_:
+        #         print(ll)
+
+        #     if loc not in locs_:
+        #         print('xxx')
+        #         locs_.append(loc)
+
 
         if name != 'dont save': self.storeLocs(locs_, name=name)
         return locs_

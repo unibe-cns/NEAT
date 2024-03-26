@@ -1268,8 +1268,8 @@ class CompartmentTree(STree):
         for ii, node in enumerate(self):
             for channel_name in channel_names:
                 # leack conductance is not allowed to be zero
-                if channel_name == 'L':
-                    g_vec[kk] = max(g_vec[kk], 1e-8)
+                # if channel_name == 'L':
+                #     g_vec[kk] = max(g_vec[kk], 1e-8)
 
                 node.currents[channel_name][0] = g_vec[kk]
                 kk += 1
@@ -1411,7 +1411,8 @@ class CompartmentTree(STree):
         res = la.lstsq(mat_feature, vec_target)
         res = res[0].real
         # coupling and leak conductances are not allowed to be zero
-        g_vec = np.maximum(res, 1e-8)
+        # g_vec = np.maximum(res, 1e-8)
+        g_vec = np.maximum(res, 0.)
         # res = so.nnls(mat_feature, vec_target)
         # g_vec = res[0].real
         # set the conductances

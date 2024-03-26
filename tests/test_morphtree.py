@@ -273,6 +273,26 @@ class TestMorphTree():
         assert locs[4].comp_loc == {'node': 6, 'x': .75}
         assert locs[5].comp_loc == {'node': 8, 'x': .75}
 
+    def testUniqueLocs(self):
+        self.loadTree()
+        locs = [
+            (1.,.5),
+            (4, 0.), (4, .1), (4, 1.),
+                              (5, 0.), (5,.9), (5, 1.),
+                                               (6, 0.), (6, 1.),
+                              (7, 0.), (7, .5), (8, .5),
+        ]
+        unique_locs_groundtruth = [
+            (1,.5),
+                    (4, .1), (4, 1.),
+                                      (5,.9), (5, 1.), (6, 1.),
+                                      (7, .5), (8, .5)
+        ]
+        unique_locs_tested = self.tree.uniqueLocs(locs)
+
+        for loc_tested, loc_groundtruth in zip(unique_locs_tested, unique_locs_groundtruth):
+            assert loc_tested == loc_groundtruth
+
     def testPathLength(self):
         self.loadTree()
         # lengths in the original tree
@@ -735,11 +755,12 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    tmt.testStringRepresentation()
+    # tmt.testStringRepresentation()
     # tmt.testPlotting(pshow=True)
     # tmt.testCompTree0()
     # tmt.testInputArgConversion()
     # tmt.testLocFunctionality()
+    tmt.testUniqueLocs()
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()
     # tmt.testCompTree()
