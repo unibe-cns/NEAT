@@ -145,7 +145,7 @@ class MorphLoc(object):
         loc2 = MorphLoc(other_loc, self.reftree,
             set_as_comploc=(self.reftree.treetype == 'computational')
         )
-        print(loc1, loc2)
+
         # covering all posible combinations
         if loc1['node'] != 1:
             if loc2['node'] != 1:
