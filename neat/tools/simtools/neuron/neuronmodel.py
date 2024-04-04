@@ -835,11 +835,10 @@ class NeuronSimTree(PhysTree):
         # initialize
         # neuron.celsius=37.
         h.dt = self.dt
-        h.finitialize(self.v_init)
-
         # simulate
         if pprint: print('>>> Simulating the NEURON model for ' + str(t_max) + ' ms. <<<')
         start = time.process_time()
+        h.finitialize(self.v_init)
         h.continuerun(t_max + self.t_calibrate)
         stop = time.process_time()
         if pprint: print('>>> Elapsed time: ' + str(stop-start) + ' seconds. <<<')

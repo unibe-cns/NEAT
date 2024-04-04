@@ -145,7 +145,7 @@ class MorphLoc(object):
         loc2 = MorphLoc(other_loc, self.reftree,
             set_as_comploc=(self.reftree.treetype == 'computational')
         )
-
+        print(loc1, loc2)
         # covering all posible combinations
         if loc1['node'] != 1:
             if loc2['node'] != 1:
@@ -167,6 +167,9 @@ class MorphLoc(object):
                 if loc1['x'] < 1e-8:
                     node = self.reftree[loc1['node']]
                     result = (node.parent_node.index == 1)
+
+                else:
+                    result = False
 
         else:
             if loc2['node'] != 1:
@@ -2595,7 +2598,7 @@ class MorphTree(STree):
                             marklabels={}, labelargs={},
                             cb_draw=0, cb_orientation='vertical', cb_label='',
                             sb_draw=1, sb_scale=100, sb_width=5.,
-                            set_lims=True, lims_margin=.1):
+                            set_lims=True, lims_margin=.1, soma_pos=None):
         """
         Plot the morphology projected on the x,y-plane
 
@@ -2663,7 +2666,14 @@ class MorphTree(STree):
             lims_margin: float
                 the margin, as fraction of total width and height of tree, at
                 which the limits are placed
+            soma_pos: np.ndarray of float (shape=(3,))
+                translate the soma position the the given coordinates
         """
+        # apply the translation
+        if soma_pos is None:
+            soma_pos = np.zeros((3,))
+        for node in self:
+            node.xyz += soma_pos
         # default cmap
         if cmap is None:
             cmap = cm.get_cmap('jet')
@@ -2800,6 +2810,10 @@ class MorphTree(STree):
 
         ax.set_xticks([])
         ax.set_yticks([])
+
+        # remove the translation
+        for node in self:
+            node.xyz -= soma_pos
 
     def _plotLoc(self, ax, ind, xval, yval, locargs, marklabels, labelargs):
         """
