@@ -2532,7 +2532,7 @@ class MorphTree(STree):
     def _addScalebar(self, ax, borderpad=-1.8, sep=2):
         from neat.tools.plottools import scalebars
         scalebars.addScalebar(ax, hidex=False, hidey=False, matchy=False,
-                                    labelx='$\mu$m',
+                                    labelx='μm',
                                     loc=8, borderpad=borderpad, sep=sep)
         ax.set_xticklabels([])
 
@@ -2773,7 +2773,7 @@ class MorphTree(STree):
             ax.plot([xlim[0],xlim[0]+scale],
                     [ylim[0],ylim[0]],
                     'k', linewidth=sb_width, zorder=1e5)
-            txt = ax.annotate(r'' + str(scale) + ' $\mu$m',
+            txt = ax.annotate(r'' + str(scale) + ' μm',
                               xy=(xlim[0]+scale/2., ylim[0]),
                               xycoords='data', xytext=(xlim[0]+scale/2.,ylim[0]-dy/200.), ha='center', va='top',
                               **textargs)

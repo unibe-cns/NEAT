@@ -133,7 +133,7 @@ class NestCompartmentTree(CompartmentTree):
 
         return [node._makeCompartmentDict() for node in self]
 
-    def initModel(self, model_name, n, suffix="_model", **kwargs):
+    def initModel(self, model_name, n, suffix="_model", v_th=-20., **kwargs):
         """
         Initialize n nest instantiations of the current model.
 
@@ -144,10 +144,13 @@ class NestCompartmentTree(CompartmentTree):
             was installed with `neatmodels install`
         n: int (> 0)
             The number of copies of the model to be instantiated
+        v_th: float
+            The spike detection threshold, in mV
         **kwargs
             Keyword arguments to the `nest.Create()` function
         """
         models = nest.Create(model_name + suffix, n, **kwargs)
+        models.V_th = v_th
         models.compartments = self._getCompartmentsStatus()
 
         return models

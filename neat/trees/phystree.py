@@ -726,6 +726,7 @@ class PhysTree(MorphTree):
         new_channels = set()
         new_ions = set()
         for new_node in new_tree:
+
             loc = new_locs[new_node.content["loc ind"]]
             orig_node = self[loc['node']]
 
