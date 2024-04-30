@@ -99,7 +99,6 @@ class NestCompartmentNode(CompartmentNode):
             'e_L': self.currents['L'][1],
             'C_m': self.ca*1e3, # convert uF to nF
             'g_C': self.g_c,
-            'v_comp': -75.,
         }
 
         # initialization parameter
@@ -121,8 +120,6 @@ class NestCompartmentNode(CompartmentNode):
         p_dict.update(e_dict)
         p_dict.update(c_dict)
         p_dict.update(i_dict)
-
-        print(p_dict)
 
         if self.parent_node is None:
             parent_idx = -1

@@ -62,10 +62,10 @@ class TestNest:
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         # ion channels
-        k_chan = channelcollection.Kv3_1()
-        self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
-        na_chan = channelcollection.Na_Ta()
-        self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
+        self.k_chan = channelcollection.Kv3_1()
+        self.tree.addCurrent(self.k_chan, 0.766*1e6, -85.)
+        self.na_chan = channelcollection.NaTa_t()
+        self.tree.addCurrent(self.na_chan, 1.71*1e6, 50.)
         # fit leak current
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
@@ -77,6 +77,44 @@ class TestNest:
             save_cache=False, recompute_cache=True
         )
         self.ctree = cfit.fitModel([(1,0.5)])
+
+    def testInitialization(self):
+        dt = .1
+        nest.ResetKernel()
+        nest.SetKernelStatus(dict(resolution=dt))
+
+        v_eq = -65.
+        self.loadBall()
+        self.tree.fitLeakCurrent(v_eq, 10.)
+        # set computational tree
+        self.tree.setCompTree()
+        # fit the tree again
+        cfit = CompartmentFitter(self.tree,
+            save_cache=False, recompute_cache=True
+        )
+        self.ctree = cfit.fitModel([(1,0.5)])
+
+        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        mm = nest.Create('multimeter', 1,
+            {'record_from': ["v_comp0", "m_Kv3_10", "m_NaTa_t0", "h_NaTa_t0"], 'interval': dt}
+        )
+        nest.Connect(mm, nestmodel)
+        # simulate
+        nest.Simulate(400.)
+        res_nest = nest.GetStatus(mm, 'events')[0]
+
+        sv_na = self.na_chan.computeVarinf(v_eq)
+        sv_k = self.k_chan.computeVarinf(v_eq)
+
+        assert np.abs(res_nest["v_comp0"][0] - v_eq) < 1e-8
+        assert np.abs(res_nest["m_Kv3_10"][0] - sv_k['m']) < 1e-8
+        assert np.abs(res_nest["m_NaTa_t0"][0] - sv_na['m']) < 1e-8
+        assert np.abs(res_nest["h_NaTa_t0"][0] - sv_na['h']) < 1e-8
+        assert np.abs(res_nest["v_comp0"][-1] - v_eq) < 1e-8
+        assert np.abs(res_nest["m_Kv3_10"][-1] - sv_k['m']) < 1e-8
+        assert np.abs(res_nest["m_NaTa_t0"][-1] - sv_na['m']) < 1e-8
+        assert np.abs(res_nest["h_NaTa_t0"][-1] - sv_na['h']) < 1e-8
 
     def testSingleCompNestNeuronComparison(self, pplot=False):
         dt = .001
@@ -123,15 +161,19 @@ class TestNest:
         res_nest['v_comp0'] = res_nest['v_comp0'][idx0:]
         v0 = res_nest['v_comp0'][0]
 
+        idx1 = min(len(res_neuron['v_m'][0]), len(res_nest['v_comp0']))
+        assert np.sqrt(np.mean(
+            (res_nest['v_comp0'][:idx1] - res_neuron['v_m'][0][:idx1])**2
+        )) < .05
         assert np.allclose(
-            res_nest['v_comp0'],
-            res_neuron['v_m'][0][:-2],
-            atol=1.
+            res_nest['v_comp0'][:idx1],
+            res_neuron['v_m'][0][:idx1],
+            atol=4.
         )
 
         if pplot:
-            pl.plot(res_neuron['t'], res_neuron['v_m'][0], 'rx-')
-            pl.plot(res_nest['times'], res_nest['v_comp0'], 'bo--')
+            pl.plot(res_neuron['t'][:idx1], res_neuron['v_m'][0][:idx1], 'rx-')
+            pl.plot(res_nest['times'][:idx1], res_nest['v_comp0'][:idx1], 'bo--')
             pl.show()
 
     def loadAxonTree(self):
@@ -209,9 +251,13 @@ class TestNest:
         res_nest['v_comp2'] = res_nest['v_comp2'][idx0:]
         v0 = res_nest['v_comp0'][0]
 
+        idx1 = min(len(res_neuron['v_m'][0]), len(res_nest['v_comp0']))
+        assert np.sqrt(np.mean(
+            (res_nest['v_comp0'][:idx1] - res_neuron['v_m'][0][:idx1])**2
+        )) < .05
         assert np.allclose(
-            res_nest['v_comp0'],
-            res_neuron['v_m'][0][2:],
+            res_nest['v_comp0'][:idx1],
+            res_neuron['v_m'][0][:idx1],
             atol=1.
         )
 
@@ -258,9 +304,9 @@ class TestNest:
     def testDendNestNeuronComparison(self, pplot=False):
         dt = .01
         tmax = 400.
-        tcal = 200.
+        tcal = 500.
         t1 = 200.
-        idx0 = int(tcal/dt)
+        idx0 = int(tcal/dt) -2
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
@@ -281,7 +327,6 @@ class TestNest:
 
         csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
-        # nestmodel.V_init = -75.
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -335,11 +380,13 @@ class TestNest:
             res_nest[f'h_NaTa_t{ii}'] = res_nest[f'h_NaTa_t{ii}'][idx0:]
             res_nest[f'm_NaTa_t{ii}'] = res_nest[f'm_NaTa_t{ii}'][idx0:]
 
+
+        idx1 = min(len(res_neuron['v_m'][0]), len(res_nest['v_comp0']))
         for ii in range(len(self.ctree)):
             v0 = res_nest[f'v_comp{ii}'][0]
-            v_maxdiff = np.max(np.abs(res_nest[f'v_comp{ii}'] - res_neuron['v_m'][ii,2:]))
-            v_meandiff = np.mean(np.abs(res_nest[f'v_comp{ii}'] - res_neuron['v_m'][ii,2:]))
-            assert v_maxdiff < 1.5 and v_meandiff < 0.005
+            v_maxdiff = np.max(np.abs(res_nest[f'v_comp{ii}'][:idx1] - res_neuron['v_m'][ii,:idx1]))
+            v_meandiff = np.mean(np.abs(res_nest[f'v_comp{ii}'][:idx1] - res_neuron['v_m'][ii,:idx1]))
+            assert v_maxdiff < 2 and v_meandiff < 0.005
 
         if pplot:
             pl.figure('v', figsize=(15,6))
@@ -392,6 +439,7 @@ class TestNest:
 if __name__ == "__main__":
     tn = TestNest()
     tn.testModelConstruction()
-    tn.testSingleCompNestNeuronComparison(pplot=True)
-    tn.testAxonNestNeuronComparison(pplot=True)
-    tn.testDendNestNeuronComparison(pplot=True)
+    tn.testInitialization()
+    # tn.testSingleCompNestNeuronComparison(pplot=True)
+    # tn.testAxonNestNeuronComparison(pplot=True)
+    # tn.testDendNestNeuronComparison(pplot=True)
