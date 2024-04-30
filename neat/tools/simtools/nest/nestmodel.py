@@ -74,14 +74,17 @@ class NestCompartmentNode(CompartmentNode):
     def __init__(self, index, **kwargs):
         super().__init__(index, **kwargs)
 
-    def _makeCompartmentDict(self):
+    def _makeCompartmentDict(self, channel_storage=None):
+
+        # channel parameters
         g_dict = {
             f'gbar_{key}': self.currents[key][0] for key in self.currents if key != 'L'
         }
-
         e_dict = {
             f'e_{key}': self.currents[key][1] for key in self.currents if key != 'L'
         }
+
+        # concentration mech parameters
         c_dict = {}
         for ion, concmech in self.concmechs.items():
             c_dict.update({
@@ -90,15 +93,36 @@ class NestCompartmentNode(CompartmentNode):
                 f'inf_{ion}': concmech.inf,
             })
 
+        # passive parameters
         p_dict = {
             'g_L': self.currents['L'][0],
             'e_L': self.currents['L'][1],
             'C_m': self.ca*1e3, # convert uF to nF
             'g_C': self.g_c,
+            'v_comp': -75.,
         }
+
+        # initialization parameter
+        i_dict = {
+            'v_comp': self.e_eq
+        }
+        for key, (g, e) in self.currents.items():
+            if key == 'L':
+                continue
+            channel = channel_storage[key]
+
+            # append asymptotic state variables to initialization dictionary
+            svs = channel.computeVarinf(i_dict['v_comp'])
+            for sv, val in svs.items():
+                i_dict[f'{sv}_{key}'] = val
+
+        # create full compartment initialization dictionary
         p_dict.update(g_dict)
         p_dict.update(e_dict)
         p_dict.update(c_dict)
+        p_dict.update(i_dict)
+
+        print(p_dict)
 
         if self.parent_node is None:
             parent_idx = -1
@@ -131,7 +155,7 @@ class NestCompartmentTree(CompartmentTree):
         # model indices
         self.resetIndices()
 
-        return [node._makeCompartmentDict() for node in self]
+        return [node._makeCompartmentDict(channel_storage=self.channel_storage) for node in self]
 
     def initModel(self, model_name, n, suffix="_model", v_th=-20., **kwargs):
         """
