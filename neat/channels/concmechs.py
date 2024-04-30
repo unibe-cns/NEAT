@@ -59,7 +59,11 @@ class ExpConcMech(ConcMech):
     def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], channels=[]):
         ion = self.ion
         ion_channels = [chan for chan in channels if chan.ion == ion]
+        read_channels = [chan for chan in channels if ion in chan.conc]
         blocks_dict = {block: "\n" for block in blocks}
+
+        if len(read_channels) == 0:
+            return blocks_dict
 
         if 'state' in blocks:
             blocks_dict['state'] += f"        c_{ion} real = {self.inf}\n"
@@ -71,9 +75,14 @@ class ExpConcMech(ConcMech):
                 f"        inf_{ion} real = {self.inf}\n"
 
         if "equations" in blocks:
+            if len(ion_channels) == 0:
+                chan_str = "0."
+            else:
+                chan_str = f"({' + '.join([f'i_{chan.__class__.__name__}' for chan in ion_channels])})"
+
             blocks_dict["equations"] += \
                 f"        c_{ion}' = (inf_{ion} - c_{ion}) / (tau_{ion} * 1s) + " + \
-                f"gamma_{ion} * ({' + '.join([f'i_{chan.__class__.__name__}' for chan in ion_channels])}) @mechanism::concentration\n"
+                f"gamma_{ion} * {chan_str} @mechanism::concentration\n"
 
         return blocks_dict
 
