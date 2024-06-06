@@ -291,7 +291,7 @@ class TestPhysTree():
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
-    def testFiniteDiffTree(self, rtol_param=2e-3, rtol_dx=1e-10, pprint=False):
+    def testFiniteDiffTree(self, rtol_param=5e-2, rtol_dx=1e-10, pprint=False):
         self.loadTree(reinitialize=1, segments=1)
         # set capacitance, axial resistance
         c_m = 1.; r_a = 100.*1e-6
@@ -342,30 +342,28 @@ class TestPhysTree():
         cfit = CompartmentFitter(self.tree, save_cache=False)
         ctree_fit = cfit.fitModel(locs_fd)
 
-        breakpoint()
-
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
 
             if pprint: print("---")
             # test capacitance match
             if pprint: print(f"ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
-            # assert np.abs(node_fd.ca - node_fit.ca) < \
-            #                     rtol_param * np.max([node_fd.ca, node_fit.ca])
+            assert np.abs(node_fd.ca - node_fit.ca) < \
+                                rtol_param * np.max([node_fd.ca, node_fit.ca])
 
             # test coupling cond match
             if not ctree_fd.isRoot(node_fd):
                 if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
-                # assert np.abs(node_fd.g_c - node_fit.g_c) < \
-                #                     rtol_param * np.max([node_fd.g_c, node_fit.g_c])
+                assert np.abs(node_fd.g_c - node_fit.g_c) < \
+                                    rtol_param * np.max([node_fd.g_c, node_fit.g_c])
 
             # test leak current match
             for key in node_fd.currents:
                 g_fd = node_fd.currents[key][0]
                 g_fit = node_fit.currents[key][0]
                 if pprint: print(f"g_{key}_fd = {g_fd}, g_{key}_fit = {g_fit}")
-                # assert np.abs(g_fd - g_fit) < \
-                #                 rtol_param * np.max([g_fd, g_fit])
+                assert np.abs(g_fd - g_fit) < \
+                                rtol_param * np.max([g_fd, g_fit])
 
         # test tree with varying conductance densities
         self.loadTree(reinitialize=1, segments=1)

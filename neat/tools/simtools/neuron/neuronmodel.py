@@ -1136,5 +1136,6 @@ def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
             sim_node.r_a = fake_r_a
             sim_node.R = radii[comp_node.index]*1e4    # convert to [um]
             sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
+
     return sim_tree
 

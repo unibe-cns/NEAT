@@ -521,6 +521,11 @@ class MorphTree(STree):
         for ind, node in enumerate(self):
             node.index = ind+1
 
+    def setRoot(self, node):
+        node.parent_node = None
+        self._original_root = node
+        self._root = node
+
     def getNodes(self, skip_inds=(2,3)):
         """
         Overloads the parent function to allow skipping nodes with certain

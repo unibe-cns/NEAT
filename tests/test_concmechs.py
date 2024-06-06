@@ -530,7 +530,7 @@ class TestConcMechs:
         cfit.fitCapacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True, parallel=False)
+        cfit.fitChannels(pprint=True)
 
         # fit the concentration mechanism
         cfit.fitConcentration('ca', fit_tau=fit_tau, pprint=True)
@@ -611,7 +611,7 @@ class TestConcMechs:
         cfit.fitCapacitance(pprint=False, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=False, parallel=False)
+        cfit.fitChannels(pprint=False)
 
         # fit the concentration mechanism
         cfit.fitConcentration('ca', pprint=False)
@@ -723,7 +723,7 @@ class TestConcMechs:
         cfit.fitCapacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True, parallel=False)
+        cfit.fitChannels(pprint=True)
 
         # fit the concentration mechanism
         cfit.fitConcentration('ca', pprint=True)
@@ -852,8 +852,8 @@ if __name__ == "__main__":
     # tcm.testImpedance(pplot=True)
     # tcm.testFittingBall(pplot=True)
     # tcm.testTauFitBall(pplot=True)
-    # tcm.testFittingBallAndStick(pplot=True)
-    tcm.testFiniteDifference()
+    tcm.testFittingBallAndStick(pplot=True)
+    # tcm.testFiniteDifference()
     # tcm.testLocalizedConcMechPasAxon()
     # tcm.testLocalizedConcMechActAxon()
     # tcm.testNestNeuronSimBall(pplot=True, amp=2.0)

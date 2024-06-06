@@ -664,7 +664,7 @@ if __name__ == '__main__':
     # tcf.testTreeStructure()
     # tcf.testCreateTreeGF()
     # tcf.testChannelFitMats()
-    # tcf.testPassiveFit()
+    tcf.testPassiveFit()
     # tcf.testRecalcImpedanceMatrix()
     # tcf.testSynRescale()
     # tcf.testFitModel()
