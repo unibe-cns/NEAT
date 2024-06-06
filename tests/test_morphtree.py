@@ -158,60 +158,59 @@ class TestMorphTree():
 
     def testCompTree0(self):
         self.loadTree(reinitialize=1)
-        # check exception when treetype is invalid
-        with pytest.raises(ValueError):
-            self.tree.treetype = 'bla'
         # check exception when computational tree has not been set
-        with pytest.raises(ValueError):
-            self.tree.treetype = 'computational'
+        with pytest.raises(AttributeError):
+            with self.tree.as_computational_tree:
+                pass
         # initialize the comptree
         self.tree.setCompTree(eps=1.)
         # set computational tree as primary tree
-        self.tree.treetype = 'computational'
-        # check root node
-        root = self.tree[1]
-        assert root.parent_node == None
-        assert len(root.child_nodes) == 1 \
-               and set([node.index for node in root.child_nodes]) == set([4])
-        assert np.allclose(root.xyz, np.array([0.,0.,0.]))
-        assert np.allclose(root.R, 10.)
-        assert np.allclose(root.L, 0.)
-        assert root.swc_type == 1
-        # check bifurcation node
-        bifur = self.tree[4]
-        assert bifur.parent_node == root
-        assert len(bifur.child_nodes) == 2 \
-               and set([node.index for node in bifur.child_nodes]) == set([6,8])
-        assert np.allclose(bifur.xyz, np.array([100.,0.,0.]))
-        assert np.allclose(bifur.R, 1.)
-        assert np.allclose(bifur.L, 100.)
-        assert bifur.swc_type == 4
-        # check leaf nodes
-        leaf1 = self.tree[6]
-        assert leaf1.parent_node == bifur
-        assert len(leaf1.child_nodes) == 0
-        assert np.allclose(leaf1.xyz, np.array([100.,100.,0.]))
-        assert np.allclose(leaf1.R, .75)
-        assert np.allclose(leaf1.L, 100.)
-        assert leaf1.swc_type == 4
-        leaf2 = self.tree[8]
-        assert leaf2.parent_node == bifur
-        assert len(leaf2.child_nodes) == 0
-        assert np.allclose(leaf2.xyz, np.array([100.,-100.,0.]))
-        assert np.allclose(leaf2.R, .75)
-        assert np.allclose(leaf2.L, 100.)
-        # test nodes getter
-        assert len(self.tree.nodes) == 4
-        leafs = self.tree.leafs
-        assert np.allclose([leafs[0].L, leafs[1].L], [100., 100.])
-        self.tree.treetype = 'original'
+        with self.tree.as_computational_tree:
+            # check root node
+            root = self.tree[1]
+            assert root.parent_node == None
+            assert len(root.child_nodes) == 1 \
+                and set([node.index for node in root.child_nodes]) == set([4])
+            assert np.allclose(root.xyz, np.array([0.,0.,0.]))
+            assert np.allclose(root.R, 10.)
+            assert np.allclose(root.L, 0.)
+            assert root.swc_type == 1
+            # check bifurcation node
+            bifur = self.tree[4]
+            assert bifur.parent_node == root
+            assert len(bifur.child_nodes) == 2 \
+                and set([node.index for node in bifur.child_nodes]) == set([6,8])
+            assert np.allclose(bifur.xyz, np.array([100.,0.,0.]))
+            assert np.allclose(bifur.R, 1.)
+            assert np.allclose(bifur.L, 100.)
+            assert bifur.swc_type == 4
+            # check leaf nodes
+            leaf1 = self.tree[6]
+            assert leaf1.parent_node == bifur
+            assert len(leaf1.child_nodes) == 0
+            assert np.allclose(leaf1.xyz, np.array([100.,100.,0.]))
+            assert np.allclose(leaf1.R, .75)
+            assert np.allclose(leaf1.L, 100.)
+            assert leaf1.swc_type == 4
+            leaf2 = self.tree[8]
+            assert leaf2.parent_node == bifur
+            assert len(leaf2.child_nodes) == 0
+            assert np.allclose(leaf2.xyz, np.array([100.,-100.,0.]))
+            assert np.allclose(leaf2.R, .75)
+            assert np.allclose(leaf2.L, 100.)
+            # test nodes getter
+            assert len(self.tree.nodes) == 4
+            leafs = self.tree.leafs
+            assert np.allclose([leafs[0].L, leafs[1].L], [100., 100.])
+        # work in the original tree
         assert len(self.tree.nodes) == 6
         leafs = self.tree.leafs
         assert np.allclose([leafs[0].L, leafs[1].L], [50., 50.])
         # remove the computational tree
         self.tree.removeCompTree()
-        with pytest.raises(ValueError):
-            self.tree.treetype = 'computational'
+        with pytest.raises(AttributeError):
+            with self.tree.as_computational_tree:
+                pass
         for node in self.tree:
             assert not node.used_in_comp_tree
 
@@ -220,7 +219,6 @@ class TestMorphTree():
         nodes = self.tree._convertNodeArgToNodes(None)
         assert self.tree.nodes == nodes
         nodes = self.tree._convertNodeArgToNodes(self.tree[4])
-        # breakpoint()
         assert self.tree.gatherNodes(self.tree[4]) == nodes
         nodes = self.tree._convertNodeArgToNodes('apical')
         assert self.tree.getNodesInApicalSubtree() == nodes
@@ -236,26 +234,25 @@ class TestMorphTree():
         with pytest.raises(IOError):
             self.tree._convertNodeArgToNodes(5)
         # with the computational tree
-        self.tree.setCompTree(set_as_primary_tree=1, eps=1.)
-        nodes = self.tree._convertNodeArgToNodes(None)
-        assert self.tree.nodes == nodes
-        nodes = self.tree._convertNodeArgToNodes(self.tree[4])
-        assert self.tree.gatherNodes(self.tree[4]) == nodes
-        nodes = self.tree._convertNodeArgToNodes('apical')
-        assert self.tree.getNodesInApicalSubtree() == nodes
-        nodes = self.tree._convertNodeArgToNodes('basal')
-        assert self.tree.getNodesInBasalSubtree() == nodes
-        nodes = self.tree._convertNodeArgToNodes('axonal')
-        assert self.tree.getNodesInAxonalSubtree() == nodes
-        nodes__ = [self.tree[6], self.tree[8]]
-        nodes = self.tree._convertNodeArgToNodes(nodes_)
-        assert nodes_ != nodes
-        assert nodes__ == nodes
+        self.tree.setCompTree(eps=1.)
+        with self.tree.as_computational_tree:
+            nodes = self.tree._convertNodeArgToNodes(None)
+            assert self.tree.nodes == nodes
+            nodes = self.tree._convertNodeArgToNodes(self.tree[4])
+            assert self.tree.gatherNodes(self.tree[4]) == nodes
+            nodes = self.tree._convertNodeArgToNodes('apical')
+            assert self.tree.getNodesInApicalSubtree() == nodes
+            nodes = self.tree._convertNodeArgToNodes('basal')
+            assert self.tree.getNodesInBasalSubtree() == nodes
+            nodes = self.tree._convertNodeArgToNodes('axonal')
+            assert self.tree.getNodesInAxonalSubtree() == nodes
+            nodes__ = [self.tree[6], self.tree[8]]
+            nodes = self.tree._convertNodeArgToNodes(nodes_)
+            assert nodes_ != nodes
+            assert nodes__ == nodes
 
     def testLocFunctionality(self):
         self.loadTree()
-        # locs in the original tree
-        self.tree.treetype = 'original'
         locs = [MorphLoc({'node': 1, 'x': .5}, self.tree),
                 MorphLoc({'node': 4, 'x': .5}, self.tree),
                 MorphLoc({'node': 5, 'x': .5}, self.tree),
@@ -264,14 +261,14 @@ class TestMorphTree():
                 MorphLoc({'node': 8, 'x': .5}, self.tree)]
         # set the computational tree
         self.tree.setCompTree(eps=1.)
-        self.tree.treetype = 'computational'
-        for loc in locs: loc._setComputationalLoc()
-        assert locs[0].comp_loc == locs[0].loc
-        assert locs[1].comp_loc == locs[1].loc
-        assert locs[2].comp_loc == {'node': 6, 'x': .25}
-        assert locs[3].comp_loc == {'node': 8, 'x': .25}
-        assert locs[4].comp_loc == {'node': 6, 'x': .75}
-        assert locs[5].comp_loc == {'node': 8, 'x': .75}
+        with self.tree.as_computational_tree:
+            for loc in locs: loc._setComputationalLoc()
+            assert locs[0].comp_loc == locs[0].loc
+            assert locs[1].comp_loc == locs[1].loc
+            assert locs[2].comp_loc == {'node': 6, 'x': .25}
+            assert locs[3].comp_loc == {'node': 8, 'x': .25}
+            assert locs[4].comp_loc == {'node': 6, 'x': .75}
+            assert locs[5].comp_loc == {'node': 8, 'x': .75}
 
     def testUniqueLocs(self):
         self.loadTree()
@@ -295,8 +292,6 @@ class TestMorphTree():
 
     def testPathLength(self):
         self.loadTree()
-        # lengths in the original tree
-        self.tree.treetype = 'original'
         # test lengths
         L = self.tree.pathLength({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
         assert np.allclose(L, 0.)
@@ -318,26 +313,26 @@ class TestMorphTree():
         assert np.allclose(L, 110.)
         # lengths in the original tree
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        # test lengths
-        L = self.tree.pathLength({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
-        assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .4})
-        assert np.allclose(L, 100.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .6})
-        assert np.allclose(L, 100.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 4, 'x': 1.})
-        assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 5, 'x': 0.})
-        assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': .5}, {'node': 5, 'x': .2})
-        assert np.allclose(L, 60.)
-        L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 4, 'x': .5})
-        assert np.allclose(L, 60.)
-        L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 7, 'x': .2})
-        assert np.allclose(L, 20.)
-        L = self.tree.pathLength({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
-        assert np.allclose(L, 110.)
+        with self.tree.as_computational_tree:
+            # test lengths
+            L = self.tree.pathLength({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
+            assert np.allclose(L, 0.)
+            L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .4})
+            assert np.allclose(L, 100.)
+            L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .6})
+            assert np.allclose(L, 100.)
+            L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 4, 'x': 1.})
+            assert np.allclose(L, 0.)
+            L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 5, 'x': 0.})
+            assert np.allclose(L, 0.)
+            L = self.tree.pathLength({'node': 4, 'x': .5}, {'node': 5, 'x': .2})
+            assert np.allclose(L, 60.)
+            L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 4, 'x': .5})
+            assert np.allclose(L, 60.)
+            L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 7, 'x': .2})
+            assert np.allclose(L, 20.)
+            L = self.tree.pathLength({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
+            assert np.allclose(L, 110.)
 
     def testLocStorageRetrievalLookup(self):
         self.loadTree()
@@ -482,11 +477,9 @@ class TestMorphTree():
         self.loadTree()
         # check comptree resetting
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        with pytest.raises(IOError):
-            self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
-        assert self.tree.treetype == 'computational'
-        self.tree.treetype = 'original'
+        with self.tree.as_computational_tree:
+            with pytest.raises(IOError):
+                self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
         # test loc distribution on nodes
         locs = self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]),
                                                   [self.tree[6], self.tree[8]])
@@ -599,103 +592,99 @@ class TestMorphTree():
         # test x-axis coloring (just sees if function runs)
         self.tree.colorXAxis(pl.gca(), pl.get_cmap('jet'))
         # computational tree
-        self.tree.treetype = 'computational'
-        pl.figure('plot 1d test comp')
-        lines = self.tree.plot1D(pl.gca(), parr, c='r')
-        assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
-        assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
-        assert np.allclose(lines[0].get_data()[1], parr[0:5])
-        assert np.allclose(lines[1].get_data()[1], parr[5:])
-        xarr = np.array([0.,50.,100.,150.,200.,200.,250.])
-        assert np.allclose(lines[0].get_data()[0], xarr[0:5])
-        assert np.allclose(lines[1].get_data()[0], xarr[5:])
-        assert lines[0].get_color() == 'r'
-        # test x-axis coloring (just sees if function runs)
-        self.tree.colorXAxis(pl.gca(), pl.get_cmap('jet'))
-        # a true distance from soma plot
-        parr = np.array([1.,2.,3.,4.,5.,4.,3.])
-        pl.figure('plot d2s test')
-        lines = self.tree.plotTrueD2S(pl.gca(),parr)
-        assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
-        assert np.allclose(lines[0].get_data()[1], parr[0:5])
-        assert np.allclose(lines[1].get_data()[1], parr[5:])
-        assert np.allclose(lines[0].get_data()[0], self.tree.d2s['xaxis'][0:5])
-        assert np.allclose(lines[1].get_data()[0], self.tree.d2s['xaxis'][5:])
-        # test 2D plotting (just sees if function runs)
-        pl.figure('plot morphology test')
-        cs = {node.index: node.index for node in self.tree}
-        marklocs = [(1,.5), (4,.8), (6,.2)]
-        locargs = {'marker': 'o', 'mfc': 'r', 'ms': 6}
-        marklabels = {0: r'soma', 1: r'$\mu$'}
-        labelargs = {'fontsize': 8}
-        self.tree.plot2DMorphology(pl.gca(), cs=cs, cmap=pl.get_cmap('summer'),
-                                     plotargs={'lw':2},
-                                     marklocs=marklocs, locargs=locargs,
-                                     marklabels=marklabels, labelargs=labelargs,
-                                     textargs={'fontsize': 24},
-                                     cb_draw=True)
-        if pshow: pl.show()
+        with self.tree.as_computational_tree:
+            pl.figure('plot 1d test comp')
+            lines = self.tree.plot1D(pl.gca(), parr, c='r')
+            assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
+            assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
+            assert np.allclose(lines[0].get_data()[1], parr[0:5])
+            assert np.allclose(lines[1].get_data()[1], parr[5:])
+            xarr = np.array([0.,50.,100.,150.,200.,200.,250.])
+            assert np.allclose(lines[0].get_data()[0], xarr[0:5])
+            assert np.allclose(lines[1].get_data()[0], xarr[5:])
+            assert lines[0].get_color() == 'r'
+            # test x-axis coloring (just sees if function runs)
+            self.tree.colorXAxis(pl.gca(), pl.get_cmap('jet'))
+            # a true distance from soma plot
+            parr = np.array([1.,2.,3.,4.,5.,4.,3.])
+            pl.figure('plot d2s test')
+            lines = self.tree.plotTrueD2S(pl.gca(),parr)
+            assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
+            assert np.allclose(lines[0].get_data()[1], parr[0:5])
+            assert np.allclose(lines[1].get_data()[1], parr[5:])
+            assert np.allclose(lines[0].get_data()[0], self.tree.d2s['xaxis'][0:5])
+            assert np.allclose(lines[1].get_data()[0], self.tree.d2s['xaxis'][5:])
+            # test 2D plotting (just sees if function runs)
+            pl.figure('plot morphology test')
+            cs = {node.index: node.index for node in self.tree}
+            marklocs = [(1,.5), (4,.8), (6,.2)]
+            locargs = {'marker': 'o', 'mfc': 'r', 'ms': 6}
+            marklabels = {0: r'soma', 1: r'$\mu$'}
+            labelargs = {'fontsize': 8}
+            self.tree.plot2DMorphology(pl.gca(), cs=cs, cmap=pl.get_cmap('summer'),
+                                        plotargs={'lw':2},
+                                        marklocs=marklocs, locargs=locargs,
+                                        marklabels=marklabels, labelargs=labelargs,
+                                        textargs={'fontsize': 24},
+                                        cb_draw=True)
+            if pshow: pl.show()
 
     def testCompTree(self):
         self.loadTree(reinitialize=1, segments=True)
         self.tree.setCompTree()
         # check whether amount of nodes is correct
-        self.tree.treetype = 'original'
         assert len(self.tree.nodes) == 10
         assert len([node for node in self.tree]) == 10
-        self.tree.treetype = 'computational'
-        assert len(self.tree.nodes) == 4
-        assert len([node for node in self.tree]) == 4
-        # check whether computational nodes are correct
-        for node in self.tree: assert node.index in [1,8,10,12]
-
-        # check whether returned nodes from `MorphTree._convertNodeArgToNodes`
-        # are correct
-        ns_orig = self.tree._nodes_orig
-        ns_comp = self.tree._convertNodeArgToNodes(ns_orig)
-        assert [n.index for n in ns_comp] == [1,8,10,12]
-        ns_comp = self.tree._convertNodeArgToNodes('apical')
-        assert [n.index for n in ns_comp] == [8,10,12]
-        ns_comp = self.tree._convertNodeArgToNodes('basal')
-        assert [n.index for n in ns_comp] == []
-        ns_comp = [self.tree._convertNodeArgToNodes(n)[0] for n in ns_orig]
-        assert [n.index for n in ns_comp] == [1,8,8,8,8,8,10,10,12,12]
-        # assert whether returned nodes have correct structure
-        assert self.tree[5] == None
-        assert self.tree[6] == None
-        assert self.tree[7] == None
-        assert self.tree[9] == None
-        assert self.tree[11] == None
-        assert self.tree[1].parent_node == None
-        assert self.tree[8].parent_node.index == 1
-        assert self.tree[10].parent_node.index == 8
-        assert self.tree[12].parent_node.index == 8
-        assert self.tree[1].child_nodes[0].index == 8
-        assert [cn.index for cn in self.tree[8].child_nodes] == [10,12]
-        assert self.tree[10].child_nodes == []
-        assert self.tree[12].child_nodes == []
+        # get nodes in original tree
+        ns_orig = self.tree.nodes
+        with self.tree.as_computational_tree:
+            assert len(self.tree.nodes) == 4
+            assert len([node for node in self.tree]) == 4
+            # check whether computational nodes are correct
+            for node in self.tree: assert node.index in [1,8,10,12]
+            # check whether returned nodes from `MorphTree._convertNodeArgToNodes`
+            # are correct
+            ns_comp = self.tree._convertNodeArgToNodes(ns_orig)
+            assert [n.index for n in ns_comp] == [1,8,10,12]
+            ns_comp = self.tree._convertNodeArgToNodes('apical')
+            assert [n.index for n in ns_comp] == [8,10,12]
+            ns_comp = self.tree._convertNodeArgToNodes('basal')
+            assert [n.index for n in ns_comp] == []
+            ns_comp = [self.tree._convertNodeArgToNodes(n)[0] for n in ns_orig]
+            assert [n.index for n in ns_comp] == [1,8,8,8,8,8,10,10,12,12]
+            # assert whether returned nodes have correct structure
+            assert self.tree[5] == None
+            assert self.tree[6] == None
+            assert self.tree[7] == None
+            assert self.tree[9] == None
+            assert self.tree[11] == None
+            assert self.tree[1].parent_node == None
+            assert self.tree[8].parent_node.index == 1
+            assert self.tree[10].parent_node.index == 8
+            assert self.tree[12].parent_node.index == 8
+            assert self.tree[1].child_nodes[0].index == 8
+            assert [cn.index for cn in self.tree[8].child_nodes] == [10,12]
+            assert self.tree[10].child_nodes == []
+            assert self.tree[12].child_nodes == []
 
         # change radius of a node and check whether computational tree is correct
         # (i) below threshold
-        self.tree.treetype = 'original'
         self.tree[5].R += 1e-12
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        for node in self.tree: assert node.index in [1,8,10,12]
+        with self.tree.as_computational_tree:
+            for node in self.tree: assert node.index in [1,8,10,12]
 
         # (i1) above threshold, one node
-        self.tree.treetype = 'original'
         self.tree[5].R += 1e-2
         self.tree.setCompTree(eps=1e-9)
-        self.tree.treetype = 'computational'
-        for node in self.tree: assert node.index in [1,4,5,8,10,12]
+        with self.tree.as_computational_tree:
+            for node in self.tree: assert node.index in [1,4,5,8,10,12]
 
         # (i2) above threshold, two consecutive nodes
-        self.tree.treetype = 'original'
         self.tree[4].R += 1e-2
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        for node in self.tree: assert node.index in [1,5,8,10,12]
+        with self.tree.as_computational_tree:
+            for node in self.tree: assert node.index in [1,5,8,10,12]
 
 
     def testOnePointSoma(self):
@@ -713,7 +702,6 @@ class TestMorphTree():
             assert np.allclose(xyz1, xyz3)
             assert np.allclose(R1, R3)
             assert swc_type1 == swc_type3
-
 
 
     def testThreePointSoma(self):
@@ -759,8 +747,8 @@ if __name__ == '__main__':
     # tmt.testPlotting(pshow=True)
     # tmt.testCompTree0()
     # tmt.testInputArgConversion()
-    # tmt.testLocFunctionality()
-    tmt.testUniqueLocs()
+    tmt.testLocFunctionality()
+    # tmt.testUniqueLocs()
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()
     # tmt.testCompTree()

@@ -14,22 +14,22 @@ import warnings
 
 from . import morphtree
 from .morphtree import MorphNode, MorphTree, MorphLoc
-from .morphtree import computationalTreetypeDecorator, originalTreetypeDecorator
+from .morphtree import computational_tree_decorator
 from ..channels import concmechs, ionchannels
 from ..factorydefaults import DefaultPhysiology
 
 CFG = DefaultPhysiology()
 
 
-def originalTreeModificationDecorator(fun):
+def comptree_removal_decorator(fun):
     """
-    Decorator that provides the safety that the treetype is set to
-    'original' inside the functions, and that the computational tree is removed.
+    Decorator that provides the safety that the computational tree is removed
+    when a function changes the physiological parameters of a tree
     """
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
-        self.treetype = 'original'
-        res = fun(self, *args, **kwargs)
+        with self.as_original_tree:
+            res = fun(self, *args, **kwargs)
         self._computational_root = None
         return res
     wrapped.__doc__ = fun.__doc__
@@ -401,7 +401,7 @@ class PhysTree(MorphTree):
         """
         return PhysNode(node_index, p3d=p3d)
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def asPassiveMembrane(self, channel_names=None, node_arg=None):
         """
         Makes the membrane act as a passive membrane (for the nodes in
@@ -439,7 +439,7 @@ class PhysTree(MorphTree):
                             'or a callable')
         return val
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def setVEP(self, v_ep_distr, node_arg=None):
         """
         Set the voltage expansion points throughout the tree.
@@ -457,7 +457,7 @@ class PhysTree(MorphTree):
             e = self._distr2Float(v_ep_distr, node, argname='`v_ep_distr`')
             node.setVEP(e)
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def setConcEP(self, ion, conc_eq_distr, node_arg=None):
         """
         Set the concentration expansion points throughout the tree.
@@ -475,7 +475,7 @@ class PhysTree(MorphTree):
             conc = self._distr2Float(conc_eq_distr, node, argname='`conc_eq_distr`')
             node.setConcEP(ion, conc)
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def setPhysiology(self, c_m_distr, r_a_distr, g_s_distr=None, node_arg=None):
         """
         Set specifice membrane capacitance, axial resistance and (optionally)
@@ -504,7 +504,7 @@ class PhysTree(MorphTree):
                   g_s_distr is not None else 0.
             node.setPhysiology(c_m, r_a, g_s)
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def setLeakCurrent(self, g_l_distr, e_l_distr, node_arg=None):
         """
         Set the parameters of the leak current. At each node, leak is stored
@@ -535,7 +535,7 @@ class PhysTree(MorphTree):
             e_l = self._distr2Float(e_l_distr, node, argname='`e_l_distr`')
             node._addCurrent('L', g_l, e_l)
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def addCurrent(self, channel, g_max_distr, e_rev_distr, node_arg=None):
         """
         Adds a channel to the morphology. At each node, the channel is stored
@@ -578,7 +578,7 @@ class PhysTree(MorphTree):
             e_rev = self._distr2Float(e_rev_distr, node, argname='`e_rev_distr`')
             node._addCurrent(channel_name, g_max, e_rev)
 
-    @morphtree.originalTreetypeDecorator
+    @morphtree.original_tree_decorator
     def getChannelsInTree(self):
         """
         Returns list of strings of all channel names in the tree
@@ -590,7 +590,7 @@ class PhysTree(MorphTree):
         """
         return list(self.channel_storage.keys())
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def addConcMech(self, ion, params={}, node_arg=None):
         """
         Add a concentration mechanism to the tree
@@ -609,7 +609,7 @@ class PhysTree(MorphTree):
         for node in self._convertNodeArgToNodes(node_arg):
             node.addConcMech(ion, params=params)
 
-    @originalTreeModificationDecorator
+    @comptree_removal_decorator
     def fitLeakCurrent(self, e_eq_target_distr, tau_m_target_distr, node_arg=None):
         """
         Fits the leak current to fix equilibrium potential and membrane time-
@@ -683,7 +683,6 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    @originalTreetypeDecorator
     def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
@@ -752,7 +751,7 @@ class PhysTree(MorphTree):
 
         return new_tree
 
-    @computationalTreetypeDecorator
+    @computational_tree_decorator
     def createFiniteDifferenceTree(self,
                     dx_max=15., name='dont store'):
         """
@@ -782,7 +781,7 @@ class PhysTree(MorphTree):
             The location corresponding to the compartments of the finite
             difference approximation
         """
-        set_as_comploc = self.treetype == 'computational'
+        set_as_comploc = self.check_computational_tree_active()
 
         # create the list of compartment locations for FD approximation
         locs = []

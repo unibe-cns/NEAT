@@ -170,17 +170,17 @@ class CompartmentFitter(object):
                 recompute_cache=self.recompute_cache,
             )
         )
-        self.tree.treetype = 'original'
-        # set the equilibrium potentials in the tree
-        self.tree.setEEq(pprint=True)
-        # get all channels in the tree
-        self.channel_names = self.tree.getChannelsInTree()
+        with self.tree.as_original_tree:
+            # set the equilibrium potentials in the tree
+            self.tree.setEEq(pprint=True)
+            # get all channels in the tree
+            self.channel_names = self.tree.getChannelsInTree()
 
-        self.cfg = fit_cfg
-        if fit_cfg is None:
-            self.cfg = DefaultFitting()
-        if concmech_cfg is None:
-            self.concmech_cfg = DefaultMechParams()
+            self.cfg = fit_cfg
+            if fit_cfg is None:
+                self.cfg = DefaultFitting()
+            if concmech_cfg is None:
+                self.concmech_cfg = DefaultMechParams()
 
 
         # boolean flag that is reset the first time `self.fitPassive` is called

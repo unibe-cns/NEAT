@@ -53,13 +53,11 @@ class BrancoSimTree(NeuronSimTree):
         global SYN_NODE_IND, SYN_XCOMP
         # set computational tree
         self.setCompTree()
-        self.treetype = 'computational'
-        # define the locations
-        locs = [MorphLoc((SYN_NODE_IND, x), self, set_as_comploc=True) for x in SYN_XCOMP]
-        self.storeLocs(locs, name='syn locs')
-        self.storeLocs([(1., 0.5)], name='soma loc')
-        # set treetype back
-        self.treetype = 'original'
+        with self.as_computational_tree:
+            # define the locations
+            locs = [MorphLoc((SYN_NODE_IND, x), self, set_as_comploc=True) for x in SYN_XCOMP]
+            self.storeLocs(locs, name='syn locs')
+            self.storeLocs([(1., 0.5)], name='soma loc')
 
     def deleteModel(self):
         super(BrancoSimTree, self).deleteModel()

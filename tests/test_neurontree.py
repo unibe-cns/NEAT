@@ -52,7 +52,7 @@ class TestNeuron():
         self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=10., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
-        self.neurontree.treetype = 'computational'
+        self.neurontree.set_default_tree("computational")
 
     def loadTTreeActive(self):
         """
@@ -80,7 +80,7 @@ class TestNeuron():
         self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=10., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
-        self.neurontree.treetype = 'computational'
+        self.neurontree.set_default_tree("computational")
 
     def loadTTreeTestChannel(self):
         """
@@ -108,7 +108,7 @@ class TestNeuron():
         self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=100., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
-        self.neurontree.treetype = 'computational'
+        self.neurontree.set_default_tree("computational")
 
     def loadTTreeTestChannelSoma(self):
         """
@@ -136,7 +136,7 @@ class TestNeuron():
         self.neurontree = NeuronSimTree(dt=self.dt, t_calibrate=100., v_init=v_eq,
                                               factor_lambda=25.)
         self.greenstree.__copy__(self.neurontree)
-        self.neurontree.treetype = 'computational'
+        self.neurontree.set_default_tree("computational")
 
     def testPassive(self, pplot=False):
         self.loadTTreePassive()

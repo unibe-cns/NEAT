@@ -12,7 +12,7 @@ import os
 import pickle
 
 
-from ..trees.morphtree import computationalTreetypeDecorator
+from ..trees.morphtree import computational_tree_decorator
 from ..trees.phystree import PhysTree
 from ..trees.greenstree import GreensTree, GreensTreeTime
 from ..trees.sovtree import SOVTree
@@ -339,7 +339,7 @@ class FitTreeGF(GreensTree, FitTree):
             ]
         )
 
-    @computationalTreetypeDecorator
+    @computational_tree_decorator
     def calcNETSteadyState(self, root_loc=None, dx=5., dz=5.):
         if root_loc is None: root_loc = (1, .5)
         root_loc = MorphLoc(root_loc, self)

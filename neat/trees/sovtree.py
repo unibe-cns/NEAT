@@ -302,7 +302,7 @@ class SOVTree(PhysTree):
         else:
             return SOVNode(node_index, p3d=p3d)
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def getSOVMatrices(self, locarg):
         """
         returns the alphas, the reciprocals of the mode time scales [1/ms]
@@ -349,7 +349,7 @@ class SOVTree(PhysTree):
         # return the matrices
         return alphas, gammas
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcSOVEquations(self, maxspace_freq=500., pprint=False):
         """
         Calculate the timescales and spatial functions of the separation of

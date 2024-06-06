@@ -65,19 +65,19 @@ class TestSOVTree():
         self.tree.calcSOVEquations()
         alphas, gammas = self.tree.getSOVMatrices([(1, 0.5)])
         # compute time scales analytically
-        self.tree.treetype = 'computational'
-        lambda_m_test = np.sqrt(self.tree[4].R_sov / \
-                        (2.*self.tree[4].g_m*self.tree[4].r_a))
-        tau_m_test = self.tree[4].c_m / self.tree[4].g_m * 1e3
-        alphas_test = \
-            (1. + \
-            (np.pi * np.arange(20) * lambda_m_test / \
-            (self.tree[4].L_sov + self.tree[5].L_sov))**2) / \
-            tau_m_test
-        # compare analytical and computed time scales
-        assert np.allclose(alphas[:20], alphas_test)
-        # compute the spatial mode functions analytically
-        ## TODO
+        with self.tree.as_computational_tree:
+            lambda_m_test = np.sqrt(self.tree[4].R_sov / \
+                            (2.*self.tree[4].g_m*self.tree[4].r_a))
+            tau_m_test = self.tree[4].c_m / self.tree[4].g_m * 1e3
+            alphas_test = \
+                (1. + \
+                (np.pi * np.arange(20) * lambda_m_test / \
+                (self.tree[4].L_sov + self.tree[5].L_sov))**2) / \
+                tau_m_test
+            # compare analytical and computed time scales
+            assert np.allclose(alphas[:20], alphas_test)
+            # compute the spatial mode functions analytically
+            ## TODO
 
         # test basic identities
         self.loadTTree()
