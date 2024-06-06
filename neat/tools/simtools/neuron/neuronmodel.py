@@ -911,7 +911,7 @@ class NeuronSimTree(PhysTree):
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
         if set_v_ep:
-            for (node, e) in zip(self, v_eq): node.setVEP(v_ep)
+            for (node, e) in zip(self, v_eq): node.setVEP(v_eq)
 
 
         return v_eq

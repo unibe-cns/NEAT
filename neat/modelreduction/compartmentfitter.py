@@ -37,13 +37,6 @@ def cpu_count(use_hyperthreading=True):
         return multiprocessing.cpu_count() // 2
 
 
-def consecutive(inds):
-    """
-    split a list of ints into consecutive sublists
-    """
-    return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
-
-
 def _statevar_is_activating(f_statevar):
     """
     check whether a statevar is activating or inactivating

@@ -10,18 +10,27 @@ import numpy as np
 
 import os
 import pickle
+import warnings
 
 
-from ..trees.morphtree import computational_tree_decorator
+from ..trees.morphtree import computational_tree_decorator, MorphLoc
 from ..trees.phystree import PhysTree
 from ..trees.greenstree import GreensTree, GreensTreeTime
 from ..trees.sovtree import SOVTree
+from ..trees.netree import NET, NETNode
 
 
 try:
     from ..tools.simtools.neuron import neuronmodel as neurm
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, equilibrium evaluation not working', UserWarning)
+
+
+def consecutive(inds):
+    """
+    split a list of ints into consecutive sublists
+    """
+    return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
 
 
 class FitTree(PhysTree):
