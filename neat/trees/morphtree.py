@@ -427,14 +427,14 @@ class MorphTree(STree):
             of locations. Initialized as empty dict.
     """
 
-    def __init__(self, file_n=None, types=[1,3,4]):
+    def __init__(self, arg=None, types=[1,3,4]):
         # we initialize two root nodes, one for the original tree mimicking the
         # .swc file, and one for the coarse grained tree for computational efficiency
-        if file_n != None:
-            self.readSWCTreeFromFile(file_n, types=types)
+        if isinstance(arg, str):
+            self.readSWCTreeFromFile(arg, types=types)
         else:
-            self._original_root = None
-            super().__init__(self._original_root)
+            super().__init__(arg)
+            self._original_root = self._root
         self._computational_root = None
         # to store sets of locations on the morphology
         self.locs = {}

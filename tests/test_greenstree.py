@@ -257,7 +257,7 @@ class TestGreensTreeTime():
         '''
         Load point neuron model
         '''
-        self.tree = GreensTreeTime(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.tree = GreensTreeTime(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         if is_active:
@@ -287,8 +287,8 @@ class TestGreensTreeTime():
 
     def testPassiveKernels(self, pplot=False):
         self.loadTTree()
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        greens_tree = GreensTree(self.tree)
+        sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         self.tree.setImpedance(self.ft)
@@ -359,8 +359,8 @@ class TestGreensTreeTime():
 
     def testActiveKernels(self, pplot=True):
         self.loadAxonTree()
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        greens_tree = GreensTree(self.tree)
+        sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .5), (5, .95)]
         self.tree.setImpedance(self.ft)
@@ -420,7 +420,7 @@ class TestGreensTreeTime():
     def testChannelResponses(self, pplot=True):
         self.loadAxonTree()
         self.tree.setImpedance(self.ft)
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .05), (5, .45), (5, .5)]
         nl = len(locs)
@@ -582,7 +582,7 @@ class TestGreensTreeTime():
         crt_ = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=0, method='quadrature')
 
         # simulate the temporal matrix
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        sim_tree = NeuronSimTree(self.tree)
         tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix([(1,0.5)])
 
         soma = self.tree[1]

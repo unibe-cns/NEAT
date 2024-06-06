@@ -46,7 +46,7 @@ class TestCompartmentFitter():
 
         1--4
         '''
-        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
+        self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.tree.setPhysiology(0.8, 100./1e6)
         self.tree.setLeakCurrent(100., -75.)
         self.tree.setCompTree()
@@ -55,7 +55,7 @@ class TestCompartmentFitter():
         '''
         Load point neuron model
         '''
-        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         # ion channels
@@ -74,8 +74,7 @@ class TestCompartmentFitter():
         '''
         Load T tree model
         '''
-        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'))
-        # self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'L23PyrBranco.swc'))
+        self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         # ion channels

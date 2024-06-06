@@ -213,9 +213,9 @@ class NeuronSimTree(PhysTree):
     `__init__()` and `deleteModel()` functions to make sure it is created and
     deleted properly.
     """
-    def __init__(self, file_n=None, types=[1,3,4],
+    def __init__(self, arg=None, types=[1,3,4],
                        factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.):
-        super().__init__(file_n=file_n, types=types)
+        super().__init__(arg=arg, types=types)
         # neuron storage
         self.sections = {}
         self.shunts = []
@@ -1022,7 +1022,7 @@ class NeuronCompartmentTree(NeuronSimTree):
     `neat.CompartmentTree` using `neat.createReducedCompartmentModel()`
     """
     def __init__(self, t_calibrate=0., dt=0.025, v_init=-75.):
-        super().__init__(file_n=None, types=[1,3,4],
+        super().__init__(None, types=[1,3,4],
                          t_calibrate=t_calibrate, dt=dt, v_init=v_init)
 
     # redefinition of bunch of standard functions to not include skip inds by default

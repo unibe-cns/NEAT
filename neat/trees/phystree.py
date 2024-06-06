@@ -361,8 +361,8 @@ class PhysTree(MorphTree):
     channel_storage: dict {str: `neat.IonChannel`}
         Stores the user defined ion channels present in the tree
     """
-    def __init__(self, file_n=None, types=[1,3,4]):
-        super().__init__(file_n=file_n, types=types)
+    def __init__(self, arg=None, types=[1,3,4]):
+        super().__init__(arg=arg, types=types)
         # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
         # r_a = 0.0001 MOhm*cm)
         for node in self:

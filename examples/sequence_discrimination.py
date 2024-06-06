@@ -196,7 +196,7 @@ class BrancoReducedTree(NeuronCompartmentTree, BrancoSimTree):
     def __init__(self):
         # call the initializer of :class:`NeuronSimTree`, follows after
         # :class:`BrancoSimTree` in MRO
-        super(BrancoSimTree, self).__init__(file_n=None, types=[1,3,4])
+        super(BrancoSimTree, self).__init__(None, types=[1,3,4])
 
     def setSynLocs(self, equivalent_locs):
         self.storeLocs(equivalent_locs[1:], name='syn locs')

@@ -59,6 +59,14 @@ class TestSTree():
         self.tree.addNodeWithParent(node5, node2)
         self.tree.addNodeWithParent(node6, node3)
 
+    def test_copy_create(self):
+        self.createTree2()
+        new_tree = STree(self.tree)
+        assert len(new_tree) == len(self.tree)
+
+        for n, n_ in zip(new_tree, self.tree):
+            assert n.index == n_.index
+
     def testGetitem(self):
         self.createTree()
         for ii in range(4):

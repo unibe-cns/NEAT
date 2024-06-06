@@ -28,7 +28,7 @@ class TestCNET():
         gh, eh = 50., -43.
         h_chan = channelcollection.h()
 
-        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         self.greens_tree.setPhysiology(1., 100./1e6)
         self.greens_tree.addCurrent(h_chan, gh, eh)
         self.greens_tree.fitLeakCurrent(v_eq, 10.)

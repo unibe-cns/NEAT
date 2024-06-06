@@ -124,21 +124,13 @@ class SNode(object):
         experimental, untested
         """
         if new_node is None:
-            # new_node = self.__class__(self.index)
-            for child in self._child_nodes :
-                ret.addChild(child)
-            try:
-                ret.content = self.content
-            except AttributeError:
-                # no content variable set
-                pass
-            ret.setParentNode(self._parent_node)
-        else:
-            orig_keys = set(self.__dict__.keys()) - {'_parent_node', '_child_nodes'}
-            copy_keys = orig_keys.intersection(set(new_node.__dict__.keys()))
-            for key in copy_keys:
-                new_node.__dict__[key] = copy.deepcopy(self.__dict__[key])
-            return new_node
+            new_node = self.__class__(self.index)
+            
+        orig_keys = set(self.__dict__.keys()) - {'_parent_node', '_child_nodes'}
+        copy_keys = orig_keys.intersection(set(new_node.__dict__.keys()))
+        for key in copy_keys:
+            new_node.__dict__[key] = copy.deepcopy(self.__dict__[key])
+        return new_node
 
 
 class STree(object):
@@ -159,14 +151,17 @@ class STree(object):
         The root of the tree
     """
 
-    def __init__(self, root=None):
+    def __init__(self, arg=None):
         """
         Initialize an empty tree by default
         """
-        if root is not None:
-            self.root = root
-        else:
-            self._root = None
+        if arg is None:
+            self.root = None
+        elif issubclass(type(arg), SNode):
+            self.root = arg
+        elif issubclass(type(arg), STree):
+            # copy the provided tree into self
+            arg.__copy__(new_tree=self)
 
     def __getitem__(self, index, **kwargs):
         """
@@ -403,7 +398,8 @@ class STree(object):
             node: `neat.SNode`
                 node to be set as root of the tree
         """
-        node.parent_node = None
+        if node is not None:
+            node.parent_node = None
         self._root = node
 
     def getRoot(self):

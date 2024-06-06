@@ -273,8 +273,8 @@ class SOVTree(PhysTree):
     `neat.MorphNode`). Thus it makes no sense to look for sov quantities in the
     original tree.
     """
-    def __init__(self, file_n=None, types=[1,3,4]):
-        super().__init__(file_n=file_n, types=types)
+    def __init__(self, arg=None, types=[1,3,4]):
+        super().__init__(arg=arg, types=types)
         self.maxspace_freq = None
 
     def _getReprDict(self):

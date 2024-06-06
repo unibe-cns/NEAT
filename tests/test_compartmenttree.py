@@ -152,7 +152,7 @@ class TestCompartmentTree():
         assert all([loc == loc_ for loc, loc_ in zip(locs_equiv, [(0, .5), (2, .5), (1, .5)])])
 
     def loadBallAndStick(self):
-        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
+        self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.greens_tree.setPhysiology(0.8, 100./1e6)
         self.greens_tree.setLeakCurrent(100., -75.)
         self.greens_tree.setCompTree()
@@ -298,7 +298,7 @@ class TestCompartmentTree():
                            np.ones(len(self.ctree)) * np.max(1e-3/np.abs(alphas)))
 
     def loadBall(self):
-        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.greens_tree.setPhysiology(0.8, 100./1e6)
         # ion channels
