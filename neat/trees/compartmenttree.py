@@ -1688,7 +1688,7 @@ class CompartmentTree(STree):
                     except AssertionError:
                         raise IOError('`ion` does not agree with stored ion for ' + \
                                       'other fits:\n' + \
-                                      '`ion`: ' + kwargs[ion] + \
+                                      '`ion`: ' + kwargs['ion'] + \
                                       '\nstored ion: ' + self.fit_data['ion'])
 
             self.fit_data['mats_feature'].append(mat_feature)
