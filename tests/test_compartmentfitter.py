@@ -369,16 +369,9 @@ class TestCompartmentFitter():
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
         # compute impedances with compartmentfitter function
-        z_calc = np.array([ \
-                           cm.recalcImpedanceMatrix('fit locs', [g_i], \
-                               channel_names=[]
-                           ) \
-                           for g_i in g_inp \
-                          ])
-        zzz = cm.recalcImpedanceMatrix('fit locs', [g_inp[0]], \
-                               channel_names=[]
-                           )
-        print("xxxx", z_calc.shape, zzz.shape)
+        z_calc = np.array([
+            cm.recalcImpedanceMatrix('fit locs', [g_i], channel_names=[]) for g_i in g_inp
+        ])
         z_calc = np.swapaxes(z_calc, 0, 2)
         assert np.allclose(z_calc, z_test)
 
@@ -392,11 +385,12 @@ class TestCompartmentFitter():
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs, explicit_method=False)
         z_test = z_mat[:,:,None] / (1. + z_mat[:,:,None] * g_inp[None,None,:])
         # compute impedances with compartmentfitter function
-        z_calc = np.array([ \
-                           cm.recalcImpedanceMatrix('fit locs', [g_i], \
-                               channel_names=list(cm.tree.channel_storage.keys())) \
-                           for g_i in g_inp \
-                          ])
+        z_calc = np.array([
+            cm.recalcImpedanceMatrix(
+                'fit locs', [g_i], 
+                channel_names=list(cm.tree.channel_storage.keys())
+            ) for g_i in g_inp
+        ])
         z_calc = np.swapaxes(z_calc, 0, 2)
         assert np.allclose(z_calc, z_test)
 

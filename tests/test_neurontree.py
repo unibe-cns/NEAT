@@ -10,7 +10,7 @@ import itertools
 
 from neat import GreensTree
 from neat import CompartmentNode, CompartmentTree
-from neat import NeuronSimTree, createReducedNeuronModel
+from neat import NeuronSimTree, NeuronCompartmentTree
 import neat.tools.kernelextraction as ke
 
 import channelcollection_for_tests as channelcollection
@@ -439,7 +439,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5)])
@@ -450,7 +450,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5)])
@@ -461,7 +461,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
@@ -473,7 +473,7 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
+        sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
@@ -576,9 +576,9 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
-                                                   fake_r_a=fake_r_a,
-                                                   method=2)
+        sim_tree = NeuronCompartmentTree(ctree, 
+            fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
+        )
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp, atol=1e-2)
 
@@ -588,9 +588,9 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
-                                                   fake_r_a=fake_r_a,
-                                                   method=2)
+        sim_tree = NeuronCompartmentTree(ctree, 
+            fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
+        )
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
@@ -600,9 +600,9 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
-                                                   fake_r_a=fake_r_a,
-                                                   method=2)
+        sim_tree = NeuronCompartmentTree(ctree, 
+            fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
+        )
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
@@ -612,9 +612,9 @@ class TestReducedNeuron():
         # compute the impedance matrix exactly
         z_mat_comp = ctree.calcImpedanceMatrix()
         # create a neuron model
-        sim_tree = createReducedNeuronModel(ctree, fake_c_m=fake_c_m,
-                                                   fake_r_a=fake_r_a,
-                                                   method=2)
+        sim_tree = NeuronCompartmentTree(ctree, 
+            fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
+        )
         z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 

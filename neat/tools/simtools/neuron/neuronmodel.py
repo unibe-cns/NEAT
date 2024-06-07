@@ -1034,8 +1034,79 @@ class NeuronCompartmentTree(NeuronSimTree):
     effectively single compartments. Should be created from a
     `neat.CompartmentTree` using `neat.createReducedCompartmentModel()`
     """
-    def __init__(self):
-        super().__init__(None, types=[1,3,4])
+    def __init__(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):        
+        """
+        Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
+        models from a `neat.CompartmentTree`.
+
+        Parameters
+        ----------
+        ctree: `neat.CompartmentTree`
+            The tree containing the parameters of the reduced compartmental model
+            to be simulated
+
+        Returns
+        -------
+        `neat.NeuronCompartmentTree`
+
+        Notes
+        -----
+        The function `ctree.getEquivalentLocs()` can be used to obtain 'fake'
+        locations corresponding to each compartment, which in turn can be used to
+        insert hoc point process at the compartments using the same functions
+        definitions as for as for a morphological `neat.NeuronSimTree`
+        """
+        super().__init__(ctree, types=[1,3,4])
+        self._createReducedNeuronModel(ctree, 
+            fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=method,
+        )
+
+    def _createReducedNeuronModel(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
+        # calculate geometry that will lead to correct constants
+        arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+                                                    factor_r_a=1e-6, delta=1e-10,
+                                                    method=method)
+        if method == 1:
+            points = arg1; surfaces = arg2
+            for ii, comp_node in enumerate(ctree):
+                pts = points[ii]
+                sim_node = self.__getitem__(comp_node.index, skip_inds=[])
+                sim_node.setP3D(np.array(pts[0][:3]), (pts[0][3] + pts[-1][3]) / 2., 3)
+
+            # fill the tree with the currents
+            for ii, sim_node in enumerate(self):
+                comp_node = ctree[ii]
+                sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
+                                            for chan, (g, e) in comp_node.currents.items()}
+                sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
+                for concmech in sim_node.concmechs.values():
+                    concmech.gamma *= surfaces[comp_node.index] * 1e6
+                sim_node.c_m = fake_c_m
+                sim_node.r_a = fake_r_a
+                sim_node.content['points_3d'] = points[comp_node.index]
+        elif method == 2:
+            lengths = arg1 ; radii = arg2
+            surfaces = 2. * np.pi * radii * lengths
+            for ii, comp_node in enumerate(ctree):
+                sim_node = self.__getitem__(comp_node.index, skip_inds=[])
+                if self.isRoot(sim_node):
+                    sim_node.setP3D(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
+                else:
+                    sim_node.setP3D(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
+                                    radii[ii]*1e4, 3)
+
+            # fill the tree with the currents
+            for ii, sim_node in enumerate(self):
+                comp_node = ctree[ii]
+                sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
+                                            for chan, (g, e) in comp_node.currents.items()}
+                sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
+                for concmech in sim_node.concmechs.values():
+                    concmech.gamma *= surfaces[comp_node.index] * 1e6
+                sim_node.c_m = fake_c_m
+                sim_node.r_a = fake_r_a
+                sim_node.R = radii[comp_node.index]*1e4    # convert to [um]
+                sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
 
     # redefinition of bunch of standard functions to not include skip inds by default
     def __getitem__(self, index, skip_inds=[]):
@@ -1079,75 +1150,4 @@ class NeuronCompartmentTree(NeuronSimTree):
                 self.shunts.append(shunt)
 
 
-def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
-    """
-    Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
-    models from a `neat.CompartmentTree`.
-
-    Parameters
-    ----------
-    ctree: `neat.CompartmentTree`
-        The tree containing the parameters of the reduced compartmental model
-        to be simulated
-
-    Returns
-    -------
-    `neat.NeuronCompartmentTree`
-
-    Notes
-    -----
-    The function `ctree.getEquivalentLocs()` can be used to obtain 'fake'
-    locations corresponding to each compartment, which in turn can be used to
-    insert hoc point process at the compartments using the same functions
-    definitions as for as for a morphological `neat.NeuronSimTree`
-    """
-    # calculate geometry that will lead to correct constants
-    arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
-                                                 factor_r_a=1e-6, delta=1e-10,
-                                                 method=method)
-    if method == 1:
-        points = arg1; surfaces = arg2
-        sim_tree = ctree.__copy__(new_tree=NeuronCompartmentTree())
-        for ii, comp_node in enumerate(ctree):
-            pts = points[ii]
-            sim_node = sim_tree.__getitem__(comp_node.index, skip_inds=[])
-            sim_node.setP3D(np.array(pts[0][:3]), (pts[0][3] + pts[-1][3]) / 2., 3)
-
-        # fill the tree with the currents
-        for ii, sim_node in enumerate(sim_tree):
-            comp_node = ctree[ii]
-            sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
-                                         for chan, (g, e) in comp_node.currents.items()}
-            sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
-            for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index] * 1e6
-            sim_node.c_m = fake_c_m
-            sim_node.r_a = fake_r_a
-            sim_node.content['points_3d'] = points[comp_node.index]
-    elif method == 2:
-        lengths = arg1 ; radii = arg2
-        surfaces = 2. * np.pi * radii * lengths
-        sim_tree = ctree.__copy__(new_tree=NeuronCompartmentTree())
-        for ii, comp_node in enumerate(ctree):
-            sim_node = sim_tree.__getitem__(comp_node.index, skip_inds=[])
-            if sim_tree.isRoot(sim_node):
-                sim_node.setP3D(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
-            else:
-                sim_node.setP3D(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
-                                 radii[ii]*1e4, 3)
-
-        # fill the tree with the currents
-        for ii, sim_node in enumerate(sim_tree):
-            comp_node = ctree[ii]
-            sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
-                                         for chan, (g, e) in comp_node.currents.items()}
-            sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
-            for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index] * 1e6
-            sim_node.c_m = fake_c_m
-            sim_node.r_a = fake_r_a
-            sim_node.R = radii[comp_node.index]*1e4    # convert to [um]
-            sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
-
-    return sim_tree
 
