@@ -155,13 +155,12 @@ class CompartmentFitter(object):
             os.makedirs(cache_path)
 
         # original tree
-        self.tree = phys_tree.__copy__(
-            new_tree=EquilibriumTree(
-                cache_path=self.cache_path,
-                cache_name=self.cache_name + "_orig_",
-                save_cache=self.save_cache,
-                recompute_cache=self.recompute_cache,
-            )
+        self.tree = EquilibriumTree(
+            phys_tree,
+            cache_path=self.cache_path,
+            cache_name=self.cache_name + "_orig_",
+            save_cache=self.save_cache,
+            recompute_cache=self.recompute_cache,
         )
         with self.tree.as_original_tree:
             # set the equilibrium potentials in the tree
@@ -272,8 +271,8 @@ class CompartmentFitter(object):
         ]
 
         # create new tree and empty channel storage
-        tree = self.tree.__copy__(new_tree=FitTreeGF())
-        tree.set_cache_params(
+        tree = FitTreeGF(
+            self.tree,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
             save_cache=self.save_cache,
@@ -507,7 +506,7 @@ class CompartmentFitter(object):
             suffix = f"_passified_"
 
         if use_all_channels:
-            fit_tree = self.tree.__copy__(new_tree=EquilibriumTree())
+            fit_tree = EquilibriumTree(self.tree)
             fit_tree.set_cache_params(
                 cache_path=self.cache_path,
                 cache_name=self.cache_name + "_eq" + suffix,
@@ -517,8 +516,8 @@ class CompartmentFitter(object):
             # set the channels to passive
             fit_tree.asPassiveMembrane()
             # convert to a greens tree for further evaluation
-            fit_tree = fit_tree.__copy__(new_tree=FitTreeGF())
-            fit_tree.set_cache_params(
+            fit_tree = FitTreeGF(
+                fit_tree,
                 cache_path=self.cache_path,
                 cache_name=self.cache_name + "_gf" + suffix,
                 save_cache=self.save_cache,
@@ -616,8 +615,8 @@ class CompartmentFitter(object):
             cache_name_suffix = '_SOV_only_leak_'
 
         # create new tree and empty channel storage
-        tree = self.tree.__copy__(new_tree=FitTreeSOV())
-        tree.set_cache_params(
+        tree = FitTreeSOV(
+            self.tree,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
             save_cache=self.save_cache,

@@ -297,6 +297,21 @@ class EquilibriumTree(FitTree):
 
 
 class FitTreeGF(GreensTree, FitTree):
+    def __init__(self,
+            *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
+        self.set_cache_params(
+            recompute_cache=recompute_cache,
+            save_cache=save_cache,
+            cache_name=cache_name,
+            cache_path=cache_path,
+        )
+        super().__init__(*args, **kwargs)
 
     def setImpedancesInTree(self, freqs, sv_h=None, pprint=False, **kwargs):
         """
@@ -388,6 +403,21 @@ class FitTreeGF(GreensTree, FitTree):
 
 
 class FitTreeC(GreensTreeTime, FitTree):
+    def __init__(self,
+            *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
+        self.set_cache_params(
+            recompute_cache=recompute_cache,
+            save_cache=save_cache,
+            cache_name=cache_name,
+            cache_path=cache_path,
+        )
+        super().__init__(*args, **kwargs)
 
     def setImpedancesInTree(self, t_arr, pprint=False):
         """
@@ -417,6 +447,21 @@ class FitTreeC(GreensTreeTime, FitTree):
 
 
 class FitTreeSOV(SOVTree, FitTree):
+    def __init__(self,
+            *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
+        self.set_cache_params(
+            recompute_cache=recompute_cache,
+            save_cache=save_cache,
+            cache_name=cache_name,
+            cache_path=cache_path,
+        )
+        super().__init__(*args, **kwargs)
     def setSOVInTree(self, maxspace_freq=100., pprint=False):
         if pprint:
             print(f'>>> evaluating SOV expansion')

@@ -315,7 +315,7 @@ class TestCompartmentFitter():
         alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
         ctree_leak.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
         # make ball model with leak based on all channels
-        tree = self.tree.__copy__()
+        tree = PhysTree(self.tree)
         tree.asPassiveMembrane()
         tree.setCompTree()
         greens_tree = GreensTree(tree)

@@ -327,7 +327,7 @@ class TestCompartmentTree():
         ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
         # create tree with only leak
-        greens_tree_pas = self.greens_tree.__copy__()
+        greens_tree_pas = GreensTree(self.greens_tree)
         greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
         greens_tree_pas.setCompTree()
         greens_tree_pas.setImpedance(self.freqs)
@@ -335,7 +335,7 @@ class TestCompartmentTree():
         z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
 
         # create tree with only potassium
-        greens_tree_k = self.greens_tree.__copy__()
+        greens_tree_k = GreensTree(self.greens_tree)
         greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
                                                if key != 'Na_Ta'}
         # compute potassium impedance matrices
@@ -347,7 +347,7 @@ class TestCompartmentTree():
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
         # create tree with only sodium
-        greens_tree_na = self.greens_tree.__copy__()
+        greens_tree_na = GreensTree(self.greens_tree)
         greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
                                                if key != 'Kv3_1'}
         # create state variable expansion points
