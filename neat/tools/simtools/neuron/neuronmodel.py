@@ -213,9 +213,7 @@ class NeuronSimTree(PhysTree):
     `__init__()` and `deleteModel()` functions to make sure it is created and
     deleted properly.
     """
-    def __init__(self, arg=None, types=[1,3,4],
-                       factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.):
-        super().__init__(arg=arg, types=types)
+    def __init__(self, arg=None, types=[1,3,4]):
         # neuron storage
         self.sections = {}
         self.shunts = []
@@ -226,11 +224,13 @@ class NeuronSimTree(PhysTree):
         self.netcons = []
         self.vecs = []
         # simulation parameters
-        self.dt = dt # ms
-        self.t_calibrate = t_calibrate # ms
-        self.factor_lambda = factor_lambda
-        self.v_init = v_init # mV
-        self.indstart = int(t_calibrate / dt)
+        self.dt = .1 # ms
+        self.t_calibrate = 0. # ms
+        self.factor_lambda = 1.
+        self.v_init = -75. # mV
+        self.indstart = 0
+        # initialize the tree structure
+        super().__init__(arg=arg, types=types)
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """
@@ -242,6 +242,16 @@ class NeuronSimTree(PhysTree):
                 index of the new node
         """
         return NeuronSimNode(node_index, p3d=p3d)
+    
+    def set_simulation_parameters(self,
+            factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
+        ):
+        # simulation parameters
+        self.dt = dt # ms
+        self.t_calibrate = t_calibrate # ms
+        self.indstart = int(t_calibrate / dt)
+        self.factor_lambda = factor_lambda
+        self.v_init = v_init # mV
 
     def initModel(self, dt=0.025, t_calibrate=0., v_init=-75., factor_lambda=1.,
                         pprint=False):
@@ -266,11 +276,9 @@ class NeuronSimTree(PhysTree):
         pprint: bool (default ``False``)
             Whether or not to print info on the NEURON model's creation
         """
-        self.t_calibrate = t_calibrate
-        self.dt = dt
-        self.indstart = int(self.t_calibrate / self.dt)
-        self.v_init = v_init
-        self.factor_lambda = factor_lambda
+        self.set_simulation_parameters(
+            dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda,
+        )
         # reset all storage
         self.deleteModel()
         # create the NEURON model
@@ -304,9 +312,6 @@ class NeuronSimTree(PhysTree):
             shunt = node._makeShunt(compartment)
             if shunt is not None:
                 self.shunts.append(shunt)
-        # if pprint:
-        #     print(h.topology())
-
 
     def addShunt(self, loc, g, e_r):
         """
@@ -916,13 +921,17 @@ class NeuronSimTree(PhysTree):
 
         return v_eq
 
-    def calcImpedanceMatrix(self, locarg, i_amp=0.001, t_dur=100., pplot=False):
+    def calcImpedanceMatrix(self, locarg, 
+            i_amp=0.001, t_dur=100., pplot=False,
+            factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
+        ):
         locs = self._convertLocArgToLocs(locarg)
         z_mat = np.zeros((len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
-                self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                               v_init=self.v_init, factor_lambda=self.factor_lambda)
+                self.initModel(
+                    dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
+                )
                 self.addIClamp(loc0, i_amp, 0., t_dur)
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
@@ -941,18 +950,22 @@ class NeuronSimTree(PhysTree):
 
         return z_mat
 
-    def calcImpedanceKernelMatrix(self, locarg, i_amp=0.001,
-            dt_pulse=0.1, dstep=-2, t_max=100.
+    def calcImpedanceKernelMatrix(self, locarg, 
+            i_amp=0.001,
+            dt_pulse=0.1, dstep=-2, t_max=100.,
+            factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
         ):
         locs = self._convertLocArgToLocs(locarg)
-        nt = int(t_max / self.dt)
+        nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
         zk_mat = np.zeros((nt, len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
                 loc1 = locs[jj]
-                self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                               v_init=self.v_init, factor_lambda=self.factor_lambda)
+                self.initModel(
+                    dt=dt, t_calibrate=t_calibrate,
+                    v_init=v_init, factor_lambda=factor_lambda
+                )
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
@@ -1021,9 +1034,8 @@ class NeuronCompartmentTree(NeuronSimTree):
     effectively single compartments. Should be created from a
     `neat.CompartmentTree` using `neat.createReducedCompartmentModel()`
     """
-    def __init__(self, t_calibrate=0., dt=0.025, v_init=-75.):
-        super().__init__(None, types=[1,3,4],
-                         t_calibrate=t_calibrate, dt=dt, v_init=v_init)
+    def __init__(self):
+        super().__init__(None, types=[1,3,4])
 
     # redefinition of bunch of standard functions to not include skip inds by default
     def __getitem__(self, index, skip_inds=[]):

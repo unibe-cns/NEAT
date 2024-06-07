@@ -282,8 +282,8 @@ class TestConcMechs:
         tree_no_ca = self.loadAxonTree(w_ca_conc=False)
 
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (5, 1.)]
-        res_w_ca = self._simulate(tree_w_ca.__copy__(new_tree=NeuronSimTree()), locs)
-        res_no_ca = self._simulate(tree_no_ca.__copy__(new_tree=NeuronSimTree()), locs)
+        res_w_ca = self._simulate(NeuronSimTree(tree_w_ca), locs)
+        res_no_ca = self._simulate(NeuronSimTree(tree_no_ca), locs)
 
         assert len(res_no_ca["spikes"]) == 25
         assert len(res_w_ca["spikes"]) == 7
@@ -394,15 +394,15 @@ class TestConcMechs:
 
     def testImpedance(self, pplot=False, amp=0.001):
 
-        tree0 = self.loadBall(w_ca_conc=False).__copy__(new_tree=GreensTree())
-        tree1 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
-        tree2 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
+        tree0 = GreensTree(self.loadBall(w_ca_conc=False))
+        tree1 = GreensTree(self.loadBall(w_ca_conc=True, gamma_factor=1e2))
+        tree2 = GreensTree(self.loadBall(w_ca_conc=True, gamma_factor=1e2))
 
         locs = [(1, .5)]
-        res0 = self._simulate(tree0.__copy__(new_tree=NeuronSimTree()),
+        res0 = self._simulate(NeuronSimTree(tree0),
             locs, amp=amp, dur=20000., delay=100., cal=10000.
         )
-        res2 = self._simulate(tree2.__copy__(new_tree=NeuronSimTree()),
+        res2 = self._simulate(NeuronSimTree(tree2),
             locs, amp=amp, dur=20000., delay=100., cal=10000.
         )
 
@@ -568,7 +568,7 @@ class TestConcMechs:
             ) < np.abs(node.concmechs[ion].tau) * eps_tau
 
         # run test simulations
-        res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
+        res_full = self._simulate(NeuronSimTree(tree),
             locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
         res_reduced = self._simulate(createReducedNeuronModel(ctree),
@@ -652,7 +652,7 @@ class TestConcMechs:
                 ) < np.abs(cnode_.concmechs[ion].tau) * 1e-8
 
         # run test simulations
-        res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
+        res_full = self._simulate(NeuronSimTree(tree),
             locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
         res_reduced = self._simulate(createReducedNeuronModel(ctree),
@@ -815,7 +815,7 @@ class TestConcMechs:
             rec_currs=['ca'],
         )
 
-        res_nest = self._simulateNest(ctree.__copy__(new_tree=NestCompartmentTree()),
+        res_nest = self._simulateNest(NestCompartmentTree(ctree),
             cidxs, amp=amp, dur=20000., delay=1000., cal=10000.
         )
 

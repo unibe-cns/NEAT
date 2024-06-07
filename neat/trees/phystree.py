@@ -318,13 +318,13 @@ class PhysNode(MorphNode):
             node_str = super(MorphNode, self).__str__(with_parent=with_parent)
 
         node_str += f" --- " \
-            f"r_a = {self.r_a} MOhm*cm, " \
-            f"c_m = {self.c_m} uF/cm^2, " \
-            f"v_ep = {self.v_ep} mV, "
+            f"r_a = {self.r_a:1.6g} MOhm*cm, " \
+            f"c_m = {self.c_m:1.6g} uF/cm^2, " \
+            f"v_ep = {self.v_ep:1.6g} mV, "
         if self.g_shunt > 1e-10:
-            f"g_shunt = {self.g_shunt} uS,"
+            f"g_shunt = {self.g_shunt:1.6g} uS,"
         node_str += ', '.join([
-            f'(g_{c} = {g} uS/cm^2, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
+            f'(g_{c} = {g:1.6g} uS/cm^2, e_{c} = {e:1.6g} mV)' for c, (g, e) in self.currents.items()
         ])
         return node_str
 
@@ -360,15 +360,18 @@ class PhysTree(MorphTree):
     ----------
     channel_storage: dict {str: `neat.IonChannel`}
         Stores the user defined ion channels present in the tree
+    ions: set {str}
+        The ions for which a concentration mechanism is present in the tree
     """
     def __init__(self, arg=None, types=[1,3,4]):
-        super().__init__(arg=arg, types=types)
-        # set basic physiology parameters (c_m = 1.0 uF/cm^2 and
-        # r_a = 0.0001 MOhm*cm)
-        for node in self:
-            node.setPhysiology(1.0, 100./1e6)
         self.channel_storage = {}
         self.ions = set()
+        super().__init__(arg=arg, types=types)
+        # set basic physiology parameters (c_m = 1.0 uF/cm^2 and r_a = 0.0001 MOhm*cm),
+        # but only when `arg` is a `neat.PhysNode`
+        if issubclass(type(arg), PhysNode):
+            for node in self:
+                node.setPhysiology(1.0, 100./1e6)
 
     def _getReprDict(self):
         ckeys = list(self.channel_storage.keys())

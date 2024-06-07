@@ -607,10 +607,16 @@ class CompartmentTree(STree):
     Abstract tree that implements physiological parameters for reduced
     compartmental models. Also implements the matrix algebra to fit physiological
     parameters to impedance matrices
+
+    Attributes
+    ----------
+    channel_storage: dict {str: `neat.IonChannel`}
+        Stores the user defined ion channels present in the tree
     """
-    def __init__(self, root=None):
-        super().__init__(root=root)
+
+    def __init__(self, arg=None):
         self.channel_storage = {}
+        super().__init__(arg)
         # for fitting the model
         self.resetFitData()
 

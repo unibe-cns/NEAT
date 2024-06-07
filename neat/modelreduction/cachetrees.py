@@ -34,6 +34,22 @@ def consecutive(inds):
 
 
 class FitTree(PhysTree):
+    def __init__(self,
+            *args,
+            recompute_cache=False,
+            save_cache=True,
+            cache_name='',
+            cache_path='',
+            **kwargs
+        ):
+        self.set_cache_params(
+            recompute_cache=recompute_cache,
+            save_cache=save_cache,
+            cache_name=cache_name,
+            cache_path=cache_path,
+        )
+        super().__init__(*args, **kwargs)
+
     def set_cache_params(self,
             recompute_cache=False,
             save_cache=True,
@@ -102,19 +118,6 @@ class EquilibriumTree(FitTree):
     Uses the NEURON simulator to evaluate the equibrium potentials. Can cache
     the results of the computation.
     """
-    def __init__(self, *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
-            **kwargs
-        ):
-        super().__init__(*args, **kwargs)
-
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
 
     def _calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         """
@@ -142,7 +145,7 @@ class EquilibriumTree(FitTree):
         t_max = t_max*20. if len(ions) > 0 else t_max
 
         # create a biophysical simulation model
-        sim_tree_biophys = self.__copy__(new_tree=neurm.NeuronSimTree())
+        sim_tree_biophys = neurm.NeuronSimTree(self)
         # compute equilibrium potentials
         sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
         sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
@@ -294,19 +297,6 @@ class EquilibriumTree(FitTree):
 
 
 class FitTreeGF(GreensTree, FitTree):
-    def __init__(self, *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
-            **kwargs
-        ):
-        super().__init__(*args, **kwargs)
-
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
 
     def setImpedancesInTree(self, freqs, sv_h=None, pprint=False, **kwargs):
         """
@@ -398,19 +388,6 @@ class FitTreeGF(GreensTree, FitTree):
 
 
 class FitTreeC(GreensTreeTime, FitTree):
-    def __init__(self, *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
-            **kwargs
-        ):
-        super().__init__(*args, **kwargs)
-
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
 
     def setImpedancesInTree(self, t_arr, pprint=False):
         """
@@ -440,21 +417,6 @@ class FitTreeC(GreensTreeTime, FitTree):
 
 
 class FitTreeSOV(SOVTree, FitTree):
-    def __init__(self,
-            *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
-            **kwargs
-        ):
-        super().__init__(*args, **kwargs)
-
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
-
     def setSOVInTree(self, maxspace_freq=100., pprint=False):
         if pprint:
             print(f'>>> evaluating SOV expansion')

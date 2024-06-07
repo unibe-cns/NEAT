@@ -137,7 +137,7 @@ class TestSOVTree():
     def testSingleCompartment(self):
         self.loadBall()
         # for validation
-        greenstree = self.btree.__copy__(new_tree=GreensTree())
+        greenstree = GreensTree(self.btree)
         greenstree.setCompTree()
         greenstree.setImpedance(np.array([0.]))
         z_inp = greenstree.calcImpedanceMatrix([(1.,0.5)])

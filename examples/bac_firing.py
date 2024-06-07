@@ -112,7 +112,7 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
 
     # create the full model
     phys_tree = getL5Pyramid()
-    sim_tree = phys_tree.__copy__(new_tree=NeuronSimTree())
+    sim_tree = NeuronSimTree(phys_tree)
     # compartmentfitter object
     cfit = CompartmentFitter(phys_tree, name='bac_firing', path='data/')
 

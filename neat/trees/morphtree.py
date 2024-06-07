@@ -426,16 +426,11 @@ class MorphTree(STree):
             distances to nearest bifurcation in the direction of the soma
             of locations. Initialized as empty dict.
     """
-
     def __init__(self, arg=None, types=[1,3,4]):
         # we initialize two root nodes, one for the original tree mimicking the
         # .swc file, and one for the coarse grained tree for computational efficiency
-        if isinstance(arg, str):
-            self.readSWCTreeFromFile(arg, types=types)
-        else:
-            super().__init__(arg)
-            self._original_root = self._root
         self._computational_root = None
+        self._original_root = None
         # to store sets of locations on the morphology
         self.locs = {}
         self._nids_orig = {}; self._nids_comp = {}
@@ -443,6 +438,22 @@ class MorphTree(STree):
         self.d2s = {}
         self.d2b = {}
         self.leafinds = {}
+
+        # instantiate the tree structure
+        if isinstance(arg, str):
+            self.readSWCTreeFromFile(arg, types=types)
+        else:
+            super().__init__(arg)
+            # STree will always initialize `self._root`, independent of whether the
+            # input argument is a node or a tree. 
+            # When the input argument is a node, it will *only* initialize `self._root`.
+            # When the input argument is a tree, it will call `self.__copy__`, which
+            # ensures that both the `self._original_root`` and `self._computational_root``
+            # (when the comptree is already set, see `self.setCompTree()`) are initialized.
+            # Therefor, the following code ensures that `self._original_root` is always set
+            # to the correct value.
+            with self.as_original_tree:
+                self._original_root = self._root
 
     def __getitem__(self, index, skip_inds=(2,3)):
         """

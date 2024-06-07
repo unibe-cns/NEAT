@@ -141,7 +141,7 @@ class TestCompartmentFitter():
         ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
         # create tree with only leak
-        greens_tree_pas = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_pas = GreensTree(self.tree)
         greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
         greens_tree_pas.setCompTree()
         greens_tree_pas.setImpedance(freqs)
@@ -149,7 +149,7 @@ class TestCompartmentFitter():
         z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
 
         # create tree with only potassium
-        greens_tree_k = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_k = GreensTree(self.tree)
         greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
                                                if key != 'Na_Ta'}
         # compute potassium impedance matrices
@@ -161,7 +161,7 @@ class TestCompartmentFitter():
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
         # create tree with only sodium
-        greens_tree_na = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_na = GreensTree(self.tree)
         greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
                                                if key != 'Kv3_1'}
         # create state variable expansion points
@@ -272,14 +272,14 @@ class TestCompartmentFitter():
         fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]
 
         # fit a tree directly from CompartmentTree
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree = GreensTree(self.tree)
         greens_tree.setCompTree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
         ctree = greens_tree.createCompartmentTree(fit_locs)
         ctree.computeGMC(z_mat)
-        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(self.tree)
         sov_tree.calcSOVEquations()
         alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
         ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
@@ -300,7 +300,7 @@ class TestCompartmentFitter():
         self.loadBall()
         fit_locs = [(1,.5)]
         # fit ball model with only leak
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree = GreensTree(self.tree)
         greens_tree.channel_storage = {}
         for n in greens_tree:
             n.currents = {'L': n.currents['L']}
@@ -310,7 +310,7 @@ class TestCompartmentFitter():
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
         ctree_leak = greens_tree.createCompartmentTree(fit_locs)
         ctree_leak.computeGMC(z_mat)
-        sov_tree = greens_tree.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(greens_tree)
         sov_tree.calcSOVEquations()
         alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
         ctree_leak.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
@@ -318,14 +318,14 @@ class TestCompartmentFitter():
         tree = self.tree.__copy__()
         tree.asPassiveMembrane()
         tree.setCompTree()
-        greens_tree = tree.__copy__(new_tree=GreensTree())
+        greens_tree = GreensTree(tree)
         greens_tree.setCompTree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
         ctree_all = greens_tree.createCompartmentTree(fit_locs)
         ctree_all.computeGMC(z_mat)
-        sov_tree = tree.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(tree)
         sov_tree.setCompTree()
         sov_tree.calcSOVEquations()
         alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
@@ -435,7 +435,7 @@ class TestCompartmentFitter():
         ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
         # create tree with only leak
-        greens_tree_pas = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_pas = GreensTree(self.tree)
         greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
         greens_tree_pas.setCompTree()
         greens_tree_pas.setImpedance(freqs)
@@ -443,7 +443,7 @@ class TestCompartmentFitter():
         z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
 
         # create tree with only potassium
-        greens_tree_k = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_k = GreensTree(self.tree)
         greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
                                                if key != 'Na_Ta'}
         # compute potassium impedance matrices
@@ -455,7 +455,7 @@ class TestCompartmentFitter():
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
         # create tree with only sodium
-        greens_tree_na = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree_na = GreensTree(self.tree)
         greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
                                                if key != 'Kv3_1'}
         # create state variable expansion points
@@ -480,7 +480,7 @@ class TestCompartmentFitter():
         # passive fit
         ctree.computeGMC(z_mat_pas)
         # get SOV constants for capacitance fit
-        sov_tree = greens_tree_pas.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(greens_tree_pas)
         sov_tree.setCompTree()
         sov_tree.calcSOVEquations()
         alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
@@ -511,14 +511,14 @@ class TestCompartmentFitter():
         fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]
 
         # fit a tree directly from CompartmentTree
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree = GreensTree(self.tree)
         greens_tree.setCompTree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0]
         ctree = greens_tree.createCompartmentTree(fit_locs)
         ctree.computeGMC(z_mat)
-        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(self.tree)
         sov_tree.calcSOVEquations()
         alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
         ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
@@ -554,7 +554,7 @@ class TestCompartmentFitter():
         self._checkPhysTrees(self.tree, pt_)
 
         # of GreensTree
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
+        greens_tree = GreensTree(self.tree)
         greens_tree.setCompTree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
@@ -564,7 +564,7 @@ class TestCompartmentFitter():
         self._checkPhysTrees(greens_tree, gt_)
 
         # of SOVTree
-        sov_tree = self.tree.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(self.tree)
         sov_tree.calcSOVEquations()
 
         # works with pickle

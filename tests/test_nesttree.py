@@ -32,7 +32,7 @@ class TestNest:
     def loadTwoCompartmentModel(self):
         # simple two compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
-        self.ctree = CompartmentTree(root=pnode)
+        self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
         self.ctree.addNodeWithParent(cnode, pnode)
 
@@ -45,7 +45,7 @@ class TestNest:
 
         self.loadTwoCompartmentModel()
 
-        nct = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        nct = NestCompartmentTree(self.ctree)
         cm_model = nct.initModel("cm_default", 1, suffix="")
 
         compartments_info = cm_model.compartments
@@ -94,7 +94,7 @@ class TestNest:
         )
         self.ctree = cfit.fitModel([(1,0.5)])
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         mm = nest.Create('multimeter', 1,
             {'record_from': ["v_comp0", "m_Kv3_10", "m_NaTa_t0", "h_NaTa_t0"], 'interval': dt}
@@ -130,7 +130,7 @@ class TestNest:
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
@@ -181,7 +181,7 @@ class TestNest:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -218,7 +218,7 @@ class TestNest:
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
@@ -279,7 +279,7 @@ class TestNest:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -325,7 +325,7 @@ class TestNest:
         csimtree_neuron.setSpikeTrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
         res_neuron = csimtree_neuron.run(tmax, record_from_channels=True, pprint=True)
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{

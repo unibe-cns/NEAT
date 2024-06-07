@@ -134,7 +134,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
 
     # create the full model
     phys_tree = getL23PyramidNaK()
-    sim_tree = phys_tree.__copy__(new_tree=NeuronSimTree())
+    sim_tree = NeuronSimTree(phys_tree)
 
     # distribute locations to measure backAPs on branches
     leafs_basal = [node for node in sim_tree.leafs if node.swc_type == 3]

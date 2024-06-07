@@ -336,7 +336,6 @@ class CompartmentFitter(object):
         fit_tree = self.createTreeGF([channel_name],
             cache_name_suffix=f"_{channel_name}_",
         )
-
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(
             freqs=self.cfg.freqs,

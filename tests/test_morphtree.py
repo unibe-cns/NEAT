@@ -740,6 +740,29 @@ class TestMorphTree():
         with pytest.raises(ValueError):
             MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'wrong_soma.swc'))
 
+    def testCopyConstruct(self):
+        self.loadTree(reinitialize=True, segments=True)
+        tree1 = MorphTree(self.tree)
+
+        self.tree.setCompTree()
+        tree2 = MorphTree(self.tree)
+
+        assert tree1._computational_root is None
+        assert tree2._computational_root is not None
+        
+        assert repr(tree2) == repr(self.tree)
+        assert repr(tree2) == repr(tree1)
+        with tree2.as_computational_tree:
+            with self.tree.as_computational_tree:
+                assert repr(tree2) == repr(self.tree)
+                assert repr(tree2) != repr(tree1)
+
+        tree1.setCompTree()
+        assert repr(tree1) == repr(tree2)
+        with tree2.as_computational_tree:
+            with tree1.as_computational_tree:
+                assert repr(tree2) == repr(tree1)
+
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
@@ -747,14 +770,14 @@ if __name__ == '__main__':
     # tmt.testPlotting(pshow=True)
     # tmt.testCompTree0()
     # tmt.testInputArgConversion()
-    tmt.testLocFunctionality()
+    # tmt.testLocFunctionality()
     # tmt.testUniqueLocs()
     # tmt.testLocStorageRetrievalLookup()
     # tmt.testNearestNeighbours()
     # tmt.testCompTree()
-
     # tmt.testMultiCylinderSoma()
     # tmt.testOnePointSoma()
     # tmt.testThreePointSoma()
     # tmt.testWrongSoma()
+    tmt.testCopyConstruct()
 

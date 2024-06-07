@@ -160,7 +160,7 @@ class TestCompartmentTree():
         self.freqs = np.array([0.]) * 1j
         self.greens_tree.setImpedance(self.freqs)
         # create sov tree
-        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree = SOVTree(self.greens_tree)
         self.sov_tree.calcSOVEquations(maxspace_freq=50.)
 
     def testLocationMapping(self, n_loc=20):
@@ -314,7 +314,7 @@ class TestCompartmentTree():
         self.freqs = np.array([0.])
         self.greens_tree.setImpedance(self.freqs)
         # create sov tree
-        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree = SOVTree(self.greens_tree)
         self.sov_tree.calcSOVEquations(maxspace_freq=100.)
 
     def testChannelFit(self):
@@ -379,7 +379,7 @@ class TestCompartmentTree():
         # passive fit
         ctree.computeGMC(z_mat_pas)
         # get SOV constants for capacitance fit
-        sov_tree = greens_tree_pas.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(greens_tree_pas)
         sov_tree.setCompTree()
         sov_tree.calcSOVEquations()
         alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
@@ -531,7 +531,7 @@ class TestCompartmentTreePlotting():
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
 
-        ctree = CompartmentTree(root=croot)
+        ctree = CompartmentTree(croot)
         ctree.addNodeWithParent(cnode1, croot)
         ctree.addNodeWithParent(cnode2, croot)
 
@@ -550,7 +550,7 @@ class TestCompartmentTreePlotting():
         cnode2 = CompartmentNode(2, loc_ind=2)
         cnode3 = CompartmentNode(3, loc_ind=3)
 
-        ctree = CompartmentTree(root=croot)
+        ctree = CompartmentTree(croot)
         ctree.addNodeWithParent(cnode1, croot)
         ctree.addNodeWithParent(cnode2, cnode1)
         ctree.addNodeWithParent(cnode3, cnode2)
@@ -566,7 +566,7 @@ class TestCompartmentTreePlotting():
         #      0
         cns = [CompartmentNode(ii, loc_ind=ii) for ii in range(9)]
 
-        ctree = CompartmentTree(root=cns[0])
+        ctree = CompartmentTree(cns[0])
         # first order children
         ctree.addNodeWithParent(cns[1], cns[0])
         ctree.addNodeWithParent(cns[2], cns[0])

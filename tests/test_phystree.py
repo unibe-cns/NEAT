@@ -43,12 +43,12 @@ class TestPhysTree():
         self.tree.addCurrent(channel, g_max, e_rev)
 
         assert str(self.tree) == ">>> PhysTree\n" \
-            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
+            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)"
 
         repr_str = "['PhysTree', " \
             "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}}\", " \
@@ -411,6 +411,6 @@ if __name__ == '__main__':
     # tphys.testStringRepresentation()
     # tphys.testLeakDistr()
     # tphys.testPhysiologySetting()
-    # tphys.testMembraneFunctions()
+    tphys.testMembraneFunctions()
     # tphys.testCompTree()
-    tphys.testFiniteDiffTree(pprint=True)
+    tphys.testFiniteDiffTree(pprint=False)

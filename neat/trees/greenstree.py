@@ -392,8 +392,8 @@ class GreensTree(PhysTree):
         Frequencies at which impedances are evaluated ``[Hz]``
     """
     def __init__(self, arg=None, types=[1,3,4]):
-        super().__init__(arg=arg, types=types)
         self.freqs = None
+        super().__init__(arg=arg, types=types)
 
     def _getReprDict(self):
         repr_dict = super()._getReprDict()
@@ -702,13 +702,11 @@ class GreensTree(PhysTree):
 
 
 class GreensTreeTime(GreensTree):
-    freqs_vfit = None
-    ft = None
-
-    _slice_vfit = None
-    _slice_quad = None
-
     def __init__(self, arg=None, types=[1,3,4]):
+        self.freqs_vfit = None
+        self.ft = None
+        self._slice_vfit = None
+        self._slice_quad = None
         super().__init__(arg=arg, types=types)
 
     def _getReprDict(self):
