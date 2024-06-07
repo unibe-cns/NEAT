@@ -19,7 +19,7 @@ except ImportError as e:
     WITH_NEST = False
 
 from neat import PhysTree, GreensTree, NeuronSimTree, CompartmentFitter
-from neat import createReducedNeuronModel
+from neat import NeuronCompartmentTree
 import neat.channels.ionchannels as ionchannels
 from neat.factorydefaults import DefaultPhysiology
 
@@ -42,7 +42,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -120,7 +120,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -156,7 +156,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -197,7 +197,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -571,7 +571,7 @@ class TestConcMechs:
         res_full = self._simulate(NeuronSimTree(tree),
             locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
-        res_reduced = self._simulate(createReducedNeuronModel(ctree),
+        res_reduced = self._simulate(NeuronCompartmentTree(ctree),
             clocs, amp=amp, dur=1000., delay=100., cal=1000.
         )
 
@@ -655,7 +655,7 @@ class TestConcMechs:
         res_full = self._simulate(NeuronSimTree(tree),
             locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
-        res_reduced = self._simulate(createReducedNeuronModel(ctree),
+        res_reduced = self._simulate(NeuronCompartmentTree(ctree),
             clocs, amp=amp, dur=1000., delay=100., cal=1000.
         )
 
@@ -810,7 +810,7 @@ class TestConcMechs:
         clocs = ctree.getEquivalentLocs()
         cidxs = [n.index for n in ctree]
 
-        res_neuron = self._simulate(createReducedNeuronModel(ctree),
+        res_neuron = self._simulate(NeuronCompartmentTree(ctree),
             clocs, amp=amp, dur=20000., delay=1000., cal=10000.,
             rec_currs=['ca'],
         )

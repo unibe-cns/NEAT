@@ -13,7 +13,7 @@ except ImportError as e:
 
 from neat import PhysTree
 from neat import CompartmentNode, CompartmentTree
-from neat import CompartmentFitter, createReducedNeuronModel
+from neat import CompartmentFitter, NeuronCompartmentTree
 from neat import NestCompartmentNode, NestCompartmentTree, loadNestModel
 
 import channelcollection_for_tests as channelcollection
@@ -123,7 +123,7 @@ class TestNest:
 
         self.loadBall()
 
-        csimtree_neuron = createReducedNeuronModel(self.ctree)
+        csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
         csimtree_neuron.storeLocs([(0, .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
@@ -211,7 +211,7 @@ class TestNest:
 
         self.loadAxonTree()
 
-        csimtree_neuron = createReducedNeuronModel(self.ctree)
+        csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
         csimtree_neuron.storeLocs([(0, .5), (1, .5), (2., .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
@@ -316,7 +316,7 @@ class TestNest:
         dend_idx = 9
 
         clocs = [(ii, .5) for ii in range(len(self.ctree))]
-        csimtree_neuron = createReducedNeuronModel(self.ctree)
+        csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=tcal)
         csimtree_neuron.storeLocs(clocs, name='rec locs')
         csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)

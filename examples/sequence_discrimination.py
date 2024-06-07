@@ -18,7 +18,7 @@ SIM_FLAG = 1
 try:
     import neuron
     from neuron import h
-    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    from neat import NeuronSimTree, NeuronCompartmentTree
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
@@ -217,7 +217,7 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     clocs = ctree.getEquivalentLocs()
 
     # create the reduced model for NEURON simulation
-    csimtree_ = createReducedNeuronModel(ctree)
+    csimtree_ = NeuronCompartmentTree(ctree)
     csimtree = csimtree_.__copy__(new_tree=BrancoReducedTree())
     csimtree.setSynLocs(clocs)
 

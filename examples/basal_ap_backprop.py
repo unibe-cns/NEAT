@@ -18,7 +18,7 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree
     loadNeuronModel("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
@@ -153,7 +153,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     # create reduced tree
     ctree, clocs = getCTree(cfit, [SLOCS[0]] + locs, 'data/ctree_basal_bAP_3loc',
                             recompute_ctree=rc, recompute_biophys=rb)
-    csimtree = createReducedNeuronModel(ctree)
+    csimtree = NeuronCompartmentTree(ctree)
     print(ctree)
 
     # run the simulation of he full tree
@@ -176,7 +176,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
         # create reduced tree with all 1 single dendritic site locs
         ctree, clocs = getCTree(cfit, [SLOCS[0]] + [loc], 'data/ctree_basal_bAP_1loc%d'%jj,
                                 recompute_ctree=rc, recompute_biophys=False)
-        csimtree = createReducedNeuronModel(ctree)
+        csimtree = NeuronCompartmentTree(ctree)
         print(ctree)
 
         # run the simulation of the reduced tree

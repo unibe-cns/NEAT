@@ -18,7 +18,7 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree
     loadNeuronModel("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
@@ -163,7 +163,7 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
         print('---- sim reduced ----')
         rec_locs = clocs
         # run the simulation of the reduced tree
-        csim_tree = createReducedNeuronModel(ctree)
+        csim_tree = NeuronCompartmentTree(ctree)
         cres = runCaCoinc(csim_tree, rec_locs, ca_ind, 0, stim_type=stim, rec_kwargs=dict(record_from_syns=True, record_from_iclamps=True))
 
         id_offset = 1.
