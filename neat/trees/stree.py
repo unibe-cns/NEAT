@@ -805,7 +805,7 @@ class STree(object):
             for c_node in c_nodes:
                 self._go_from_root_until(c_node, sl=sl)
 
-    def bifurcation_node_to_root(self, node, cnode=None):
+    def get_two_variable_expansion_points_to_root(self, node, cnode=None):
         """
         Find the nearest bifurcation node towards root from the input node.
 
@@ -827,10 +827,10 @@ class STree(object):
         if cnode == None or len(node.get_child_nodes()) <= 1:
             pnode = node.get_parent_node()
             if pnode != None:
-                node, cnode = self.bifurcation_node_to_root(pnode, cnode=node)
+                node, cnode = self.get_two_variable_expansion_points_to_root(pnode, cnode=node)
         return node, cnode
 
-    def bifurcation_node_from_root(self, node):
+    def get_two_variable_expansion_points_from_root(self, node):
         """
         Find the nearest bifurcation node towards leaf from the input node.
 
@@ -849,9 +849,9 @@ class STree(object):
         elif len(node.child_nodes) == 0:
             return None
         else:
-            return self.bifurcation_node_from_root(node.child_nodes[0])
+            return self.get_two_variable_expansion_points_from_root(node.child_nodes[0])
 
-    def get_bifurcation_nodes(self, nodes):
+    def get_get_two_variable_expansion_pointss(self, nodes):
         """
         Get the bifurcation nodes in bewteen the provided input nodes
 

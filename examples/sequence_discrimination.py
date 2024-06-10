@@ -213,7 +213,7 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     # derive the reduced model retaining only soma and synapse locations
     fit_locs = simtree.get_locs('soma loc') + simtree.get_locs('syn locs')
     c_fit = CompartmentFitter(simtree, name='sequence_discrimination', path='data/')
-    ctree = c_fit.fitModel(fit_locs, recompute=recompute)
+    ctree = c_fit.fit_model(fit_locs, recompute=recompute)
     clocs = ctree.get_equivalent_locs()
 
     # create the reduced model for NEURON simulation

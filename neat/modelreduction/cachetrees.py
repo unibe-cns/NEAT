@@ -119,7 +119,7 @@ class EquilibriumTree(FitTree):
     the results of the computation.
     """
 
-    def _calcEEq(self, loc_arg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _calc_e_eq(self, loc_arg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         """
         Calculates equilibrium potentials and concentrations in the tree.
         Computes the equilibria through a NEURON simulations without inputs.
@@ -157,7 +157,7 @@ class EquilibriumTree(FitTree):
             {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
         )
 
-    def calcEEq(self, loc_arg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
+    def calc_e_eq(self, loc_arg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
         """
         Calculates equilibrium potentials and concentrations in the tree.
 
@@ -244,7 +244,7 @@ class EquilibriumTree(FitTree):
         if len(e_eqs) < len(locs):
             if pprint:
                 print("> computing e_eq through interpolation failed, simulating")
-            return self._calcEEq(loc_arg, ions=ions, **kwargs)
+            return self._calc_e_eq(loc_arg, ions=ions, **kwargs)
 
         else:
             if pprint:
@@ -261,7 +261,7 @@ class EquilibriumTree(FitTree):
         if ions is None: ions = self.ions
 
         locs = [(n.index, .5) for n in self]
-        res = self._calcEEq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
+        res = self._calc_e_eq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
 
         for ii, n in enumerate(self):
             n.set_v_ep(res[0][ii])
@@ -313,7 +313,7 @@ class FitTreeGF(GreensTree, FitTree):
         )
         super().__init__(*args, **kwargs)
 
-    def set_impedancesInTree(self, freqs, sv_h=None, pprint=False, **kwargs):
+    def set_impedances_in_tree(self, freqs, sv_h=None, pprint=False, **kwargs):
         """
         Sets the impedances in the tree.
 
@@ -354,7 +354,7 @@ class FitTreeGF(GreensTree, FitTree):
         )
 
     @computational_tree_decorator
-    def calcNETSteadyState(self, root_loc=None, dx=5., dz=5.):
+    def calc_net_steadystate(self, root_loc=None, dx=5., dz=5.):
         if root_loc is None: root_loc = (1, .5)
         root_loc = MorphLoc(root_loc, self)
         # distribute locs on nodes
@@ -367,13 +367,13 @@ class FitTreeGF(GreensTree, FitTree):
         # assert np.allclose(z_mat, z_mat_)
         # derive the NET
         net = NET()
-        self._addNodeToNET(0., z_mat[0,0], z_mat, np.arange(z_mat.shape[0]), None, net,
+        self._add_node_to_net(0., z_mat[0,0], z_mat, np.arange(z_mat.shape[0]), None, net,
                            alpha=1., dz=dz)
         net.set_new_loc_idxs()
 
         return net, z_mat
 
-    def _addNodeToNET(self, z_min, z_max, z_mat, loc_idxs, pnode, net, alpha=1., dz=20.):
+    def _add_node_to_net(self, z_min, z_max, z_mat, loc_idxs, pnode, net, alpha=1., dz=20.):
         # compute mean impedance of node
         inds = [[]]
         while len(inds[0]) == 0:
@@ -393,7 +393,7 @@ class FitTreeGF(GreensTree, FitTree):
         d_inds = consecutive(np.where(np.diag(z_mat) > z_max)[0])
         for di in d_inds:
             if len(di) > 0:
-                self._addNodeToNET(z_max, z_max+dz, z_mat[di,:][:,di], loc_idxs[di], node, net,
+                self._add_node_to_net(z_max, z_max+dz, z_mat[di,:][:,di], loc_idxs[di], node, net,
                                        alpha=alpha, dz=dz)
 
     def _subtract_parent_kernels(self, gammas, pnode):
@@ -419,7 +419,7 @@ class FitTreeC(GreensTreeTime, FitTree):
         )
         super().__init__(*args, **kwargs)
 
-    def set_impedancesInTree(self, t_arr, pprint=False):
+    def set_impedances_in_tree(self, t_arr, pprint=False):
         """
         Sets the impedances in the tree that are necessary for the evaluation
         of the response kernels.
@@ -435,7 +435,7 @@ class FitTreeC(GreensTreeTime, FitTree):
             cname_string = ', '.join(list(self.channel_storage.keys()))
             print(f'>>> evaluating response kernels with {cname_string}')
 
-        self._setFreqAndTimeArrays(t_arr)
+        self._set_freq_and_time_arrays(t_arr)
 
         self.maybe_execute_funcs(
             pprint=pprint,
@@ -462,7 +462,8 @@ class FitTreeSOV(SOVTree, FitTree):
             cache_path=cache_path,
         )
         super().__init__(*args, **kwargs)
-    def setSOVInTree(self, maxspace_freq=100., pprint=False):
+
+    def set_sov_in_tree(self, maxspace_freq=100., pprint=False):
         if pprint:
             print(f'>>> evaluating SOV expansion')
 

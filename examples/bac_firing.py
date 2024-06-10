@@ -57,7 +57,7 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
         clocs = pickle.load(file)
     except (IOError, EOFError) as err:
         print('\n>>>> (re-)deriving model %s'%f_name)
-        ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
+        ctree = cfit.fit_model(locs, alpha_inds=[0], parallel=True,
                                      use_all_channels_for_passive=False,
                                      recompute=recompute_biophys)
         clocs = ctree.get_equivalent_locs()

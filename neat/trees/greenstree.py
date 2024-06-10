@@ -752,7 +752,7 @@ class GreensTreeTime(GreensTree):
             # reasonable parameters for FourrierTools
             self.ft = ke.FourrierTools(t_inp, fmax=7., base=10., num=200)
 
-    def _setFreqAndTimeArrays(self, t_inp):
+    def _set_freq_and_time_arrays(self, t_inp):
         self._set_default_freq_array_vector_fit()
         self._set_default_freq_array_quadrature(t_inp)
 
@@ -761,7 +761,7 @@ class GreensTreeTime(GreensTree):
         self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
 
     def set_impedance(self, t_inp):
-        self._setFreqAndTimeArrays(t_inp)
+        self._set_freq_and_time_arrays(t_inp)
         super().set_impedance(self.freqs)
 
     def _inverse_fourrier(self, func_vals_f,

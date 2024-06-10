@@ -65,7 +65,7 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
         clocs = pickle.load(file)
     except (IOError, EOFError) as err:
         print('\n>>>> (re-)deriving model %s'%f_name)
-        ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
+        ctree = cfit.fit_model(locs, alpha_inds=[0], parallel=True,
                                      use_all_channels_for_passive=False,
                                      recompute=recompute_biophys)
         clocs = ctree.get_equivalent_locs()
@@ -271,9 +271,9 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
                                 marklocs=plocs, loc_args=markers, lims_margin=0.01)
 
     # plot compartment tree schematic
-    ctree_3l = cfit.setCTree([SLOCS[0]] + locs)
+    ctree_3l = cfit.set_ctree([SLOCS[0]] + locs)
     ctree_3l = cfit.ctree
-    ctree_1l = cfit.setCTree([SLOCS[0]] + locs[0:1])
+    ctree_1l = cfit.set_ctree([SLOCS[0]] + locs[0:1])
     ctree_1l = cfit.ctree
 
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}

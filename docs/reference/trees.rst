@@ -47,9 +47,9 @@ Basic tree
    STree.path_between_nodes_depth_first
    STree.get_nodes_in_subtree
    STree.sister_leafs
-   STree.bifurcation_node_to_root
-   STree.bifurcation_node_from_root
-   STree.get_bifurcation_nodes
+   STree.get_two_variable_expansion_points_to_root
+   STree.get_two_variable_expansion_points_from_root
+   STree.get_get_two_variable_expansion_pointss
    STree.get_nearest_neighbours
 
 
@@ -342,7 +342,7 @@ Simulate NEURON models
    NeuronSimTree.addVClamp
    NeuronSimTree.setSpikeTrain
    NeuronSimTree.run
-   NeuronSimTree.calcEEq
+   NeuronSimTree.calc_e_eq
 
 
 Compute equilibrium potentials and concentrations
@@ -353,7 +353,7 @@ Compute equilibrium potentials and concentrations
 .. autosummary::
    :toctree: generated/
 
-   EquilibriumTree.calcEEq
+   EquilibriumTree.calc_e_eq
    EquilibriumTree.set_e_eq
 
 
@@ -371,8 +371,8 @@ To implement the default methodology.
 .. autosummary::
    :toctree: generated/
 
-   CompartmentFitter.setCTree
-   CompartmentFitter.fitModel
+   CompartmentFitter.set_ctree
+   CompartmentFitter.fit_model
 
 To check the faithfullness of the passive reduction, the following functions
 implement vizualisation of impedance kernels.
@@ -380,24 +380,24 @@ implement vizualisation of impedance kernels.
 .. autosummary::
    :toctree: generated/
 
-   CompartmentFitter.checkPassive
-   CompartmentFitter.getKernels
-   CompartmentFitter.plotKernels
+   CompartmentFitter.check_passive
+   CompartmentFitter.get_kernels
+   CompartmentFitter.plot_kernels
 
 Individual fit functions.
 
 .. autosummary::
    :toctree: generated/
 
-   CompartmentFitter.createTreeGF
-   CompartmentFitter.createTreeSOV
-   CompartmentFitter.fitPassiveLeak
-   CompartmentFitter.fitPassive
-   CompartmentFitter.evalChannel
-   CompartmentFitter.fitChannels
-   CompartmentFitter.fitConcentration
-   CompartmentFitter.fitCapacitance
-   CompartmentFitter.fitSynRescale
+   CompartmentFitter.create_tree_gf
+   CompartmentFitter.create_tree_sov
+   CompartmentFitter.fit_leak_only
+   CompartmentFitter.fit_passive
+   CompartmentFitter.eval_channel
+   CompartmentFitter.fit_channels
+   CompartmentFitter.fit_concentration
+   CompartmentFitter.fit_capacitance
+   CompartmentFitter.fit_syn_rescale
 
 
 Defining ion channels

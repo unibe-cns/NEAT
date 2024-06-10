@@ -896,7 +896,7 @@ class NeuronSimTree(PhysTree):
 
         return res
 
-    def calcEEq(self, t_dur=100., set_v_ep=True):
+    def calc_e_eq(self, t_dur=100., set_v_ep=True):
         """
         Compute the equilibrium potentials in the middle (``x=0.5``) of each node.
 

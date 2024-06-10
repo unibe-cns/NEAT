@@ -521,22 +521,22 @@ class TestConcMechs:
         tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        cfit.setCTree(locs)
+        cfit.set_ctree(locs)
 
         # fit the passive steady state model
-        cfit.fitPassive(pprint=True, use_all_channels=False)
+        cfit.fit_passive(pprint=True, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fitCapacitance(pprint=True, pplot=False)
+        cfit.fit_capacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True)
+        cfit.fit_channels(pprint=True)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', fit_tau=fit_tau, pprint=True)
+        cfit.fit_concentration('ca', fit_tau=fit_tau, pprint=True)
 
         # fit the resting potentials
-        cfit.fitEEq(ions=['ca'], t_max=10000)
+        cfit.fit_e_eq(ions=['ca'], t_max=10000)
 
         ctree = cfit.ctree
         clocs = ctree.get_equivalent_locs()
@@ -602,28 +602,28 @@ class TestConcMechs:
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
 
         # test explicit fit
-        cfit.setCTree(locs)
+        cfit.set_ctree(locs)
 
         # fit the passive steady state model
-        cfit.fitPassive(pprint=False, use_all_channels=False)
+        cfit.fit_passive(pprint=False, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fitCapacitance(pprint=False, pplot=False)
+        cfit.fit_capacitance(pprint=False, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=False)
+        cfit.fit_channels(pprint=False)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', pprint=False)
+        cfit.fit_concentration('ca', pprint=False)
 
         # fit the resting potentials
-        cfit.fitEEq(ions=['ca'], t_max=10000)
+        cfit.fit_e_eq(ions=['ca'], t_max=10000)
 
         ctree = cfit.ctree
         clocs = ctree.get_equivalent_locs()
 
-        # test fit with fitModel function
-        ctree_ = cfit.fitModel(locs, use_all_channels_for_passive=False)
+        # test fit with fit_model function
+        ctree_ = cfit.fit_model(locs, use_all_channels_for_passive=False)
 
         # check whether both reductions are the same
         for ii in range(len(locs)):
@@ -677,7 +677,7 @@ class TestConcMechs:
         ctree_fd, locs_fd = tree.create_finite_difference_tree(dx_max=22.)
         # fitted ctree
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        ctree_fit = cfit.fitModel(locs_fd)
+        ctree_fit = cfit.fit_model(locs_fd)
 
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
@@ -714,19 +714,19 @@ class TestConcMechs:
         locs = [(1,.5), (4.,0.5), (5,0.5)]
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        cfit.setCTree(locs)
+        cfit.set_ctree(locs)
 
         # fit the passive steady state model
-        cfit.fitPassive(pprint=True, use_all_channels=False)
+        cfit.fit_passive(pprint=True, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fitCapacitance(pprint=True, pplot=False)
+        cfit.fit_capacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True)
+        cfit.fit_channels(pprint=True)
 
         # fit the concentration mechanism
-        cfit.fitConcentration('ca', pprint=True)
+        cfit.fit_concentration('ca', pprint=True)
 
         ctree = cfit.ctree
 
@@ -805,7 +805,7 @@ class TestConcMechs:
         tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        ctree = cfit.fitModel(locs)
+        ctree = cfit.fit_model(locs)
 
         clocs = ctree.get_equivalent_locs()
         cidxs = [n.index for n in ctree]

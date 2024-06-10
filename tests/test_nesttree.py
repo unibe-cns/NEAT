@@ -76,7 +76,7 @@ class TestNest:
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
         )
-        self.ctree = cfit.fitModel([(1,0.5)])
+        self.ctree = cfit.fit_model([(1,0.5)])
 
     def testInitialization(self):
         dt = .1
@@ -92,7 +92,7 @@ class TestNest:
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
         )
-        self.ctree = cfit.fitModel([(1,0.5)])
+        self.ctree = cfit.fit_model([(1,0.5)])
 
         csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.init_model("multichannel_test", 1)
@@ -202,7 +202,7 @@ class TestNest:
         # simplify
         locs = [(1,.5), (4.,0.5), (5,0.5)]
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        self.ctree = cfit.fitModel(locs)
+        self.ctree = cfit.fit_model(locs)
 
     def testAxonNestNeuronComparison(self, pplot=False):
         dt = .001
@@ -299,7 +299,7 @@ class TestNest:
         # simplify
         locs = [(n.index, .5) for n in tree]
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        self.ctree = cfit.fitModel(locs)
+        self.ctree = cfit.fit_model(locs)
 
     def testDendNestNeuronComparison(self, pplot=False):
         dt = .01
