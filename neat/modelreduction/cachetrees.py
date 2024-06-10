@@ -264,9 +264,9 @@ class EquilibriumTree(FitTree):
         res = self._calcEEq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
 
         for ii, n in enumerate(self):
-            n.setVEP(res[0][ii])
+            n.set_v_ep(res[0][ii])
             for ion, conc in res[1].items():
-                n.setConcEP(ion, conc[ii])
+                n.set_conc_ep(ion, conc[ii])
 
     def setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
         """
@@ -313,7 +313,7 @@ class FitTreeGF(GreensTree, FitTree):
         )
         super().__init__(*args, **kwargs)
 
-    def setImpedancesInTree(self, freqs, sv_h=None, pprint=False, **kwargs):
+    def set_impedancesInTree(self, freqs, sv_h=None, pprint=False, **kwargs):
         """
         Sets the impedances in the tree.
 
@@ -343,13 +343,13 @@ class FitTreeGF(GreensTree, FitTree):
 
                 # set the expansion point
                 for node in self:
-                    node.setExpansionPoint(c_name, statevar=sv)
+                    node.set_expansion_point(c_name, statevar=sv)
 
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
                 (self.set_comp_tree, [], {}),
-                (self.setImpedance, [freqs], {"pprint": pprint, **kwargs})
+                (self.set_impedance, [freqs], {"pprint": pprint, **kwargs})
             ]
         )
 
@@ -363,13 +363,13 @@ class FitTreeGF(GreensTree, FitTree):
         net_locs = self.distribute_locs_on_nodes(d2s=np.arange(d2s_loc, 5000., dx),
                                    node_arg=st_nodes, name='net eval')
         # compute the impedance matrix for net calculation
-        z_mat = self.calcImpedanceMatrix('net eval', explicit_method=False)[0]
+        z_mat = self.calc_impedance_matrix('net eval', explicit_method=False)[0]
         # assert np.allclose(z_mat, z_mat_)
         # derive the NET
         net = NET()
         self._addNodeToNET(0., z_mat[0,0], z_mat, np.arange(z_mat.shape[0]), None, net,
                            alpha=1., dz=dz)
-        net.setNewLocInds()
+        net.set_new_loc_idxs()
 
         return net, z_mat
 
@@ -382,7 +382,7 @@ class FitTreeGF(GreensTree, FitTree):
         z_node = np.mean(z_mat[inds])
         # subtract impedances of parent nodes
         gammas = np.array([z_node])
-        self._subtractParentKernels(gammas, pnode)
+        self._subtract_parent_kernels(gammas, pnode)
         # add a node to the tree
         node = NETNode(len(net), loc_inds, z_kernel=(np.array([alpha]), gammas))
         if pnode != None:
@@ -396,10 +396,10 @@ class FitTreeGF(GreensTree, FitTree):
                 self._addNodeToNET(z_max, z_max+dz, z_mat[di,:][:,di], loc_inds[di], node, net,
                                        alpha=alpha, dz=dz)
 
-    def _subtractParentKernels(self, gammas, pnode):
+    def _subtract_parent_kernels(self, gammas, pnode):
         if pnode != None:
             gammas -= pnode.z_kernel['c']
-            self._subtractParentKernels(gammas, pnode.parent_node)
+            self._subtract_parent_kernels(gammas, pnode.parent_node)
 
 
 class FitTreeC(GreensTreeTime, FitTree):
@@ -419,7 +419,7 @@ class FitTreeC(GreensTreeTime, FitTree):
         )
         super().__init__(*args, **kwargs)
 
-    def setImpedancesInTree(self, t_arr, pprint=False):
+    def set_impedancesInTree(self, t_arr, pprint=False):
         """
         Sets the impedances in the tree that are necessary for the evaluation
         of the response kernels.
@@ -441,7 +441,7 @@ class FitTreeC(GreensTreeTime, FitTree):
             pprint=pprint,
             funcs_args_kwargs=[
                 (self.set_comp_tree, [], {}),
-                (self.setImpedance, [t_arr], {})
+                (self.set_impedance, [t_arr], {})
             ]
         )
 
@@ -472,7 +472,7 @@ class FitTreeSOV(SOVTree, FitTree):
             pprint=pprint,
             funcs_args_kwargs=[
                 (self.set_comp_tree, [], {"eps": 1.}),
-                (self.calcSOVEquations, [], {
+                (self.calc_sov_equations, [], {
                     "maxspace_freq": maxspace_freq,"pprint": pprint,
                 })
             ]

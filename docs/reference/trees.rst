@@ -64,13 +64,13 @@ Compartment Tree
 .. autosummary::
    :toctree: generated/
 
-   CompartmentTree.addCurrent
-   CompartmentTree.setExpansionPoints
+   CompartmentTree.add_channel_current
+   CompartmentTree.set_expansion_points
    CompartmentTree.setEEq
    CompartmentTree.getEEq
    CompartmentTree.fitEL
    CompartmentTree.getEquivalentLocs
-   CompartmentTree.calcImpedanceMatrix
+   CompartmentTree.calc_impedance_matrix
    CompartmentTree.calcConductanceMatrix
    CompartmentTree.calcSystemMatrix
    CompartmentTree.calcEigenvalues
@@ -83,7 +83,7 @@ Compartment Tree
    CompartmentTree.resetFitData
    CompartmentTree.runFit
    CompartmentTree.computeFakeGeometry
-   CompartmentTree.plotDendrogram
+   CompartmentTree.plot_dendrogram
 
 .. autoclass:: neat.CompartmentNode
 
@@ -96,17 +96,17 @@ Neural Evaluation Tree
 .. autosummary::
    :toctree: generated/
 
-    NET.getLocInds
-    NET.getLeafLocNode
-    NET.setNewLocInds
-    NET.getReducedTree
-    NET.calcTotalImpedance
-    NET.calcIZ
-    NET.calcIZMatrix
-    NET.calcImpedanceMatrix
-    NET.calcImpMat
-    NET.getCompartmentalization
-    NET.plotDendrogram
+    NET.get_loc_idxs
+    NET.get_leaf_loc_node
+    NET.set_new_loc_idxs
+    NET.get_reduced_tree
+    NET.calc_total_impedance
+    NET.calc_i_z
+    NET.calc_i_z_matrix
+    NET.calc_impedance_matrix
+    NET.calc_impedance_matrix
+    NET.calc_compartmentalization
+    NET.plot_dendrogram
 
 
 .. autoclass:: neat.NETNode
@@ -267,13 +267,13 @@ Physiology Tree
 .. autosummary::
    :toctree: generated/
 
-   PhysTree.asPassiveMembrane
-   PhysTree.setVEP
-   PhysTree.setPhysiology
-   PhysTree.setLeakCurrent
-   PhysTree.addCurrent
-   PhysTree.getChannelsInTree
-   PhysTree.fitLeakCurrent
+   PhysTree.as_passive_membrane
+   PhysTree.set_v_ep
+   PhysTree.set_physiology
+   PhysTree.set_leak_current
+   PhysTree.add_channel_current
+   PhysTree.get_channels_in_tree
+   PhysTree.fit_leak_current
    PhysTree._evaluate_comp_criteria
 
 .. autoclass:: neat.PhysNode
@@ -287,12 +287,12 @@ Separation of Variables Tree
 .. autosummary::
    :toctree: generated/
 
-   SOVTree.calcSOVEquations
-   SOVTree.getModeImportance
-   SOVTree.getImportantModes
-   SOVTree.calcImpedanceMatrix
-   SOVTree.constructNET
-   SOVTree.computeLinTerms
+   SOVTree.calc_sov_equations
+   SOVTree.get_mode_importance
+   SOVTree.get_important_modes
+   SOVTree.calc_impedance_matrix
+   SOVTree.construct_net
+   SOVTree.compute_lin_terms
 
 .. autoclass:: neat.SOVNode
 
@@ -305,17 +305,17 @@ Greens Tree
 .. autosummary::
    :toctree: generated/
 
-   GreensTree.removeExpansionPoints
-   GreensTree.setImpedance
-   GreensTree.calcZF
-   GreensTree.calcImpedanceMatrix
+   GreensTree.remove_expansion_points
+   GreensTree.set_impedance
+   GreensTree.calc_zf
+   GreensTree.calc_impedance_matrix
 
 .. autoclass:: neat.GreensNode
 
 .. autosummary::
    :toctree: generated/
 
-    GreensNode.setExpansionPoint
+    GreensNode.set_expansion_point
 
 
 Simulate NEURON models

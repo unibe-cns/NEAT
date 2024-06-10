@@ -95,66 +95,66 @@ class TestNET():
     def testBasic(self):
         self.loadTree()
         net = self.net
-        assert net.getLocInds() == [0, 1, 2, 3, 4, 5]
-        assert net.getLocInds(3) == [2, 3, 4]
-        assert net.getLeafLocNode(0).index == 1
-        assert net.getLeafLocNode(1).index == 2
-        assert net.getLeafLocNode(2).index == 3
-        assert net.getLeafLocNode(3).index == 4
-        assert net.getLeafLocNode(4).index == 5
-        assert net.getLeafLocNode(5).index == 6
+        assert net.get_loc_idxs() == [0, 1, 2, 3, 4, 5]
+        assert net.get_loc_idxs(3) == [2, 3, 4]
+        assert net.get_leaf_loc_node(0).index == 1
+        assert net.get_leaf_loc_node(1).index == 2
+        assert net.get_leaf_loc_node(2).index == 3
+        assert net.get_leaf_loc_node(3).index == 4
+        assert net.get_leaf_loc_node(4).index == 5
+        assert net.get_leaf_loc_node(5).index == 6
         # create reduced net
-        net_reduced = net.getReducedTree([4, 5])
+        net_reduced = net.get_reduced_tree([4, 5])
         node_r = net_reduced[0]
-        node_4 = net_reduced.getLeafLocNode(4)
-        node_5 = net_reduced.getLeafLocNode(5)
+        node_4 = net_reduced.get_leaf_loc_node(4)
+        node_5 = net_reduced.get_leaf_loc_node(5)
         assert node_r.z_bar == (net[0].z_kernel + net[2].z_kernel).k_bar
         assert node_4.z_bar == (net[3].z_kernel + net[5].z_kernel).k_bar
         assert node_5.z_bar == net[6].z_bar
         # test Iz
-        Izs = net.calcIZ([1, 3, 5])
+        Izs = net.calc_i_z([1, 3, 5])
         assert np.abs(Izs[(1, 3)] - .5) < 1e-12
         assert np.abs(Izs[(1, 5)] - .25) < 1e-12
         assert np.abs(Izs[(3, 5)] - .75) < 1e-12
         with pytest.raises(KeyError):
             Izs[(5, 3)]
-        assert isinstance(net.calcIZ([4, 5]), float)
+        assert isinstance(net.calc_i_z([4, 5]), float)
         # test impedance matrix calculation
         z_mat_control = np.array([[4., 2.], [2., 3.]])
-        assert np.allclose(net_reduced.calcImpMat(), z_mat_control)
+        assert np.allclose(net_reduced.calc_impedance_matrix(), z_mat_control)
 
     def testCompartmentalization(self):
         self.loadTree()
         net = self.net
-        comps = net.getCompartmentalization(Iz=.1)
+        comps = net.calc_compartmentalization(Iz=.1)
         assert comps == [[1], [4], [5], [6]]
-        comps = net.getCompartmentalization(Iz=.5)
+        comps = net.calc_compartmentalization(Iz=.5)
         assert comps == [[1], [2]]
-        comps = net.getCompartmentalization(Iz=1.)
+        comps = net.calc_compartmentalization(Iz=1.)
         assert comps == [[3]]
-        comps = net.getCompartmentalization(Iz=3.)
+        comps = net.calc_compartmentalization(Iz=3.)
         assert comps == []
-        comps = net.getCompartmentalization(Iz=5.)
+        comps = net.calc_compartmentalization(Iz=5.)
         assert comps == []
 
     def testPlotting(self, pshow=0):
         self.loadTree()
         pl.figure('dendrograms')
         ax = pl.subplot(221)
-        self.net.plotDendrogram(ax)
+        self.net.plot_dendrogram(ax)
         ax = pl.subplot(222)
-        self.net.plotDendrogram(ax,
+        self.net.plot_dendrogram(ax,
                                 plotargs={'lw': 2., 'color': 'DarkGrey'},
                                 labelargs={'marker': 'o', 'ms': 6., 'c': 'r'},
                                 textargs={'size': 'small'})
         ax = pl.subplot(223)
-        self.net.plotDendrogram(ax,
+        self.net.plot_dendrogram(ax,
                                 plotargs={'lw': 2., 'color': 'DarkGrey'},
                                 labelargs={-1: {'marker': 'o', 'ms': 6., 'c': 'r'},
                                            2: {'marker': 'o', 'ms': 10., 'c': 'y'}},
                                 textargs={'size': 'small'})
         ax = pl.subplot(224)
-        self.net.plotDendrogram(ax,
+        self.net.plot_dendrogram(ax,
                                 plotargs={'lw': 2., 'color': 'DarkGrey'},
                                 labelargs={-1: {'marker': 'o', 'ms': 6., 'c': 'r'},
                                            2: {'marker': 'o', 'ms': 10., 'c': 'y'}},

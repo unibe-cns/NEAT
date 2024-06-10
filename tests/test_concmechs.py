@@ -46,26 +46,26 @@ class TestConcMechs:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
-        tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
         na_chan = NaTa_t()
-        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
+        tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
         ca_chan = Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
+        tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
         sk_chan = SK_E2()
-        tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
-        tree.addCurrent(sk_chan, 0.196957 * 1e6, -85., node_arg="axonal")
+        tree.add_channel_current(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(sk_chan, 0.196957 * 1e6, -85., node_arg="axonal")
         # passive leak current
-        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
-        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+        tree.set_leak_current(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.set_leak_current(0.000094 * 1e6, -79.315740, node_arg="axonal")
 
         if w_ca_conc:
             # ca concentration mech
-            tree.addConcMech(
+            tree.add_conc_mech(
                 "ca",
                 params={
                     "tau": 605.033222,
@@ -75,7 +75,7 @@ class TestConcMechs:
                 },
                 node_arg=[tree[1]],
             )
-            tree.addConcMech(
+            tree.add_conc_mech(
                 "ca",
                 params={
                     "tau": 20.715642,
@@ -93,7 +93,7 @@ class TestConcMechs:
             #
             # TODO: find out how to set the default Ca concentration in Neuron
             # without inserting the mechanism
-            tree.addConcMech(
+            tree.add_conc_mech(
                 "ca",
                 params={
                     "tau": 1e20,
@@ -101,7 +101,7 @@ class TestConcMechs:
                 },
                 node_arg=[tree[1]],
             )
-            tree.addConcMech(
+            tree.add_conc_mech(
                 "ca",
                 params={
                     "tau": 1e20,
@@ -124,20 +124,20 @@ class TestConcMechs:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
         ca_chan = Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         sk_chan = SK_E2()
-        tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
         # passive leak current
-        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
-        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+        tree.set_leak_current(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.set_leak_current(0.000094 * 1e6, -79.315740, node_arg="axonal")
 
         # ca concentration mech
-        tree.addConcMech(
+        tree.add_conc_mech(
             "ca",
             params={
                 "tau": 605.033222,
@@ -160,25 +160,25 @@ class TestConcMechs:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
-        tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
         na_chan = NaTa_t()
-        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
+        tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
         ca_chan = Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
+        tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
         sk_chan = SK_E2()
-        tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
-        tree.addCurrent(sk_chan, 0.196957 * 1e6, -85., node_arg="axonal")
+        tree.add_channel_current(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(sk_chan, 0.196957 * 1e6, -85., node_arg="axonal")
         # passive leak current
-        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
-        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+        tree.set_leak_current(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.set_leak_current(0.000094 * 1e6, -79.315740, node_arg="axonal")
 
         # ca concentration mech
-        tree.addConcMech(
+        tree.add_conc_mech(
             "ca",
             params={
                 "tau": 605.033222,
@@ -201,24 +201,24 @@ class TestConcMechs:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
         na_chan = NaTa_t()
-        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
+        tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
         ca_chan = Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         ca_chan_ = Ca_LVAst()
-        tree.addCurrent(ca_chan_, 0.005574 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan_, 0.005574 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         sk_chan = SK_E2()
-        tree.addCurrent(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(sk_chan, 0.653374 * 1e6, -85., node_arg=[tree[1]])
         # passive leak current
-        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.set_leak_current(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
 
         if w_ca_conc:
             # ca concentration mech
-            tree.addConcMech(
+            tree.add_conc_mech(
                 "ca",
                 params={
                     "tau": 605.033222,
@@ -235,7 +235,7 @@ class TestConcMechs:
             #
             # TODO: find out how to set the default Ca concentration in Neuron
             # without inserting the mechanism
-            tree.addConcMech(
+            tree.add_conc_mech(
                 "ca",
                 params={
                     "tau": 100.,
@@ -320,7 +320,7 @@ class TestConcMechs:
                 continue
 
             # check if linearistation needs to be computed around expansion point
-            sv = node.getExpansionPoint(channel_name).copy()
+            sv = node.get_expansion_point(channel_name).copy()
 
             # if voltage is not in expansion point, use equilibrium potential
             v = sv.pop('v', node.v_ep)
@@ -362,7 +362,7 @@ class TestConcMechs:
                 continue
 
             # check if linearistation needs to be computed around expansion point
-            sv = node.getExpansionPoint(channel_name).copy()
+            sv = node.get_expansion_point(channel_name).copy()
 
             # if voltage is not in expansion point, use equilibrium potential
             v = sv.pop('v', node.v_ep)
@@ -418,13 +418,13 @@ class TestConcMechs:
         eq0 = {'v': res0['v_m'][0][0], 'ca': res0['ca'][0][0]}
         eq2 = {'v': res2['v_m'][0][0], 'ca': res2['ca'][0][0]}
 
-        tree0.setVEP(eq0['v'], node_arg=[tree0[1]])
-        tree1.setVEP(eq0['v'], node_arg=[tree1[1]]) # use eq0 -- without conc
-        tree2.setVEP(eq2['v'], node_arg=[tree2[1]])
+        tree0.set_v_ep(eq0['v'], node_arg=[tree0[1]])
+        tree1.set_v_ep(eq0['v'], node_arg=[tree1[1]]) # use eq0 -- without conc
+        tree2.set_v_ep(eq2['v'], node_arg=[tree2[1]])
 
-        tree0.setConcEP('ca', eq0['ca'], node_arg=[tree0[1]])
-        tree1.setConcEP('ca', eq0['ca'], node_arg=[tree1[1]]) # use eq0 -- without conc
-        tree2.setConcEP('ca', eq2['ca'], node_arg=[tree2[1]])
+        tree0.set_conc_ep('ca', eq0['ca'], node_arg=[tree0[1]])
+        tree1.set_conc_ep('ca', eq0['ca'], node_arg=[tree1[1]]) # use eq0 -- without conc
+        tree2.set_conc_ep('ca', eq2['ca'], node_arg=[tree2[1]])
 
         # test whether computed and simulated open probabilities are the same
         calc_p_open2 = {
@@ -440,13 +440,13 @@ class TestConcMechs:
         tree1.set_comp_tree()
         tree2.set_comp_tree()
 
-        tree0.setImpedance(0.)
-        tree1.setImpedance(0., use_conc=False) # omit concentration mechanism
-        tree2.setImpedance(0., use_conc=True)
+        tree0.set_impedance(0.)
+        tree1.set_impedance(0., use_conc=False) # omit concentration mechanism
+        tree2.set_impedance(0., use_conc=True)
 
-        z_in0 = tree0.calcZF((1,.5), (1,.5))
-        z_in1 = tree1.calcZF((1,.5), (1,.5))
-        z_in2 = tree2.calcZF((1,.5), (1,.5))
+        z_in0 = tree0.calc_zf((1,.5), (1,.5))
+        z_in1 = tree1.calc_zf((1,.5), (1,.5))
+        z_in2 = tree2.calc_zf((1,.5), (1,.5))
 
         # test whether omitting the concentration mechanisms from the impedance
         # calculation results in the same impedance as without the concentration
@@ -674,7 +674,7 @@ class TestConcMechs:
     def testFiniteDifference(self, rtol_param=5e-2, pprint=False):
         tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
         # finite difference ctree
-        ctree_fd, locs_fd = tree.createFiniteDifferenceTree(dx_max=22.)
+        ctree_fd, locs_fd = tree.create_finite_difference_tree(dx_max=22.)
         # fitted ctree
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         ctree_fit = cfit.fitModel(locs_fd)

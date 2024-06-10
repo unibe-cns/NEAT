@@ -29,23 +29,23 @@ class TestCNET():
         h_chan = channelcollection.h()
 
         self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
-        self.greens_tree.setPhysiology(1., 100./1e6)
-        self.greens_tree.addCurrent(h_chan, gh, eh)
-        self.greens_tree.fitLeakCurrent(v_eq, 10.)
-        self.greens_tree.setVEP(v_eq)
+        self.greens_tree.set_physiology(1., 100./1e6)
+        self.greens_tree.add_channel_current(h_chan, gh, eh)
+        self.greens_tree.fit_leak_current(v_eq, 10.)
+        self.greens_tree.set_v_ep(v_eq)
         self.greens_tree_pas = GreensTree(self.greens_tree)
-        self.greens_tree_pas.asPassiveMembrane()
+        self.greens_tree_pas.as_passive_membrane()
         self.sim_tree = NeuronSimTree(self.greens_tree)
         # set the impedances
         self.greens_tree_pas.set_comp_tree()
         self.freqs = np.array([0.])
-        self.greens_tree_pas.setImpedance(self.freqs)
+        self.greens_tree_pas.set_impedance(self.freqs)
         # create sov tree
         self.sov_tree = SOVTree(self.greens_tree_pas)
-        self.sov_tree.calcSOVEquations(maxspace_freq=50.)
+        self.sov_tree.calc_sov_equations(maxspace_freq=50.)
 
-        z_inp = self.greens_tree_pas.calcZF((1,.5), (1,.5))[0]
-        alphas, gammas = self.sov_tree.getSOVMatrices(loc_arg=[(1.,.5)])
+        z_inp = self.greens_tree_pas.calc_zf((1,.5), (1,.5))[0]
+        alphas, gammas = self.sov_tree.get_sov_matrices(loc_arg=[(1.,.5)])
         # create NET
         node_0 = NETNode(0, [0], [0], z_kernel=(alphas, gammas[:,0]**2))
         net_py = NET()

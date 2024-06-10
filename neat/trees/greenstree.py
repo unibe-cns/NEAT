@@ -40,11 +40,11 @@ class GreensNode(PhysNode):
         super().__init__(index, p3d)
         self.expansion_points = {}
 
-    def _rescaleLengthRadius(self):
+    def _rescale_length_radius(self):
         self.R_ = self.R * 1e-4 # convert to cm
         self.L_ = self.L * 1e-4 # convert to cm
 
-    def setExpansionPoint(self, channel_name, statevar):
+    def set_expansion_point(self, channel_name, statevar):
         """
         Set the choice for the state variables of the ion channel around which
         to linearize.
@@ -65,14 +65,14 @@ class GreensNode(PhysNode):
             statevar = {}
         self.expansion_points[channel_name] = statevar
 
-    def getExpansionPoint(self, channel_name):
+    def get_expansion_point(self, channel_name):
         try:
             return self.expansion_points[channel_name]
         except KeyError:
             self.expansion_points[channel_name] = {}
             return self.expansion_points[channel_name]
 
-    def _constructChannelArgs(self, channel):
+    def _construct_channel_args(self, channel):
         """
         Returns the expansion points for the channel, around which the
         linearization in computed.
@@ -97,7 +97,7 @@ class GreensNode(PhysNode):
             The state variables and/or concentrations at the expansion points.
         """
         # check if linearistation needs to be computed around expansion point
-        sv = self.getExpansionPoint(channel.__class__.__name__).copy()
+        sv = self.get_expansion_point(channel.__class__.__name__).copy()
 
         # if voltage is not in expansion point, use equilibrium potential
         v = sv.pop('v', self.v_ep)
@@ -116,7 +116,7 @@ class GreensNode(PhysNode):
 
         return v, sv
 
-    def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
+    def _calc_membrane_impedance(self, freqs, channel_storage, use_conc=False):
         """
         Compute the impedance of the membrane at the node
 
@@ -153,7 +153,7 @@ class GreensNode(PhysNode):
 
             # get voltage(s), state variable expansion point(s) and
             # concentration(s) around which to linearize the channel
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
 
             # compute linearized channel contribution to membrane impedance
             g_m_chan = g * channel.computeLinSum(v, freqs, e=e, **sv)
@@ -184,7 +184,7 @@ class GreensNode(PhysNode):
 
                 # get voltage(s), state variable expansion point(s) and
                 # concentration(s) around which to linearize the channel
-                v, sv = self._constructChannelArgs(channel)
+                v, sv = self._construct_channel_args(channel)
 
                 # add concentration contribution to linearized membrane
                 # conductance
@@ -197,7 +197,7 @@ class GreensNode(PhysNode):
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
 
 
-    def _calcChannelStatevarLinearTerms(self, freqs, v_resp, channel_storage):
+    def _calc_channel_statevar_linear_terms(self, freqs, v_resp, channel_storage):
         """
         Compute linearized responss of the ion channel state variables, given
         the linearized voltage responses
@@ -230,7 +230,7 @@ class GreensNode(PhysNode):
 
             # get voltage(s), state variable expansion point(s) and
             # concentration(s) around which to linearize the channel
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
 
             # compute linearized channel contribution to membrane impedance
             svar_terms[channel_name] = channel.computeLinStatevarResponse(
@@ -240,16 +240,16 @@ class GreensNode(PhysNode):
         return svar_terms
 
 
-    def _setImpedance(self, freqs, channel_storage, use_conc=False):
+    def _set_impedance(self, freqs, channel_storage, use_conc=False):
         self.counter = 0
-        self.z_m = self._calcMembraneImpedance(freqs, channel_storage,
+        self.z_m = self._calc_membrane_impedance(freqs, channel_storage,
                                               use_conc=use_conc)
 
         self.z_a = self.r_a / (np.pi * self.R_**2)
         self.gamma = np.sqrt(self.z_a / self.z_m)
         self.z_c = self.z_a / self.gamma
 
-    def _setImpedanceDistal(self):
+    def _set_impedance_distal(self):
         """
         Set the boundary condition at the distal end of the segment
         """
@@ -272,14 +272,14 @@ class GreensNode(PhysNode):
             g_aux = np.ones_like(self.z_m) * self.g_shunt
 
             for cnode in self.child_nodes:
-                g_aux = g_aux +  1. / cnode._collapseBranchToRoot()
+                g_aux = g_aux +  1. / cnode._collapse_branch_to_root()
 
             # note that a division by zero error is not possible here, since the
             # only case where this occurs would be a node with no child nodes,
             # which is caught in the if statement
             self.z_distal = 1. / g_aux
 
-    def _setImpedanceProximal(self):
+    def _set_impedance_proximal(self):
         """
         Set the boundary condition at the proximal end of the segment
         """
@@ -289,26 +289,26 @@ class GreensNode(PhysNode):
         # compute the impedance
         val = 0.
         if self.parent_node is not None:
-            val = val + 1. / self.parent_node._collapseBranchToLeaf()
+            val = val + 1. / self.parent_node._collapse_branch_to_leaf()
             val += self.parent_node.g_shunt
         for snode in sister_nodes:
-            val = val + 1. / snode._collapseBranchToRoot()
+            val = val + 1. / snode._collapse_branch_to_root()
         self.z_proximal = 1. / val
 
-    def _collapseBranchToLeaf(self):
+    def _collapse_branch_to_leaf(self):
         return self.z_c * (self.z_proximal * np.cosh(self.gamma * self.L_) + \
                            self.z_c * np.sinh(self.gamma * self.L_)) / \
                           (self.z_proximal * np.sinh(self.gamma * self.L_) +
                            self.z_c * np.cosh(self.gamma * self.L_))
 
-    def _collapseBranchToRoot(self):
+    def _collapse_branch_to_root(self):
         zr = self.z_c * (np.cosh(self.gamma * self.L_) +
                          self.z_c / self.z_distal * np.sinh(self.gamma * self.L_)) / \
                         (np.sinh(self.gamma * self.L_) +
                          self.z_c / self.z_distal * np.cosh(self.gamma * self.L_))
         return zr
 
-    def _setImpedanceArrays(self):
+    def _set_impedance_arrays(self):
         self.gammaL = self.gamma * self.L_
         self.z_cp = self.z_c / self.z_proximal
         self.z_cd = self.z_c / self.z_distal
@@ -321,7 +321,7 @@ class GreensNode(PhysNode):
                     self.wrongskian
         self.z_01 = 1. / self.wrongskian
 
-    def _calcZF(self, x1, x2):
+    def _calc_zf(self, x1, x2):
         if x1 <  1e-3 and x2 < 1e-3:
             return self.z_00
         elif x1 > 1.-1e-3 and x2 > 1.-1e-3:
@@ -349,28 +349,28 @@ class GreensNode(PhysNode):
 
 
 class SomaGreensNode(GreensNode):
-    def _calcMembraneImpedance(self, freqs, channel_storage, use_conc=False):
-        z_m = super()._calcMembraneImpedance(freqs, channel_storage,
+    def _calc_membrane_impedance(self, freqs, channel_storage, use_conc=False):
+        z_m = super()._calc_membrane_impedance(freqs, channel_storage,
                                                                 use_conc=use_conc)
         # rescale for soma surface instead of cylinder radius
         # return z_m / (2. * self.R_)
         return 1. / (2. * self.R_ / z_m + self.g_shunt)
 
-    def _setImpedance(self, freqs, channel_storage, use_conc=False):
+    def _set_impedance(self, freqs, channel_storage, use_conc=False):
         self.counter = 0
-        self.z_soma = self._calcMembraneImpedance(freqs, channel_storage,
+        self.z_soma = self._calc_membrane_impedance(freqs, channel_storage,
                                                  use_conc=use_conc)
 
-    def _collapseBranchToLeaf(self):
+    def _collapse_branch_to_leaf(self):
         return self.z_soma
 
-    def _setImpedanceArrays(self):
+    def _set_impedance_arrays(self):
         val = 1. / self.z_soma
         for node in self.child_nodes:
-            val = val + 1. / node._collapseBranchToRoot()
+            val = val + 1. / node._collapse_branch_to_root()
         self.z_in = 1. / val
 
-    def _calcZF(self, x1, x2):
+    def _calc_zf(self, x1, x2):
         return self.z_in
 
 
@@ -420,15 +420,21 @@ class GreensTree(PhysTree):
         else:
             return GreensNode(node_index, p3d)
 
-    def removeExpansionPoints(self):
+    def remove_expansion_points(self):
         """
         Remove expansion points from all nodes in the tree
         """
         for node in self:
             node.expansion_points = {}
 
+    def _check_instantiated(self):
+        if self.freqs is None:
+            raise AttributeError(
+                "Frequency arrays are not instatiated, call `set_impedance()` first"
+            )
+        
     @morphtree.computational_tree_decorator
-    def setImpedance(self, freqs, use_conc=False, pprint=False):
+    def set_impedance(self, freqs, use_conc=False, pprint=False):
         """
         Set the boundary impedances for each node in the tree
 
@@ -447,18 +453,18 @@ class GreensTree(PhysTree):
 
         # set the node specific impedances
         for node in self:
-            node._rescaleLengthRadius()
-            node._setImpedance(self.freqs, self.channel_storage, use_conc=use_conc)
+            node._rescale_length_radius()
+            node._set_impedance(self.freqs, self.channel_storage, use_conc=use_conc)
         # recursion
         if len(self) > 1:
-            self._impedanceFromLeaf(self.leafs[0], self.leafs[1:], pprint=pprint)
-            self._impedanceFromRoot(self.root)
+            self._impedance_from_leaf(self.leafs[0], self.leafs[1:], pprint=pprint)
+            self._impedance_from_root(self.root)
         # clean
         for node in self:
             node.counter = 0
-            node._setImpedanceArrays()
+            node._set_impedance_arrays()
 
-    def _impedanceFromLeaf(self, node, leafs, pprint=False):
+    def _impedance_from_leaf(self, node, leafs, pprint=False):
         if pprint:
             print('Forward sweep: ' + str(node))
         pnode = node.parent_node
@@ -470,19 +476,19 @@ class GreensTree(PhysTree):
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
             if not self.is_root(node):
-                node._setImpedanceDistal()
-                self._impedanceFromLeaf(pnode, leafs, pprint=pprint)
+                node._set_impedance_distal()
+                self._impedance_from_leaf(pnode, leafs, pprint=pprint)
         elif len(leafs) > 0:
-                self._impedanceFromLeaf(leafs[0], leafs[1:], pprint=pprint)
+                self._impedance_from_leaf(leafs[0], leafs[1:], pprint=pprint)
 
-    def _impedanceFromRoot(self, node):
+    def _impedance_from_root(self, node):
         if node != self.root:
-            node._setImpedanceProximal()
+            node._set_impedance_proximal()
         for cnode in node.child_nodes:
-            self._impedanceFromRoot(cnode)
+            self._impedance_from_root(cnode)
 
     @morphtree.computational_tree_decorator
-    def calcZF(self, loc1, loc2):
+    def calc_zf(self, loc1, loc2):
         """
         Computes the transfer impedance between two locations for all frequencies
         in `self.freqs`.
@@ -499,6 +505,7 @@ class GreensTree(PhysTree):
         nd.ndarray (dtype = complex, ndim = 1)
             The transfer impedance ``[MOhm]`` as a function of frequency
         """
+        self._check_instantiated()
         # cast to morphlocs
         loc1 = MorphLoc(loc1, self)
         loc2 = MorphLoc(loc2, self)
@@ -508,32 +515,32 @@ class GreensTree(PhysTree):
         z_f = np.ones_like(self.root.z_in)
         if len(path) == 1:
             # both locations are on same node
-            z_f *= path[0]._calcZF(loc1['x'], loc2['x'])
+            z_f *= path[0]._calc_zf(loc1['x'], loc2['x'])
         else:
             # different cases whether path goes to or from root
             if path[1] == self[loc1['node']].parent_node:
-                z_f *= path[0]._calcZF(loc1['x'], 0.)
+                z_f *= path[0]._calc_zf(loc1['x'], 0.)
             else:
-                z_f *= path[0]._calcZF(loc1['x'], 1.)
-                z_f /= path[0]._calcZF(1., 1.)
+                z_f *= path[0]._calc_zf(loc1['x'], 1.)
+                z_f /= path[0]._calc_zf(1., 1.)
             if path[-2] == self[loc2['node']].parent_node:
-                z_f *= path[-1]._calcZF(loc2['x'], 0.)
+                z_f *= path[-1]._calc_zf(loc2['x'], 0.)
             else:
-                z_f *= path[-1]._calcZF(loc2['x'], 1.)
-                z_f /= path[-1]._calcZF(1., 1.)
+                z_f *= path[-1]._calc_zf(loc2['x'], 1.)
+                z_f /= path[-1]._calc_zf(1., 1.)
             # nodes within the path
             ll = 1
             for node in path[1:-1]:
-                z_f /= node._calcZF(1., 1.)
+                z_f /= node._calc_zf(1., 1.)
                 if path[ll-1] not in node.child_nodes or \
                    path[ll+1] not in node.child_nodes:
-                    z_f *= node._calcZF(0., 1.)
+                    z_f *= node._calc_zf(0., 1.)
                 ll += 1
 
         return z_f
 
     @morphtree.computational_tree_decorator
-    def calcImpedanceMatrix(self, loc_arg, explicit_method=True):
+    def calc_impedance_matrix(self, loc_arg, explicit_method=True):
         """
         Computes the impedance matrix of a given set of locations for each
         frequency stored in `self.freqs`.
@@ -555,6 +562,7 @@ class GreensTree(PhysTree):
             frequency, second and third dimensions contain the impedance
             matrix ``[MOhm]`` at that frequency
         """
+        self._check_instantiated()
         locs = self.convert_loc_arg_to_locs(loc_arg)
 
         n_loc = len(locs)
@@ -564,78 +572,78 @@ class GreensTree(PhysTree):
         if explicit_method:
             for ii, loc0 in enumerate(locs):
                 # diagonal elements
-                z_f = self.calcZF(loc0, loc0)
+                z_f = self.calc_zf(loc0, loc0)
                 z_mat[ii,ii] = z_f
 
                 # off-diagonal elements
                 jj = 0
                 while jj < ii:
                     loc1 = locs[jj]
-                    z_f = self.calcZF(loc0, loc1)
+                    z_f = self.calc_zf(loc0, loc1)
                     z_mat[ii,jj] = z_f
                     z_mat[jj,ii] = z_f
                     jj += 1
         else:
             for ii in range(len(locs)):
-                self._calcImpedanceMatrixFromNode(ii, locs, z_mat)
+                self._calc_impedance_matrix_from_node(ii, locs, z_mat)
 
         return np.moveaxis(z_mat, [0, 1], [-1, -2])
 
-    def _calcImpedanceMatrixFromNode(self, ii, locs, z_mat):
+    def _calc_impedance_matrix_from_node(self, ii, locs, z_mat):
         node = self[locs[ii]['node']]
         for jj, loc in enumerate(locs):
             if loc['node'] == node.index and jj >= ii:
-                z_new = node._calcZF(locs[ii]['x'],loc['x'])
+                z_new = node._calc_zf(locs[ii]['x'],loc['x'])
                 z_mat[ii,jj] = z_new
                 z_mat[jj,ii] = z_new
 
         # move down
         for c_node in node.child_nodes:
-            z_new = node._calcZF(locs[ii]['x'], 1.)
-            self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+            z_new = node._calc_zf(locs[ii]['x'], 1.)
+            self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
 
         if node.parent_node is not None:
-            z_new = node._calcZF(locs[ii]['x'], 0.)
+            z_new = node._calc_zf(locs[ii]['x'], 0.)
             # move to sister nodes
             for c_node in set(node.parent_node.child_nodes) - {node}:
-                self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+                self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
             # move up
-            self._calcImpedanceMatrixUp(ii, z_new, node.parent_node, locs, z_mat)
+            self._calc_impedance_matrix_to_root(ii, z_new, node.parent_node, locs, z_mat)
 
-    def _calcImpedanceMatrixUp(self, ii, z_0, node, locs, z_mat):
+    def _calc_impedance_matrix_to_root(self, ii, z_0, node, locs, z_mat):
         # compute impedances
-        z_in = node._calcZF(1.,1.)
+        z_in = node._calc_zf(1.,1.)
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
-                z_new = z_0 / z_in * node._calcZF(1.,loc['x'])
+                z_new = z_0 / z_in * node._calc_zf(1.,loc['x'])
                 z_mat[ii,jj] = z_new
                 z_mat[jj,ii] = z_new
 
         if node.parent_node is not None:
-            z_new = z_0 / z_in * node._calcZF(0., 1.)
+            z_new = z_0 / z_in * node._calc_zf(0., 1.)
             # move to sister nodes
             for c_node in set(node.parent_node.child_nodes) - {node}:
-                self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+                self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
             # move to parent node
-            z_new = z_0 / z_in * node._calcZF(0., 1.)
-            self._calcImpedanceMatrixUp(ii, z_new, node.parent_node, locs, z_mat)
+            z_new = z_0 / z_in * node._calc_zf(0., 1.)
+            self._calc_impedance_matrix_to_root(ii, z_new, node.parent_node, locs, z_mat)
 
-    def _calcImpedanceMatrixDown(self, ii, z_0, node, locs, z_mat):
+    def _calc_impedance_matrix_from_root(self, ii, z_0, node, locs, z_mat):
         # compute impedances
-        z_in = node._calcZF(0.,0.)
+        z_in = node._calc_zf(0.,0.)
         for jj, loc in enumerate(locs):
             if jj > ii and loc['node'] == node.index:
-                z_new = z_0 / z_in * node._calcZF(0., loc['x'])
+                z_new = z_0 / z_in * node._calc_zf(0., loc['x'])
                 z_mat[ii,jj] = z_new
                 z_mat[jj,ii] = z_new
 
         # recurse to child nodes
-        z_new = z_0 / z_in * node._calcZF(0., 1.)
+        z_new = z_0 / z_in * node._calc_zf(0., 1.)
         for c_node in node.child_nodes:
-            self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
+            self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
 
     @morphtree.computational_tree_decorator
-    def calcChannelResponseF(self, loc1, loc2):
+    def calc_channel_response_f(self, loc1, loc2):
         """
         Compute linearized ion channel state variable responses in the frequency
         domain  at `loc2` to a delta current pulse input at `loc1`.
@@ -654,19 +662,20 @@ class GreensTree(PhysTree):
             current pulse input. Can be accessed as:
             [channel_name][statevar_name][frequency]
         """
+        self._check_instantiated()
         # cast to morphlocs
         loc1 = MorphLoc(loc1, self)
         loc2 = MorphLoc(loc2, self)
 
         # compute channel responses
-        c_resp = self[loc2['node']]._calcChannelStatevarLinearTerms(
-            self.freqs, self.calcZF(loc1, loc2), self.channel_storage
+        c_resp = self[loc2['node']]._calc_channel_statevar_linear_terms(
+            self.freqs, self.calc_zf(loc1, loc2), self.channel_storage
         )
 
         return c_resp
 
     @morphtree.computational_tree_decorator
-    def calcChannelResponseMatrix(self, loc_arg):
+    def calc_channel_response_matrix(self, loc_arg):
         """
         Compute linearized ion channel state variable response matrix in the
         frequency domain at all locations in `loc_arg` to delta current pulse
@@ -688,12 +697,13 @@ class GreensTree(PhysTree):
             can be accessed as
             [location_index][channel_name][statevar_name][frequency, input loc]
         """
+        self._check_instantiated()
         locs = self.convert_loc_arg_to_locs(loc_arg)
-        z_mat = self.calcImpedanceMatrix(locs)
+        z_mat = self.calc_impedance_matrix(locs)
 
         channel_responses = []
         for ii, loc in enumerate(locs):
-            c_resp = self[loc['node']]._calcChannelStatevarLinearTerms(
+            c_resp = self[loc['node']]._calc_channel_statevar_linear_terms(
                 self.freqs, z_mat[:,ii,:], self.channel_storage
             )
             channel_responses.append(c_resp)
@@ -717,13 +727,13 @@ class GreensTreeTime(GreensTree):
         })
         return repr_dict
 
-    def _checkInstantiated(self):
+    def _check_instantiated(self):
         if self.freqs_vfit is None or self.ft is None:
             raise AttributeError(
-                "Frequency arrays are not instatiated, call `setImpedance()` first"
+                "Frequency arrays are not instatiated, call `set_impedance()` first"
             )
 
-    def _setDefaultFreqarrayVectorFit(self):
+    def _set_default_freq_array_vector_fit(self):
         # reasonable parameters to construct frequency array
         dt = 0.1*1e-3 # s
         N = 2**12
@@ -733,7 +743,7 @@ class GreensTreeTime(GreensTree):
         # frequency array for vector fitting
         self.freqs_vfit = np.arange(-smax, smax, ds)*1j  # Hz
 
-    def _setDefaultFreqarrayQuadrature(self, t_inp):
+    def _set_default_freq_array_quadrature(self, t_inp):
         # frequency array for time domain evaluation of the kernels through
         # quadrature is contained in `FourrierTools.s`
         if isinstance(t_inp, ke.FourrierTools):
@@ -743,18 +753,18 @@ class GreensTreeTime(GreensTree):
             self.ft = ke.FourrierTools(t_inp, fmax=7., base=10., num=200)
 
     def _setFreqAndTimeArrays(self, t_inp):
-        self._setDefaultFreqarrayVectorFit()
-        self._setDefaultFreqarrayQuadrature(t_inp)
+        self._set_default_freq_array_vector_fit()
+        self._set_default_freq_array_quadrature(t_inp)
 
         self._slice_vfit = np.s_[:len(self.freqs_vfit)]
         self._slice_quad = np.s_[len(self.freqs_vfit):]
         self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
 
-    def setImpedance(self, t_inp):
+    def set_impedance(self, t_inp):
         self._setFreqAndTimeArrays(t_inp)
-        super().setImpedance(self.freqs)
+        super().set_impedance(self.freqs)
 
-    def _inverseFourrier(self, func_vals_f,
+    def _inverse_fourrier(self, func_vals_f,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=True,
         ):
@@ -844,14 +854,14 @@ class GreensTreeTime(GreensTree):
             return func_vals_t
 
     @morphtree.computational_tree_decorator
-    def calcZT(self, loc1, loc2,
+    def calc_zt(self, loc1, loc2,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=True,
             _zf=None,
         ):
         """
         Computes the impulse response kernel between two locations for all
-        time points in `self.ft.t` (the input times provided to `setImpedance()`).
+        time points in `self.ft.t` (the input times provided to `set_impedance()`).
 
         Parameters
         ----------
@@ -873,25 +883,25 @@ class GreensTreeTime(GreensTree):
         nd.ndarray (dtype = complex, ndim = 1)
             The transfer impedance ``[MOhm]`` as a function of frequency
         """
-        self._checkInstantiated()
+        self._check_instantiated()
 
         # compute impedances in the frequency domain
-        zf = self.calcZF(loc1, loc2) if _zf is None else _zf
+        zf = self.calc_zf(loc1, loc2) if _zf is None else _zf
 
         # convert frequency impedances to time domain kernels
-        return self._inverseFourrier(zf, method=method,
+        return self._inverse_fourrier(zf, method=method,
             compute_time_derivative=compute_time_derivative
         )
 
     @morphtree.computational_tree_decorator
-    def calcImpulseResponseMatrix(self, loc_arg,
+    def calc_impulse_response_matrix(self, loc_arg,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=False,
         ):
         """
         Computes the matrix of impulse response kernels at a given set of
         locations for all time-points defined in `self.ft.t` (the input times
-        provided to `setImpedance()`).
+        provided to `set_impedance()`).
 
         Parameters
         ----------
@@ -915,14 +925,14 @@ class GreensTreeTime(GreensTree):
             time axis, second and third dimensions contain the impulse response
             in ``[MOhm/ms]`` at that time point
         """
-        self._checkInstantiated()
+        self._check_instantiated()
         locs = self.convert_loc_arg_to_locs(loc_arg)
 
         nt = len(self.ft.t) # number of time points
         nl = len(locs) # number of locations
 
         # compute impedance matrix in frequency domain
-        zf_mat = self.calcImpedanceMatrix(locs)
+        zf_mat = self.calc_impedance_matrix(locs)
 
         zt_mat = np.zeros((nt, nl, nl))
         if compute_time_derivative:
@@ -935,7 +945,7 @@ class GreensTreeTime(GreensTree):
                     break
 
                 if compute_time_derivative:
-                    zt_mat[:, ii, jj], dzt_dt_mat[:, ii, jj] = self.calcZT(
+                    zt_mat[:, ii, jj], dzt_dt_mat[:, ii, jj] = self.calc_zt(
                         loc1, loc2,
                         compute_time_derivative=True,
                         _zf=zf_mat[:, ii, jj],
@@ -944,7 +954,7 @@ class GreensTreeTime(GreensTree):
                     dzt_dt_mat[:, jj, ii] = dzt_dt_mat[:, ii, jj]
 
                 else:
-                    zt_mat[:, ii, jj] = self.calcZT(
+                    zt_mat[:, ii, jj] = self.calc_zt(
                         loc1, loc2,
                         compute_time_derivative=False,
                         _zf=zf_mat[:, ii, jj],
@@ -959,7 +969,7 @@ class GreensTreeTime(GreensTree):
             return zt_mat
 
     @morphtree.computational_tree_decorator
-    def calcChannelResponseT(self, loc1, loc2,
+    def calc_channel_response_t(self, loc1, loc2,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=False,
             _crf=None,
@@ -969,7 +979,7 @@ class GreensTreeTime(GreensTree):
         domain  at `loc2` to a delta current pulse input at `loc1`.
 
         Evaluated time-points are the ones in `self.ft.t` (the input times
-        provided to `setImpedance()`).
+        provided to `set_impedance()`).
 
         Parameters
         ----------
@@ -993,12 +1003,12 @@ class GreensTreeTime(GreensTree):
             current pulse input. Can be accessed as:
             `[channel_name][statevar_name][time]`
         """
-        self._checkInstantiated()
+        self._check_instantiated()
         loc1 = MorphLoc(loc1, self)
         loc2 = MorphLoc(loc2, self)
 
         # compute impedances in the frequency domain
-        crf = self.calcChannelResponseF(loc1, loc2) if _crf is None else _crf
+        crf = self.calc_channel_response_f(loc1, loc2) if _crf is None else _crf
 
         crt, dcrt_dt = {}, {}
         for channel_name in crf:
@@ -1017,7 +1027,7 @@ class GreensTreeTime(GreensTree):
                     (
                         crt[channel_name][svar_name],
                         dcrt_dt[channel_name][svar_name]
-                    ) = self._inverseFourrier(
+                    ) = self._inverse_fourrier(
                         crf[channel_name][svar_name],
                         method=method,
                         compute_time_derivative=compute_time_derivative,
@@ -1025,7 +1035,7 @@ class GreensTreeTime(GreensTree):
 
                 else:
                     # convert frequency impedances to time domain kernels
-                    crt[channel_name][svar_name] = self._inverseFourrier(
+                    crt[channel_name][svar_name] = self._inverse_fourrier(
                         crf[channel_name][svar_name],
                         method=method,
                         compute_time_derivative=compute_time_derivative,
@@ -1036,14 +1046,14 @@ class GreensTreeTime(GreensTree):
         else:
             return crt
 
-    def calcChannelResponseMatrix(self, loc_arg, compute_time_derivative=False):
+    def calc_channel_response_matrix(self, loc_arg, compute_time_derivative=False):
         """
         Compute linearized ion channel state variable response matrix at all
         locations in `loc_arg` to delta current pulse inputs at each of those
         loctions.
 
         Evaluated time-points are the ones in `self.ft.t` (the input times
-        provided to `setImpedance()`).
+        provided to `set_impedance()`).
 
         Note that the matrix is returned as a list of nested dictionaries.
 
@@ -1079,13 +1089,13 @@ class GreensTreeTime(GreensTree):
             for jj, loc_in in enumerate(locs):
 
                 if compute_time_derivative:
-                    crt_loc1, dcrt_dt_loc1 = self.calcChannelResponseT(
+                    crt_loc1, dcrt_dt_loc1 = self.calc_channel_response_t(
                         loc_in, loc_out,
                         compute_time_derivative=True,
                         method="quadrature",
                     )
                 else:
-                    crt_loc1 = self.calcChannelResponseT(
+                    crt_loc1 = self.calc_channel_response_t(
                         loc_in, loc_out,
                         compute_time_derivative=False,
                         method="quadrature",

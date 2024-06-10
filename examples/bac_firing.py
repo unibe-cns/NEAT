@@ -222,7 +222,7 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
     # compartment tree dendrogram
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}
     labelargs.update({ii: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2} for ii in range(1,len(plocs))})
-    ctree.plotDendrogram(axes_morph[1], plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
+    ctree.plot_dendrogram(axes_morph[1], plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
 
     pl.show()
 

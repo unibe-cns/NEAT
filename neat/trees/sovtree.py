@@ -35,10 +35,10 @@ class SOVNode(PhysNode):
     def __init__(self, index, p3d=None):
         super().__init__(index, p3d)
 
-    def _setSOV(self, channel_storage, tau_0=0.02):
+    def _set_sov(self, channel_storage, tau_0=0.02):
         self.counter = 0
         # segment parameters
-        self.g_m        = self.getGTot(channel_storage) # uS/cm^2
+        self.g_m        = self.calc_g_tot(channel_storage) # uS/cm^2
         # parameters for SOV approach
         self.R_sov      = self.R * 1e-4 # convert um to cm
         self.L_sov      = self.L * 1e-4 # convert um to cm
@@ -107,21 +107,21 @@ class SOVNode(PhysNode):
                             ( np.cos(q_ds[i]*cn.L_sov/cn.lambda_m) + mu_ds[i]*np.sin(q_ds[i]*cn.L_sov/cn.lambda_m) )**2 \
                             ) for i, cn in enumerate(cns)], 0) / self.g_inf_m ) / self.q_m(x)
 
-    def _setKappaFactors(self, xzeros):
+    def _set_kappa_factors(self, xzeros):
         xzeros = zf._to_complex(xzeros)
         self.kappa_m = self.parent_node.kappa_m / \
                            (np.cos(self.q_m(xzeros)*self.L_sov/self.lambda_m) + \
                             self.mu_m(xzeros)*np.sin(self.q_m(xzeros)*self.L_sov/self.lambda_m))
 
-    def _setMuVals(self, xzeros):
+    def _set_mu_vals(self, xzeros):
         xzeros = zf._to_complex(xzeros)
         self.mu_vals_m = self.mu_m(xzeros)
 
-    def _setQVals(self, xzeros):
+    def _set_q_vals(self, xzeros):
         xzeros = zf._to_complex(xzeros)
         self.q_vals_m = self.q_m(xzeros)
 
-    def _findLocalPoles(self, maxspace_freq=500):
+    def _find_local_poles(self, maxspace_freq=500):
         poles = []
         pmultiplicities = []
         n = 0
@@ -136,10 +136,10 @@ class SOVNode(PhysNode):
             val = n*np.pi * self.lambda_m / self.L_sov
         return poles, pmultiplicities
 
-    def _setZerosPoles(self, maxspace_freq=500, pprint=False):
+    def _set_zeros_poles(self, maxspace_freq=500, pprint=False):
         cns = self.child_nodes
         # find the poles of (1 + mu*cot(qL/l))/(cot(qL/l) + mu)
-        lpoles, lpmultiplicities = self._findLocalPoles(maxspace_freq)
+        lpoles, lpmultiplicities = self._find_local_poles(maxspace_freq)
         for cn in cns:
             lpoles.extend(cn.poles)
             lpmultiplicities.extend(cn.pmultiplicities)
@@ -178,15 +178,15 @@ class SomaSOVNode(SOVNode):
 
     The following member functions are not supposed to work properly,
     calling them may result in errors:
-    `neat.SOVNode._setKappaFactors()`
-    `neat.SOVNode._setMuVals()`
-    `neat.SOVNode._setQVals()`
-    `neat.SOVNode._findLocalPoles()`
+    `neat.SOVNode._set_kappa_factors()`
+    `neat.SOVNode._set_mu_vals()`
+    `neat.SOVNode._set_q_vals()`
+    `neat.SOVNode._find_local_poles()`
     """
     def __init__(self, index, p3d=None):
         super().__init__(index, p3d)
 
-    def _setSOV(self, channel_storage, tau_0=0.02):
+    def _set_sov(self, channel_storage, tau_0=0.02):
         self.counter = 0
         # convert to cm
         self.R_sov      = self.R * 1e-4 # convert um to cm
@@ -194,7 +194,7 @@ class SomaSOVNode(SOVNode):
         # surface
         self.A = 4.0*np.pi*self.R_sov**2 # cm^2
         # total conductance
-        self.g_m        = self.getGTot(channel_storage=channel_storage) # uS/cm^2
+        self.g_m        = self.calc_g_tot(channel_storage=channel_storage) # uS/cm^2
         # parameters for the SOV approach
         self.tau_m      = self.c_m / self.g_m # s
         self.eps_m      = self.tau_m / tau_0 # ns
@@ -229,7 +229,7 @@ class SomaSOVNode(SOVNode):
                             ( np.cos(q_ds[i]*cn.L_sov/cn.lambda_m) + mu_ds[i]*np.sin(q_ds[i]*cn.L_sov/cn.lambda_m) )**2 \
                             ) for i, cn in enumerate(cns)], 0)
 
-    def _setZerosPoles(self, maxspace_freq=500, pprint=False):
+    def _set_zeros_poles(self, maxspace_freq=500, pprint=False):
         # find the poles of cot(qL/l) + mu
         lpoles = []; lpmultiplicities = []
         for cn in self.child_nodes:
@@ -305,14 +305,14 @@ class SOVTree(PhysTree):
             return SOVNode(node_index, p3d=p3d)
 
     @morphtree.computational_tree_decorator
-    def getSOVMatrices(self, loc_arg):
+    def get_sov_matrices(self, loc_arg):
         """
         returns the alphas, the reciprocals of the mode time scales [1/ms]
         as well as the spatial functions evaluated at ``locs``
 
         Parameters
         ----------
-            loc_arg: see :func:`neat.MorphTree._parseLocArg()`
+            loc_arg: see :func:`neat.MorphTree.convert_loc_arg_to_locs()`
                 the locations at which to evaluate the SOV matrices
 
         Returns
@@ -324,7 +324,7 @@ class SOVTree(PhysTree):
                 each locations. Dimension 0 is number of modes and dimension 1
                 number of locations
         """
-        locs = self._parseLocArg(loc_arg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         if len(self) > 1:
             # set up the matrices
             zeros      = self.root.zeros
@@ -352,7 +352,7 @@ class SOVTree(PhysTree):
         return alphas, gammas
 
     @morphtree.computational_tree_decorator
-    def calcSOVEquations(self, maxspace_freq=500., pprint=False):
+    def calc_sov_equations(self, maxspace_freq=500., pprint=False):
         """
         Calculate the timescales and spatial functions of the separation of
         variables approach, using the algorithm by (Major, 1993).
@@ -370,20 +370,20 @@ class SOVTree(PhysTree):
         self.maxspace_freq = maxspace_freq
 
         self.tau_0 = np.pi#1.
-        for node in self: node._setSOV(self.channel_storage, tau_0=self.tau_0)
+        for node in self: node._set_sov(self.channel_storage, tau_0=self.tau_0)
         if len(self) > 1:
             # start the recursion through the tree
-            self._SOVFromLeaf(self.leafs[0], self.leafs[1:],
+            self._sov_from_leaf(self.leafs[0], self.leafs[1:],
                                 maxspace_freq=maxspace_freq, pprint=pprint)
             # zeros are now found, set the kappa factors
             zeros = self.root.zeros
-            self._SOVFromRoot(self.root, zeros)
+            self._sov_from_root(self.root, zeros)
             # clean
             for node in self: node.counter = 0
         else:
-            self[1]._setSOV(self.channel_storage, tau_0=self.tau_0)
+            self[1]._set_sov(self.channel_storage, tau_0=self.tau_0)
 
-    def _SOVFromLeaf(self, node, leafs, count=0,
+    def _sov_from_leaf(self, node, leafs, count=0,
                         maxspace_freq=500., pprint=False):
         if pprint:
             print('Forward sweep: ' + str(node))
@@ -395,22 +395,22 @@ class SOVTree(PhysTree):
         # the recursion has passed node, the mu functions can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            node._setZerosPoles(maxspace_freq=maxspace_freq)
+            node._set_zeros_poles(maxspace_freq=maxspace_freq)
             if not self.is_root(node):
-                self._SOVFromLeaf(pnode, leafs, count=count+1,
+                self._sov_from_leaf(pnode, leafs, count=count+1,
                                 maxspace_freq=maxspace_freq, pprint=pprint)
         elif len(leafs) > 0:
-                self._SOVFromLeaf(leafs[0], leafs[1:], count=count+1,
+                self._sov_from_leaf(leafs[0], leafs[1:], count=count+1,
                                 maxspace_freq=maxspace_freq, pprint=pprint)
 
-    def _SOVFromRoot(self, node, zeros):
+    def _sov_from_root(self, node, zeros):
         for cnode in node.child_nodes:
-            cnode._setKappaFactors(zeros)
-            cnode._setMuVals(zeros)
-            cnode._setQVals(zeros)
-            self._SOVFromRoot(cnode, zeros)
+            cnode._set_kappa_factors(zeros)
+            cnode._set_mu_vals(zeros)
+            cnode._set_q_vals(zeros)
+            self._sov_from_root(cnode, zeros)
 
-    def getModeImportance(self, loc_arg=None, sov_data=None,
+    def get_mode_importance(self, loc_arg=None, sov_data=None,
                                 importance_type='simple'):
         """
         Gives the overal importance of the SOV modes for a certain set of
@@ -423,7 +423,7 @@ class SOVTree(PhysTree):
                 One of the keyword arguments ``loc_arg`` or ``sov_data``
                 must not be ``None``. If ``loc_arg`` is not ``None``, the importance
                 is evaluated at these locations (see
-                :func:`neat.MorphTree._parseLocArg`).
+                :func:`neat.MorphTree.convert_loc_arg_to_locs`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
                 the reciprocals of the mode timescales and a matrix with the
                 corresponding spatial mode functions.
@@ -439,8 +439,8 @@ class SOVTree(PhysTree):
                 of locations
         """
         if loc_arg is not None:
-            locs = self._parseLocArg(loc_arg)
-            alphas, gammas = self.getSOVMatrices(locs)
+            locs = self.convert_loc_arg_to_locs(loc_arg)
+            alphas, gammas = self.get_sov_matrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
@@ -459,7 +459,7 @@ class SOVTree(PhysTree):
 
         return absolute_importance / np.max(absolute_importance)
 
-    def getImportantModes(self, loc_arg=None, sov_data=None,
+    def get_important_modes(self, loc_arg=None, sov_data=None,
                                 eps=1e-4, sort_type='timescale',
                                 return_importance=False):
         """
@@ -473,7 +473,7 @@ class SOVTree(PhysTree):
                 One of the keyword arguments ``loc_arg`` or ``sov_data``
                 must not be ``None``. If ``loc_arg`` is not ``None``, the importance
                 is evaluated at these locations (see
-                :func:`neat.MorphTree._parseLocArg`).
+                :func:`neat.MorphTree.convert_loc_arg_to_locs`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
                 the reciprocals of the mode timescales and a matrix with the
                 corresponding spatial mode functions.
@@ -500,14 +500,14 @@ class SOVTree(PhysTree):
                 value of importance metric for each mode
         """
         if loc_arg is not None:
-            locs = self._parseLocArg(loc_arg)
-            alphas, gammas = self.getSOVMatrices(locs)
+            locs = self.convert_loc_arg_to_locs(loc_arg)
+            alphas, gammas = self.get_sov_matrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
             raise IOError('One of the kwargs `loc_arg` or `sov_data` must not be ``None``')
-        importance = self.getModeImportance(sov_data=(alphas, gammas), importance_type='simple')
+        importance = self.get_mode_importance(sov_data=(alphas, gammas), importance_type='simple')
         inds = np.where(importance > eps)[0]
         # only modes above importance cutoff
         alphas, gammas, importance = alphas[inds], gammas[inds,:], importance[inds]
@@ -523,7 +523,7 @@ class SOVTree(PhysTree):
         else:
             return alphas[inds_sort], gammas[inds_sort,:]
 
-    def calcImpedanceMatrix(self, loc_arg=None, sov_data=None, name=None,
+    def calc_impedance_matrix(self, loc_arg=None, sov_data=None, name=None,
                                   eps=1e-4, mem_limit=500, freqs=None):
         """
         Compute the impedance matrix for a set of locations
@@ -535,7 +535,7 @@ class SOVTree(PhysTree):
                 One of the keyword arguments ``loc_arg`` or ``sov_data``
                 must not be ``None``. If ``loc_arg`` is not ``None``, the importance
                 is evaluated at these locations (see
-                :func:`neat.MorphTree._parseLocArg`).
+                :func:`neat.MorphTree.convert_loc_arg_to_locs`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
                 the reciprocals of the mode timescales and a matrix with the
                 corresponding spatial mode functions.
@@ -558,8 +558,8 @@ class SOVTree(PhysTree):
                 the frequency dependence at the first dimension ``[MOhm ]``
         """
         if loc_arg is not None:
-            locs = self._parseLocArg(loc_arg)
-            alphas, gammas = self.getSOVMatrices(locs)
+            locs = self.convert_loc_arg_to_locs(loc_arg)
+            alphas, gammas = self.get_sov_matrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
@@ -590,7 +590,7 @@ class SOVTree(PhysTree):
                                         y_activation, 1)
         return z_mat
 
-    def constructNET(self, dz=50., dx=10., eps=1e-4,
+    def construct_net(self, dz=50., dx=10., eps=1e-4,
                         use_hist=False, add_lin_terms=True,
                         improve_input_impedance=False,
                         pprint=False):
@@ -624,26 +624,26 @@ class SOVTree(PhysTree):
         # create a set of location at which to evaluate the impedance matrix
         self.distribute_locs_uniform(dx=dx, name='net eval')
         # compute the z_mat matrix
-        alphas, gammas = self.getImportantModes(loc_arg='net eval', eps=eps)
-        z_mat = self.calcImpedanceMatrix(sov_data=(alphas, gammas))
+        alphas, gammas = self.get_important_modes(loc_arg='net eval', eps=eps)
+        z_mat = self.calc_impedance_matrix(sov_data=(alphas, gammas))
         # derive the NET
         net = NET()
-        self._addLayerA(net, None,
+        self._add_layer_a(net, None,
                         z_mat, alphas, gammas,
                         0., 0, np.arange(len(self.get_locs('net eval'))),
                         dz=dz,
                         use_hist=use_hist, add_lin_terms=add_lin_terms,
                         pprint=pprint)
-        net.setNewLocInds()
+        net.set_new_loc_idxs()
         if improve_input_impedance:
-            self._improveInputImpedance(net, alphas, gammas)
+            self._improve_input_impedance(net, alphas, gammas)
         if add_lin_terms:
-            lin_terms = self.computeLinTerms(net, sov_data=(alphas, gammas))
+            lin_terms = self.compute_lin_terms(net, sov_data=(alphas, gammas))
             return net, lin_terms
         else:
             return net
 
-    def _addLayerA(self, net, pnode,
+    def _add_layer_a(self, net, pnode,
                         z_mat, alphas, gammas,
                         z_max_prev, z_ind_0, true_loc_inds,
                         dz=100.,
@@ -698,7 +698,7 @@ class SOVTree(PhysTree):
                         gammas_avg = np.mean(gammas[:,0:1] * \
                                              gammas[:,inds_], 1)
                 z_avg_approx = np.sum(gammas_avg / alphas).real
-                self._subtractParentKernels(gammas_avg, pnode)
+                self._subtract_parent_kernels(gammas_avg, pnode)
                 # add a node to the tree
                 node = NETNode(len(net), true_loc_inds[n_inds],
                                 z_kernel=(alphas, gammas_avg))
@@ -742,7 +742,7 @@ class SOVTree(PhysTree):
                                            indexing='ij')
                         z_mat_new = copy.deepcopy(z_mat[inds[0], inds[1]])
                         # move further in the tree
-                        self._addLayerB(net, node,
+                        self._add_layer_b(net, node,
                                     z_mat_new, alphas, gammas,
                                     z_max, k_inds[i0:i1], dz=dz,
                                     use_hist=use_hist, add_lin_terms=add_lin_terms)
@@ -758,12 +758,12 @@ class SOVTree(PhysTree):
                         z_mat_new = copy.deepcopy(z_mat[inds[0], inds[1]])
                         z_max = z_mat[0,0]+1
                         # move further in the tree
-                        self._addLayerB(net, node,
+                        self._add_layer_b(net, node,
                                 z_mat_new, alphas, gammas,
                                 z_max, k_seq, dz=dz, pprint=pprint,
                                 use_hist=use_hist, add_lin_terms=add_lin_terms)
 
-    def _addLayerB(self, net, pnode,
+    def _add_layer_b(self, net, pnode,
                 z_mat, alphas, gammas,
                 z_max_prev, true_loc_inds, dz=100.,
                 use_hist=True, pprint=False, add_lin_terms=False):
@@ -849,7 +849,7 @@ class SOVTree(PhysTree):
             inds_ = np.random.randint(l_inds[0].size, size=100000)
             gammas_avg = np.mean(gammas[:,true_loc_inds[l_inds[0]][inds_]] * \
                                  gammas[:,true_loc_inds[l_inds[1]][inds_]], 1)
-        self._subtractParentKernels(gammas_avg, pnode)
+        self._subtract_parent_kernels(gammas_avg, pnode)
 
         # add a node to the tree
         node = NETNode(len(net), true_loc_inds, z_kernel=(alphas, gammas_avg))
@@ -869,30 +869,30 @@ class SOVTree(PhysTree):
                 ind1 = t1[jj]
                 z_mat_new = copy.deepcopy(z_mat[ind0:ind1,ind0:ind1])
                 true_loc_inds_new = true_loc_inds[ind0:ind1]
-                self._addLayerB(net, node,
+                self._add_layer_b(net, node,
                             z_mat_new, alphas, gammas,
                             z_max, true_loc_inds_new, dz=dz,
                             use_hist=use_hist, pprint=pprint)
 
-    def _subtractParentKernels(self, gammas, pnode):
+    def _subtract_parent_kernels(self, gammas, pnode):
         if pnode != None:
             gammas -= pnode.z_kernel['c']
-            self._subtractParentKernels(gammas, pnode.parent_node)
+            self._subtract_parent_kernels(gammas, pnode.parent_node)
 
-    def _improveInputImpedance(self, net, alphas, gammas):
+    def _improve_input_impedance(self, net, alphas, gammas):
         nmaxind = np.max([n.index for n in net])
         for node in net:
             if len(node.loc_inds) == 1:
                 # recompute the kernel of this single loc layer
                 if node.parent_node is not None:
-                    p_kernel = net.calcTotalKernel(node.parent_node)
+                    p_kernel = net.calc_total_kernel(node.parent_node)
                     p_k_c = p_kernel.c
                 else:
                     p_k_c = np.zeros_like(gammas)
                 gammas_real = gammas[:,node.loc_inds[0]]**2
                 node.z_kernel.c = gammas_real - p_k_c
             elif len(node.newloc_inds) > 0:
-                z_k_approx = net.calcTotalKernel(node)
+                z_k_approx = net.calc_total_kernel(node)
                 # add new input nodes for the nodes that don't have one
                 for ind in node.newloc_inds:
                     nmaxind += 1
@@ -904,9 +904,9 @@ class SOVTree(PhysTree):
                     net.add_node_with_parent(newnode, node)
                 # empty the new indices
                 node.newloc_inds = []
-        net.setNewLocInds()
+        net.set_new_loc_idxs()
 
-    def computeLinTerms(self, net, sov_data=None, eps=1e-4):
+    def compute_lin_terms(self, net, sov_data=None, eps=1e-4):
         """
         Construct linear terms for `net` so that transfer impedance to soma is
         exactly matched
@@ -933,14 +933,14 @@ class SOVTree(PhysTree):
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            alphas, gammas = self.getImportantModes(loc_arg='net eval', eps=eps)
+            alphas, gammas = self.get_important_modes(loc_arg='net eval', eps=eps)
         lin_terms = {}
         for ii, loc in enumerate(self.get_locs('net eval')):
             if not self.is_root(self[loc['node']]):
                 # create the true kernel
                 z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
                 # compute the NET approximation kernel
-                z_k_net = net.getReducedTree([0, ii]).get_root().z_kernel
+                z_k_net = net.get_reduced_tree([0, ii]).get_root().z_kernel
                 # compute the lin term
                 lin_terms[ii] = z_k_true - z_k_net
 

@@ -60,16 +60,16 @@ class TestNest:
         '''
         self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
-        self.tree.setPhysiology(0.8, 100./1e6)
+        self.tree.set_physiology(0.8, 100./1e6)
         # ion channels
         self.k_chan = channelcollection.Kv3_1()
-        self.tree.addCurrent(self.k_chan, 0.766*1e6, -85.)
+        self.tree.add_channel_current(self.k_chan, 0.766*1e6, -85.)
         self.na_chan = channelcollection.NaTa_t()
-        self.tree.addCurrent(self.na_chan, 1.71*1e6, 50.)
+        self.tree.add_channel_current(self.na_chan, 1.71*1e6, 50.)
         # fit leak current
-        self.tree.fitLeakCurrent(-75., 10.)
+        self.tree.fit_leak_current(-75., 10.)
         # set equilibirum potententials
-        self.tree.setVEP(-75.)
+        self.tree.set_v_ep(-75.)
         # set computational tree
         self.tree.set_comp_tree()
 
@@ -85,7 +85,7 @@ class TestNest:
 
         v_eq = -65.
         self.loadBall()
-        self.tree.fitLeakCurrent(v_eq, 10.)
+        self.tree.fit_leak_current(v_eq, 10.)
         # set computational tree
         self.tree.set_comp_tree()
         # fit the tree again
@@ -185,19 +185,19 @@ class TestNest:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = channelcollection.SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
-        tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
         na_chan = channelcollection.NaTa_t()
-        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
+        tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
         ca_chan = channelcollection.Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
+        tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
         # passive leak current
-        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
-        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+        tree.set_leak_current(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.set_leak_current(0.000094 * 1e6, -79.315740, node_arg="axonal")
 
         # simplify
         locs = [(1,.5), (4.,0.5), (5,0.5)]
@@ -283,18 +283,18 @@ class TestNest:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = channelcollection.SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
         na_chan = channelcollection.NaTa_t()
-        # tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
-        tree.addCurrent(na_chan, 0.15 * 1e6, 50., node_arg=[tree[1]])
+        # tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
+        tree.add_channel_current(na_chan, 0.15 * 1e6, 50., node_arg=[tree[1]])
         ca_chan = channelcollection.Ca_HVA()
-        # tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        tree.addCurrent(ca_chan, 0.005 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        # tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.005 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         # passive leak current
-        tree.fitLeakCurrent(-70., 15.)
+        tree.fit_leak_current(-70., 15.)
 
         # simplify
         locs = [(n.index, .5) for n in tree]

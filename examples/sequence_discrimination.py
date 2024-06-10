@@ -131,24 +131,24 @@ class BrancoSimTree(NeuronSimTree):
         # creat the reduced compartment tree
         ctree = self.create_compartment_tree(locs)
         # create trees to derive fitting matrices
-        sov_tree, greens_tree = self.getZTrees()
+        sov_tree, greens_tree = self.get_zTrees()
 
         # compute the steady state impedance matrix
-        z_mat = greens_tree.calcImpedanceMatrix(locs)[0].real
+        z_mat = greens_tree.calc_impedance_matrix(locs)[0].real
         # fit the conductances to steady state impedance matrix
         ctree.computeGMC(z_mat, channel_names=['L'])
 
         if pprint:
             np.set_printoptions(precision=1, linewidth=200)
             print(('Zmat original (MOhm) =\n' + str(z_mat)))
-            print(('Zmat fitted (MOhm) =\n' + str(ctree.calcImpedanceMatrix())))
+            print(('Zmat fitted (MOhm) =\n' + str(ctree.calc_impedance_matrix())))
 
         # get SOV constants
-        alphas, phimat = sov_tree.getImportantModes(loc_arg=locs,
+        alphas, phimat = sov_tree.get_important_modes(loc_arg=locs,
                                                     sort_type='importance', eps=1e-12)
         # n_mode = len(locs)
         # alphas, phimat = alphas[:n_mode], phimat[:n_mode, :]
-        importance = sov_tree.getModeImportance(sov_data=(alphas, phimat), importance_type='full')
+        importance = sov_tree.get_mode_importance(sov_data=(alphas, phimat), importance_type='full')
         # fit the capacitances from SOV time-scales
         # ctree.computeC(-alphas*1e3, phimat, weight=importance)
         ctree.computeC(-alphas[:1]*1e3, phimat[:1,:], importance=importance[:1])
@@ -239,7 +239,7 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     # plot a schematic of the reduced model
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}
     labelargs.update({ii: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2} for ii in range(1,len(fit_locs))})
-    ctree.plotDendrogram(ax_, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
+    ctree.plot_dendrogram(ax_, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
 
     xlim, ylim = np.array(ax_.get_xlim()), np.array(ax_.get_ylim())
     pp = np.array([np.mean(xlim), np.mean(ylim)])

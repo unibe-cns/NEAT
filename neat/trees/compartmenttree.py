@@ -100,7 +100,7 @@ class CompartmentNode(SNode):
         """
         self.conc_eqs[ion] = conc
 
-    def _addCurrent(self, channel_name, e_rev):
+    def _add_current(self, channel_name, e_rev):
         """
         Add an ion channel current at this node. ('L' as `channel_name`
         signifies the leak current)
@@ -114,7 +114,7 @@ class CompartmentNode(SNode):
         """
         self.currents[channel_name] = [0., e_rev]
 
-    def addConcMech(self, ion, **kwargs):
+    def add_conc_mech(self, ion, **kwargs):
         """
         Add a concentration mechanism at this node.
 
@@ -134,7 +134,7 @@ class CompartmentNode(SNode):
             warnings.warn('These parameters do not match any NEAT concentration ' + \
                           'mechanism, no concentration mechanism has been added', UserWarning)
 
-    def setExpansionPoint(self, channel_name, statevar):
+    def set_expansion_point(self, channel_name, statevar):
         """
         Set the choice for the state variables of the ion channel around which
         to linearize.
@@ -155,14 +155,14 @@ class CompartmentNode(SNode):
             statevar = {}
         self.expansion_points[channel_name] = statevar
 
-    def getExpansionPoint(self, channel_name):
+    def get_expansion_point(self, channel_name):
         try:
             return self.expansion_points[channel_name]
         except KeyError:
             self.expansion_points[channel_name] = {}
             return self.expansion_points[channel_name]
 
-    def _constructChannelArgs(self, channel):
+    def _construct_channel_args(self, channel):
         """
         Returns the expansion points for the channel, around which the
         linearization in computed.
@@ -187,7 +187,7 @@ class CompartmentNode(SNode):
             The state variables and/or concentrations at the expansion points.
         """
         # check if linearistation needs to be computed around expansion point
-        sv = self.getExpansionPoint(channel.__class__.__name__).copy()
+        sv = self.get_expansion_point(channel.__class__.__name__).copy()
 
         # if voltage is not in expansion point, use equilibrium potential
         v = sv.pop('v', self.e_eq)
@@ -241,7 +241,7 @@ class CompartmentNode(SNode):
             # get the ionchannel object
             channel = channel_storage[channel_name]
 
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
             # add linearized channel contribution to membrane conductance
             cond_terms[channel_name] = - channel.computeLinSum(v, freqs, e, **sv)
 
@@ -285,7 +285,7 @@ class CompartmentNode(SNode):
             g, e = self.currents[channel_name]
             channel = channel_storage[channel_name]
 
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
 
             # if the channel adds to ion channel current, add it here
             if channel.ion == ion:
@@ -311,7 +311,7 @@ class CompartmentNode(SNode):
                 "Unkown fit type, choose \'gamma\' or \'tau\'"
             )
 
-    def getGTot(self, channel_storage,
+    def calc_g_tot(self, channel_storage,
                       v=None, channel_names=None, p_open_channels=None):
         """
         Compute the total conductance of a set of channels evaluated at a given
@@ -346,7 +346,7 @@ class CompartmentNode(SNode):
             g, e = self.currents[channel_name]
             channel = channel_storage[channel_name]
 
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
 
             # open probability
             if p_open_channels is None:
@@ -359,7 +359,7 @@ class CompartmentNode(SNode):
 
         return g_tot
 
-    def getITot(self, channel_storage,
+    def calc_i_tot(self, channel_storage,
                       v=None, channel_names=None, p_open_channels={}):
         """
         Compute the total current of a set of channels evaluated at a given
@@ -396,7 +396,7 @@ class CompartmentNode(SNode):
                 continue
 
             channel = channel_storage[channel_name]
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
 
             if channel_name not in p_open_channels:
                 i_tot = i_tot + g * channel.computePOpen(v, **sv) * (v - e)
@@ -438,7 +438,7 @@ class CompartmentNode(SNode):
 
             # get the ionchannel object
             channel = channel_storage[channel_name]
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
 
             # add linearized channel contribution to membrane conductance
             dp_dx = channel.computeDerivatives(v, **sv)[0]
@@ -492,7 +492,7 @@ class CompartmentNode(SNode):
 
             # get the ionchannel object
             channel = channel_storage[channel_name]
-            v, sv = self._constructChannelArgs(channel)
+            v, sv = self._construct_channel_args(channel)
             n_sv = len(channel.statevars)
             sv_idxs = list(range(cc, cc+n_sv))
 
@@ -679,7 +679,7 @@ class CompartmentTree(STree):
         else:
             return nodes
 
-    def _resetChannelStorage(self):
+    def _reset_channel_storage(self):
         new_channel_storage = {}
         for node in self:
             for channel_name in node.currents:
@@ -774,7 +774,7 @@ class CompartmentTree(STree):
             conc_eq = self._permuteToLocs(conc_eq)
         return conc_eq
 
-    def setExpansionPoints(self, expansion_points):
+    def set_expansion_points(self, expansion_points):
         """
         Set the choice for the state variables of the ion channel around which
         to linearize.
@@ -807,9 +807,9 @@ class CompartmentTree(STree):
                             ep[svar] = ep_
 
             for node, ep in zip(self, eps):
-                node.setExpansionPoint(channel_name, ep)
+                node.set_expansion_point(channel_name, ep)
 
-    def removeExpansionPoints(self):
+    def remove_expansion_points(self):
         for node in self:
             node.expansion_points = {}
 
@@ -834,7 +834,7 @@ class CompartmentTree(STree):
         # compute the function values (currents)
         fun_vals = np.zeros(len(self))
         for ii, node in enumerate(self):
-            fun_vals[ii] += node.getITot(self.channel_storage)
+            fun_vals[ii] += node.calc_i_tot(self.channel_storage)
             # add the parent node coupling term
             if node.parent_node is not None:
                 fun_vals[ii] += node.g_c * (node.e_eq - node.parent_node.e_eq)
@@ -849,7 +849,7 @@ class CompartmentTree(STree):
         jac_vals = np.array([-node.currents['L'][0] for node in self])
         return np.diag(jac_vals)
 
-    def addCurrent(self, channel, e_rev):
+    def add_channel_current(self, channel, e_rev):
         """
         Add an ion channel current to the tree
 
@@ -864,9 +864,9 @@ class CompartmentTree(STree):
         channel_name = channel.__class__.__name__
         self.channel_storage[channel_name] = channel
         for ii, node in enumerate(self):
-            node._addCurrent(channel_name, e_rev)
+            node._add_current(channel_name, e_rev)
 
-    def addConcMech(self, ion, params={}):
+    def add_conc_mech(self, ion, params={}):
         """
         Add a concentration mechanism to the tree
 
@@ -877,7 +877,7 @@ class CompartmentTree(STree):
         params: dict
             parameters for the concentration mechanism
         """
-        for node in self: node.addConcMech(ion, params=params)
+        for node in self: node.add_conc_mech(ion, params=params)
 
     def _permuteToTreeInds(self):
         return np.array([node.loc_ind for node in self])
@@ -919,7 +919,7 @@ class CompartmentTree(STree):
         locs_unordered = [(node.index, .5) for node in self]
         return [locs_unordered[ind] for ind in index_arr]
 
-    def calcImpedanceMatrix(self, freqs=0., channel_names=None, indexing='locs',
+    def calc_impedance_matrix(self, freqs=0., channel_names=None, indexing='locs',
                                 use_conc=False):
         """
         Constructs the impedance matrix of the model for each frequency provided
@@ -965,7 +965,7 @@ class CompartmentTree(STree):
         g_mat = np.zeros((len(self), len(self)))
         for node in self:
             ii = node.index
-            g_mat[ii, ii] += node.getGTot(self.channel_storage) + node.g_c
+            g_mat[ii, ii] += node.calc_g_tot(self.channel_storage) + node.g_c
             if node.parent_node is not None:
                 jj = node.parent_node.index
                 g_mat[jj,jj] += node.g_c
@@ -1483,7 +1483,7 @@ class CompartmentTree(STree):
         # set equilibrium conductances
         self.setEEq(e_eq)
         # set channel expansion point
-        self.setExpansionPoints(sv)
+        self.set_expansion_points(sv)
         # feature matrix
         g_struct = self._toStructureTensorGM(freqs=freqs, channel_names=channel_names,
                                              all_channel_names=all_channel_names)
@@ -1561,7 +1561,7 @@ class CompartmentTree(STree):
         # set equilibrium conductances
         self.setEEq(e_eq)
         # set channel expansion point
-        self.setExpansionPoints(sv)
+        self.set_expansion_points(sv)
         # feature matrix
         g_struct = self._toStructureTensorGM(freqs=freqs, channel_names=[channel_name],
                                              all_channel_names=all_channel_names)
@@ -1576,12 +1576,12 @@ class CompartmentTree(STree):
         mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
         vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
 
-        self.removeExpansionPoints()
+        self.remove_expansion_points()
 
         return self._fitResAction(action, mat_feature, vec_target, weight,
                                   channel_names=all_channel_names)
 
-    def _setExpansionPoints(self, expansion_points):
+    def _set_expansion_points(self, expansion_points):
         """
         Set the choice for the state variables of the ion channel around which
         to linearize.
@@ -1602,7 +1602,7 @@ class CompartmentTree(STree):
 
         for channel_name, expansion_point in expansion_points.items():
             for node in self:
-                node.setExpansionPoint(channel_name, expansion_point)
+                node.set_expansion_point(channel_name, expansion_point)
 
     def computeC(self, alphas, phimat, weights=None, tau_eps=5.):
         """
@@ -1630,7 +1630,7 @@ class CompartmentTree(STree):
                                         with_ca=False, indexing='tree')
 
         # set lower limit for capacitance, fit not always well conditioned
-        g_tot = np.array([node.getGTot(self.channel_storage, channel_names=['L']) \
+        g_tot = np.array([node.calc_g_tot(self.channel_storage, channel_names=['L']) \
                           for node in self])
         c_lim =  g_tot / (-alphas[0] * tau_eps)
         gamma_mat = alphas[:,None] * phimat * c_lim[None,:]
@@ -1805,7 +1805,7 @@ class CompartmentTree(STree):
             raise ValueError('Invalid `method` argument, should be 1 or 2')
 
 
-    def plotDendrogram(self, ax,
+    def plot_dendrogram(self, ax,
                         plotargs={}, labelargs={}, textargs={},
                         nodelabels={}, bbox=None,
                         y_max=None):
@@ -1846,7 +1846,7 @@ class CompartmentTree(STree):
             y_max = np.max([self.depth_of_node(n) for n in self.leafs]) + 1.5
         y_min = .5
         # plot the dendrogram
-        self._expandDendrogram(rnode, 0.5, None, 0.,
+        self._expand_dendrogram(rnode, 0.5, None, 0.,
                     l_spacing, y_max, ax,
                     plotargs=plotargs, labelargs=labelargs, textargs=textargs,
                     nodelabels=nodelabels, bbox=bbox)
@@ -1866,7 +1866,7 @@ class CompartmentTree(STree):
 
         return y_max
 
-    def _expandDendrogram(self, node, x0, xprev, y0,
+    def _expand_dendrogram(self, node, x0, xprev, y0,
                                         l_spacing, y_max, ax,
                                         plotargs={}, labelargs={}, textargs={},
                                         nodelabels={}, bbox=None):
@@ -1890,7 +1890,7 @@ class CompartmentTree(STree):
             if i == len(node.child_nodes)-1:
                 xnew1 = xnew
             # recursion
-            self._expandDendrogram(cnode, xnew, x0, ynew,
+            self._expand_dendrogram(cnode, xnew, x0, ynew,
                     l_spacing[l0:l1+1], y_max, ax,
                     plotargs=plotargs, labelargs=labelargs, textargs=textargs,
                     nodelabels=nodelabels, bbox=None)

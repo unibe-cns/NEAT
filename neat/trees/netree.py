@@ -45,6 +45,8 @@ class Kernel(object):
         The exponential coefficients (kHz)
     c: np.array of float or complex
         The exponential prefactors
+    k_bar: float
+        The total surface area under the kernel
     """
     def __init__(self, kernel):
         # set kernel time scales and exponential prefactors
@@ -102,16 +104,16 @@ class Kernel(object):
             c = np.concatenate((self.c, -kernel.c))
         return Kernel((a, c))
 
-    def getKBar(self):
+    def get_k_bar(self):
         """
         The total surface under the kernel
         """
         return np.sum(self.c / self.a).real
 
-    def setKBar(self, kk):
+    def set_k_bar(self, kk):
         raise AttributeError('`k_bar` is a read-only attribute, adjust attribute `c` ' + \
                              'by multiplying with a factor to change `k_bar`')
-    k_bar = property(getKBar, setKBar)
+    k_bar = property(get_k_bar, set_k_bar)
 
     def __str__(self, as_timescale=False):
         if as_timescale:
@@ -245,22 +247,22 @@ class NETNode(SNode):
                     ', parent: None' \
                     ', z_bar (MOhm) = ' + str(self.z_bar)
 
-    def setZKernel(self, z_kernel):
+    def set_z_kernel(self, z_kernel):
         self._z_kernel = Kernel(z_kernel)
 
-    def getZKernel(self):
+    def get_z_kernel(self):
         return self._z_kernel
 
-    def getZ(self):
+    def get_z(self):
         return self._z_kernel.k_bar
 
-    z_kernel = property(getZKernel, setZKernel)
-    z_bar = property(getZ, setZKernel)
+    z_kernel = property(get_z_kernel, set_z_kernel)
+    z_bar = property(get_z, set_z_kernel)
 
     def __contains__(self, loc_ind):
         return loc_ind in self.loc_inds
 
-    def _setCompartmentData(self, node_list, z_root_list, z_comp_list, Iz=5.):
+    def _set_compartment_data(self, node_list, z_root_list, z_comp_list, Iz=5.):
         node_inds  = [node.index for node in node_list if node != None]
         z_root = np.array(z_root_list)
         z_comp = np.array(z_comp_list)
@@ -270,10 +272,10 @@ class NETNode(SNode):
         self._z_comp = z_comp[comp_inds]
         self._node_inds = [node_inds[ind] for ind in comp_inds]
 
-    def _setTentativeCompartments(self, comps):
+    def _set_tentative_compartments(self, comps):
         self._comps = comps
 
-    def _setSharedRootInd(self, ind):
+    def _set_shared_root_idx(self, ind):
         self._root_ind = self._node_inds.index(ind)
 
     def __str__(self, with_parent=True, with_morph_info=False):
@@ -319,7 +321,7 @@ class NET(STree):
         """
         return NETNode(node_index, [])
 
-    def getLocInds(self, sroot=None):
+    def get_loc_idxs(self, sroot=None):
         """
         Get the indices of the locations a subtree integrates
 
@@ -339,7 +341,7 @@ class NET(STree):
             sroot = self.root
         return sroot.loc_inds
 
-    def getLeafLocNode(self, loc_ind):
+    def get_leaf_loc_node(self, loc_ind):
         """
         Get the node for which ``loc_ind`` is a new location
 
@@ -356,7 +358,7 @@ class NET(STree):
             if loc_ind in node.newloc_inds:
                 return node
 
-    def setNewLocInds(self):
+    def set_new_loc_idxs(self):
         """
         Set the new location indices in a tree
         """
@@ -366,7 +368,7 @@ class NET(STree):
                 cloc_inds = cloc_inds.union(set(cnode.loc_inds))
             node.newloc_inds = list(set(node.loc_inds) - cloc_inds)
 
-    def getReducedTree(self, loc_inds, indexing='NET eval'):
+    def get_reduced_tree(self, loc_inds, indexing='NET eval'):
         """
         Construct a reduced tree where only the locations index by ``loc_inds''
         are retained
@@ -388,9 +390,9 @@ class NET(STree):
             new_tree = NET(new_root)
             for cnode in self.root.child_nodes:
                 if cnode is not None:
-                    self._constructReducedTree(cnode, loc_inds_newtree,
+                    self._construct_reduced_tree(cnode, loc_inds_newtree,
                                                 new_root, new_tree)
-            new_tree.setNewLocInds()
+            new_tree.set_new_loc_idxs()
             if indexing == 'NET eval':
                 return new_tree
             else:
@@ -398,12 +400,12 @@ class NET(STree):
                     # node.loc_inds = [np.where(loc_inds == ind)[0][0] for ind in node.loc_inds]
                     # node.loc_inds = sum([np.where(loc_inds == ind)[0].tolist() for ind in set(node.loc_inds)], [])
                     node.loc_inds = sum([np.where(loc_inds == ind)[0].tolist() for ind in node.loc_inds], [])
-                new_tree.setNewLocInds()
+                new_tree.set_new_loc_idxs()
                 return new_tree
         else:
             return None
 
-    def _constructReducedTree(self, node, loc_inds, node_newtree, new_tree):
+    def _construct_reduced_tree(self, node, loc_inds, node_newtree, new_tree):
         loc_inds_subtree = list({loc_ind for loc_ind in loc_inds \
                                          if loc_ind in node})
         if len(loc_inds_subtree) > 0:
@@ -416,7 +418,7 @@ class NET(STree):
                 node_newtree = newnode_newtree
             for cnode in node.child_nodes:
                 if cnode is not None:
-                    self._constructReducedTree(cnode, loc_inds_subtree,
+                    self._construct_reduced_tree(cnode, loc_inds_subtree,
                                                 node_newtree, new_tree)
 
     # def matchInputImpedance(self, z_input):
@@ -425,14 +427,14 @@ class NET(STree):
     #     for node in self:
     #         if self.is_leaf(node):
     #             if len(node.loc_inds) == 1:
-    #                 p_imp = self.calcTotalImpedance(node.parent_node)
+    #                 p_imp = self.calc_total_impedance(node.parent_node)
     #                 node.z_kernel.c *= (z_input[node.locs_inds[0]] - p_imp) / node.z_kernel.k_bar
     #             else:
     #                 for loc_ind in node.loc_inds:
     #                     new_node = NETNode(len(tree), [loc_ind])
     #                     self.add_node_with_parent
 
-    def calcTotalImpedance(self, node):
+    def calc_total_impedance(self, node):
         """
         Compute the total impedance associated with a node. I.e. the sum of all
         impedances on the path from node to root
@@ -448,7 +450,7 @@ class NET(STree):
         """
         return np.sum([node_.z_bar for node_ in self.path_to_root(node)])
 
-    def calcTotalKernel(self, node):
+    def calc_total_kernel(self, node):
         """
         Compute the total impedance kernel associated with a node. I.e. the sum
         of all impedance kernels on the path from node to root
@@ -467,7 +469,7 @@ class NET(STree):
                 z_k += pn.z_kernel
         return z_k
 
-    def calcIZ(self, loc_inds):
+    def calc_i_z(self, loc_inds):
         """
         compute I_Z between any pair of locations in ``loc_inds``
 
@@ -487,12 +489,12 @@ class NET(STree):
         for ii, loc_ind0 in enumerate(loc_inds):
             for jj, loc_ind1 in enumerate(loc_inds):
                 if jj < ii:
-                    net_red = self.getReducedTree([loc_ind0, loc_ind1])
+                    net_red = self.get_reduced_tree([loc_ind0, loc_ind1])
                     key = (loc_ind0, loc_ind1) if loc_ind0 < loc_ind1 \
                                                else (loc_ind1, loc_ind0)
-                    n0 = net_red.getLeafLocNode(loc_ind0)
+                    n0 = net_red.get_leaf_loc_node(loc_ind0)
                     z0 = n0.z_bar if n0 != net_red.root else 0.
-                    n1 = net_red.getLeafLocNode(loc_ind1)
+                    n1 = net_red.get_leaf_loc_node(loc_ind1)
                     z1 = n1.z_bar if n1 != net_red.root else 0.
                     Iz_dict[key] = (z0 + z1) / (2. * net_red.root.z_bar)
                 else:
@@ -502,7 +504,7 @@ class NET(STree):
         else:
             return Iz_dict
 
-    def calcIZMatrix(self):
+    def calc_i_z_matrix(self):
         """
         compute the Iz matrix for all locations present in the tree
 
@@ -511,22 +513,11 @@ class NET(STree):
         np.ndarray of float
             The Iz matrix
         """
-        z_mat = self.calcImpedanceMatrix()
+        z_mat = self.calc_impedance_matrix()
         z_in = np.diag(z_mat)
         return (z_in[:,np.newaxis] + z_in[np.newaxis,:]) / (2. * z_mat) - 1.
 
-    def calcImpedanceMatrix(self):
-        """
-        Compute the impedance matrix approximation associated with the NET
-
-        Returns
-        -------
-        np.ndarray (ndim = 2)
-            the impedance matrix approximation
-        """
-        return self.calcImpMat()
-
-    def calcImpMat(self):
+    def calc_impedance_matrix(self):
         """
         Compute the impedance matrix approximation associated with the NET
 
@@ -538,16 +529,16 @@ class NET(STree):
         n_loc = len(self.root.loc_inds)
         loc_map = {loc_ind: map_ind for map_ind, loc_ind in enumerate(self.root.loc_inds)}
         z_mat = np.zeros((n_loc, n_loc))
-        self._addNodeToImpMat(self.root, z_mat, loc_map)
+        self._add_node_to_imp_mat(self.root, z_mat, loc_map)
         return z_mat
 
-    def _addNodeToImpMat(self, node, z_mat, loc_map):
+    def _add_node_to_imp_mat(self, node, z_mat, loc_map):
         inds = np.array([loc_map[loc_ind] for loc_ind in node.loc_inds])
         z_mat[np.tile(inds, len(inds)), np.repeat(inds, len(inds))] += node.z_bar
         for cnode in node.child_nodes:
-            self._addNodeToImpMat(cnode, z_mat, loc_map)
+            self._add_node_to_imp_mat(cnode, z_mat, loc_map)
 
-    def getCompartmentalization(self, Iz, returntype='node index'):
+    def calc_compartmentalization(self, Iz, returntype='node index'):
         """
         Returns a compartmentalization for the NET tree where each pair of
         compartments is separated by an Iz of at least ``Iz``. The
@@ -566,13 +557,13 @@ class NET(STree):
         list of lists
             the compartments
         """
-        self._computeTentativeCompartments(Iz=Iz)
+        self._compute_tentative_compartments(Iz=Iz)
         # determine the nodes that contain the eventual compartments and
         # remove the rest
         net = copy.deepcopy(self)
-        self._removeNonCompartments(net.leafs, net=net)
+        self._remove_non_compartments(net.leafs, net=net)
         # get the compartment nodes
-        comp_nodes = self._setCompartmentsLeafbased(net.leafs, net)
+        comp_nodes = self._set_compartments_leafbased(net.leafs, net)
         if returntype == 'node index':
             comp_inds  = []
             for node in comp_nodes:
@@ -586,7 +577,7 @@ class NET(STree):
                 comp_nodes_.append([self[ind] for ind in inds])
             return comp_nodes_
 
-    def _setCompartmentsLeafbased(self, leafs, net):
+    def _set_compartments_leafbased(self, leafs, net):
         comp_nodes = []
         for ii, leaf in enumerate(leafs):
             root, _, _ = net.sister_leafs(leaf)
@@ -598,11 +589,11 @@ class NET(STree):
                 new_leaf = old_leaf.parent_node
             if comp_bool:
                 # mark the old_leaf as the compartment indexing node
-                old_leaf._setSharedRootInd(root.index)
+                old_leaf._set_shared_root_idx(root.index)
                 comp_nodes.append(old_leaf)
         return comp_nodes
 
-    def _removeNonCompartments(self, leafs, net=None, n_count=0):
+    def _remove_non_compartments(self, leafs, net=None, n_count=0):
         if net is None:
             warnings.warn('Modifying original tree')
             net = self
@@ -633,7 +624,7 @@ class NET(STree):
             # delete the leafs that are not in compartments
             if len(sleafs_comp) <= 1 and not net.is_root(common_root):
                 # if at most one is compartment, we retain only the largest one
-                ind = np.argmax([self.calcTotalImpedance(node) \
+                ind = np.argmax([self.calc_total_impedance(node) \
                                  for node in sister_leafs])
                 newleaf = sister_leafs[ind]
                 for ii, cnode in enumerate(corresponding_children):
@@ -647,20 +638,20 @@ class NET(STree):
                         net.soft_remove_node(cnode)
                         leafs.remove(sister_leafs[ii])
             if n_leaf != len(leafs) and len(leafs) > 0:
-                self._removeNonCompartments(leafs, net=net, n_count=0)
+                self._remove_non_compartments(leafs, net=net, n_count=0)
             elif n_count < len(leafs):
-                self._removeNonCompartments(leafs, net=net, n_count=n_count+1)
+                self._remove_non_compartments(leafs, net=net, n_count=n_count+1)
         elif n_count < len(leafs) and len(leafs) > 0:
-            self._removeNonCompartments(leafs, net=net, n_count=n_count+1)
+            self._remove_non_compartments(leafs, net=net, n_count=n_count+1)
 
-    def _computeTentativeCompartments(self, Iz=5.):
+    def _compute_tentative_compartments(self, Iz=5.):
         # set the prerequisite impedances
-        self._setCompartmentInfo(Iz=Iz)
+        self._set_compartment_info(Iz=Iz)
         # set the tentative compartments
         for node in self:
-            self._setCompartmentsRelative(node)
+            self._set_compartments_relative(node)
 
-    def _setCompartmentInfo(self, Iz=5., node=None, z_p=0.,
+    def _set_compartment_info(self, Iz=5., node=None, z_p=0.,
                         node_list=[], z_root_list=[], z_comp_list=[]):
         if node != None:
             # list of dependent impedances
@@ -674,27 +665,27 @@ class NET(STree):
             # list or nodes
             node_list.append(node.parent_node)
             # store the compartment information
-            node._setCompartmentData(node_list, z_root_list, z_comp_list, Iz=Iz)
+            node._set_compartment_data(node_list, z_root_list, z_comp_list, Iz=Iz)
         else:
             node = self.root
             # compute node impedance
-            self.root._setCompartmentData([], [], [], Iz=0.)
+            self.root._set_compartment_data([], [], [], Iz=0.)
         # recurse to child nodes
         for cnode in node.child_nodes:
-            self._setCompartmentInfo(Iz=Iz, node=cnode, z_p=node.z_bar,
+            self._set_compartment_info(Iz=Iz, node=cnode, z_p=node.z_bar,
                                 node_list=copy.copy(node_list),
                                 z_root_list=copy.copy(z_root_list),
                                 z_comp_list=copy.copy(z_comp_list))
 
-    def _setCompartmentsRelative(self, node):
+    def _set_compartments_relative(self, node):
         z_target = node._z_comp
         node_comps = []
         for z_t in z_target:
             comp = [node.index]
             node_comps.append(comp)
-        node._setTentativeCompartments(node_comps)
+        node._set_tentative_compartments(node_comps)
 
-    def computeCondRescale(self, gs):
+    def compute_cond_rescale(self, gs):
         assert len(gs) == len(self.root.loc_inds)
         # array for storing shunt factors
         sfs = np.ones_like(gs)
@@ -721,20 +712,20 @@ class NET(STree):
         else:
             self._sweep(leafs[0], leafs[1:], sfs, gs)
 
-    def improveInputImpedance(self, z_mat):
+    def improve_input_resistance(self, z_mat):
         nmaxind = np.max([n.index for n in self])
         for node in self.get_nodes():
             if len(node.loc_inds) == 1:
                 ind = node.loc_inds[0]
                 # recompute the kernel of this single loc layer
                 if node.parent_node is not None:
-                    p_k = self.calcTotalKernel(node.parent_node)
+                    p_k = self.calc_total_kernel(node.parent_node)
                 else:
                     p_k = Kernel((node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
                 f_z = (z_mat[ind,ind] - p_k.k_bar) / node.z_bar
                 node.z_kernel.c *= f_z
             elif len(node.newloc_inds) > 0:
-                z_k_approx = self.calcTotalKernel(node)
+                z_k_approx = self.calc_total_kernel(node)
                 # add new input nodes for the nodes that don't have one
                 tbr_inds = []
                 for ind in node.newloc_inds:
@@ -752,10 +743,9 @@ class NET(STree):
                 # empty the new indices
                 node.newloc_inds = []
 
-        self.setNewLocInds()
+        self.set_new_loc_idxs()
 
-
-    def plotDendrogram(self, ax,
+    def plot_dendrogram(self, ax,
                         plotargs={}, labelargs={}, textargs={},
                         incolors={},
                         inlabels={}, nodelabels={},
@@ -824,7 +814,7 @@ class NET(STree):
                         z_dict[ind] = node.z_bar
             z_max = max(z_dict.values())
         # plot the dendrogram
-        self._expandDendrogram(rnode, 0.5, 0.,
+        self._expand_dendrogram(rnode, 0.5, 0.,
                     l_spacing, z_max, ax,
                     plotargs=plotargs, labelargs=labelargs, textargs=textargs,
                     incolors=incolors,
@@ -851,7 +841,7 @@ class NET(STree):
 
         return z_max
 
-    def _expandDendrogram(self, node, x0, y0,
+    def _expand_dendrogram(self, node, x0, y0,
                                         l_spacing, z_max, ax,
                                         plotargs={}, labelargs={}, textargs={},
                                         incolors={},
@@ -880,7 +870,7 @@ class NET(STree):
             if i == len(node.child_nodes)-1:
                 xnew1 = xnew
             # recursion
-            self._expandDendrogram(cnode, xnew, ynew,
+            self._expand_dendrogram(cnode, xnew, ynew,
                     l_spacing[l0:l1+1], z_max, ax,
                     plotargs=plotargs, labelargs=labelargs, textargs=textargs,
                     incolors=incolors,

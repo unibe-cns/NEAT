@@ -638,9 +638,6 @@ class NeuronSimTree(PhysTree):
         # store the vclamp
         self.vclamps.append(vclamp)
 
-    # def addRecLoc(self, loc):
-    #     self.add_loc(loc, 'rec locs')
-
     def setSpikeTrain(self, syn_index, syn_weight, spike_times):
         """
         Each hoc point process that receive spikes through should by appended to
@@ -774,7 +771,7 @@ class NeuronSimTree(PhysTree):
         # channel state variable recordings
         if record_from_channels:
             res['chan'] = {}
-            channel_names = self.getChannelsInTree()
+            channel_names = self.get_channels_in_tree()
             for channel_name in channel_names:
                 res['chan'][channel_name] = {str(var): [] for var in self.channel_storage[channel_name].statevars}
                 for loc in self.get_locs('rec locs'):
@@ -916,12 +913,12 @@ class NeuronSimTree(PhysTree):
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
         if set_v_ep:
-            for (node, e) in zip(self, v_eq): node.setVEP(v_eq)
+            for (node, e) in zip(self, v_eq): node.set_v_ep(v_eq)
 
 
         return v_eq
 
-    def calcImpedanceMatrix(self, loc_arg, 
+    def calc_impedance_matrix(self, loc_arg, 
             i_amp=0.001, t_dur=100., pplot=False,
             factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
         ):
@@ -955,9 +952,15 @@ class NeuronSimTree(PhysTree):
             dt_pulse=0.1, dstep=-2, t_max=100.,
             factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
         ):
+        self.set_simulation_parameters(
+            dt=dt, t_calibrate=t_calibrate,
+            v_init=v_init, factor_lambda=factor_lambda
+        )
         locs = self.convert_loc_arg_to_locs(loc_arg)
         nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
+        if dstep < i0:
+            dstep = -i0
         zk_mat = np.zeros((nt, len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
@@ -969,13 +972,13 @@ class NeuronSimTree(PhysTree):
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
                 self.store_locs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
-                res = self.run(t_max+dt_pulse)
+                res = self.run(t_max+dt_pulse+10.)
                 self.deleteModel()
                 # voltage deflections
-                v_trans = res['v_m'][1][i0+dstep:-1+dstep] - self[loc1['node']].v_ep
+                v_trans = res['v_m'][1][i0+dstep:i0+dstep+nt] - self[loc1['node']].v_ep
                 # compute impedances
                 zk_mat[:, ii, jj] = v_trans / (i_amp * dt_pulse)
-        return res['t'][i0+dstep:-1+dstep], zk_mat
+        return res['t'][i0+dstep:i0+dstep+nt], zk_mat
 
 
 class NeuronCompartmentNode(NeuronSimNode):

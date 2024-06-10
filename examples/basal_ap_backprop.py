@@ -278,11 +278,11 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
 
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}
     labelargs.update({ii: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2} for ii in range(1,len(plocs))})
-    ctree_3l.plotDendrogram(ax_red1, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
+    ctree_3l.plot_dendrogram(ax_red1, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
 
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2},
                  1: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2}}
-    ctree_1l.plotDendrogram(ax_red2, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
+    ctree_1l.plot_dendrogram(ax_red2, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
 
     ax_red1.set_xticks([]); ax_red1.set_yticks([])
     ax_red1.set_xlabel(r'$\Delta x = 50$ $\mu$m', fontsize=ticksize,rotation=60)

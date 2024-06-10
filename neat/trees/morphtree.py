@@ -1796,7 +1796,7 @@ class MorphTree(STree):
         loc: tuple, dict or `neat.MorphLoc`
             The locations for which nearest neighbours have to be found
         loc_arg: str or list of locs
-            See documentation of `MorphTree._parseLocArg`, the set of locations
+            See documentation of `MorphTree.convert_loc_arg_to_locs`, the set of locations
             within which to look for nearest neighbours
 
         Returns
@@ -1808,7 +1808,7 @@ class MorphTree(STree):
         loc = MorphLoc(loc, self)
         if isinstance(loc_arg, str):
             name = loc_arg
-            locs = self._parseLocArg(loc_arg)
+            locs = self.convert_loc_arg_to_locs(loc_arg)
         else:
             name = 'nn aux'
             locs = loc_arg
@@ -2146,14 +2146,14 @@ class MorphTree(STree):
             x = np.random.random()
             locs.append(MorphLoc((index, x), self))
             node = self[index]
-            self._tagNodesFromRoot(node, node, dx=dx)
-            self._tagNodesToRoot(node, node, dx=dx)
+            self._tag_nodes_from_root(node, node, dx=dx)
+            self._tag_nodes_to_root(node, node, dx=dx)
         self._removeTags()
         # store the locations
         if name != 'dont save': self.store_locs(locs, name=name)
         return locs
 
-    def _tagNodesFromRoot(self, start_node, node, dx=0.001):
+    def _tag_nodes_from_root(self, start_node, node, dx=0.001):
         if 'tag' not in node.content:
             if node.index == start_node.index:
                 length = 0.
@@ -2163,9 +2163,9 @@ class MorphTree(STree):
             if length < dx:
                 node.content['tag'] = 1
                 for cnode in node.child_nodes:
-                    self._tagNodesFromRoot(start_node, cnode, dx=dx)
+                    self._tag_nodes_from_root(start_node, cnode, dx=dx)
 
-    def _tagNodesToRoot(self, start_node, node, cnode=None, dx=0.001):
+    def _tag_nodes_to_root(self, start_node, node, cnode=None, dx=0.001):
         if node.index == start_node.index:
             length = 0.
         else:
@@ -2178,25 +2178,15 @@ class MorphTree(STree):
                 if cnode != None:
                     cnodes = list(set(cnodes) - set([cnode]))
                 for cn in cnodes:
-                    self._tagNodesFromRoot(start_node, cn, dx=dx)
+                    self._tag_nodes_from_root(start_node, cn, dx=dx)
             pnode = node.get_parent_node()
             if pnode != None:
-                self._tagNodesToRoot(start_node, pnode, node, dx=dx)
+                self._tag_nodes_to_root(start_node, pnode, node, dx=dx)
 
     def _removeTags(self):
         for node in self:
             if 'tag' in node.content:
                 del node.content['tag']
-
-    def _parseLocArg(self, loc_arg):
-        if isinstance(loc_arg, list):
-            locs = [MorphLoc(loc, self) for loc in loc_arg]
-        elif isinstance(loc_arg, str):
-            self._try_name(loc_arg)
-            locs = self.get_locs(loc_arg)
-        else:
-            raise IOError('invalid type for `loc_arg`, should be list or string')
-        return locs
 
     def extend_with_bifurcation_locs(self, loc_arg, name='dont save'):
         """
@@ -2216,7 +2206,7 @@ class MorphTree(STree):
         list of `neat.MorphLoc`
             the extended location list
         """
-        locs = self._parseLocArg(loc_arg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         # get the bifurcation locs
         nodes = [self[loc['node']] for loc in locs]
         bnodes = self.get_bifurcation_nodes(nodes)
@@ -2244,7 +2234,7 @@ class MorphTree(STree):
         list of `neat.MorphLoc`
             the bifurcation locs
         """
-        locs = self._parseLocArg(loc_arg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         locs_ = reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
 
         if name != 'dont save': self.store_locs(locs_, name=name)
