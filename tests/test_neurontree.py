@@ -46,7 +46,7 @@ class TestNeuron():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
+        self.greenstree.set_comp_tree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
@@ -72,7 +72,7 @@ class TestNeuron():
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(h_chan, 50., -43.)
         self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
+        self.greenstree.set_comp_tree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
@@ -98,7 +98,7 @@ class TestNeuron():
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(test_chan, 50., -23.)
         self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
+        self.greenstree.set_comp_tree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
@@ -124,7 +124,7 @@ class TestNeuron():
         self.greenstree = GreensTree(fname, types=[1,3,4])
         self.greenstree.addCurrent(test_chan, 50., 23., node_arg=[self.greenstree[1]])
         self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
+        self.greenstree.set_comp_tree()
         self.greenstree.setImpedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
@@ -208,7 +208,7 @@ class TestNeuron():
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # create simulation tree
         self.neurontree.init_model(t_calibrate=10., factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.store_locs(locs, name='rec locs')
         # run test simulation
         res = self.neurontree.run(1., record_from_channels=True)
         # check if results are stored correctly
@@ -230,7 +230,7 @@ class TestNeuron():
         self.loadTTreeTestChannelSoma()
         # create simulation tree
         self.neurontree.init_model(t_calibrate=100., factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.store_locs(locs, name='rec locs')
         # run test simulation
         res = self.neurontree.run(10., record_from_channels=True)
         # check if results are stored correctly
@@ -260,13 +260,13 @@ class TestNeuron():
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # test simulation 1
         self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.store_locs(locs, name='rec locs')
         res1 = self.neurontree.run(10., downsample=10, dt_rec=None, record_from_channels=True)
         self.neurontree.deleteModel()
         # test simulation 2
         self.loadTTreeTestChannel()
         self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.store_locs(locs, name='rec locs')
         res2 = self.neurontree.run(10., downsample=1, dt_rec=1., record_from_channels=True)
         self.neurontree.deleteModel()
 
@@ -275,7 +275,7 @@ class TestNeuron():
 
 
 class TestReducedNeuron():
-    def addLocinds(self):
+    def add_locinds(self):
         for ii, cn in enumerate(self.ctree):
             cn.loc_ind = ii
 
@@ -287,7 +287,7 @@ class TestReducedNeuron():
         self.ctree.add_node_with_parent(cnode, pnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
     def loadTModel(self, w_locinds=True):
         # simple T compartment model
@@ -301,7 +301,7 @@ class TestReducedNeuron():
         self.ctree.add_node_with_parent(lnode1, cnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
     def loadThreeCompartmentModel(self, w_locinds=True):
         # simple 3 compartment model
@@ -313,7 +313,7 @@ class TestReducedNeuron():
         self.ctree.add_node_with_parent(lnode0, cnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
     def loadMultiDendModel(self, w_locinds=True):
         # simple 3 compartment model
@@ -327,7 +327,7 @@ class TestReducedNeuron():
         self.ctree.add_node_with_parent(cnode2, pnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
     def testGeometry1(self):
         fake_c_m = 1.

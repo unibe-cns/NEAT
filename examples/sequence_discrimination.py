@@ -52,12 +52,12 @@ class BrancoSimTree(NeuronSimTree):
     def setSynLocs(self):
         global SYN_NODE_IND, SYN_XCOMP
         # set computational tree
-        self.setCompTree()
+        self.set_comp_tree()
         with self.as_computational_tree:
             # define the locations
             locs = [MorphLoc((SYN_NODE_IND, x), self, set_as_comploc=True) for x in SYN_XCOMP]
-            self.storeLocs(locs, name='syn locs')
-            self.storeLocs([(1., 0.5)], name='soma loc')
+            self.store_locs(locs, name='syn locs')
+            self.store_locs([(1., 0.5)], name='soma loc')
 
     def deleteModel(self):
         super(BrancoSimTree, self).deleteModel()
@@ -104,14 +104,14 @@ class BrancoSimTree(NeuronSimTree):
 
     def addAllSynapses(self):
         global G_MAX_AMPA, TAU_AMPA, G_MAX_NMDA, E_REV_NMDA, C_MG, DUR_REL, AMP_REL
-        for loc in self.getLocs('syn locs'):
+        for loc in self.get_locs('syn locs'):
             # ampa synapse
             self.addAMPASynapse(loc, G_MAX_AMPA, TAU_AMPA)
             # nmda synapse
             self.addNMDASynapse(loc, G_MAX_NMDA, E_REV_NMDA, C_MG, DUR_REL, AMP_REL)
 
     def setSequence(self, delta_t, centri='fugal', t0=10., tadd=100.):
-        n_loc = len(self.getLocs('syn locs'))
+        n_loc = len(self.get_locs('syn locs'))
         if centri == 'fugal':
             for ll in range(n_loc):
                 self.setSpikeTime(ll, t0 + ll * delta_t)
@@ -129,7 +129,7 @@ class BrancoSimTree(NeuronSimTree):
                 [MorphLoc((SYN_NODE_IND, x), self, set_as_comploc=True) for x in SYN_XCOMP]
 
         # creat the reduced compartment tree
-        ctree = self.createCompartmentTree(locs)
+        ctree = self.create_compartment_tree(locs)
         # create trees to derive fitting matrices
         sov_tree, greens_tree = self.getZTrees()
 
@@ -144,7 +144,7 @@ class BrancoSimTree(NeuronSimTree):
             print(('Zmat fitted (MOhm) =\n' + str(ctree.calcImpedanceMatrix())))
 
         # get SOV constants
-        alphas, phimat = sov_tree.getImportantModes(locarg=locs,
+        alphas, phimat = sov_tree.getImportantModes(loc_arg=locs,
                                                     sort_type='importance', eps=1e-12)
         # n_mode = len(locs)
         # alphas, phimat = alphas[:n_mode], phimat[:n_mode, :]
@@ -172,7 +172,7 @@ class BrancoSimTree(NeuronSimTree):
         self.addAllSynapses()
         t_max = self.setSequence(delta_t, centri='petal')
         # set recording locs
-        self.storeLocs(self.getLocs('soma loc') + self.getLocs('syn locs'), name='rec locs')
+        self.store_locs(self.get_locs('soma loc') + self.get_locs('syn locs'), name='rec locs')
         # run the simulation
         res_centripetal = self.run(t_max, pprint=True)
         # delete the model
@@ -183,7 +183,7 @@ class BrancoSimTree(NeuronSimTree):
         self.addAllSynapses()
         t_max = self.setSequence(delta_t, centri='fugal')
         # set recording locs
-        self.storeLocs(self.getLocs('soma loc') + self.getLocs('syn locs'), name='rec locs')
+        self.store_locs(self.get_locs('soma loc') + self.get_locs('syn locs'), name='rec locs')
         # run the simulation
         res_centrifugal = self.run(t_max, pprint=True)
         # delete the model
@@ -199,8 +199,8 @@ class BrancoReducedTree(NeuronCompartmentTree, BrancoSimTree):
         super(BrancoSimTree, self).__init__(None, types=[1,3,4])
 
     def setSynLocs(self, equivalent_locs):
-        self.storeLocs(equivalent_locs[1:], name='syn locs')
-        self.storeLocs(equivalent_locs[:1], name='soma loc')
+        self.store_locs(equivalent_locs[1:], name='syn locs')
+        self.store_locs(equivalent_locs[:1], name='soma loc')
     
 def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     global SYN_NODE_IND, SYN_XCOMP
@@ -208,10 +208,10 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     # initialize the full model
     simtree = BrancoSimTree()
     simtree.setSynLocs()
-    simtree.setCompTree()
+    simtree.set_comp_tree()
 
     # derive the reduced model retaining only soma and synapse locations
-    fit_locs = simtree.getLocs('soma loc') + simtree.getLocs('syn locs')
+    fit_locs = simtree.get_locs('soma loc') + simtree.get_locs('syn locs')
     c_fit = CompartmentFitter(simtree, name='sequence_discrimination', path='data/')
     ctree = c_fit.fitModel(fit_locs, recompute=recompute)
     clocs = ctree.getEquivalentLocs()
@@ -228,12 +228,12 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     ax1 = myAx(pl.subplot(gs[1,:]))
 
     # plot the full morphology
-    locargs = [dict(marker='s', mec='k', mfc=cfl[0], ms=markersize)]
-    locargs.extend([dict(marker='s', mec='k', mfc=cfl[1], ms=markersize) for ii in range(1,len(fit_locs))])
+    loc_args = [dict(marker='s', mec='k', mfc=cfl[0], ms=markersize)]
+    loc_args.extend([dict(marker='s', mec='k', mfc=cfl[1], ms=markersize) for ii in range(1,len(fit_locs))])
     pnodes = [n for n in simtree if n.swc_type != 2]
     plotargs = {'lw': lwidth/1.3, 'c': 'DarkGrey'}
-    simtree.plot2DMorphology(ax0, use_radius=False,node_arg=pnodes,
-                             plotargs=plotargs, marklocs=fit_locs, locargs=locargs, lims_margin=.01,
+    simtree.plot_2d_morphology(ax0, use_radius=False,node_arg=pnodes,
+                             plotargs=plotargs, marklocs=fit_locs, loc_args=loc_args, lims_margin=.01,
                              textargs={'fontsize': ticksize}, labelargs={'fontsize': ticksize})
 
     # plot a schematic of the reduced model

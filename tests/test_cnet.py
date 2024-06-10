@@ -37,7 +37,7 @@ class TestCNET():
         self.greens_tree_pas.asPassiveMembrane()
         self.sim_tree = NeuronSimTree(self.greens_tree)
         # set the impedances
-        self.greens_tree_pas.setCompTree()
+        self.greens_tree_pas.set_comp_tree()
         self.freqs = np.array([0.])
         self.greens_tree_pas.setImpedance(self.freqs)
         # create sov tree
@@ -45,7 +45,7 @@ class TestCNET():
         self.sov_tree.calcSOVEquations(maxspace_freq=50.)
 
         z_inp = self.greens_tree_pas.calcZF((1,.5), (1,.5))[0]
-        alphas, gammas = self.sov_tree.getSOVMatrices(locarg=[(1.,.5)])
+        alphas, gammas = self.sov_tree.getSOVMatrices(loc_arg=[(1.,.5)])
         # create NET
         node_0 = NETNode(0, [0], [0], z_kernel=(alphas, gammas[:,0]**2))
         net_py = NET()

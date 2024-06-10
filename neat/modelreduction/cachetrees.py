@@ -119,14 +119,14 @@ class EquilibriumTree(FitTree):
     the results of the computation.
     """
 
-    def _calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _calcEEq(self, loc_arg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         """
         Calculates equilibrium potentials and concentrations in the tree.
         Computes the equilibria through a NEURON simulations without inputs.
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             equilibrium state evaluated, if ``string``, specifies the
             name under which a set of locations is stored
@@ -139,7 +139,7 @@ class EquilibriumTree(FitTree):
         factor_lambda: `float`
             multiplies the number of compartments suggested by the lambda-rule
         """
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         if ions is None: ions = self.ions
         # use longer simulation for Eeq fit if concentration mechansims are present
         t_max = t_max*20. if len(ions) > 0 else t_max
@@ -148,7 +148,7 @@ class EquilibriumTree(FitTree):
         sim_tree_biophys = neurm.NeuronSimTree(self)
         # compute equilibrium potentials
         sim_tree_biophys.init_model(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
+        sim_tree_biophys.store_locs(locs, 'rec locs', warn=False)
         res_biophys = sim_tree_biophys.run(t_max, dt_rec=20., record_concentrations=ions)
         sim_tree_biophys.deleteModel()
 
@@ -157,7 +157,7 @@ class EquilibriumTree(FitTree):
             {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
         )
 
-    def calcEEq(self, locarg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
+    def calcEEq(self, loc_arg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
         """
         Calculates equilibrium potentials and concentrations in the tree.
 
@@ -167,7 +167,7 @@ class EquilibriumTree(FitTree):
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             equilibrium state evaluated, if ``string``, specifies the
             name under which a set of locations is stored
@@ -182,9 +182,9 @@ class EquilibriumTree(FitTree):
             Whether or not to print additional information
         """
         if ions is None: ions = self.ions
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         ref_locs = [(n.index, .5) for n in self]
-        self.storeLocs(ref_locs, name="ref locs")
+        self.store_locs(ref_locs, name="ref locs")
 
         e_eqs = []
         conc_eqs = {ion: [] for ion in ions}
@@ -193,8 +193,8 @@ class EquilibriumTree(FitTree):
             if pprint:
                 print("> computing e_eq through interpolation")
 
-            idxs0 = self.getNearestLocinds(locs, "ref locs", direction=1)
-            idxs1 = self.getNearestLocinds(locs, "ref locs", direction=2)
+            idxs0 = self.get_nearest_loc_idxs(locs, "ref locs", direction=1)
+            idxs1 = self.get_nearest_loc_idxs(locs, "ref locs", direction=2)
 
             for loc, idx0, idx1 in zip(locs, idxs0, idxs1):
 
@@ -212,8 +212,8 @@ class EquilibriumTree(FitTree):
                         conc_eqs[ion].append(self[ref_locs[idx][0]].conc_eps[ion])
 
                 else:
-                    L0 = self.pathLength(loc, ref_locs[idx0])
-                    L1 = self.pathLength(loc, ref_locs[idx1])
+                    L0 = self.path_length(loc, ref_locs[idx0])
+                    L1 = self.path_length(loc, ref_locs[idx1])
 
                     if L0 < 1e-10 or L1 < 1e-10:
                         idx = idx0 if L0 < L1 else idx1
@@ -244,7 +244,7 @@ class EquilibriumTree(FitTree):
         if len(e_eqs) < len(locs):
             if pprint:
                 print("> computing e_eq through interpolation failed, simulating")
-            return self._calcEEq(locarg, ions=ions, **kwargs)
+            return self._calcEEq(loc_arg, ions=ions, **kwargs)
 
         else:
             if pprint:
@@ -348,7 +348,7 @@ class FitTreeGF(GreensTree, FitTree):
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.setCompTree, [], {}),
+                (self.set_comp_tree, [], {}),
                 (self.setImpedance, [freqs], {"pprint": pprint, **kwargs})
             ]
         )
@@ -359,8 +359,8 @@ class FitTreeGF(GreensTree, FitTree):
         root_loc = MorphLoc(root_loc, self)
         # distribute locs on nodes
         st_nodes = self.gather_nodes(self[root_loc['node']])
-        d2s_loc = self.pathLength(root_loc, (1,0.5))
-        net_locs = self.distributeLocsOnNodes(d2s=np.arange(d2s_loc, 5000., dx),
+        d2s_loc = self.path_length(root_loc, (1,0.5))
+        net_locs = self.distribute_locs_on_nodes(d2s=np.arange(d2s_loc, 5000., dx),
                                    node_arg=st_nodes, name='net eval')
         # compute the impedance matrix for net calculation
         z_mat = self.calcImpedanceMatrix('net eval', explicit_method=False)[0]
@@ -440,7 +440,7 @@ class FitTreeC(GreensTreeTime, FitTree):
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.setCompTree, [], {}),
+                (self.set_comp_tree, [], {}),
                 (self.setImpedance, [t_arr], {})
             ]
         )
@@ -471,7 +471,7 @@ class FitTreeSOV(SOVTree, FitTree):
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.setCompTree, [], {"eps": 1.}),
+                (self.set_comp_tree, [], {"eps": 1.}),
                 (self.calcSOVEquations, [], {
                     "maxspace_freq": maxspace_freq,"pprint": pprint,
                 })

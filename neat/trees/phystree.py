@@ -354,7 +354,7 @@ class PhysTree(MorphTree):
     Functions for setting ion channels densities are applied to the original tree,
     which can cause the computational tree to be out of sync. To avoid this, the
     computational tree is always removed by these functions. It can be set
-    afterwards with `PhysTree.setCompTree()`
+    afterwards with `PhysTree.set_comp_tree()`
 
     Attributes
     ----------
@@ -418,11 +418,11 @@ class PhysTree(MorphTree):
         channel_names: List[str] or None
             The channels to passify. If not provided, all channels are passified.
         node_arg: optional
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None. The nodes for which the membrane is set to
             passive
         """
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             node.asPassiveMembrane(
                 self.channel_storage, channel_names=channel_names
             )
@@ -435,7 +435,7 @@ class PhysTree(MorphTree):
         elif isinstance(distr, dict):
             val = distr[node.index]
         elif hasattr(distr, '__call__'):
-            d2s = self.pathLength({'node': node.index, 'x': .5}, (1., 0.5))
+            d2s = self.path_length({'node': node.index, 'x': .5}, (1., 0.5))
             val = distr(d2s)
         else:
             raise TypeError(argname + ' argument should be a float, dict ' + \
@@ -456,7 +456,7 @@ class PhysTree(MorphTree):
         v_ep_distr: float, dict or :func:`float -> float`
             The expansion point potentials [mV]
         """
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             e = self._distr2Float(v_ep_distr, node, argname='`v_ep_distr`')
             node.setVEP(e)
 
@@ -474,7 +474,7 @@ class PhysTree(MorphTree):
         conc_eq_distr: float, dict or :func:`float -> float`
             The expansion point concentrations [mM]
         """
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             conc = self._distr2Float(conc_eq_distr, node, argname='`conc_eq_distr`')
             node.setConcEP(ion, conc)
 
@@ -497,10 +497,10 @@ class PhysTree(MorphTree):
             point like shunt conductances (placed at `(node.index, 1.)` for the
             nodes in ``node_arg``). By default no shunt conductances are added
         node_arg: optional
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None
         """
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             c_m = self._distr2Float(c_m_distr, node, argname='`c_m_distr`')
             r_a = self._distr2Float(r_a_distr, node, argname='`r_a_distr`')
             g_s = self._distr2Float(g_s_distr, node, argname='`g_s_distr`') if \
@@ -530,10 +530,10 @@ class PhysTree(MorphTree):
             the reversal at that distance. If it is a
             dict, keys are the node indices and values the ion reversals.
         node_arg: optional
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None
         """
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             g_l = self._distr2Float(g_l_distr, node, argname='`g_l_distr`')
             e_l = self._distr2Float(e_l_distr, node, argname='`e_l_distr`')
             node._addCurrent('L', g_l, e_l)
@@ -564,19 +564,19 @@ class PhysTree(MorphTree):
             the reversal at that distance. If it is a
             dict, keys are the node indices and values the ion reversals.
         node_arg: optional
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None
         """
         if not isinstance(channel, ionchannels.IonChannel):
             raise IOError('`channel` argmument needs to be of class `neat.IonChannel`')
         channel_name = channel.__class__.__name__
 
-        nodes_with_channel = self._convertNodeArgToNodes(node_arg)
+        nodes_with_channel = self.convert_node_arg_to_nodes(node_arg)
         if len(nodes_with_channel) > 0:
             self.channel_storage[channel_name] = channel
 
         # add the ion channel to the nodes
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             g_max = self._distr2Float(g_max_distr, node, argname='`g_max_distr`')
             e_rev = self._distr2Float(e_rev_distr, node, argname='`e_rev_distr`')
             node._addCurrent(channel_name, g_max, e_rev)
@@ -605,11 +605,11 @@ class PhysTree(MorphTree):
         params: dict
             parameters for the concentration mechanism (only used for NEURON model)
         node_arg:
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None
         """
         self.ions.add(ion)
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             node.addConcMech(ion, params=params)
 
     @comptree_removal_decorator
@@ -635,23 +635,23 @@ class PhysTree(MorphTree):
             and the output the target time-scale at that distance. If it is a
             dict, keys are the node indices and values the target time-scales
         node_arg:
-            see documentation of :func:`MorphTree._convertNodeArgToNodes`.
+            see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None
         """
-        for node in self._convertNodeArgToNodes(node_arg):
+        for node in self.convert_node_arg_to_nodes(node_arg):
             e_eq_target = self._distr2Float(e_eq_target_distr, node, argname='`g_max_distr`')
             tau_m_target = self._distr2Float(tau_m_target_distr, node, argname='`e_rev_distr`')
             assert tau_m_target > 0.
             node.fitLeakCurrent(e_eq_target=e_eq_target, tau_m_target=tau_m_target,
                                 channel_storage=self.channel_storage)
 
-    def _evaluateCompCriteria(self, node, eps=1e-8, rbool=False):
+    def _evaluate_comp_criteria(self, node, eps=1e-8, rbool=False):
         """
         Return ``True`` if relative difference in any physiological parameters
         between node and child node is larger than margin ``eps``.
 
-        Overrides the `MorphTree._evaluateCompCriteria()` function called by
-        `MorphTree.setCompTree()`.
+        Overrides the `MorphTree._evaluate_comp_criteria()` function called by
+        `MorphTree.set_comp_tree()`.
 
         Parameters
         ----------
@@ -664,7 +664,7 @@ class PhysTree(MorphTree):
         ------
         bool
         """
-        rbool = super()._evaluateCompCriteria(node, eps=eps, rbool=rbool)
+        rbool = super()._evaluate_comp_criteria(node, eps=eps, rbool=rbool)
 
         if not rbool:
             cnode = node.child_nodes[0]
@@ -686,7 +686,7 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
+    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_inds=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -715,15 +715,15 @@ class PhysTree(MorphTree):
         """
         if isinstance(loc_arg, str):
             name = loc_arg
-            self._tryName(name)
+            self._try_name(name)
         else:
             name = 'new tree'
-            self.storeLocs(loc_arg, name)
+            self.store_locs(loc_arg, name)
 
-        new_tree = super().createNewTree(name,
+        new_tree = super().create_new_tree(name,
             fake_soma=fake_soma, store_loc_inds=True
         )
-        new_locs = self.getLocs(name)
+        new_locs = self.get_locs(name)
 
         new_channels = set()
         new_ions = set()
@@ -800,11 +800,11 @@ class PhysTree(MorphTree):
                                        set_as_comploc=set_as_comploc)
                     locs.append(new_loc)
 
-        aux_tree = self.createNewTree(locs)
-        fd_tree = self.createCompartmentTree(locs)
+        aux_tree = self.create_new_tree(locs)
+        fd_tree = self.create_compartment_tree(locs)
 
         if name != 'dont store':
-            self.storeLocs(locs, name)
+            self.store_locs(locs, name)
 
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
             assert aux_node.content['loc ind'] == fd_node.loc_ind

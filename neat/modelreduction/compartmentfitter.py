@@ -187,28 +187,28 @@ class CompartmentFitter(object):
         Parameters
         ----------
         loc_arg: list of locations or string (see documentation of
-                :func:`MorphTree._convertLocArgToLocs` for details)
+                :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The compartment locations
         extend_w_bifurc: bool (optional, default `True`)
             To extend the compartment locations with all intermediate
             bifurcations (see documentation of
-            :func:`MorphTree.extendWithBifurcationLocs`).
+            :func:`MorphTree.extend_with_bifurcation_locs`).
         pprint: bool
             whether to print additional info
         """
         locs = self.tree._parseLocArg(loc_arg)
         if extend_w_bifurc:
-            locs = self.tree.extendWithBifurcationLocs(locs)
+            locs = self.tree.extend_with_bifurcation_locs(locs)
         else:
             warnings.warn(
                 'Not adding bifurcations to `loc_arg`, this could ' \
                 'lead to inaccurate fits. To add bifurcation, set' \
                 'kwarg `extend_w_bifurc` to ``True``'
             )
-        self.tree.storeLocs(locs, name='fit locs')
+        self.tree.store_locs(locs, name='fit locs')
 
         # create the reduced compartment tree
-        self.ctree = self.tree.createCompartmentTree(locs)
+        self.ctree = self.tree.create_compartment_tree(locs)
 
         # add currents to compartmental model
         for c_name, channel in self.tree.channel_storage.items():
@@ -257,7 +257,7 @@ class CompartmentFitter(object):
             new tree.
         recompute_cache: bool
             Whether or not to force recompute the impedance caches
-        unmasked_nodes: 'node_arg' (see documentation of `MorphTree._convertNodeArgToNodes`)
+        unmasked_nodes: 'node_arg' (see documentation of `MorphTree.convert_node_arg_to_nodes`)
             The nodes where the channels in `channel_names` will be initialized
             to non-zero values
 
@@ -267,7 +267,7 @@ class CompartmentFitter(object):
 
         """
         unmasked_node_indices = [
-            node.index for node in self.tree._convertNodeArgToNodes(unmasked_nodes)
+            node.index for node in self.tree.convert_node_arg_to_nodes(unmasked_nodes)
         ]
 
         # create new tree and empty channel storage
@@ -302,7 +302,7 @@ class CompartmentFitter(object):
             channel_name: self.tree.channel_storage[channel_name] \
             for channel_name in channel_names_newtree
         }
-        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
+        tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
 
         return tree
 
@@ -326,7 +326,7 @@ class CompartmentFitter(object):
         ------
         fit_mats
         """
-        locs = self.tree.getLocs('fit locs')
+        locs = self.tree.get_locs('fit locs')
         # find the expansion point parameters for the channel
         channel = self.tree.channel_storage[channel_name]
         sv_h = getExpansionPoints(self.cfg.e_hs, channel)
@@ -475,8 +475,8 @@ class CompartmentFitter(object):
         if not has_concmech:
             return 0
 
-        orig_nodes = [self.tree[loc["node"]] for loc in self.tree.getLocs("fit locs")]
-        comp_nodes = self.ctree.get_nodesFromLocinds(list(range(len(self.tree.getLocs("fit locs")))))
+        orig_nodes = [self.tree[loc["node"]] for loc in self.tree.get_locs("fit locs")]
+        comp_nodes = self.ctree.get_nodesFromLocinds(list(range(len(self.tree.get_locs("fit locs")))))
 
         for orig_node, comp_node in zip(orig_nodes, comp_nodes):
             self._calibrateConcmechs(ion, orig_node, comp_node)
@@ -499,7 +499,7 @@ class CompartmentFitter(object):
 
         """
         self.use_all_channels_for_passive = use_all_channels
-        locs = self.tree.getLocs('fit locs')
+        locs = self.tree.get_locs('fit locs')
 
         suffix = "_pas_"
         if use_all_channels:
@@ -523,7 +523,7 @@ class CompartmentFitter(object):
                 save_cache=self.save_cache,
                 recompute_cache=self.recompute_cache,
             )
-            fit_tree.setCompTree(eps=self.cfg.fit_comptree_eps)
+            fit_tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
         else:
             fit_tree = self.createTreeGF(
                 [], # empty list of channel to include
@@ -563,7 +563,7 @@ class CompartmentFitter(object):
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
         """
-        locs = self.tree.getLocs('fit locs')
+        locs = self.tree.get_locs('fit locs')
         # compute the steady state impedance matrix
         fit_tree = self.createTreeGF(
             [],
@@ -632,7 +632,7 @@ class CompartmentFitter(object):
                 node._addCurrent('L', g_l, e_l)
 
         # set the computational tree
-        tree.setCompTree(eps=self.cfg.fit_comptree_eps)
+        tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
 
         return tree
 
@@ -646,7 +646,7 @@ class CompartmentFitter(object):
         sov_tree.setSOVInTree(pprint=pprint)
         # get SOV constants
         alphas, phimat, importance = sov_tree.getImportantModes(
-            locarg=locs, sort_type='importance', eps=1e-12,
+            loc_arg=locs, sort_type='importance', eps=1e-12,
             return_importance=True
         )
         alphas = alphas.real
@@ -676,7 +676,7 @@ class CompartmentFitter(object):
             whether to plot the eigenmode timescales
         """
         # compute SOV matrices for fit
-        locs = self.tree.getLocs('fit locs')
+        locs = self.tree.get_locs('fit locs')
         alphas, phimat, importance, sov_tree = \
                 self._calcSOVMats(locs, pprint=pprint)
 
@@ -748,7 +748,7 @@ class CompartmentFitter(object):
         return self.ctree
 
     def plotSOV(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
 
         if alphas is None or phimat is None or importance is None:
             alphas, phimat, importance, _ = self._calcSOVMats(
@@ -757,7 +757,7 @@ class CompartmentFitter(object):
         if alphas2 is None:
             alphas2, _, _ = self.ctree.calcEigenvalues()
 
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
         markers = Line2D.filled_markers
@@ -787,7 +787,7 @@ class CompartmentFitter(object):
         ax3.legend(loc=0)
 
     def _constructKernels(self, a, c):
-        nn = len(self.tree.getLocs('fit locs'))
+        nn = len(self.tree.get_locs('fit locs'))
         return [[Kernel((a, c[:,ii,jj])) for ii in range(nn)] for jj in range(nn)]
 
     def _getKernels(self, alphas=None, phimat=None,
@@ -816,7 +816,7 @@ class CompartmentFitter(object):
         k_comp: list of list of `neat.Kernel`
             The kernels of the reduced model
         """
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
         if alphas is None or phimat is None:
             alphas, phimat, _, _ = self._calcSOVMats(
                 fit_locs, pprint=pprint
@@ -879,7 +879,7 @@ class CompartmentFitter(object):
         k_comp: list of list of `neat.Kernel`
             The kernels of the reduced model
         """
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
         nn = len(fit_locs)
 
         if alphas is None or phimat is None:
@@ -911,13 +911,13 @@ class CompartmentFitter(object):
                 ax.set_title(pstring, pad=-10)
 
     def _storeSOVMats(self):
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
         self.alphas, self.phimat, _, _ = self._calcSOVMats(
             fit_locs, pprint=False
         )
 
     def kernelObjective(self, t_arr=None):
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
         nn = len(fit_locs)
 
         if t_arr is None:
@@ -944,7 +944,7 @@ class CompartmentFitter(object):
         Parameters
         ----------
         loc_arg: list of locations or string (see documentation of
-                :func:`MorphTree._convertLocArgToLocs` for details)
+                :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The compartment locations
         alpha_inds: list of ints
             Indices of all mode time-scales to be included in the fit
@@ -970,14 +970,14 @@ class CompartmentFitter(object):
                             force_tau_m_fit=force_tau_m_fit,
                             pprint=pprint, pplot=False)
 
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
 
         pl.figure('tree')
         ax = pl.gca()
-        locargs = [dict(marker='o', mec='k', mfc=lc, markersize=6.) for lc in loc_colours]
-        self.tree.plot2DMorphology(ax, marklocs=fit_locs, locargs=locargs, use_radius=False)
+        loc_args = [dict(marker='o', mec='k', mfc=lc, markersize=6.) for lc in loc_colours]
+        self.tree.plot_2d_morphology(ax, marklocs=fit_locs, loc_args=loc_args, use_radius=False)
 
         pl.tight_layout()
         pl.show()
@@ -993,7 +993,7 @@ class CompartmentFitter(object):
         net.improveInputImpedance(z_mat)
 
         # prune the NET to only retain ``locs``
-        loc_inds = greens_tree.getNearestLocinds([c_loc]+locs, 'net eval')
+        loc_inds = greens_tree.get_nearest_loc_idxs([c_loc]+locs, 'net eval')
         net_reduced = net.getReducedTree(loc_inds, indexing='locs')
 
         return net_reduced
@@ -1010,7 +1010,7 @@ class CompartmentFitter(object):
         kwargs:
             arguments to the `CompartmentFitter.calcEEq()` function
         """
-        fit_locs = self.tree.getLocs('fit locs')
+        fit_locs = self.tree.get_locs('fit locs')
 
         # set the equilibria
         self.ctree.setEEq(self.v_eqs_fit)
@@ -1034,7 +1034,7 @@ class CompartmentFitter(object):
         Parameters
         ----------
         loc_arg: list of locations or string (see documentation of
-                :func:`MorphTree._convertLocArgToLocs` for details)
+                :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The compartment locations
         alpha_inds: list of ints
             Indices of all mode time-scales to be included in the fit
@@ -1075,10 +1075,10 @@ class CompartmentFitter(object):
 
         return self.ctree
 
-    def recalcImpedanceMatrix(self, locarg, g_syns,
+    def recalcImpedanceMatrix(self, loc_arg, g_syns,
                               channel_names=None):
         # process input
-        locs = self.tree._parseLocArg(locarg)
+        locs = self.tree._parseLocArg(loc_arg)
         n_syn = len(locs)
         assert n_syn == len(g_syns)
         if n_syn == 0:
@@ -1103,7 +1103,7 @@ class CompartmentFitter(object):
 
         return z_mat_
 
-    def fitSynRescale(self, c_locarg, s_locarg, comp_inds, g_syns, e_revs,
+    def fitSynRescale(self, c_loc_arg, s_loc_arg, comp_inds, g_syns, e_revs,
                             fit_impedance=False, channel_names=None):
         """
         Computes the rescaled conductances when synapses are moved to compartment
@@ -1111,15 +1111,15 @@ class CompartmentFitter(object):
 
         Parameters
         ----------
-        c_locarg: list of locations or string (see documentation of
-                  :func:`MorphTree._convertLocArgToLocs` for details)
+        c_loc_arg: list of locations or string (see documentation of
+                  :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The compartment locations
-        s_locarg: list of locations or string (see documentation of
-                  :func:`MorphTree._convertLocArgToLocs` for details)
+        s_loc_arg: list of locations or string (see documentation of
+                  :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The synapse locations
         comp_inds: list or numpy.array of ints
-            for each location in [s_locarg], gives the index of the compartment
-            location in [c_locarg] to which the synapse is assigned
+            for each location in [s_loc_arg], gives the index of the compartment
+            location in [c_loc_arg] to which the synapse is assigned
         g_syns: list or numpy.array of floats
             The average conductances for each synapse
         e_revs: list or numpy.array of floats
@@ -1137,8 +1137,8 @@ class CompartmentFitter(object):
             The rescale values for the synaptic weights
         """
         # process input
-        c_locs = self.tree._parseLocArg(c_locarg)
-        s_locs = self.tree._parseLocArg(s_locarg)
+        c_locs = self.tree._parseLocArg(c_loc_arg)
+        s_locs = self.tree._parseLocArg(s_loc_arg)
         n_comp, n_syn = len(c_locs), len(s_locs)
         assert n_syn == len(g_syns) and n_syn == len(e_revs)
         assert len(c_locs) > 0
@@ -1222,10 +1222,10 @@ class CompartmentFitter(object):
 
         return g_resc
 
-    def assignLocsToComps(self, c_locarg, s_locarg, fz=.8,
+    def assignLocsToComps(self, c_loc_arg, s_loc_arg, fz=.8,
                                 channel_names=None):
         """
-        assumes the root node is in `c_locarg`
+        assumes the root node is in `c_loc_arg`
         """
         if channel_names is None:
             channel_names = list(self.tree.channel_storage.keys())
@@ -1238,8 +1238,8 @@ class CompartmentFitter(object):
         greens_tree.setImpedancesInTree(self.cfg.freqs, pprint=False)
 
         # process input
-        c_locs = self.tree._parseLocArg(c_locarg)
-        s_locs = self.tree._parseLocArg(s_locarg)
+        c_locs = self.tree._parseLocArg(c_loc_arg)
+        s_locs = self.tree._parseLocArg(s_loc_arg)
         # find nodes corresponding to locs
         c_nodes = [self.tree[loc['node']] for loc in c_locs]
         s_nodes = [self.tree[loc['node']] for loc in s_locs]
@@ -1254,7 +1254,7 @@ class CompartmentFitter(object):
         for s_node, s_path, s_loc, s_zin in zip(s_nodes, s_ptrs, s_locs, s_zins):
             z_diffs = []
             # check if there are compartment nodes before bifurcation nodes in up direction
-            nn_inds = greens_tree.getNearestNeighbourLocinds(s_loc, c_locs)
+            nn_inds = greens_tree.get_nearest_neighbour_loc_idxs(s_loc, c_locs)
             # print c_before_b
             c_ns = [c_nodes[ii] for ii in nn_inds]
             c_ps = [c_ptrs[ii] for ii in nn_inds]

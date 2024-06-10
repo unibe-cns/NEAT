@@ -297,7 +297,7 @@ class NeuronSimTree(PhysTree):
         self.vecstims = []
         self.netcons = []
         self.vecs = []
-        self.storeLocs([{'node': 1, 'x': 0.}], 'rec locs')
+        self.store_locs([{'node': 1, 'x': 0.}], 'rec locs')
 
     def _createNeuronTree(self, pprint):
         for node in self:
@@ -639,7 +639,7 @@ class NeuronSimTree(PhysTree):
         self.vclamps.append(vclamp)
 
     # def addRecLoc(self, loc):
-    #     self.addLoc(loc, 'rec locs')
+    #     self.add_loc(loc, 'rec locs')
 
     def setSpikeTrain(self, syn_index, syn_weight, spike_times):
         """
@@ -686,7 +686,7 @@ class NeuronSimTree(PhysTree):
             pprint=False):
         """
         Run the NEURON simulation. Records at all locations stored
-        under the name 'rec locs' on `self` (see `MorphTree.storeLocs()`)
+        under the name 'rec locs' on `self` (see `MorphTree.store_locs()`)
 
         Parameters
         ----------
@@ -746,7 +746,7 @@ class NeuronSimTree(PhysTree):
 
         # voltage recorders
         res['v_m'] = []
-        for loc in self.getLocs('rec locs'):
+        for loc in self.get_locs('rec locs'):
             res['v_m'].append(h.Vector())
             res['v_m'][-1].record(self.sections[loc['node']](loc['x'])._ref_v, dt_rec)
 
@@ -777,7 +777,7 @@ class NeuronSimTree(PhysTree):
             channel_names = self.getChannelsInTree()
             for channel_name in channel_names:
                 res['chan'][channel_name] = {str(var): [] for var in self.channel_storage[channel_name].statevars}
-                for loc in self.getLocs('rec locs'):
+                for loc in self.get_locs('rec locs'):
                     for ind, varname in enumerate(self.channel_storage[channel_name].statevars):
                         var = str(varname)
                         # assure xcoordinate is refering to proper neuron section (not endpoint)
@@ -797,7 +797,7 @@ class NeuronSimTree(PhysTree):
         if len(record_concentrations) > 0:
             for c_ion in record_concentrations:
                 res[c_ion] = []
-                for loc in self.getLocs('rec locs'):
+                for loc in self.get_locs('rec locs'):
                     try:
                         rec_vec = h.Vector()
                         exec('rec_vec.record(self.sections[loc[\'node\']](loc[\'x\'])._ref_' + c_ion + f'i, {dt_rec})')
@@ -810,7 +810,7 @@ class NeuronSimTree(PhysTree):
             for c_ion in record_currents:
                 curr_name = f"i{c_ion}"
                 res[curr_name] = []
-                for loc in self.getLocs('rec locs'):
+                for loc in self.get_locs('rec locs'):
                     try:
                         rec_vec = h.Vector()
                         exec(f'rec_vec.record(self.sections[loc[\'node\']](loc[\'x\'])._ref_{curr_name}, {dt_rec})')
@@ -822,7 +822,7 @@ class NeuronSimTree(PhysTree):
         # record voltage derivative
         if record_v_deriv:
             res['dv_dt'] = []
-            for ii, loc in enumerate(self.getLocs('rec locs')):
+            for ii, loc in enumerate(self.get_locs('rec locs')):
                 res['dv_dt'].append(h.Vector())
                 # res['dv_dt'][-1].deriv(res['v_m'][ii], self.dt)
         if spike_rec_loc is not None:
@@ -851,7 +851,7 @@ class NeuronSimTree(PhysTree):
 
         # compute derivative
         if 'dv_dt' in res:
-            for ii, loc in enumerate(self.getLocs('rec locs')):
+            for ii, loc in enumerate(self.get_locs('rec locs')):
                 res['dv_dt'][ii].deriv(res['v_m'][ii], dt_rec, 2)
                 res['dv_dt'][ii] = np.array(res['dv_dt'][ii])[indstart:][::downsample]
             res['dv_dt'] = np.array(res['dv_dt'])
@@ -875,7 +875,7 @@ class NeuronSimTree(PhysTree):
                 channel = self.channel_storage[channel_name]
                 for ind0, varname in enumerate(channel.statevars):
                     var = str(varname)
-                    for ind1 in range(len(self.getLocs('rec locs'))):
+                    for ind1 in range(len(self.get_locs('rec locs'))):
                         res['chan'][channel_name][var][ind1] = \
                                 np.array(res['chan'][channel_name][var][ind1])[indstart:][::downsample]
                         if len(res['chan'][channel_name][var][ind1]) == 0:
@@ -883,7 +883,7 @@ class NeuronSimTree(PhysTree):
                     res['chan'][channel_name][var] = \
                             np.array(res['chan'][channel_name][var])
                 # compute P_open
-                # sv = np.zeros((len(channel.statevars), len(self.getLocs('rec locs')), len(res['t'])))
+                # sv = np.zeros((len(channel.statevars), len(self.get_locs('rec locs')), len(res['t'])))
                 sv = {}
                 for varname in channel.statevars:
                     var = str(varname)
@@ -912,7 +912,7 @@ class NeuronSimTree(PhysTree):
         """
         self.init_model(dt=self.dt, t_calibrate=self.t_calibrate,
                        v_init=self.v_init, factor_lambda=self.factor_lambda)
-        self.storeLocs([(n.index, 0.5) for n in self], name='rec locs')
+        self.store_locs([(n.index, 0.5) for n in self], name='rec locs')
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
         if set_v_ep:
@@ -921,11 +921,11 @@ class NeuronSimTree(PhysTree):
 
         return v_eq
 
-    def calcImpedanceMatrix(self, locarg, 
+    def calcImpedanceMatrix(self, loc_arg, 
             i_amp=0.001, t_dur=100., pplot=False,
             factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
         ):
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         z_mat = np.zeros((len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
@@ -933,7 +933,7 @@ class NeuronSimTree(PhysTree):
                     dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
                 )
                 self.addIClamp(loc0, i_amp, 0., t_dur)
-                self.storeLocs([loc0, loc1], 'rec locs', warn=False)
+                self.store_locs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_dur)
                 self.deleteModel()
@@ -950,12 +950,12 @@ class NeuronSimTree(PhysTree):
 
         return z_mat
 
-    def calcImpedanceKernelMatrix(self, locarg, 
+    def calcImpedanceKernelMatrix(self, loc_arg, 
             i_amp=0.001,
             dt_pulse=0.1, dstep=-2, t_max=100.,
             factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
         ):
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
         zk_mat = np.zeros((nt, len(locs), len(locs)))
@@ -967,7 +967,7 @@ class NeuronSimTree(PhysTree):
                     v_init=v_init, factor_lambda=factor_lambda
                 )
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
-                self.storeLocs([loc0, loc1], 'rec locs', warn=False)
+                self.store_locs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_max+dt_pulse)
                 self.deleteModel()
@@ -1071,7 +1071,7 @@ class NeuronCompartmentTree(NeuronSimTree):
             for ii, comp_node in enumerate(ctree):
                 pts = points[ii]
                 sim_node = self.__getitem__(comp_node.index, skip_inds=[])
-                sim_node.setP3D(np.array(pts[0][:3]), (pts[0][3] + pts[-1][3]) / 2., 3)
+                sim_node.set_p3d(np.array(pts[0][:3]), (pts[0][3] + pts[-1][3]) / 2., 3)
 
             # fill the tree with the currents
             for ii, sim_node in enumerate(self):
@@ -1090,9 +1090,9 @@ class NeuronCompartmentTree(NeuronSimTree):
             for ii, comp_node in enumerate(ctree):
                 sim_node = self.__getitem__(comp_node.index, skip_inds=[])
                 if self.is_root(sim_node):
-                    sim_node.setP3D(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
+                    sim_node.set_p3d(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
                 else:
-                    sim_node.setP3D(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
+                    sim_node.set_p3d(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
                                     radii[ii]*1e4, 3)
 
             # fill the tree with the currents

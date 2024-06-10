@@ -71,7 +71,7 @@ class TestNest:
         # set equilibirum potententials
         self.tree.setVEP(-75.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
@@ -87,7 +87,7 @@ class TestNest:
         self.loadBall()
         self.tree.fitLeakCurrent(v_eq, 10.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         # fit the tree again
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
@@ -125,7 +125,7 @@ class TestNest:
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
-        csimtree_neuron.storeLocs([(0, .5)], name='rec locs')
+        csimtree_neuron.store_locs([(0, .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
@@ -213,7 +213,7 @@ class TestNest:
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
-        csimtree_neuron.storeLocs([(0, .5), (1, .5), (2., .5)], name='rec locs')
+        csimtree_neuron.store_locs([(0, .5), (1, .5), (2., .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
@@ -318,7 +318,7 @@ class TestNest:
         clocs = [(ii, .5) for ii in range(len(self.ctree))]
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.init_model(dt=dt, t_calibrate=tcal)
-        csimtree_neuron.storeLocs(clocs, name='rec locs')
+        csimtree_neuron.store_locs(clocs, name='rec locs')
         csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
         csimtree_neuron.addDoubleExpSynapse(clocs[dend_idx], .2, 3., 0.)

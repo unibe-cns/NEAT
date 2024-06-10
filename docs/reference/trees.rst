@@ -152,8 +152,8 @@ Read a morphology from an SWC file
 .. autosummary::
    :toctree: generated/
 
-   MorphTree.readSWCTreeFromFile
-   MorphTree.determineSomaType
+   MorphTree.read_swc_tree_from_file
+   MorphTree.determine_soma_type
 
 .. autosummary::
    :toctree: generated/
@@ -171,10 +171,10 @@ Get specific nodes or sets of nodes from the tree.
    MorphTree.nodes
    MorphTree.get_leafs
    MorphTree.leafs
-   MorphTree.get_nodesInBasalSubtree
-   MorphTree.get_nodesInApicalSubtree
-   MorphTree.get_nodesInAxonalSubtree
-   MorphTree._convertNodeArgToNodes
+   MorphTree.get_nodes_in_basal_subtree
+   MorphTree.get_nodes_in_apical_subtree
+   MorphTree.get_nodes_in_axonal_subtree
+   MorphTree.convert_node_arg_to_nodes
 
 Relating to the computational tree.
 
@@ -183,10 +183,10 @@ Relating to the computational tree.
 
    MorphTree.setTreetype
    MorphTree.treetype
-   MorphTree.readSWCTreeFromFile
-   MorphTree.setCompTree
-   MorphTree._evaluateCompCriteria
-   MorphTree.removeCompTree
+   MorphTree.read_swc_tree_from_file
+   MorphTree.set_comp_tree
+   MorphTree._evaluate_comp_criteria
+   MorphTree.remove_comp_tree
 
 Storing locations, interacting with stored locations and distributing
 locations
@@ -194,57 +194,57 @@ locations
 .. autosummary::
    :toctree: generated/
 
-   MorphTree._convertLocArgToLocs
-   MorphTree.storeLocs
-   MorphTree.addLoc
-   MorphTree.clearLocs
-   MorphTree.removeLocs
-   MorphTree._tryName
-   MorphTree.getLocs
-   MorphTree.getNodeIndices
-   MorphTree.getXCoords
-   MorphTree.getLocindsOnNode
-   MorphTree.getLocindsOnNodes
-   MorphTree.getLocindsOnPath
-   MorphTree.getNearestLocinds
-   MorphTree.getNearestNeighbourLocinds
-   MorphTree.getLeafLocinds
-   MorphTree.distancesToSoma
-   MorphTree.distancesToBifurcation
-   MorphTree.distributeLocsOnNodes
-   MorphTree.distributeLocsUniform
-   MorphTree.distributeLocsRandom
-   MorphTree.extendWithBifurcationLocs
-   MorphTree.uniqueLocs
-   MorphTree.pathLength
+   MorphTree.convert_loc_arg_to_locs
+   MorphTree.store_locs
+   MorphTree.add_loc
+   MorphTree.clear_locs
+   MorphTree.remove_locs
+   MorphTree._try_name
+   MorphTree.get_locs
+   MorphTree.get_node_indices
+   MorphTree.get_x_coords
+   MorphTree.get_loc_idxs_on_node
+   MorphTree.get_loc_idxs_on_nodes
+   MorphTree.get_loc_idxs_on_path
+   MorphTree.get_nearest_loc_idxs
+   MorphTree.get_nearest_neighbour_loc_idxs
+   MorphTree.get_leaf_loc_idxs
+   MorphTree.distances_to_soma
+   MorphTree.distances_to_bifurcation
+   MorphTree.distribute_locs_on_nodes
+   MorphTree.distribute_locs_uniform
+   MorphTree.distribute_locs_random
+   MorphTree.extend_with_bifurcation_locs
+   MorphTree.unique_locs
+   MorphTree.path_length
 
 Plotting on a 1D axis.
 
 .. autosummary::
    :toctree: generated/
 
-   MorphTree.makeXAxis
-   MorphTree.setNodeColors
-   MorphTree.getXValues
-   MorphTree.plot1D
-   MorphTree.plotTrueD2S
-   MorphTree.colorXAxis
+   MorphTree.make_x_axis
+   MorphTree.set_node_colors
+   MorphTree.get_x_values
+   MorphTree.plot_1d
+   MorphTree.plot_true_d2s
+   MorphTree.color_x_axis
 
 Plotting the morphology in 2D.
 
 .. autosummary::
    :toctree: generated/
 
-   MorphTree.plot2DMorphology
-   MorphTree.plotMorphologyInteractive
+   MorphTree.plot_2d_morphology
+   MorphTree.plot_morphology_interactive
 
 Creating new trees from the existing tree.
 
 .. autosummary::
    :toctree: generated/
 
-   MorphTree.createNewTree
-   MorphTree.createCompartmentTree
+   MorphTree.create_new_tree
+   MorphTree.create_compartment_tree
    MorphTree.__copy__
 
 
@@ -253,7 +253,7 @@ Creating new trees from the existing tree.
 .. autosummary::
    :toctree: generated/
 
-    MorphNode.setP3D
+    MorphNode.set_p3d
     MorphNode.child_nodes
 
 .. autoclass:: neat.MorphLoc
@@ -274,7 +274,7 @@ Physiology Tree
    PhysTree.addCurrent
    PhysTree.getChannelsInTree
    PhysTree.fitLeakCurrent
-   PhysTree._evaluateCompCriteria
+   PhysTree._evaluate_comp_criteria
 
 .. autoclass:: neat.PhysNode
 

@@ -30,7 +30,7 @@ class TestGreensTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadValidationTree(self):
         """
@@ -41,7 +41,7 @@ class TestGreensTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadSOVTTree(self):
         """
@@ -55,7 +55,7 @@ class TestGreensTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
         self.sovtree.fitLeakCurrent(-75., 10.)
-        self.sovtree.setCompTree()
+        self.sovtree.set_comp_tree()
         self.sovtree.calcSOVEquations()
 
     def loadSOVValidationTree(self):
@@ -67,7 +67,7 @@ class TestGreensTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
         self.sovtree.fitLeakCurrent(-75., 10.)
-        self.sovtree.setCompTree()
+        self.sovtree.set_comp_tree()
         self.sovtree.calcSOVEquations()
 
     def testStringRepresentation(self):
@@ -78,7 +78,7 @@ class TestGreensTree():
         g_max = 100.
         channel = channelcollection.TestChannel2()
         self.tree.addCurrent(channel, g_max, e_rev)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         self.tree.setImpedance(np.array([0.,100.])*1j)
         
         with self.tree.as_original_tree:
@@ -117,9 +117,9 @@ class TestGreensTree():
         zf = self.tree.calcZF(*locs_0)
         locs_1 = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         locs_2 = [(7, .5), (8, .5)]
-        self.tree.storeLocs(locs_0, '0')
-        self.tree.storeLocs(locs_1, '1')
-        self.tree.storeLocs(locs_2, '2')
+        self.tree.store_locs(locs_0, '0')
+        self.tree.store_locs(locs_1, '1')
+        self.tree.store_locs(locs_2, '2')
         # compute impedance matrices
         z_mat_0 = self.tree.calcImpedanceMatrix('0')[ft.ind_0s]
         z_mat_1 = self.tree.calcImpedanceMatrix('1')[ft.ind_0s]
@@ -171,15 +171,15 @@ class TestGreensTree():
         self.tree.setImpedance(ft.s)
         # sets of location
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
-        self.tree.storeLocs(locs, 'locs')
-        self.sovtree.storeLocs(locs, 'locs')
+        self.tree.store_locs(locs, 'locs')
+        self.sovtree.store_locs(locs, 'locs')
         # compute impedance matrices with both methods
-        z_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10)
+        z_sov = self.sovtree.calcImpedanceMatrix(loc_arg='locs', eps=1e-10)
         z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
         z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
         assert np.allclose(z_gf2, z_gf, atol=5e-6)
-        zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
+        zf_sov = self.sovtree.calcImpedanceMatrix(loc_arg='locs', eps=1e-10, freqs=ft.s)
         zf_gf = self.tree.calcImpedanceMatrix('locs')
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
         zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
@@ -194,15 +194,15 @@ class TestGreensTree():
         self.tree.setImpedance(ft.s)
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (5, 1.)]
-        self.tree.storeLocs(locs, 'locs')
-        self.sovtree.storeLocs(locs, 'locs')
+        self.tree.store_locs(locs, 'locs')
+        self.sovtree.store_locs(locs, 'locs')
         # compute impedance matrices with both methods
-        z_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10)
+        z_sov = self.sovtree.calcImpedanceMatrix(loc_arg='locs', eps=1e-10)
         z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
         z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
         assert np.allclose(z_gf2, z_gf, atol=5e-6)
-        zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
+        zf_sov = self.sovtree.calcImpedanceMatrix(loc_arg='locs', eps=1e-10, freqs=ft.s)
         zf_gf = self.tree.calcImpedanceMatrix('locs')
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
         zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
@@ -230,7 +230,7 @@ class TestGreensTreeTime():
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
         self.tree.setVEP(-75.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadAxonTree(self):
         '''
@@ -255,7 +255,7 @@ class TestGreensTreeTime():
         self.tree.fitLeakCurrent(-75., 10.)
         # set equilibirum potententials
         self.tree.setVEP(-75.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadBall(self, is_active):
         '''
@@ -279,7 +279,7 @@ class TestGreensTreeTime():
         # set equilibirum potententials
         self.tree.setVEP(-75.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def testStringRepresentation(self):
         self.loadBall(1)
@@ -453,7 +453,7 @@ class TestGreensTreeTime():
         tmax = self.tmax + delay_pulse
         sim_tree.init_model(dt=self.dt, t_calibrate=10., factor_lambda=100)
         sim_tree.addIClamp(locs[idx_in], i_amp, delay_pulse, dt_pulse)
-        sim_tree.storeLocs(locs, 'rec locs', warn=False)
+        sim_tree.store_locs(locs, 'rec locs', warn=False)
         # simulate
         res = sim_tree.run(tmax, record_from_channels=True)
         sim_tree.deleteModel()
@@ -560,7 +560,7 @@ class TestGreensTreeTime():
         # test passive case
         self.loadBall(is_active=False)
         self.tree.asPassiveMembrane()
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         self.tree.setImpedance(self.ft)
 
         loc = (1, .5)

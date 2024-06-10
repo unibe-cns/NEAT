@@ -305,14 +305,14 @@ class SOVTree(PhysTree):
             return SOVNode(node_index, p3d=p3d)
 
     @morphtree.computational_tree_decorator
-    def getSOVMatrices(self, locarg):
+    def getSOVMatrices(self, loc_arg):
         """
         returns the alphas, the reciprocals of the mode time scales [1/ms]
         as well as the spatial functions evaluated at ``locs``
 
         Parameters
         ----------
-            locarg: see :func:`neat.MorphTree._parseLocArg()`
+            loc_arg: see :func:`neat.MorphTree._parseLocArg()`
                 the locations at which to evaluate the SOV matrices
 
         Returns
@@ -324,7 +324,7 @@ class SOVTree(PhysTree):
                 each locations. Dimension 0 is number of modes and dimension 1
                 number of locations
         """
-        locs = self._parseLocArg(locarg)
+        locs = self._parseLocArg(loc_arg)
         if len(self) > 1:
             # set up the matrices
             zeros      = self.root.zeros
@@ -410,7 +410,7 @@ class SOVTree(PhysTree):
             cnode._setQVals(zeros)
             self._SOVFromRoot(cnode, zeros)
 
-    def getModeImportance(self, locarg=None, sov_data=None,
+    def getModeImportance(self, loc_arg=None, sov_data=None,
                                 importance_type='simple'):
         """
         Gives the overal importance of the SOV modes for a certain set of
@@ -418,10 +418,10 @@ class SOVTree(PhysTree):
 
         Parameters
         ----------
-            locarg: None or list of locations
+            loc_arg: None or list of locations
             sov_data: None or tuple of mode matrices
-                One of the keyword arguments ``locarg`` or ``sov_data``
-                must not be ``None``. If ``locarg`` is not ``None``, the importance
+                One of the keyword arguments ``loc_arg`` or ``sov_data``
+                must not be ``None``. If ``loc_arg`` is not ``None``, the importance
                 is evaluated at these locations (see
                 :func:`neat.MorphTree._parseLocArg`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
@@ -438,14 +438,14 @@ class SOVTree(PhysTree):
                 the importances associated with each mode for the provided set
                 of locations
         """
-        if locarg is not None:
-            locs = self._parseLocArg(locarg)
+        if loc_arg is not None:
+            locs = self._parseLocArg(loc_arg)
             alphas, gammas = self.getSOVMatrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            raise IOError('One of the kwargs `locarg` or `sov_data` must not be ``None``')
+            raise IOError('One of the kwargs `loc_arg` or `sov_data` must not be ``None``')
 
         if importance_type == 'simple':
             absolute_importance = np.sum(np.abs(gammas), 1) / np.abs(alphas)
@@ -459,7 +459,7 @@ class SOVTree(PhysTree):
 
         return absolute_importance / np.max(absolute_importance)
 
-    def getImportantModes(self, locarg=None, sov_data=None,
+    def getImportantModes(self, loc_arg=None, sov_data=None,
                                 eps=1e-4, sort_type='timescale',
                                 return_importance=False):
         """
@@ -468,10 +468,10 @@ class SOVTree(PhysTree):
 
         Parameters
         ----------
-            locarg: None or list of locations
+            loc_arg: None or list of locations
             sov_data: None or tuple of mode matrices
-                One of the keyword arguments ``locarg`` or ``sov_data``
-                must not be ``None``. If ``locarg`` is not ``None``, the importance
+                One of the keyword arguments ``loc_arg`` or ``sov_data``
+                must not be ``None``. If ``loc_arg`` is not ``None``, the importance
                 is evaluated at these locations (see
                 :func:`neat.MorphTree._parseLocArg`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
@@ -499,14 +499,14 @@ class SOVTree(PhysTree):
             importance: np.ndarray (`shape` matches `alphas`, only if `return_importance` is ``True``)
                 value of importance metric for each mode
         """
-        if locarg is not None:
-            locs = self._parseLocArg(locarg)
+        if loc_arg is not None:
+            locs = self._parseLocArg(loc_arg)
             alphas, gammas = self.getSOVMatrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            raise IOError('One of the kwargs `locarg` or `sov_data` must not be ``None``')
+            raise IOError('One of the kwargs `loc_arg` or `sov_data` must not be ``None``')
         importance = self.getModeImportance(sov_data=(alphas, gammas), importance_type='simple')
         inds = np.where(importance > eps)[0]
         # only modes above importance cutoff
@@ -523,17 +523,17 @@ class SOVTree(PhysTree):
         else:
             return alphas[inds_sort], gammas[inds_sort,:]
 
-    def calcImpedanceMatrix(self, locarg=None, sov_data=None, name=None,
+    def calcImpedanceMatrix(self, loc_arg=None, sov_data=None, name=None,
                                   eps=1e-4, mem_limit=500, freqs=None):
         """
         Compute the impedance matrix for a set of locations
 
         Parameters
         ----------
-            locarg: None or list of locations
+            loc_arg: None or list of locations
             sov_data: None or tuple of mode matrices
-                One of the keyword arguments ``locarg`` or ``sov_data``
-                must not be ``None``. If ``locarg`` is not ``None``, the importance
+                One of the keyword arguments ``loc_arg`` or ``sov_data``
+                must not be ``None``. If ``loc_arg`` is not ``None``, the importance
                 is evaluated at these locations (see
                 :func:`neat.MorphTree._parseLocArg`).
                 If ``sov_data`` is not ``None``, it is a tuple of a vector of
@@ -557,14 +557,14 @@ class SOVTree(PhysTree):
                 frequency dependent impedance matrix if `freqs` is given, with
                 the frequency dependence at the first dimension ``[MOhm ]``
         """
-        if locarg is not None:
-            locs = self._parseLocArg(locarg)
+        if loc_arg is not None:
+            locs = self._parseLocArg(loc_arg)
             alphas, gammas = self.getSOVMatrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            raise IOError('One of the kwargs `locarg` or `sov_data` must not be ``None``')
+            raise IOError('One of the kwargs `loc_arg` or `sov_data` must not be ``None``')
         n_loc = gammas.shape[1]
         if freqs is None:
             # construct the 2d steady state matrix
@@ -622,15 +622,15 @@ class SOVTree(PhysTree):
             morphology.
         """
         # create a set of location at which to evaluate the impedance matrix
-        self.distributeLocsUniform(dx=dx, name='net eval')
+        self.distribute_locs_uniform(dx=dx, name='net eval')
         # compute the z_mat matrix
-        alphas, gammas = self.getImportantModes(locarg='net eval', eps=eps)
+        alphas, gammas = self.getImportantModes(loc_arg='net eval', eps=eps)
         z_mat = self.calcImpedanceMatrix(sov_data=(alphas, gammas))
         # derive the NET
         net = NET()
         self._addLayerA(net, None,
                         z_mat, alphas, gammas,
-                        0., 0, np.arange(len(self.getLocs('net eval'))),
+                        0., 0, np.arange(len(self.get_locs('net eval'))),
                         dz=dz,
                         use_hist=use_hist, add_lin_terms=add_lin_terms,
                         pprint=pprint)
@@ -933,9 +933,9 @@ class SOVTree(PhysTree):
             alphas = sov_data[0]
             gammas = sov_data[1]
         else:
-            alphas, gammas = self.getImportantModes(locarg='net eval', eps=eps)
+            alphas, gammas = self.getImportantModes(loc_arg='net eval', eps=eps)
         lin_terms = {}
-        for ii, loc in enumerate(self.getLocs('net eval')):
+        for ii, loc in enumerate(self.get_locs('net eval')):
             if not self.is_root(self[loc['node']]):
                 # create the true kernel
                 z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))

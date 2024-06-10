@@ -23,7 +23,7 @@ class TestSOVTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def testStringRepresentation(self):
         self.loadTTree()
@@ -56,7 +56,7 @@ class TestSOVTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = SOVTree(fname, types=[1,3,4])
         self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def testSOVCalculation(self):
         # validate the calculation on analytical model
@@ -86,16 +86,16 @@ class TestSOVTree():
         locs_0 = [(6, .5), (8, .5)]
         locs_1 = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         locs_2 = [(7, .5), (8, .5)]
-        self.tree.storeLocs(locs_0, '0')
-        self.tree.storeLocs(locs_1, '1')
-        self.tree.storeLocs(locs_2, '2')
+        self.tree.store_locs(locs_0, '0')
+        self.tree.store_locs(locs_1, '1')
+        self.tree.store_locs(locs_2, '2')
         # test mode importance
-        imp_a = self.tree.getModeImportance(locarg=locs_0)
-        imp_b = self.tree.getModeImportance(locarg='0')
+        imp_a = self.tree.getModeImportance(loc_arg=locs_0)
+        imp_b = self.tree.getModeImportance(loc_arg='0')
         imp_c = self.tree.getModeImportance(
-                            sov_data=self.tree.getSOVMatrices(locarg=locs_0))
+                            sov_data=self.tree.getSOVMatrices(loc_arg=locs_0))
         imp_d = self.tree.getModeImportance(
-                            sov_data=self.tree.getSOVMatrices(locarg='0'))
+                            sov_data=self.tree.getSOVMatrices(loc_arg='0'))
         assert np.allclose(imp_a, imp_b)
         assert np.allclose(imp_a, imp_c)
         assert np.allclose(imp_a, imp_d)
@@ -103,19 +103,19 @@ class TestSOVTree():
         with pytest.raises(IOError):
             self.tree.getModeImportance()
         # test important modes
-        imp_2 = self.tree.getModeImportance(locarg='2')
+        imp_2 = self.tree.getModeImportance(loc_arg='2')
         assert not np.allclose(imp_a, imp_2)
         # test impedance matrix
         z_mat_a = self.tree.calcImpedanceMatrix(
-                        sov_data=self.tree.getImportantModes(locarg='1', eps=1e-10))
-        z_mat_b = self.tree.calcImpedanceMatrix(locarg='1', eps=1e-10)
+                        sov_data=self.tree.getImportantModes(loc_arg='1', eps=1e-10))
+        z_mat_b = self.tree.calcImpedanceMatrix(loc_arg='1', eps=1e-10)
         assert np.allclose(z_mat_a, z_mat_b)
         assert np.allclose(z_mat_a - z_mat_a.T, np.zeros(z_mat_a.shape))
         for ii, z_row in enumerate(z_mat_a):
             assert np.argmax(z_row) == ii
         # test Fourrier impedance matrix
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
-        z_mat_ft = self.tree.calcImpedanceMatrix(locarg='1', eps=1e-10, freqs=ft.s)
+        z_mat_ft = self.tree.calcImpedanceMatrix(loc_arg='1', eps=1e-10, freqs=ft.s)
         assert np.allclose(z_mat_ft[ft.ind_0s,:,:].real, \
                            z_mat_a, atol=1e-1) # check steady state
         assert np.allclose(z_mat_ft - np.transpose(z_mat_ft, axes=(0,2,1)), \
@@ -132,19 +132,19 @@ class TestSOVTree():
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc')
         self.btree = SOVTree(fname, types=[1,3,4])
         self.btree.fitLeakCurrent(-75., 10.)
-        self.btree.setCompTree()
+        self.btree.set_comp_tree()
 
     def testSingleCompartment(self):
         self.loadBall()
         # for validation
         greenstree = GreensTree(self.btree)
-        greenstree.setCompTree()
+        greenstree.set_comp_tree()
         greenstree.setImpedance(np.array([0.]))
         z_inp = greenstree.calcImpedanceMatrix([(1.,0.5)])
 
         self.btree.calcSOVEquations(maxspace_freq=500)
-        alphas, gammas = self.btree.getSOVMatrices(locarg=[(1.,.5)])
-        z_inp_sov = self.btree.calcImpedanceMatrix(locarg=[(1.,.5)])
+        alphas, gammas = self.btree.getSOVMatrices(loc_arg=[(1.,.5)])
+        z_inp_sov = self.btree.calcImpedanceMatrix(loc_arg=[(1.,.5)])
 
         assert alphas.shape[0] == 1
         assert gammas.shape == (1,1)
@@ -170,7 +170,7 @@ class TestSOVTree():
         # contruct the NET with linear terms
         net, lin_terms = self.tree.constructNET(dz=20., add_lin_terms=True)
         # check if correct
-        alphas, gammas = self.tree.getImportantModes(locarg='net eval',
+        alphas, gammas = self.tree.getImportantModes(loc_arg='net eval',
                                                 eps=1e-4, sort_type='timescale')
         for ii, lin_term in lin_terms.items():
             z_k_trans = net.getReducedTree([0,ii]).get_root().z_kernel + lin_term

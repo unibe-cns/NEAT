@@ -533,14 +533,14 @@ class GreensTree(PhysTree):
         return z_f
 
     @morphtree.computational_tree_decorator
-    def calcImpedanceMatrix(self, locarg, explicit_method=True):
+    def calcImpedanceMatrix(self, loc_arg, explicit_method=True):
         """
         Computes the impedance matrix of a given set of locations for each
         frequency stored in `self.freqs`.
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             impedance matrix is evaluated, if ``string``, specifies the
             name under which a set of location is stored
@@ -555,7 +555,7 @@ class GreensTree(PhysTree):
             frequency, second and third dimensions contain the impedance
             matrix ``[MOhm]`` at that frequency
         """
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
 
         n_loc = len(locs)
         z_mat = np.zeros((n_loc, n_loc) + self.root.z_in.shape,
@@ -666,17 +666,17 @@ class GreensTree(PhysTree):
         return c_resp
 
     @morphtree.computational_tree_decorator
-    def calcChannelResponseMatrix(self, locarg):
+    def calcChannelResponseMatrix(self, loc_arg):
         """
         Compute linearized ion channel state variable response matrix in the
-        frequency domain at all locations in `locarg` to delta current pulse
+        frequency domain at all locations in `loc_arg` to delta current pulse
         inputs at each of those loctions.
 
         Note that the matrix is returned as a list of nested dictionaries.
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             ion channel responses are evaluated, if ``string``, specifies the
             name under which a set of location is stored
@@ -688,7 +688,7 @@ class GreensTree(PhysTree):
             can be accessed as
             [location_index][channel_name][statevar_name][frequency, input loc]
         """
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         z_mat = self.calcImpedanceMatrix(locs)
 
         channel_responses = []
@@ -884,7 +884,7 @@ class GreensTreeTime(GreensTree):
         )
 
     @morphtree.computational_tree_decorator
-    def calcImpulseResponseMatrix(self, locarg,
+    def calcImpulseResponseMatrix(self, loc_arg,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=False,
         ):
@@ -895,7 +895,7 @@ class GreensTreeTime(GreensTree):
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             impulse response kernels are evaluated, if ``string``, specifies the
             name under which a set of location is stored
@@ -916,7 +916,7 @@ class GreensTreeTime(GreensTree):
             in ``[MOhm/ms]`` at that time point
         """
         self._checkInstantiated()
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
 
         nt = len(self.ft.t) # number of time points
         nl = len(locs) # number of locations
@@ -1036,10 +1036,10 @@ class GreensTreeTime(GreensTree):
         else:
             return crt
 
-    def calcChannelResponseMatrix(self, locarg, compute_time_derivative=False):
+    def calcChannelResponseMatrix(self, loc_arg, compute_time_derivative=False):
         """
         Compute linearized ion channel state variable response matrix at all
-        locations in `locarg` to delta current pulse inputs at each of those
+        locations in `loc_arg` to delta current pulse inputs at each of those
         loctions.
 
         Evaluated time-points are the ones in `self.ft.t` (the input times
@@ -1049,7 +1049,7 @@ class GreensTreeTime(GreensTree):
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             ion channel responses are evaluated, if ``string``, specifies the
             name under which a set of location is stored
@@ -1069,7 +1069,7 @@ class GreensTreeTime(GreensTree):
             can be accessed as
             `[output loc index][channel name][statevar name][time, input loc index]`
         """
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
 
         nt = len(self.ft.t) # number of time points
         nl = len(locs) # number of locations

@@ -111,7 +111,7 @@ class TestConcMechs:
             )
 
         # set computational tree
-        tree.setCompTree()
+        tree.set_comp_tree()
 
         return tree
 
@@ -147,7 +147,7 @@ class TestConcMechs:
         )
 
         # set computational tree
-        tree.setCompTree()
+        tree.set_comp_tree()
 
         return tree
 
@@ -188,7 +188,7 @@ class TestConcMechs:
         )
 
         # set computational tree
-        tree.setCompTree()
+        tree.set_comp_tree()
 
         return tree
 
@@ -245,7 +245,7 @@ class TestConcMechs:
             )
 
         # set computational tree
-        tree.setCompTree()
+        tree.set_comp_tree()
 
         return tree
 
@@ -262,7 +262,7 @@ class TestConcMechs:
     def _simulate(self, simtree, rec_locs, amp=0.8, dur=100., delay=10., cal=100., rec_currs=["ca", "k"]):
         # initialize simulation tree
         simtree.init_model(t_calibrate=cal, factor_lambda=10.)
-        simtree.storeLocs(rec_locs, name='rec locs')
+        simtree.store_locs(rec_locs, name='rec locs')
 
         # initialize input
         simtree.addIClamp(rec_locs[0], amp, delay, dur)
@@ -436,9 +436,9 @@ class TestConcMechs:
             assert np.abs(p_o_calc - p_o_sim) < 1e-9 * (p_o_sim + p_o_calc) / 2.
 
         # impedance calculation
-        tree0.setCompTree()
-        tree1.setCompTree()
-        tree2.setCompTree()
+        tree0.set_comp_tree()
+        tree1.set_comp_tree()
+        tree2.set_comp_tree()
 
         tree0.setImpedance(0.)
         tree1.setImpedance(0., use_conc=False) # omit concentration mechanism

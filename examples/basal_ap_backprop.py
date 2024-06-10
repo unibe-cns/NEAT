@@ -103,7 +103,7 @@ def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur'
 
     simtree.init_model(dt=DT, t_calibrate=TC, factor_lambda=1.)
     simtree.addIClamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
-    simtree.storeLocs([soma_loc] + locs, 'rec locs')
+    simtree.store_locs([soma_loc] + locs, 'rec locs')
 
     res = simtree.run(40., record_from_iclamps=True)
     simtree.deleteModel()
@@ -139,7 +139,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     # distribute locations to measure backAPs on branches
     leafs_basal = [node for node in sim_tree.leafs if node.swc_type == 3]
     branches    = [sim_tree.path_to_root(leaf)[::-1] for leaf in leafs_basal]
-    locslist    = [sim_tree.distributeLocsOnNodes(D2S_BASAL, node_arg=branch) for branch in branches]
+    locslist    = [sim_tree.distribute_locs_on_nodes(D2S_BASAL, node_arg=branch) for branch in branches]
     branchlist  = [b for ii, b in enumerate(branches) if len(locslist[ii]) == 3]
     locs    = [locs for locs in locslist if len(locs) == 3][1]
     # do back prop sims
@@ -266,9 +266,9 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     markers = [{'marker': 's', 'c': cfl[0], 'mec': 'k', 'ms': markersize}] + \
               [{'marker': 's', 'c': cfl[1], 'mec': 'k', 'ms': markersize} for _ in plocs[1:]]
     # plot morphology
-    sim_tree.plot2DMorphology(ax_morph, use_radius=False, plotargs=plotargs,
+    sim_tree.plot_2d_morphology(ax_morph, use_radius=False, plotargs=plotargs,
                                 cs=cs, cmap=CMAP_MORPH,
-                                marklocs=plocs, locargs=markers, lims_margin=0.01)
+                                marklocs=plocs, loc_args=markers, lims_margin=0.01)
 
     # plot compartment tree schematic
     ctree_3l = cfit.setCTree([SLOCS[0]] + locs)

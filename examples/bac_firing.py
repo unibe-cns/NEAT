@@ -85,7 +85,7 @@ def runCaCoinc(sim_tree, locs,
     """
     # initialize the NEURON model
     sim_tree.init_model(dt=dt, t_calibrate=t_calibrate, factor_lambda=10.)
-    sim_tree.storeLocs(locs, 'rec locs')
+    sim_tree.store_locs(locs, 'rec locs')
     if stim_type == 'psp' or stim_type == 'coinc':
         sim_tree.addDoubleExpCurrent(locs[ca_loc_ind], psp_params['t_rise'], psp_params['t_decay'])
         sim_tree.setSpikeTrain(0, psp_params['i_amp'], [psp_params['t_stim']])
@@ -118,16 +118,16 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
 
     # single branch initiation zone
     branch = sim_tree.path_to_root(sim_tree[236])[::-1]
-    locs_sb = sim_tree.distributeLocsOnNodes(D2S_CASPIKE, node_arg=branch, name='single branch')
+    locs_sb = sim_tree.distribute_locs_on_nodes(D2S_CASPIKE, node_arg=branch, name='single branch')
     # abpical trunk locations
     apic = sim_tree.path_to_root(sim_tree[221])[::-1]
-    locs_apic = sim_tree.distributeLocsOnNodes(D2S_APIC, node_arg=apic, name='apic connection')
+    locs_apic = sim_tree.distribute_locs_on_nodes(D2S_APIC, node_arg=apic, name='apic connection')
 
     # store set of locations
     fit_locs = [(1, .5)] + locs_apic + locs_sb
-    sim_tree.storeLocs(fit_locs, name='ca coinc')
+    sim_tree.store_locs(fit_locs, name='ca coinc')
     # PSP input location index
-    ca_ind = sim_tree.getNearestLocinds([CA_LOC], name='ca coinc')[0]
+    ca_ind = sim_tree.get_nearest_loc_idxs([CA_LOC], name='ca coinc')[0]
 
     # obtain the simplified tree
     ctree, clocs = getCTree(cfit, fit_locs, 'data/ctree_bac_firing',
@@ -155,7 +155,7 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
 
     for jj, stim in enumerate(['current', 'psp', 'coinc']):
         print('--- sim full  ---')
-        rec_locs = sim_tree.getLocs('ca coinc')
+        rec_locs = sim_tree.get_locs('ca coinc')
         # runn the simulation
         res = runCaCoinc(sim_tree, rec_locs, ca_ind, 0, stim_type=stim,
                     rec_kwargs=dict(record_from_syns=True, record_from_iclamps=True))
@@ -212,13 +212,13 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
 
     print('iv')
 
-    plocs = sim_tree.getLocs('ca coinc')
+    plocs = sim_tree.get_locs('ca coinc')
     markers = [{'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize/1.1}] + \
               [{'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize/1.1} for _ in locs_apic + locs_sb]
     markers[ca_ind]['marker'] = 'v'
     plotargs = {'lw': lwidth/1.3, 'c': 'DarkGrey'}
-    sim_tree.plot2DMorphology(axes_morph[0], use_radius=False, plotargs=plotargs,
-                               marklocs=plocs, locargs=markers, lims_margin=0.01)
+    sim_tree.plot_2d_morphology(axes_morph[0], use_radius=False, plotargs=plotargs,
+                               marklocs=plocs, loc_args=markers, lims_margin=0.01)
     # compartment tree dendrogram
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}
     labelargs.update({ii: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2} for ii in range(1,len(plocs))})

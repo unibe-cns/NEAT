@@ -38,7 +38,7 @@ class TestCompartmentFitter():
         self.tree = PhysTree(fname, types=[1,3,4])
         self.tree.setPhysiology(0.8, 100./1e6)
         self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadBallAndStick(self):
         '''
@@ -49,7 +49,7 @@ class TestCompartmentFitter():
         self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.tree.setPhysiology(0.8, 100./1e6)
         self.tree.setLeakCurrent(100., -75.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadBall(self):
         '''
@@ -68,7 +68,7 @@ class TestCompartmentFitter():
         # set equilibirum potententials
         self.tree.setVEP(-75.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def loadTSegmentTree(self):
         '''
@@ -81,7 +81,7 @@ class TestCompartmentFitter():
         k_chan = channelcollection.Kv3_1()
 
         g_k = {1: 0.766*1e6}
-        g_k.update({n.index: 0.034*1e6 / self.tree.pathLength((1,.5), (n.index,.5)) \
+        g_k.update({n.index: 0.034*1e6 / self.tree.path_length((1,.5), (n.index,.5)) \
                     for n in self.tree if n.index != 1})
 
         self.tree.addCurrent(k_chan, g_k, -85.)
@@ -92,7 +92,7 @@ class TestCompartmentFitter():
         # set equilibirum potententials
         self.tree.setVEP(-75.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
     def testTreeStructure(self):
         self.loadTTree()
@@ -136,14 +136,14 @@ class TestCompartmentFitter():
         locs = [(1, 0.5)]
         e_eqs = [-75., -55., -35., -15.]
         # create compartment tree
-        ctree = self.tree.createCompartmentTree(locs)
+        ctree = self.tree.create_compartment_tree(locs)
         ctree.addCurrent(channelcollection.Na_Ta(), 50.)
         ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
         # create tree with only leak
         greens_tree_pas = GreensTree(self.tree)
         greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
-        greens_tree_pas.setCompTree()
+        greens_tree_pas.set_comp_tree()
         greens_tree_pas.setImpedance(freqs)
         # compute the passive impedance matrix
         z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
@@ -156,7 +156,7 @@ class TestCompartmentFitter():
         z_mats_k = []
         for e_eq in e_eqs:
             greens_tree_k.setVEP(e_eq)
-            greens_tree_k.setCompTree()
+            greens_tree_k.set_comp_tree()
             greens_tree_k.setImpedance(freqs)
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
@@ -179,7 +179,7 @@ class TestCompartmentFitter():
         for sv, eh in zip(svs, e_eqs_):
             greens_tree_na.setVEP(eh)
             greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
-            greens_tree_na.setCompTree()
+            greens_tree_na.set_comp_tree()
             greens_tree_na.setImpedance(freqs)
             z_mats_na.append(greens_tree_na.calcImpedanceMatrix(locs))
 
@@ -273,15 +273,15 @@ class TestCompartmentFitter():
 
         # fit a tree directly from CompartmentTree
         greens_tree = GreensTree(self.tree)
-        greens_tree.setCompTree()
+        greens_tree.set_comp_tree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
-        ctree = greens_tree.createCompartmentTree(fit_locs)
+        ctree = greens_tree.create_compartment_tree(fit_locs)
         ctree.computeGMC(z_mat)
         sov_tree = SOVTree(self.tree)
         sov_tree.calcSOVEquations()
-        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        alphas, phimat = sov_tree.getImportantModes(loc_arg=fit_locs)
         ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # fit a tree with compartment fitter
@@ -304,31 +304,31 @@ class TestCompartmentFitter():
         greens_tree.channel_storage = {}
         for n in greens_tree:
             n.currents = {'L': n.currents['L']}
-        greens_tree.setCompTree()
+        greens_tree.set_comp_tree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
-        ctree_leak = greens_tree.createCompartmentTree(fit_locs)
+        ctree_leak = greens_tree.create_compartment_tree(fit_locs)
         ctree_leak.computeGMC(z_mat)
         sov_tree = SOVTree(greens_tree)
         sov_tree.calcSOVEquations()
-        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        alphas, phimat = sov_tree.getImportantModes(loc_arg=fit_locs)
         ctree_leak.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
         # make ball model with leak based on all channels
         tree = PhysTree(self.tree)
         tree.asPassiveMembrane()
-        tree.setCompTree()
+        tree.set_comp_tree()
         greens_tree = GreensTree(tree)
-        greens_tree.setCompTree()
+        greens_tree.set_comp_tree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0].real
-        ctree_all = greens_tree.createCompartmentTree(fit_locs)
+        ctree_all = greens_tree.create_compartment_tree(fit_locs)
         ctree_all.computeGMC(z_mat)
         sov_tree = SOVTree(tree)
-        sov_tree.setCompTree()
+        sov_tree.set_comp_tree()
         sov_tree.calcSOVEquations()
-        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        alphas, phimat = sov_tree.getImportantModes(loc_arg=fit_locs)
         ctree_all.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # new compartment fitter
@@ -424,14 +424,14 @@ class TestCompartmentFitter():
         locs = [(1, 0.5)]
         e_eqs = [-75., -55., -35., -15.]
         # create compartment tree
-        ctree = self.tree.createCompartmentTree(locs)
+        ctree = self.tree.create_compartment_tree(locs)
         ctree.addCurrent(channelcollection.Na_Ta(), 50.)
         ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
         # create tree with only leak
         greens_tree_pas = GreensTree(self.tree)
         greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
-        greens_tree_pas.setCompTree()
+        greens_tree_pas.set_comp_tree()
         greens_tree_pas.setImpedance(freqs)
         # compute the passive impedance matrix
         z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
@@ -444,7 +444,7 @@ class TestCompartmentFitter():
         z_mats_k = []
         for e_eq in e_eqs:
             greens_tree_k.setVEP(e_eq)
-            greens_tree_k.setCompTree()
+            greens_tree_k.set_comp_tree()
             greens_tree_k.setImpedance(freqs)
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
@@ -467,7 +467,7 @@ class TestCompartmentFitter():
         for ii, sv in enumerate(svs):
             greens_tree_na.setVEP(e_eqs[ii%len(e_eqs)])
             greens_tree_na[1].setExpansionPoint('Na_Ta', sv)
-            greens_tree_na.setCompTree()
+            greens_tree_na.set_comp_tree()
             greens_tree_na.setImpedance(freqs)
             z_mats_na.append(greens_tree_na.calcImpedanceMatrix(locs))
 
@@ -475,9 +475,9 @@ class TestCompartmentFitter():
         ctree.computeGMC(z_mat_pas)
         # get SOV constants for capacitance fit
         sov_tree = SOVTree(greens_tree_pas)
-        sov_tree.setCompTree()
+        sov_tree.set_comp_tree()
         sov_tree.calcSOVEquations()
-        alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
+        alphas, phimat, importance = sov_tree.getImportantModes(loc_arg=locs,
                                             sort_type='importance', eps=1e-12,
                                             return_importance=True)
         # fit the capacitances from SOV time-scales
@@ -506,15 +506,15 @@ class TestCompartmentFitter():
 
         # fit a tree directly from CompartmentTree
         greens_tree = GreensTree(self.tree)
-        greens_tree.setCompTree()
+        greens_tree.set_comp_tree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
         z_mat = greens_tree.calcImpedanceMatrix(fit_locs)[0]
-        ctree = greens_tree.createCompartmentTree(fit_locs)
+        ctree = greens_tree.create_compartment_tree(fit_locs)
         ctree.computeGMC(z_mat)
         sov_tree = SOVTree(self.tree)
         sov_tree.calcSOVEquations()
-        alphas, phimat = sov_tree.getImportantModes(locarg=fit_locs)
+        alphas, phimat = sov_tree.getImportantModes(loc_arg=fit_locs)
         ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # fit a tree with compartmentfitter
@@ -549,7 +549,7 @@ class TestCompartmentFitter():
 
         # of GreensTree
         greens_tree = GreensTree(self.tree)
-        greens_tree.setCompTree()
+        greens_tree.set_comp_tree()
         freqs = np.array([0.])
         greens_tree.setImpedance(freqs)
 

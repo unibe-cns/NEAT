@@ -76,7 +76,7 @@ class TestPhysTree():
         # create complex distribution
         tau_distr = lambda x: x + 100.
         for node in self.tree:
-            d2s = self.tree.pathLength({'node': node.index, 'x': 1.}, (1., 0.5))
+            d2s = self.tree.path_length({'node': node.index, 'x': 1.}, (1., 0.5))
             node.fitLeakCurrent(self.tree.channel_storage,
                                 e_eq_target=-75., tau_m_target=tau_distr(d2s))
             assert np.abs(node.c_m - 1.0) < 1e-9
@@ -253,20 +253,20 @@ class TestPhysTree():
         # capacitance axial resistance constant
         c_m = 1.; r_a = 100.*1e-6
         self.tree.setPhysiology(c_m, r_a)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,8,10,12]
         # capacitance and axial resistance change
         c_m = lambda x: 1. if x < 200. else 1.6
         r_a = lambda x: 1. if x < 300. else 1.6
         self.tree.setPhysiology(c_m, r_a)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,8,10,12]
         # leak current changes
         g_l = lambda x: 100. if x < 400. else 160.
         self.tree.setLeakCurrent(g_l, -75.)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,7,8,10,12]
         # leak current & reversal change
@@ -274,7 +274,7 @@ class TestPhysTree():
         e_l = {ind: -75. for ind in [1,4,5,6,7,8,11,12]}
         e_l.update({ind: -55. for ind in [9,10]})
         self.tree.setLeakCurrent(g_l, e_l)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,8,10,12]
         # leak current & reversal change
@@ -282,12 +282,12 @@ class TestPhysTree():
         e_l = {ind: -75. for ind in [1,4,5,6,7,8,10,11,12]}
         e_l.update({9: -55.})
         self.tree.setLeakCurrent(g_l, e_l)
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,8,9,10,12]
         # shunt
         self.tree[7].g_shunt = 1.
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
@@ -300,12 +300,12 @@ class TestPhysTree():
         g_l, e_l = 100., -75.
         self.tree.setLeakCurrent(g_l, e_l)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
         def _checkDX(ctree, locs, dx):
             for n1 in ctree:
                 if not ctree.is_root(n1):
-                    l_ = self.tree.pathLength(
+                    l_ = self.tree.path_length(
                         locs[n1.loc_ind], locs[n1.parent_node.loc_ind]
                     )
                     assert l_ <= dx + rtol_dx
@@ -379,7 +379,7 @@ class TestPhysTree():
         self.tree.addCurrent(channelcollection.Kv3_1(), 700., -85., node_arg='somatic')
         self.tree.addCurrent(channelcollection.Kv3_1(), 200., -85., node_arg='apical')
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
         # print(4*np.pi*self.tree[1].R**2*self.tree[1].currents['L'][0]*1e-8)
 

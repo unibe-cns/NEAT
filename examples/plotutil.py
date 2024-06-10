@@ -76,7 +76,7 @@ lss = ['-', '--', '-.', ':']
 cmap = pl.get_cmap('jet')
 
 
-def getXCoords(spacings):
+def get_x_coords(spacings):
     coords = np.cumsum(spacings)
     coords /= coords[-1]
     return coords
