@@ -19,7 +19,7 @@ def getL5Pyramid():
     # set specific membrane capacitance and axial resistance
     phys_tree.setPhysiology(2., # Cm [uF/cm^2]
                             100./1e6, # Ra[MOhm*cm]
-                            node_arg=[n for n in phys_tree if not phys_tree.isRoot(n)])
+                            node_arg=[n for n in phys_tree if not phys_tree.is_root(n)])
 
     # channels present in tree
     Kv3_1  = channels_hay.Kv3_1()

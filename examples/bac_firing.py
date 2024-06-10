@@ -84,7 +84,7 @@ def runCaCoinc(sim_tree, locs,
     somatic and dendritic input
     """
     # initialize the NEURON model
-    sim_tree.initModel(dt=dt, t_calibrate=t_calibrate, factor_lambda=10.)
+    sim_tree.init_model(dt=dt, t_calibrate=t_calibrate, factor_lambda=10.)
     sim_tree.storeLocs(locs, 'rec locs')
     if stim_type == 'psp' or stim_type == 'coinc':
         sim_tree.addDoubleExpCurrent(locs[ca_loc_ind], psp_params['t_rise'], psp_params['t_decay'])
@@ -117,10 +117,10 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
     cfit = CompartmentFitter(phys_tree, name='bac_firing', path='data/')
 
     # single branch initiation zone
-    branch = sim_tree.pathToRoot(sim_tree[236])[::-1]
+    branch = sim_tree.path_to_root(sim_tree[236])[::-1]
     locs_sb = sim_tree.distributeLocsOnNodes(D2S_CASPIKE, node_arg=branch, name='single branch')
     # abpical trunk locations
-    apic = sim_tree.pathToRoot(sim_tree[221])[::-1]
+    apic = sim_tree.path_to_root(sim_tree[221])[::-1]
     locs_apic = sim_tree.distributeLocsOnNodes(D2S_APIC, node_arg=apic, name='apic connection')
 
     # store set of locations

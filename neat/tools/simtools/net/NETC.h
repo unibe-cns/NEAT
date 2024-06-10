@@ -213,7 +213,7 @@ private:
     //                                             IOLinOutput& out);
 
     // iteration functions
-    void setLeafs();
+    void set_leafs();
     void setDownSweep();
     void setDownSweep(NETNode* node, vector< NETNode* >:: iterator leaf_it);
     void setUpSweep();

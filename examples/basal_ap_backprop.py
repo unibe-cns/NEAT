@@ -101,7 +101,7 @@ def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur'
     global DT, T_MAX, TC
     global T_DUR, G_SYN, N_INP
 
-    simtree.initModel(dt=DT, t_calibrate=TC, factor_lambda=1.)
+    simtree.init_model(dt=DT, t_calibrate=TC, factor_lambda=1.)
     simtree.addIClamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
     simtree.storeLocs([soma_loc] + locs, 'rec locs')
 
@@ -138,7 +138,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
 
     # distribute locations to measure backAPs on branches
     leafs_basal = [node for node in sim_tree.leafs if node.swc_type == 3]
-    branches    = [sim_tree.pathToRoot(leaf)[::-1] for leaf in leafs_basal]
+    branches    = [sim_tree.path_to_root(leaf)[::-1] for leaf in leafs_basal]
     locslist    = [sim_tree.distributeLocsOnNodes(D2S_BASAL, node_arg=branch) for branch in branches]
     branchlist  = [b for ii, b in enumerate(branches) if len(locslist[ii]) == 3]
     locs    = [locs for locs in locslist if len(locs) == 3][1]

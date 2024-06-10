@@ -167,7 +167,7 @@ class BrancoSimTree(NeuronSimTree):
             el = self[1].currents['L'][1]
         # el=-75.
 
-        self.initModel(dt=0.025, t_calibrate=0., v_init=el, factor_lambda=10.)
+        self.init_model(dt=0.025, t_calibrate=0., v_init=el, factor_lambda=10.)
         # add the synapses
         self.addAllSynapses()
         t_max = self.setSequence(delta_t, centri='petal')
@@ -178,7 +178,7 @@ class BrancoSimTree(NeuronSimTree):
         # delete the model
         self.deleteModel()
 
-        self.initModel(dt=0.025, t_calibrate=0., v_init=el, factor_lambda=10.)
+        self.init_model(dt=0.025, t_calibrate=0., v_init=el, factor_lambda=10.)
         # add the synapses
         self.addAllSynapses()
         t_max = self.setSequence(delta_t, centri='fugal')

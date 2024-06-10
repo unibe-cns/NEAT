@@ -34,7 +34,7 @@ class TestNest:
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
 
         for ii, cn in enumerate(self.ctree):
             cn.loc_ind = ii
@@ -46,7 +46,7 @@ class TestNest:
         self.loadTwoCompartmentModel()
 
         nct = NestCompartmentTree(self.ctree)
-        cm_model = nct.initModel("cm_default", 1, suffix="")
+        cm_model = nct.init_model("cm_default", 1, suffix="")
 
         compartments_info = cm_model.compartments
         assert compartments_info[0]["comp_idx"] == 0
@@ -95,7 +95,7 @@ class TestNest:
         self.ctree = cfit.fitModel([(1,0.5)])
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         mm = nest.Create('multimeter', 1,
             {'record_from': ["v_comp0", "m_Kv3_10", "m_NaTa_t0", "h_NaTa_t0"], 'interval': dt}
         )
@@ -124,14 +124,14 @@ class TestNest:
         self.loadBall()
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
+        csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
         csimtree_neuron.storeLocs([(0, .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -212,14 +212,14 @@ class TestNest:
         self.loadAxonTree()
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
+        csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
         csimtree_neuron.storeLocs([(0, .5), (1, .5), (2., .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -317,7 +317,7 @@ class TestNest:
 
         clocs = [(ii, .5) for ii in range(len(self.ctree))]
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=tcal)
+        csimtree_neuron.init_model(dt=dt, t_calibrate=tcal)
         csimtree_neuron.storeLocs(clocs, name='rec locs')
         csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
@@ -326,7 +326,7 @@ class TestNest:
         res_neuron = csimtree_neuron.run(tmax, record_from_channels=True, pprint=True)
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,

@@ -532,8 +532,8 @@ class TestCompartmentTreePlotting():
         cnode2 = CompartmentNode(2, loc_ind=2)
 
         ctree = CompartmentTree(croot)
-        ctree.addNodeWithParent(cnode1, croot)
-        ctree.addNodeWithParent(cnode2, croot)
+        ctree.add_node_with_parent(cnode1, croot)
+        ctree.add_node_with_parent(cnode2, croot)
 
         self.ctree = ctree
 
@@ -551,9 +551,9 @@ class TestCompartmentTreePlotting():
         cnode3 = CompartmentNode(3, loc_ind=3)
 
         ctree = CompartmentTree(croot)
-        ctree.addNodeWithParent(cnode1, croot)
-        ctree.addNodeWithParent(cnode2, cnode1)
-        ctree.addNodeWithParent(cnode3, cnode2)
+        ctree.add_node_with_parent(cnode1, croot)
+        ctree.add_node_with_parent(cnode2, cnode1)
+        ctree.add_node_with_parent(cnode3, cnode2)
 
         self.ctree = ctree
 
@@ -568,15 +568,15 @@ class TestCompartmentTreePlotting():
 
         ctree = CompartmentTree(cns[0])
         # first order children
-        ctree.addNodeWithParent(cns[1], cns[0])
-        ctree.addNodeWithParent(cns[2], cns[0])
-        ctree.addNodeWithParent(cns[3], cns[0])
+        ctree.add_node_with_parent(cns[1], cns[0])
+        ctree.add_node_with_parent(cns[2], cns[0])
+        ctree.add_node_with_parent(cns[3], cns[0])
         # second order children
-        ctree.addNodeWithParent(cns[4], cns[1])
-        ctree.addNodeWithParent(cns[5], cns[1])
-        ctree.addNodeWithParent(cns[6], cns[1])
-        ctree.addNodeWithParent(cns[7], cns[3])
-        ctree.addNodeWithParent(cns[8], cns[3])
+        ctree.add_node_with_parent(cns[4], cns[1])
+        ctree.add_node_with_parent(cns[5], cns[1])
+        ctree.add_node_with_parent(cns[6], cns[1])
+        ctree.add_node_with_parent(cns[7], cns[3])
+        ctree.add_node_with_parent(cns[8], cns[3])
 
         self.ctree = ctree
 

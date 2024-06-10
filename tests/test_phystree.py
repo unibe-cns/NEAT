@@ -304,7 +304,7 @@ class TestPhysTree():
 
         def _checkDX(ctree, locs, dx):
             for n1 in ctree:
-                if not ctree.isRoot(n1):
+                if not ctree.is_root(n1):
                     l_ = self.tree.pathLength(
                         locs[n1.loc_ind], locs[n1.parent_node.loc_ind]
                     )
@@ -352,7 +352,7 @@ class TestPhysTree():
                                 rtol_param * np.max([node_fd.ca, node_fit.ca])
 
             # test coupling cond match
-            if not ctree_fd.isRoot(node_fd):
+            if not ctree_fd.is_root(node_fd):
                 if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
                 assert np.abs(node_fd.g_c - node_fit.g_c) < \
                                     rtol_param * np.max([node_fd.g_c, node_fit.g_c])
@@ -392,7 +392,7 @@ class TestPhysTree():
 
             if pprint: print("---")
             # test coupling cond match
-            if not ctree_fd.isRoot(node_fd):
+            if not ctree_fd.is_root(node_fd):
                 if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
                 assert np.abs(node_fd.g_c - node_fit.g_c) < \
                                     rtol_param * np.max([node_fd.g_c, node_fit.g_c])

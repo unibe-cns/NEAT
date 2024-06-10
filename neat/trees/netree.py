@@ -286,8 +286,8 @@ class NETNode(SNode):
 
         return node_str
 
-    def _getReprDict(self):
-        repr_dict = super()._getReprDict()
+    def _get_repr_dict(self):
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             "loc_inds": self.loc_inds,
             "newloc_inds": self.newloc_inds,
@@ -296,7 +296,7 @@ class NETNode(SNode):
         return repr_dict
 
     def __repr__(self):
-        return repr(self._getReprDict())
+        return repr(self._get_repr_dict())
 
 
 class NET(STree):
@@ -308,7 +308,7 @@ class NET(STree):
     def __init__(self, root=None):
         super().__init__(root)
 
-    def _createCorrespondingNode(self, node_index):
+    def _create_corresponding_node(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -412,7 +412,7 @@ class NET(STree):
             else:
                 newnode_newtree = NETNode(len(new_tree), loc_inds_subtree,
                                             z_kernel=node.z_kernel)
-                new_tree.addNodeWithParent(newnode_newtree, node_newtree)
+                new_tree.add_node_with_parent(newnode_newtree, node_newtree)
                 node_newtree = newnode_newtree
             for cnode in node.child_nodes:
                 if cnode is not None:
@@ -423,14 +423,14 @@ class NET(STree):
     #     assert imp_mat.shape[0] == imp_mat.shape[1]
     #     assert imp_mat.shape[0] == len(self.root.loc_inds)
     #     for node in self:
-    #         if self.isLeaf(node):
+    #         if self.is_leaf(node):
     #             if len(node.loc_inds) == 1:
     #                 p_imp = self.calcTotalImpedance(node.parent_node)
     #                 node.z_kernel.c *= (z_input[node.locs_inds[0]] - p_imp) / node.z_kernel.k_bar
     #             else:
     #                 for loc_ind in node.loc_inds:
     #                     new_node = NETNode(len(tree), [loc_ind])
-    #                     self.addNodeWithParent
+    #                     self.add_node_with_parent
 
     def calcTotalImpedance(self, node):
         """
@@ -446,7 +446,7 @@ class NET(STree):
         float
             total impedance
         """
-        return np.sum([node_.z_bar for node_ in self.pathToRoot(node)])
+        return np.sum([node_.z_bar for node_ in self.path_to_root(node)])
 
     def calcTotalKernel(self, node):
         """
@@ -463,7 +463,7 @@ class NET(STree):
         """
         z_k = copy.deepcopy(node.z_kernel)
         if node.parent_node is not None:
-            for pn in self.pathToRoot(node.parent_node):
+            for pn in self.path_to_root(node.parent_node):
                 z_k += pn.z_kernel
         return z_k
 
@@ -589,7 +589,7 @@ class NET(STree):
     def _setCompartmentsLeafbased(self, leafs, net):
         comp_nodes = []
         for ii, leaf in enumerate(leafs):
-            root, _, _ = net.sisterLeafs(leaf)
+            root, _, _ = net.sister_leafs(leaf)
             new_leaf = leaf
             comp_bool = False
             while root.index in new_leaf._node_inds:
@@ -613,7 +613,7 @@ class NET(STree):
         del leafs[0]
         leafs = leafs + [leaf]
         # leaf is not highest order
-        common_root, sister_leafs, corresponding_children = net.sisterLeafs(leaf)
+        common_root, sister_leafs, corresponding_children = net.sister_leafs(leaf)
         if common_root.index == 0:
             pass
         if len(sister_leafs) == len(corresponding_children):
@@ -631,20 +631,20 @@ class NET(STree):
                     sinds_comp.append(ii)
                     sleafs_comp.append(oldleaf)
             # delete the leafs that are not in compartments
-            if len(sleafs_comp) <= 1 and not net.isRoot(common_root):
+            if len(sleafs_comp) <= 1 and not net.is_root(common_root):
                 # if at most one is compartment, we retain only the largest one
                 ind = np.argmax([self.calcTotalImpedance(node) \
                                  for node in sister_leafs])
                 newleaf = sister_leafs[ind]
                 for ii, cnode in enumerate(corresponding_children):
                     if ii != ind:
-                        net.softRemoveNode(cnode)
+                        net.soft_remove_node(cnode)
                         leafs.remove(sister_leafs[ii])
             else:
                 # if more can be compartments, we retain all those
                 for ii, cnode in enumerate(corresponding_children):
                     if not ii in sinds_comp:
-                        net.softRemoveNode(cnode)
+                        net.soft_remove_node(cnode)
                         leafs.remove(sister_leafs[ii])
             if n_leaf != len(leafs) and len(leafs) > 0:
                 self._removeNonCompartments(leafs, net=net, n_count=0)
@@ -712,7 +712,7 @@ class NET(STree):
     def _sweep(self, node, leafs, sfs, gs):
         node.counter += 1
         if node.counter >= len(node.child_nodes):
-            if not self.isRoot(node):
+            if not self.is_root(node):
                 # compute the rescaled shunt factors
                 denom = 1. + node.z_bar * np.sum(sfs[node.loc_inds] * gs[node.loc_inds])
                 sfs[node.loc_inds] = sfs[node.loc_inds] / denom
@@ -723,7 +723,7 @@ class NET(STree):
 
     def improveInputImpedance(self, z_mat):
         nmaxind = np.max([n.index for n in self])
-        for node in self.getNodes():
+        for node in self.get_nodes():
             if len(node.loc_inds) == 1:
                 ind = node.loc_inds[0]
                 # recompute the kernel of this single loc layer
@@ -746,7 +746,7 @@ class NET(STree):
                         # add node
                         newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real)
                         newnode.newloc_inds = [ind]
-                        self.addNodeWithParent(newnode, node)
+                        self.add_node_with_parent(newnode, node)
                         tbr_inds.append(ind)
                 for ind in tbr_inds: node.newloc_inds.remove(ind)
                 # empty the new indices
@@ -811,7 +811,7 @@ class NET(STree):
             CS3 = pl.contourf(Z, levels, cmap=cmap)
         # get the number of leafs to determine the dendrogram spacing
         rnode    = self.root
-        n_branch  = self.degreeOfNode(rnode)
+        n_branch  = self.degree_of_node(rnode)
         l_spacing = np.linspace(0., 1., n_branch+1)
         # determine input inpedances to fix the y scale
         if z_max == None:
@@ -870,7 +870,7 @@ class NET(STree):
         l0 = 0
         for i, cnode in enumerate(node.child_nodes):
             # attribute space on xaxis
-            deg = self.degreeOfNode(cnode)
+            deg = self.degree_of_node(cnode)
             l1 = l0 + deg
             # new quantities
             xnew = (l_spacing[l0] + l_spacing[l1]) / 2.
@@ -921,7 +921,7 @@ class NET(STree):
                                  bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
                                  **textargs)
             # add input label
-            if self.isLeaf(node):
+            if self.is_leaf(node):
                 if inlabels != None:
                     lwidth = plotargs['lw'] if 'lw' in plotargs else 1.
                     ax.vlines(x0, ynew+z_max*0.04, z_max*1.1, lw=lwidth, linestyle=':', color='k')

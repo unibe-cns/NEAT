@@ -584,8 +584,8 @@ class CompartmentNode(SNode):
 
         return node_str
 
-    def _getReprDict(self):
-        repr_dict = super()._getReprDict()
+    def _get_repr_dict(self):
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             "loc_ind": self._loc_ind,
             "ca": f"{self.ca:1.6g}",
@@ -599,7 +599,7 @@ class CompartmentNode(SNode):
         return repr_dict
 
     def __repr__(self):
-        return repr(self._getReprDict())
+        return repr(self._get_repr_dict())
 
 
 class CompartmentTree(STree):
@@ -620,16 +620,16 @@ class CompartmentTree(STree):
         # for fitting the model
         self.resetFitData()
 
-    def _getReprDict(self):
+    def _get_repr_dict(self):
         ckeys = list(self.channel_storage.keys())
         ckeys.sort()
         return {"channel_storage": ckeys}
 
     def __repr__(self):
         repr_str = super().__repr__()
-        return repr_str + repr(self._getReprDict())
+        return repr_str + repr(self._get_repr_dict())
 
-    def _createCorrespondingNode(self, index, ca=1., g_c=0., g_l=1e-2):
+    def _create_corresponding_node(self, index, ca=1., g_c=0., g_l=1e-2):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -640,7 +640,7 @@ class CompartmentTree(STree):
         """
         return CompartmentNode(index, ca=ca, g_c=g_c, g_l=g_l)
 
-    def getNodesFromLocinds(self, *args):
+    def get_nodesFromLocinds(self, *args):
         """
         find the nodes that correspond(s) to a (list of) location
         index (indices)
@@ -1101,7 +1101,7 @@ class CompartmentTree(STree):
     def _calcLinearSystemMatrix(self, channel_names=None):
         """
         Assume node indices correspond to their order in a depth-first iteration,
-        i.e. by using `STree.resetIndices()`.
+        i.e. by using `STree.reset_indices()`.
         """
         assert self.checkOrdered()
 
@@ -1840,10 +1840,10 @@ class CompartmentTree(STree):
         """
         # get the number of leafs to determine the dendrogram spacing
         rnode    = self.root
-        n_branch  = self.degreeOfNode(rnode)
+        n_branch  = self.degree_of_node(rnode)
         l_spacing = np.linspace(0., 1., n_branch+1)
         if y_max is None:
-            y_max = np.max([self.depthOfNode(n) for n in self.leafs]) + 1.5
+            y_max = np.max([self.depth_of_node(n) for n in self.leafs]) + 1.5
         y_min = .5
         # plot the dendrogram
         self._expandDendrogram(rnode, 0.5, None, 0.,
@@ -1880,7 +1880,7 @@ class CompartmentTree(STree):
         l0 = 0
         for i, cnode in enumerate(node.child_nodes):
             # attribute space on xaxis
-            deg = self.degreeOfNode(cnode)
+            deg = self.degree_of_node(cnode)
             l1 = l0 + deg
             # new quantities
             xnew = (l_spacing[l0] + l_spacing[l1]) / 2.

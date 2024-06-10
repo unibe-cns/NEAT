@@ -261,7 +261,7 @@ class TestConcMechs:
 
     def _simulate(self, simtree, rec_locs, amp=0.8, dur=100., delay=10., cal=100., rec_currs=["ca", "k"]):
         # initialize simulation tree
-        simtree.initModel(t_calibrate=cal, factor_lambda=10.)
+        simtree.init_model(t_calibrate=cal, factor_lambda=10.)
         simtree.storeLocs(rec_locs, name='rec locs')
 
         # initialize input
@@ -689,7 +689,7 @@ class TestConcMechs:
             if pprint: print(f"ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
 
             # test coupling cond match
-            if not ctree_fd.isRoot(node_fd):
+            if not ctree_fd.is_root(node_fd):
                 if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
                 assert np.abs(node_fd.g_c - node_fit.g_c) < \
                                     rtol_param * np.max([node_fd.g_c, node_fit.g_c])
@@ -761,7 +761,7 @@ class TestConcMechs:
         nest.SetKernelStatus(dict(resolution=dt))
 
         # create the model
-        nestmodel = simtree.initModel("multichannel_test", 1)
+        nestmodel = simtree.init_model("multichannel_test", 1)
 
         # step current input
         dcg = nest.Create("step_current_generator",

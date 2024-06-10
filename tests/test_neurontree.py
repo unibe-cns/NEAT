@@ -207,7 +207,7 @@ class TestNeuron():
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # create simulation tree
-        self.neurontree.initModel(t_calibrate=10., factor_lambda=10.)
+        self.neurontree.init_model(t_calibrate=10., factor_lambda=10.)
         self.neurontree.storeLocs(locs, name='rec locs')
         # run test simulation
         res = self.neurontree.run(1., record_from_channels=True)
@@ -229,7 +229,7 @@ class TestNeuron():
         # channel only at soma
         self.loadTTreeTestChannelSoma()
         # create simulation tree
-        self.neurontree.initModel(t_calibrate=100., factor_lambda=10.)
+        self.neurontree.init_model(t_calibrate=100., factor_lambda=10.)
         self.neurontree.storeLocs(locs, name='rec locs')
         # run test simulation
         res = self.neurontree.run(10., record_from_channels=True)
@@ -259,13 +259,13 @@ class TestNeuron():
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # test simulation 1
-        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
         self.neurontree.storeLocs(locs, name='rec locs')
         res1 = self.neurontree.run(10., downsample=10, dt_rec=None, record_from_channels=True)
         self.neurontree.deleteModel()
         # test simulation 2
         self.loadTTreeTestChannel()
-        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
         self.neurontree.storeLocs(locs, name='rec locs')
         res2 = self.neurontree.run(10., downsample=1, dt_rec=1., record_from_channels=True)
         self.neurontree.deleteModel()
@@ -284,7 +284,7 @@ class TestReducedNeuron():
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
 
         if w_locinds:
             self.addLocinds()
@@ -294,11 +294,11 @@ class TestReducedNeuron():
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
         lnode0 = CompartmentNode(2, ca=1.5e-6, g_l=2.5e-4, g_c=3e-3)
-        self.ctree.addNodeWithParent(lnode0, cnode)
+        self.ctree.add_node_with_parent(lnode0, cnode)
         lnode1 = CompartmentNode(3, ca=1.5e-6, g_l=2.5e-4, g_c=5e-3)
-        self.ctree.addNodeWithParent(lnode1, cnode)
+        self.ctree.add_node_with_parent(lnode1, cnode)
 
         if w_locinds:
             self.addLocinds()
@@ -308,9 +308,9 @@ class TestReducedNeuron():
         pnode = CompartmentNode(0, ca=1.9e-6, g_l=1.8e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2.4e-6, g_l=0.3e-4, g_c=3.9)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
         lnode0 = CompartmentNode(2, ca=1.9e-6, g_l=0.3e-4, g_c=3.8e-3)
-        self.ctree.addNodeWithParent(lnode0, cnode)
+        self.ctree.add_node_with_parent(lnode0, cnode)
 
         if w_locinds:
             self.addLocinds()
@@ -320,11 +320,11 @@ class TestReducedNeuron():
         pnode = CompartmentNode(0, ca=1.9e-6, g_l=1.8e-3)
         self.ctree = CompartmentTree(pnode)
         cnode0 = CompartmentNode(1, ca=2.4e-6, g_l=0.3e-4, g_c=3.9)
-        self.ctree.addNodeWithParent(cnode0, pnode)
+        self.ctree.add_node_with_parent(cnode0, pnode)
         cnode1 = CompartmentNode(2, ca=1.9e-6, g_l=0.4e-4, g_c=3.8e-3)
-        self.ctree.addNodeWithParent(cnode1, pnode)
+        self.ctree.add_node_with_parent(cnode1, pnode)
         cnode2 = CompartmentNode(3, ca=1.3e-6, g_l=0.5e-4, g_c=2.7e-2)
-        self.ctree.addNodeWithParent(cnode2, pnode)
+        self.ctree.add_node_with_parent(cnode2, pnode)
 
         if w_locinds:
             self.addLocinds()

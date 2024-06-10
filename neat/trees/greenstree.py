@@ -337,15 +337,15 @@ class GreensNode(PhysNode):
                    (self.z_cd * np.sinh(self.gammaL*(1.-x1)) + np.cosh(self.gammaL*(1.-x1))) / \
                    self.wrongskian
 
-    def _getReprDict(self):
-        repr_dict = super()._getReprDict()
+    def _get_repr_dict(self):
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             "expansion_points": self.expansion_points,
         })
         return repr_dict
 
     def __repr__(self):
-        return repr(self._getReprDict())
+        return repr(self._get_repr_dict())
 
 
 class SomaGreensNode(GreensNode):
@@ -395,8 +395,8 @@ class GreensTree(PhysTree):
         self.freqs = None
         super().__init__(arg=arg, types=types)
 
-    def _getReprDict(self):
-        repr_dict = super()._getReprDict()
+    def _get_repr_dict(self):
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             'freqs': self.freqs
         })
@@ -404,9 +404,9 @@ class GreensTree(PhysTree):
 
     def __repr__(self):
         repr_str = STree.__repr__(self)
-        return repr_str + repr(self._getReprDict())
+        return repr_str + repr(self._get_repr_dict())
 
-    def _createCorrespondingNode(self, node_index, p3d=None):
+    def _create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -463,13 +463,13 @@ class GreensTree(PhysTree):
             print('Forward sweep: ' + str(node))
         pnode = node.parent_node
         # log how many times recursion has passed at node
-        if not self.isLeaf(node):
+        if not self.is_leaf(node):
             node.counter += 1
         # if the number of childnodes of node is equal to the amount of times
         # the recursion has passed node, the distal impedance can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
-            if not self.isRoot(node):
+            if not self.is_root(node):
                 node._setImpedanceDistal()
                 self._impedanceFromLeaf(pnode, leafs, pprint=pprint)
         elif len(leafs) > 0:
@@ -503,7 +503,7 @@ class GreensTree(PhysTree):
         loc1 = MorphLoc(loc1, self)
         loc2 = MorphLoc(loc2, self)
         # the path between the nodes
-        path = self.pathBetweenNodes(self[loc1['node']], self[loc2['node']])
+        path = self.path_between_nodes(self[loc1['node']], self[loc2['node']])
         # compute the kernel
         z_f = np.ones_like(self.root.z_in)
         if len(path) == 1:
@@ -709,9 +709,9 @@ class GreensTreeTime(GreensTree):
         self._slice_quad = None
         super().__init__(arg=arg, types=types)
 
-    def _getReprDict(self):
+    def _get_repr_dict(self):
         t = self.ft.t if self.ft is not None else None
-        repr_dict = super()._getReprDict()
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             't': t
         })

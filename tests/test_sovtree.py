@@ -173,7 +173,7 @@ class TestSOVTree():
         alphas, gammas = self.tree.getImportantModes(locarg='net eval',
                                                 eps=1e-4, sort_type='timescale')
         for ii, lin_term in lin_terms.items():
-            z_k_trans = net.getReducedTree([0,ii]).getRoot().z_kernel + lin_term
+            z_k_trans = net.getReducedTree([0,ii]).get_root().z_kernel + lin_term
             assert np.abs(z_k_trans.k_bar - Kernel((alphas, gammas[:,0]*gammas[:,ii])).k_bar) < 1e-8
 
 

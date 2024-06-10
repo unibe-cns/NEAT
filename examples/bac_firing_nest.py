@@ -81,10 +81,10 @@ def runCalciumCoinc(dt=0.05):
     phys_tree = getL5Pyramid()
 
     # single branch initiation zone
-    branch = phys_tree.pathToRoot(phys_tree[236])[::-1]
+    branch = phys_tree.path_to_root(phys_tree[236])[::-1]
     locs_sb = phys_tree.distributeLocsOnNodes(bac_firing.D2S_CASPIKE, node_arg=branch, name='single branch')
     # abpical trunk locations
-    apic = phys_tree.pathToRoot(phys_tree[221])[::-1]
+    apic = phys_tree.path_to_root(phys_tree[221])[::-1]
     locs_apic = phys_tree.distributeLocsOnNodes(bac_firing.D2S_APIC, node_arg=apic, name='apic connection')
 
     # store set of locations

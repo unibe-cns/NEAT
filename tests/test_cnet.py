@@ -49,13 +49,13 @@ class TestCNET():
         # create NET
         node_0 = NETNode(0, [0], [0], z_kernel=(alphas, gammas[:,0]**2))
         net_py = NET()
-        net_py.setRoot(node_0)
+        net_py.set_root(node_0)
         # check if correct
         assert np.abs(gammas[0,0]**2/np.abs(alphas[0]) - z_inp) < 1e-10
         assert np.abs(node_0.z_bar - z_inp) < 1e-10
 
         # to initialize neuron tree
-        self.sim_tree.initModel(dt=self.dt)
+        self.sim_tree.init_model(dt=self.dt)
         # add ion channel to NET simulator
         a_soma = 4. *  np.pi * (self.sim_tree[1].R*1e-4)**2
         self.cnet = netsim.NETSim(net_py, v_eq=self.v_eq)
@@ -97,10 +97,10 @@ class TestCNET():
         node_3 = NETNode(3, [2], [2],  z_kernel=(alphas_, gammas_))
         # add nodes to tree
         net_py = NET()
-        net_py.setRoot(node_0)
-        net_py.addNodeWithParent(node_1, node_0)
-        net_py.addNodeWithParent(node_2, node_1)
-        net_py.addNodeWithParent(node_3, node_1)
+        net_py.set_root(node_0)
+        net_py.add_node_with_parent(node_1, node_0)
+        net_py.add_node_with_parent(node_2, node_1)
+        net_py.add_node_with_parent(node_3, node_1)
         # store
         self.net_py = net_py
         self.cnet = netsim.NETSim(net_py, v_eq=self.v_eq)
@@ -131,11 +131,11 @@ class TestCNET():
         node_4 = NETNode(4, [2], [2],  z_kernel=(alphas, gammas))
         # add nodes to tree
         net_py = NET()
-        net_py.setRoot(node_0)
-        net_py.addNodeWithParent(node_1, node_0)
-        net_py.addNodeWithParent(node_2, node_0)
-        net_py.addNodeWithParent(node_3, node_2)
-        net_py.addNodeWithParent(node_4, node_2)
+        net_py.set_root(node_0)
+        net_py.add_node_with_parent(node_1, node_0)
+        net_py.add_node_with_parent(node_2, node_0)
+        net_py.add_node_with_parent(node_3, node_2)
+        net_py.add_node_with_parent(node_4, node_2)
         # linear terms
         alphas = 1. / np.array([1.])
         gammas = np.array([1.])
@@ -175,13 +175,13 @@ class TestCNET():
         node_6 = NETNode(6, [3], [3],  z_kernel=(alphas, gammas))
         # add nodes to tree
         net_py = NET()
-        net_py.setRoot(node_0)
-        net_py.addNodeWithParent(node_1, node_0)
-        net_py.addNodeWithParent(node_2, node_1)
-        net_py.addNodeWithParent(node_3, node_1)
-        net_py.addNodeWithParent(node_4, node_3)
-        net_py.addNodeWithParent(node_5, node_3)
-        net_py.addNodeWithParent(node_6, node_0)
+        net_py.set_root(node_0)
+        net_py.add_node_with_parent(node_1, node_0)
+        net_py.add_node_with_parent(node_2, node_1)
+        net_py.add_node_with_parent(node_3, node_1)
+        net_py.add_node_with_parent(node_4, node_3)
+        net_py.add_node_with_parent(node_5, node_3)
+        net_py.add_node_with_parent(node_6, node_0)
         # linear terms
         alphas = 1. / np.array([1.])
         gammas = np.array([1.])

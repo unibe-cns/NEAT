@@ -247,7 +247,7 @@ void NETSimulator::initFromPython(double dt, double integ_mode, bool print_tree)
         }
     }
     // always initialize in this order
-    setLeafs();
+    set_leafs();
     setDownSweep();
     setUpSweep();
     // initialize ion channels
@@ -457,7 +457,7 @@ void NETSimulator::setVNodeFromVNode(double *v_arr, int v_size){
     }
 }
 
-void NETSimulator::setLeafs(){
+void NETSimulator::set_leafs(){
     m_leafs.clear();
     for(vector< NETNode >::iterator node_it = m_nodes.begin();
         node_it != m_nodes.end(); node_it++){

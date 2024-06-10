@@ -20,13 +20,13 @@ class TestNET():
             node_l5 = NETNode(6, [5], [5], z_kernel=(alphas, gammas))
             # add nodes to tree
             self.net = NET()
-            self.net.setRoot(node_r)
-            self.net.addNodeWithParent(node_s, node_r)
-            self.net.addNodeWithParent(node_b1, node_r)
-            self.net.addNodeWithParent(node_b2, node_b1)
-            self.net.addNodeWithParent(node_l3, node_b2)
-            self.net.addNodeWithParent(node_l4, node_b2)
-            self.net.addNodeWithParent(node_l5, node_b1)
+            self.net.set_root(node_r)
+            self.net.add_node_with_parent(node_s, node_r)
+            self.net.add_node_with_parent(node_b1, node_r)
+            self.net.add_node_with_parent(node_b2, node_b1)
+            self.net.add_node_with_parent(node_l3, node_b2)
+            self.net.add_node_with_parent(node_l4, node_b2)
+            self.net.add_node_with_parent(node_l5, node_b1)
 
     def testStringRepresentation(self):
         self.loadTree()

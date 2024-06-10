@@ -219,13 +219,13 @@ class TestMorphTree():
         nodes = self.tree._convertNodeArgToNodes(None)
         assert self.tree.nodes == nodes
         nodes = self.tree._convertNodeArgToNodes(self.tree[4])
-        assert self.tree.gatherNodes(self.tree[4]) == nodes
+        assert self.tree.gather_nodes(self.tree[4]) == nodes
         nodes = self.tree._convertNodeArgToNodes('apical')
-        assert self.tree.getNodesInApicalSubtree() == nodes
+        assert self.tree.get_nodesInApicalSubtree() == nodes
         nodes = self.tree._convertNodeArgToNodes('basal')
-        assert self.tree.getNodesInBasalSubtree() == nodes
+        assert self.tree.get_nodesInBasalSubtree() == nodes
         nodes = self.tree._convertNodeArgToNodes('axonal')
-        assert self.tree.getNodesInAxonalSubtree() == nodes
+        assert self.tree.get_nodesInAxonalSubtree() == nodes
         nodes_ = [self.tree[5], self.tree[7]]
         nodes = self.tree._convertNodeArgToNodes(nodes_)
         assert nodes_ == nodes
@@ -239,13 +239,13 @@ class TestMorphTree():
             nodes = self.tree._convertNodeArgToNodes(None)
             assert self.tree.nodes == nodes
             nodes = self.tree._convertNodeArgToNodes(self.tree[4])
-            assert self.tree.gatherNodes(self.tree[4]) == nodes
+            assert self.tree.gather_nodes(self.tree[4]) == nodes
             nodes = self.tree._convertNodeArgToNodes('apical')
-            assert self.tree.getNodesInApicalSubtree() == nodes
+            assert self.tree.get_nodesInApicalSubtree() == nodes
             nodes = self.tree._convertNodeArgToNodes('basal')
-            assert self.tree.getNodesInBasalSubtree() == nodes
+            assert self.tree.get_nodesInBasalSubtree() == nodes
             nodes = self.tree._convertNodeArgToNodes('axonal')
-            assert self.tree.getNodesInAxonalSubtree() == nodes
+            assert self.tree.get_nodesInAxonalSubtree() == nodes
             nodes__ = [self.tree[6], self.tree[8]]
             nodes = self.tree._convertNodeArgToNodes(nodes_)
             assert nodes_ != nodes
@@ -369,23 +369,23 @@ class TestMorphTree():
         with pytest.raises(KeyError):
             self.tree.getLocindsOnNode('wronglocs', self.tree[7])
         # test locinds on path
-        path = self.tree.pathBetweenNodes(self.tree[6], self.tree[8])
+        path = self.tree.path_between_nodes(self.tree[6], self.tree[8])
         locinds = self.tree.getLocindsOnPath('testlocs',
                             self.tree[6], self.tree[8], xstart=.5, xstop=1.)
         assert locinds == [5,4,3,1,7,8]
-        path = self.tree.pathBetweenNodes(self.tree[7], self.tree[7])
+        path = self.tree.path_between_nodes(self.tree[7], self.tree[7])
         locinds = self.tree.getLocindsOnPath('testlocs',
                             self.tree[7], self.tree[7], xstart=0., xstop=1.)
         assert locinds == []
-        path = self.tree.pathBetweenNodes(self.tree[4], self.tree[4])
+        path = self.tree.path_between_nodes(self.tree[4], self.tree[4])
         locinds = self.tree.getLocindsOnPath('testlocs',
                             self.tree[4], self.tree[4], xstart=0., xstop=.9)
         assert locinds == [2]
-        path = self.tree.pathBetweenNodes(self.tree[1], self.tree[1])
+        path = self.tree.path_between_nodes(self.tree[1], self.tree[1])
         locinds = self.tree.getLocindsOnPath('testlocs',
                             self.tree[1], self.tree[1], xstart=0., xstop=.9)
         assert locinds == [0]
-        path = self.tree.pathBetweenNodes(self.tree[4], self.tree[1])
+        path = self.tree.path_between_nodes(self.tree[4], self.tree[1])
         locinds = self.tree.getLocindsOnPath('testlocs',
                             self.tree[4], self.tree[1], xstart=.9, xstop=.9)
         assert locinds == [2,0]
@@ -393,7 +393,7 @@ class TestMorphTree():
                             self.tree[7], self.tree[7], xstart=.1, xstop=.9)
         assert locinds == []
         # test locinds on branch
-        branch = self.tree.pathBetweenNodes(self.tree[4], self.tree[5])
+        branch = self.tree.path_between_nodes(self.tree[4], self.tree[5])
         locinds = self.tree.getLocindsOnNodes('testlocs', branch)
         assert locinds == [2,1,3,4]
         # test locinds on basal/apical/axonal subtrees
@@ -404,7 +404,7 @@ class TestMorphTree():
         locinds = self.tree.getLocindsOnNodes('testlocs', 'apical')
         assert locinds == [2,1,3,4,5,6,7,8]
         # test locinds on subtree
-        nodes = self.tree.getNodesInSubtree(self.tree[5], self.tree[4])
+        nodes = self.tree.get_nodes_in_subtree(self.tree[5], self.tree[4])
         locinds = self.tree.getLocindsOnNodes('testlocs', nodes)
         assert locinds == [2,1,3,4,5,6]
         # find the nearest locs
@@ -500,7 +500,7 @@ class TestMorphTree():
         assert locs[0] == {'node': 4, 'x': 1.} \
                 and locs[1] == {'node': 5, 'x': 1.} \
                 and locs[2] == {'node': 7, 'x': 1.}
-        nodes = self.tree.pathBetweenNodes(self.tree[5], self.tree[6])
+        nodes = self.tree.path_between_nodes(self.tree[5], self.tree[6])
         locs = self.tree.distributeLocsOnNodes(np.array([50.,120.,170.]),
                                                   node_arg=nodes)
         assert locs[0] == {'node': 5, 'x': 2./5.} \
@@ -513,7 +513,7 @@ class TestMorphTree():
         assert locs[0] == {'node': 4, 'x': 7./10.} \
                 and locs[1] == {'node': 5, 'x': 2./5.} \
                 and locs[2] == {'node': 7, 'x': 2./5.}
-        nodes = self.tree.getNodesInSubtree(self.tree[6], self.tree[4])
+        nodes = self.tree.get_nodes_in_subtree(self.tree[6], self.tree[4])
         locs = self.tree.distributeLocsOnNodes(np.array([70.,120]),
                                                   node_arg=nodes)
         assert locs[0] == {'node': 4, 'x': 7./10.} \

@@ -232,7 +232,7 @@ class NeuronSimTree(PhysTree):
         # initialize the tree structure
         super().__init__(arg=arg, types=types)
 
-    def _createCorrespondingNode(self, node_index, p3d=None):
+    def _create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -253,7 +253,7 @@ class NeuronSimTree(PhysTree):
         self.factor_lambda = factor_lambda
         self.v_init = v_init # mV
 
-    def initModel(self, dt=0.025, t_calibrate=0., v_init=-75., factor_lambda=1.,
+    def init_model(self, dt=0.025, t_calibrate=0., v_init=-75., factor_lambda=1.,
                         pprint=False):
         """
         Initialize hoc-objects to simulate the neuron model implemented by this
@@ -304,7 +304,7 @@ class NeuronSimTree(PhysTree):
             # create the NEURON section
             compartment = node._makeSection(self.factor_lambda, pprint=pprint)
             # connect with parent section
-            if not self.isRoot(node):
+            if not self.is_root(node):
                 compartment.connect(self.sections[node.parent_node.index], 1, 0)
             # store
             self.sections.update({node.index: compartment})
@@ -910,7 +910,7 @@ class NeuronSimTree(PhysTree):
         set_v_ep: bool (optional, default ``True``)
             Store the equilibrium potential as the ``PhysNode.v_ep`` attribute
         """
-        self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
+        self.init_model(dt=self.dt, t_calibrate=self.t_calibrate,
                        v_init=self.v_init, factor_lambda=self.factor_lambda)
         self.storeLocs([(n.index, 0.5) for n in self], name='rec locs')
         res = self.run(t_dur)
@@ -929,7 +929,7 @@ class NeuronSimTree(PhysTree):
         z_mat = np.zeros((len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
-                self.initModel(
+                self.init_model(
                     dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
                 )
                 self.addIClamp(loc0, i_amp, 0., t_dur)
@@ -962,7 +962,7 @@ class NeuronSimTree(PhysTree):
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
                 loc1 = locs[jj]
-                self.initModel(
+                self.init_model(
                     dt=dt, t_calibrate=t_calibrate,
                     v_init=v_init, factor_lambda=factor_lambda
                 )
@@ -982,8 +982,8 @@ class NeuronCompartmentNode(NeuronSimNode):
     def __init__(self, index):
         super().__init__(index)
 
-    def getChildNodes(self, skip_inds=[]):
-        return super().getChildNodes(skip_inds=skip_inds)
+    def get_child_nodes(self, skip_inds=[]):
+        return super().get_child_nodes(skip_inds=skip_inds)
 
     def _makeSection(self, pprint=False):
         compartment = neuron.h.Section(name=str(self.index))
@@ -1089,7 +1089,7 @@ class NeuronCompartmentTree(NeuronSimTree):
             surfaces = 2. * np.pi * radii * lengths
             for ii, comp_node in enumerate(ctree):
                 sim_node = self.__getitem__(comp_node.index, skip_inds=[])
-                if self.isRoot(sim_node):
+                if self.is_root(sim_node):
                     sim_node.setP3D(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
                 else:
                     sim_node.setP3D(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
@@ -1112,19 +1112,19 @@ class NeuronCompartmentTree(NeuronSimTree):
     def __getitem__(self, index, skip_inds=[]):
         return super().__getitem__(index, skip_inds=skip_inds)
 
-    def getNodes(self, recompute_flag=0, skip_inds=[]):
-        return super().getNodes(recompute_flag=recompute_flag, skip_inds=skip_inds)
+    def get_nodes(self, recompute_flag=0, skip_inds=[]):
+        return super().get_nodes(recompute_flag=recompute_flag, skip_inds=skip_inds)
 
     def __iter__(self, node=None, skip_inds=[]):
         return super().__iter__(node=node, skip_inds=skip_inds)
 
-    def _findNode(self, node, index, skip_inds=[]):
-        return super()._findNode(node, index, skip_inds=skip_inds)
+    def _find_node(self, node, index, skip_inds=[]):
+        return super()._find_node(node, index, skip_inds=skip_inds)
 
-    def _gatherNodes(self, node, node_list=[], skip_inds=[]):
-        return super()._gatherNodes(node, node_list=node_list, skip_inds=skip_inds)
+    def _gather_nodes(self, node, node_list=[], skip_inds=[]):
+        return super()._gather_nodes(node, node_list=node_list, skip_inds=skip_inds)
 
-    def _createCorrespondingNode(self, node_index):
+    def _create_corresponding_node(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -1140,7 +1140,7 @@ class NeuronCompartmentTree(NeuronSimTree):
             # create the NEURON section
             compartment = node._makeSection(pprint=pprint)
             # connect with parent section
-            if not self.isRoot(node):
+            if not self.is_root(node):
                 compartment.connect(self.sections[node.parent_node.index], 0.5, 0)
             # store
             self.sections.update({node.index: compartment})

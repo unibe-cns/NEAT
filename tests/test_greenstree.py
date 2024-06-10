@@ -451,7 +451,7 @@ class TestGreensTreeTime():
         dt_pulse = 0.1 # ms
         delay_pulse = 10. # ms
         tmax = self.tmax + delay_pulse
-        sim_tree.initModel(dt=self.dt, t_calibrate=10., factor_lambda=100)
+        sim_tree.init_model(dt=self.dt, t_calibrate=10., factor_lambda=100)
         sim_tree.addIClamp(locs[idx_in], i_amp, delay_pulse, dt_pulse)
         sim_tree.storeLocs(locs, 'rec locs', warn=False)
         # simulate

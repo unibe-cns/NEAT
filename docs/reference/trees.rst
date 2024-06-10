@@ -23,34 +23,34 @@ Basic tree
    STree.__hash__
    STree.unique_hash
    STree.checkOrdered
-   STree.getNodes
+   STree.get_nodes
    STree.nodes
-   STree.gatherNodes
-   STree.getLeafs
+   STree.gather_nodes
+   STree.get_leafs
    STree.leafs
-   STree.isLeaf
+   STree.is_leaf
    STree.root
-   STree.isRoot
-   STree.addNodeWithParentFromIndex
-   STree.addNodeWithParent
-   STree.softRemoveNode
-   STree.removeNode
-   STree.removeSingleNode
-   STree.insertNode
-   STree.resetIndices
-   STree.getSubTree
-   STree.depthOfNode
-   STree.degreeOfNode
-   STree.orderOfNode
-   STree.pathToRoot
-   STree.pathBetweenNodes
-   STree.pathBetweenNodesDepthFirst
-   STree.getNodesInSubtree
-   STree.sisterLeafs
+   STree.is_root
+   STree.add_node_with_parent_from_index
+   STree.add_node_with_parent
+   STree.soft_remove_node
+   STree.remove_node
+   STree.remove_single_node
+   STree.insert_node
+   STree.reset_indices
+   STree.get_sub_tree
+   STree.depth_of_node
+   STree.degree_of_node
+   STree.order_of_node
+   STree.path_to_root
+   STree.path_between_nodes
+   STree.path_between_nodes_depth_first
+   STree.get_nodes_in_subtree
+   STree.sister_leafs
    STree.upBifurcationNode
    STree.downBifurcationNode
-   STree.getBifurcationNodes
-   STree.getNearestNeighbours
+   STree.get_bifurcation_nodes
+   STree.get_nearest_neighbours
 
 
 .. autoclass:: neat.SNode
@@ -167,13 +167,13 @@ Get specific nodes or sets of nodes from the tree.
    :toctree: generated/
 
    MorphTree.root
-   MorphTree.getNodes
+   MorphTree.get_nodes
    MorphTree.nodes
-   MorphTree.getLeafs
+   MorphTree.get_leafs
    MorphTree.leafs
-   MorphTree.getNodesInBasalSubtree
-   MorphTree.getNodesInApicalSubtree
-   MorphTree.getNodesInAxonalSubtree
+   MorphTree.get_nodesInBasalSubtree
+   MorphTree.get_nodesInApicalSubtree
+   MorphTree.get_nodesInAxonalSubtree
    MorphTree._convertNodeArgToNodes
 
 Relating to the computational tree.
@@ -326,7 +326,7 @@ Simulate NEURON models
 .. autosummary::
    :toctree: generated/
 
-   NeuronSimTree.initModel
+   NeuronSimTree.init_model
    NeuronSimTree.deleteModel
    NeuronSimTree.addShunt
    NeuronSimTree.addDoubleExpCurrent

@@ -476,7 +476,7 @@ class CompartmentFitter(object):
             return 0
 
         orig_nodes = [self.tree[loc["node"]] for loc in self.tree.getLocs("fit locs")]
-        comp_nodes = self.ctree.getNodesFromLocinds(list(range(len(self.tree.getLocs("fit locs")))))
+        comp_nodes = self.ctree.get_nodesFromLocinds(list(range(len(self.tree.getLocs("fit locs")))))
 
         for orig_node, comp_node in zip(orig_nodes, comp_nodes):
             self._calibrateConcmechs(ion, orig_node, comp_node)
@@ -1247,8 +1247,8 @@ class CompartmentFitter(object):
         c_zins = [greens_tree.calcZF(c_loc, c_loc)[0] for c_loc in c_locs]
         s_zins = [greens_tree.calcZF(s_loc, s_loc)[0] for s_loc in s_locs]
         # paths to root
-        c_ptrs = [self.tree.pathToRoot(node) for node in c_nodes]
-        s_ptrs = [self.tree.pathToRoot(node) for node in s_nodes]
+        c_ptrs = [self.tree.path_to_root(node) for node in c_nodes]
+        s_ptrs = [self.tree.path_to_root(node) for node in s_nodes]
 
         c_inds = []
         for s_node, s_path, s_loc, s_zin in zip(s_nodes, s_ptrs, s_locs, s_zins):

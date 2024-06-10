@@ -147,7 +147,7 @@ class EquilibriumTree(FitTree):
         # create a biophysical simulation model
         sim_tree_biophys = neurm.NeuronSimTree(self)
         # compute equilibrium potentials
-        sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
+        sim_tree_biophys.init_model(dt=dt, factor_lambda=factor_lambda)
         sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
         res_biophys = sim_tree_biophys.run(t_max, dt_rec=20., record_concentrations=ions)
         sim_tree_biophys.deleteModel()
@@ -358,7 +358,7 @@ class FitTreeGF(GreensTree, FitTree):
         if root_loc is None: root_loc = (1, .5)
         root_loc = MorphLoc(root_loc, self)
         # distribute locs on nodes
-        st_nodes = self.gatherNodes(self[root_loc['node']])
+        st_nodes = self.gather_nodes(self[root_loc['node']])
         d2s_loc = self.pathLength(root_loc, (1,0.5))
         net_locs = self.distributeLocsOnNodes(d2s=np.arange(d2s_loc, 5000., dx),
                                    node_arg=st_nodes, name='net eval')
@@ -386,7 +386,7 @@ class FitTreeGF(GreensTree, FitTree):
         # add a node to the tree
         node = NETNode(len(net), loc_inds, z_kernel=(np.array([alpha]), gammas))
         if pnode != None:
-            net.addNodeWithParent(node, pnode)
+            net.add_node_with_parent(node, pnode)
         else:
             net.root = node
         # recursion for following nodes

@@ -133,7 +133,7 @@ class NestCompartmentTree(CompartmentTree):
     def __init__(self, arg=None):
         super().__init__(arg)
 
-    def _createCorrespondingNode(self, index, **kwargs):
+    def _create_corresponding_node(self, index, **kwargs):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -150,11 +150,11 @@ class NestCompartmentTree(CompartmentTree):
         # ensure that the all node indices are equal to the position where
         # they appear in the iteration, so that they also correspond to the NEST
         # model indices
-        self.resetIndices()
+        self.reset_indices()
 
         return [node._makeCompartmentDict(channel_storage=self.channel_storage) for node in self]
 
-    def initModel(self, model_name, n, suffix="_model", v_th=-20., **kwargs):
+    def init_model(self, model_name, n, suffix="_model", v_th=-20., **kwargs):
         """
         Initialize n nest instantiations of the current model.
 

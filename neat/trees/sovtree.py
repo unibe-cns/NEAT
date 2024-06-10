@@ -279,8 +279,8 @@ class SOVTree(PhysTree):
         super().__init__(arg=arg, types=types)
         
 
-    def _getReprDict(self):
-        repr_dict = super()._getReprDict()
+    def _get_repr_dict(self):
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             'maxspace_freq': f"{self.maxspace_freq:1.6g}"
         })
@@ -288,9 +288,9 @@ class SOVTree(PhysTree):
 
     def __repr__(self):
         repr_str = STree.__repr__(self)
-        return repr_str + repr(self._getReprDict())
+        return repr_str + repr(self._get_repr_dict())
 
-    def _createCorrespondingNode(self, node_index, p3d=None):
+    def _create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -389,14 +389,14 @@ class SOVTree(PhysTree):
             print('Forward sweep: ' + str(node))
         pnode = node.parent_node
         # log how many times recursion has passed at node
-        if not self.isLeaf(node):
+        if not self.is_leaf(node):
             node.counter += 1
         # if the number of childnodes of node is equal to the amount of times
         # the recursion has passed node, the mu functions can be set. Otherwise
         # we start a new recursion at another leaf.
         if node.counter == len(node.child_nodes):
             node._setZerosPoles(maxspace_freq=maxspace_freq)
-            if not self.isRoot(node):
+            if not self.is_root(node):
                 self._SOVFromLeaf(pnode, leafs, count=count+1,
                                 maxspace_freq=maxspace_freq, pprint=pprint)
         elif len(leafs) > 0:
@@ -703,7 +703,7 @@ class SOVTree(PhysTree):
                 node = NETNode(len(net), true_loc_inds[n_inds],
                                 z_kernel=(alphas, gammas_avg))
                 if pnode != None:
-                    net.addNodeWithParent(node, pnode)
+                    net.add_node_with_parent(node, pnode)
                 else:
                     net.root = node
                 # set new pnode
@@ -854,7 +854,7 @@ class SOVTree(PhysTree):
         # add a node to the tree
         node = NETNode(len(net), true_loc_inds, z_kernel=(alphas, gammas_avg))
         if pnode != None:
-            net.addNodeWithParent(node, pnode)
+            net.add_node_with_parent(node, pnode)
         else:
             net.root = node
 
@@ -901,7 +901,7 @@ class SOVTree(PhysTree):
                     # add node
                     newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real-z_k_approx)
                     newnode.newloc_inds = [ind]
-                    net.addNodeWithParent(newnode, node)
+                    net.add_node_with_parent(newnode, node)
                 # empty the new indices
                 node.newloc_inds = []
         net.setNewLocInds()
@@ -936,11 +936,11 @@ class SOVTree(PhysTree):
             alphas, gammas = self.getImportantModes(locarg='net eval', eps=eps)
         lin_terms = {}
         for ii, loc in enumerate(self.getLocs('net eval')):
-            if not self.isRoot(self[loc['node']]):
+            if not self.is_root(self[loc['node']]):
                 # create the true kernel
                 z_k_true = Kernel((alphas, gammas[:,ii] * gammas[:,0]))
                 # compute the NET approximation kernel
-                z_k_net = net.getReducedTree([0, ii]).getRoot().z_kernel
+                z_k_net = net.getReducedTree([0, ii]).get_root().z_kernel
                 # compute the lin term
                 lin_terms[ii] = z_k_true - z_k_net
 

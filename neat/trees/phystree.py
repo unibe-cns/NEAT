@@ -328,8 +328,8 @@ class PhysNode(MorphNode):
         ])
         return node_str
 
-    def _getReprDict(self):
-        repr_dict = super()._getReprDict()
+    def _get_repr_dict(self):
+        repr_dict = super()._get_repr_dict()
         repr_dict.update({
             "currents": {c: (f"({g:1.6g}, {e:1.6g})") for c, (g, e) in self.currents.items()},
             "concmechs": self.concmechs,
@@ -342,7 +342,7 @@ class PhysNode(MorphNode):
         return repr_dict
 
     def __repr__(self):
-        return repr(self._getReprDict())
+        return repr(self._get_repr_dict())
 
 
 class PhysTree(MorphTree):
@@ -373,14 +373,14 @@ class PhysTree(MorphTree):
             for node in self:
                 node.setPhysiology(1.0, 100./1e6)
 
-    def _getReprDict(self):
+    def _get_repr_dict(self):
         ckeys = list(self.channel_storage.keys())
         ckeys.sort()
         return {"channel_storage": ckeys}
 
     def __repr__(self):
         repr_str = super().__repr__()
-        return repr_str + repr(self._getReprDict())
+        return repr_str + repr(self._get_repr_dict())
 
     def _resetChannelStorage(self):
         new_channel_storage = {}
@@ -392,7 +392,7 @@ class PhysTree(MorphTree):
 
         self.channel_storage = new_channel_storage
 
-    def _createCorrespondingNode(self, node_index, p3d=None,
+    def _create_corresponding_node(self, node_index, p3d=None,
                                       c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
         """
         Creates a node with the given index corresponding to the tree class.
@@ -789,7 +789,7 @@ class PhysTree(MorphTree):
         # create the list of compartment locations for FD approximation
         locs = []
         for node in self:
-            if self.isRoot(node):
+            if self.is_root(node):
                 locs.append(MorphLoc((node.index, .5), self,
                                      set_as_comploc=set_as_comploc))
             else:
@@ -813,7 +813,7 @@ class PhysTree(MorphTree):
             R_ = aux_node.R * 1e-4
             L_ = aux_node.L * 1e-4
 
-            if fd_tree.isRoot(fd_node):
+            if fd_tree.is_root(fd_node):
                 # for the soma we apply the spherical approximation
                 surf = 4. * np.pi * R_**2
             else:
@@ -832,12 +832,12 @@ class PhysTree(MorphTree):
                 if chan not in fd_tree.channel_storage and chan in self.channel_storage:
                     fd_tree.channel_storage[chan] = copy.deepcopy(self.channel_storage[chan])
 
-            if not fd_tree.isRoot(fd_node):
+            if not fd_tree.is_root(fd_node):
                 fd_node.g_c = np.pi * R_**2 / (aux_node.r_a * L_)
 
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
-                if not fd_tree.isRoot(fd_parent):
+                if not fd_tree.is_root(fd_parent):
                 # if True:
                     fd_parent.ca += surf * aux_node.c_m
 
