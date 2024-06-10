@@ -68,7 +68,7 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
         ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
                                      use_all_channels_for_passive=False,
                                      recompute=recompute_biophys)
-        clocs = ctree.getEquivalentLocs()
+        clocs = ctree.get_equivalent_locs()
         print('>>>> writing file %s'%f_name)
         file = open(f_name + '.p', 'wb')
         pickle.dump(ctree, file)

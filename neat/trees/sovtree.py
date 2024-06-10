@@ -645,7 +645,7 @@ class SOVTree(PhysTree):
 
     def _add_layer_a(self, net, pnode,
                         z_mat, alphas, gammas,
-                        z_max_prev, z_ind_0, true_loc_inds,
+                        z_max_prev, z_ind_0, true_loc_idxs,
                         dz=100.,
                         use_hist=True, add_lin_terms=False,
                         pprint=False):
@@ -700,7 +700,7 @@ class SOVTree(PhysTree):
                 z_avg_approx = np.sum(gammas_avg / alphas).real
                 self._subtract_parent_kernels(gammas_avg, pnode)
                 # add a node to the tree
-                node = NETNode(len(net), true_loc_inds[n_inds],
+                node = NETNode(len(net), true_loc_idxs[n_inds],
                                 z_kernel=(alphas, gammas_avg))
                 if pnode != None:
                     net.add_node_with_parent(node, pnode)
@@ -712,7 +712,7 @@ class SOVTree(PhysTree):
                 # print stuff
                 if pprint:
                     print(node)
-                    print('n_loc =', len(node.loc_inds))
+                    print('n_loc =', len(node.loc_idxs))
                     print('(locind0, size) = ', (k_inds[0], z_mat.shape[0]))
                     print('')
 
@@ -765,7 +765,7 @@ class SOVTree(PhysTree):
 
     def _add_layer_b(self, net, pnode,
                 z_mat, alphas, gammas,
-                z_max_prev, true_loc_inds, dz=100.,
+                z_max_prev, true_loc_idxs, dz=100.,
                 use_hist=True, pprint=False, add_lin_terms=False):
         # print stuff
         if pprint:
@@ -777,7 +777,7 @@ class SOVTree(PhysTree):
         # get the diagonal
         z_diag = np.diag(z_mat)
 
-        if true_loc_inds[0] == 0 and z_mat[0,0] > z_max_prev:
+        if true_loc_idxs[0] == 0 and z_mat[0,0] > z_max_prev:
             n_bins = 'soma'
             z_max = z_mat[0,0] + 1.
             z_min = z_max_prev
@@ -824,7 +824,7 @@ class SOVTree(PhysTree):
             d_inds = np.where(z_diag <= z_max+1e-15)[0]
 
         # identify different domains
-        if add_lin_terms and true_loc_inds[0] == 0:
+        if add_lin_terms and true_loc_idxs[0] == 0:
             t0 = np.array([1]); t1 = np.array([len(z_diag)])
         else:
             t0 = np.where(np.logical_and(z_diag[:-1] < z_max+1e-15,
@@ -843,23 +843,23 @@ class SOVTree(PhysTree):
 
         # get the average kernel
         if l_inds[0].size < 100000:
-            gammas_avg = np.mean(gammas[:,true_loc_inds[l_inds[0]]] * \
-                                 gammas[:,true_loc_inds[l_inds[1]]], 1)
+            gammas_avg = np.mean(gammas[:,true_loc_idxs[l_inds[0]]] * \
+                                 gammas[:,true_loc_idxs[l_inds[1]]], 1)
         else:
             inds_ = np.random.randint(l_inds[0].size, size=100000)
-            gammas_avg = np.mean(gammas[:,true_loc_inds[l_inds[0]][inds_]] * \
-                                 gammas[:,true_loc_inds[l_inds[1]][inds_]], 1)
+            gammas_avg = np.mean(gammas[:,true_loc_idxs[l_inds[0]][inds_]] * \
+                                 gammas[:,true_loc_idxs[l_inds[1]][inds_]], 1)
         self._subtract_parent_kernels(gammas_avg, pnode)
 
         # add a node to the tree
-        node = NETNode(len(net), true_loc_inds, z_kernel=(alphas, gammas_avg))
+        node = NETNode(len(net), true_loc_idxs, z_kernel=(alphas, gammas_avg))
         if pnode != None:
             net.add_node_with_parent(node, pnode)
         else:
             net.root = node
 
         if pprint:
-            print('(locind0, size) = ', (true_loc_inds[0], z_mat.shape[0]))
+            print('(locind0, size) = ', (true_loc_idxs[0], z_mat.shape[0]))
             print('(zmin, zmax, n_bins) = ', (z_min, z_max, n_bins))
             print('')
 
@@ -868,10 +868,10 @@ class SOVTree(PhysTree):
             for jj, ind0 in enumerate(t0):
                 ind1 = t1[jj]
                 z_mat_new = copy.deepcopy(z_mat[ind0:ind1,ind0:ind1])
-                true_loc_inds_new = true_loc_inds[ind0:ind1]
+                true_loc_idxs_new = true_loc_idxs[ind0:ind1]
                 self._add_layer_b(net, node,
                             z_mat_new, alphas, gammas,
-                            z_max, true_loc_inds_new, dz=dz,
+                            z_max, true_loc_idxs_new, dz=dz,
                             use_hist=use_hist, pprint=pprint)
 
     def _subtract_parent_kernels(self, gammas, pnode):
@@ -882,28 +882,28 @@ class SOVTree(PhysTree):
     def _improve_input_impedance(self, net, alphas, gammas):
         nmaxind = np.max([n.index for n in net])
         for node in net:
-            if len(node.loc_inds) == 1:
+            if len(node.loc_idxs) == 1:
                 # recompute the kernel of this single loc layer
                 if node.parent_node is not None:
                     p_kernel = net.calc_total_kernel(node.parent_node)
                     p_k_c = p_kernel.c
                 else:
                     p_k_c = np.zeros_like(gammas)
-                gammas_real = gammas[:,node.loc_inds[0]]**2
+                gammas_real = gammas[:,node.loc_idxs[0]]**2
                 node.z_kernel.c = gammas_real - p_k_c
-            elif len(node.newloc_inds) > 0:
+            elif len(node.newloc_idxs) > 0:
                 z_k_approx = net.calc_total_kernel(node)
                 # add new input nodes for the nodes that don't have one
-                for ind in node.newloc_inds:
+                for ind in node.newloc_idxs:
                     nmaxind += 1
                     gammas_real = gammas[:,ind]**2
                     z_k_real = Kernel(dict(a=alphas, c=gammas_real))
                     # add node
                     newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real-z_k_approx)
-                    newnode.newloc_inds = [ind]
+                    newnode.newloc_idxs = [ind]
                     net.add_node_with_parent(newnode, node)
                 # empty the new indices
-                node.newloc_inds = []
+                node.newloc_idxs = []
         net.set_new_loc_idxs()
 
     def compute_lin_terms(self, net, sov_data=None, eps=1e-4):

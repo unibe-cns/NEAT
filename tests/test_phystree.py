@@ -306,7 +306,7 @@ class TestPhysTree():
             for n1 in ctree:
                 if not ctree.is_root(n1):
                     l_ = self.tree.path_length(
-                        locs[n1.loc_ind], locs[n1.parent_node.loc_ind]
+                        locs[n1.loc_idx], locs[n1.parent_node.loc_idx]
                     )
                     assert l_ <= dx + rtol_dx
 

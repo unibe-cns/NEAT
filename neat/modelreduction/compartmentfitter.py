@@ -164,7 +164,7 @@ class CompartmentFitter(object):
         )
         with self.tree.as_original_tree:
             # set the equilibrium potentials in the tree
-            self.tree.setEEq(pprint=True)
+            self.tree.set_e_eq(pprint=True)
             # get all channels in the tree
             self.channel_names = self.tree.get_channels_in_tree()
 
@@ -220,7 +220,7 @@ class CompartmentFitter(object):
             self.ctree.add_channel_current(copy.deepcopy(channel), np.mean(e_revs))
 
         for node in self.ctree:
-            loc_idx = node.loc_ind
+            loc_idx = node.loc_idx
             concmechs = self.tree[locs[loc_idx]['node']].concmechs
 
             # try to set default parameters as the ones from the original tree
@@ -353,7 +353,7 @@ class CompartmentFitter(object):
             })
 
             # compute the fit matrices
-            m_f, v_t = self.ctree.computeGSingleChanFromImpedance(
+            m_f, v_t = self.ctree.compute_g_single_channel(
                 channel_name, z_mats[:,ii,:,:], e_h, np.array([self.cfg.freqs]),
                 sv=sv, other_channel_names=['L'],
                 all_channel_names=[channel_name],#self.channel_names,
@@ -375,13 +375,13 @@ class CompartmentFitter(object):
             if not (
                 np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()
             ):
-                self.ctree._fitResAction(
+                self.ctree._fit_res_action(
                     'store', m_f, v_t, w_f,
                     channel_names=[channel_name]
                 )
 
         # run the fit
-        self.ctree.runFit()
+        self.ctree.run_fit()
 
         return fit_mats
 
@@ -476,7 +476,7 @@ class CompartmentFitter(object):
             return 0
 
         orig_nodes = [self.tree[loc["node"]] for loc in self.tree.get_locs("fit locs")]
-        comp_nodes = self.ctree.get_nodesFromLocinds(list(range(len(self.tree.get_locs("fit locs")))))
+        comp_nodes = self.ctree.get_nodes_from_loc_idxs(list(range(len(self.tree.get_locs("fit locs")))))
 
         for orig_node, comp_node in zip(orig_nodes, comp_nodes):
             self._calibrateConcmechs(ion, orig_node, comp_node)
@@ -535,7 +535,7 @@ class CompartmentFitter(object):
         # compute the steady state impedance matrix
         z_mat = fit_tree.calc_impedance_matrix(locs)
         # fit the coupling+leak conductances to steady state impedance matrix
-        self.ctree.computeGMC(z_mat, channel_names=['L'])
+        self.ctree.compute_gmc(z_mat, channel_names=['L'])
 
         # print passive impedance matrices
         if pprint:
@@ -574,7 +574,7 @@ class CompartmentFitter(object):
         # compute the steady state impedance matrix
         z_mat = fit_tree.calc_impedance_matrix(locs)[None,:,:]
         # fit the conductances to steady state impedance matrix
-        self.ctree.computeGSingleChanFromImpedance('L', z_mat, -75., np.array([self.cfg.freqs]),
+        self.ctree.compute_g_single_channel('L', z_mat, -75., np.array([self.cfg.freqs]),
                                                    other_channel_names=[],
                                                    action='fit')
         # print passive impedance matrices
@@ -681,7 +681,7 @@ class CompartmentFitter(object):
                 self._calcSOVMats(locs, pprint=pprint)
 
         # fit the capacitances from SOV time-scales
-        self.ctree.computeC(-alphas[inds]*1e3, phimat[inds,:],
+        self.ctree.compute_c(-alphas[inds]*1e3, phimat[inds,:],
                             weights=importance[inds])
 
         def calcTau():
@@ -689,13 +689,13 @@ class CompartmentFitter(object):
             # original timescales
             taus_orig = np.sort(np.abs(1./alphas))[::-1][:nm]
             # fitted timescales
-            lambdas, _, _ = self.ctree.calcEigenvalues()
+            lambdas, _, _ = self.ctree.calc_eigenvalues()
             taus_fit = np.sort(np.abs(1./lambdas))[::-1]
 
             return taus_orig, taus_fit
 
         def calcTauM():
-            clocs = [locs[n.loc_ind] for n in self.ctree]
+            clocs = [locs[n.loc_idx] for n in self.ctree]
             # original membrane time scales
             taus_m = []
             for l in clocs:
@@ -755,7 +755,7 @@ class CompartmentFitter(object):
                 fit_locs, pprint=False
             )
         if alphas2 is None:
-            alphas2, _, _ = self.ctree.calcEigenvalues()
+            alphas2, _, _ = self.ctree.calc_eigenvalues()
 
         fit_locs = self.tree.get_locs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
@@ -824,7 +824,7 @@ class CompartmentFitter(object):
 
         # compute eigenvalues
         alphas_comp, phimat_comp, phimat_inv_comp = \
-                                self.ctree.calcEigenvalues(indexing='locs')
+                                self.ctree.calc_eigenvalues(indexing='locs')
 
         # get the kernels
         k_orig = self._constructKernels(alphas, np.einsum('ik,kj->kij', phimat.T, phimat))
@@ -993,8 +993,8 @@ class CompartmentFitter(object):
         net.improve_input_resistance(z_mat)
 
         # prune the NET to only retain ``locs``
-        loc_inds = greens_tree.get_nearest_loc_idxs([c_loc]+locs, 'net eval')
-        net_reduced = net.get_reduced_tree(loc_inds, indexing='locs')
+        loc_idxs = greens_tree.get_nearest_loc_idxs([c_loc]+locs, 'net eval')
+        net_reduced = net.get_reduced_tree(loc_idxs, indexing='locs')
 
         return net_reduced
 
@@ -1013,12 +1013,12 @@ class CompartmentFitter(object):
         fit_locs = self.tree.get_locs('fit locs')
 
         # set the equilibria
-        self.ctree.setEEq(self.v_eqs_fit)
+        self.ctree.set_e_eq(self.v_eqs_fit)
         for ion in self.tree.ions:
-            self.ctree.setConcEq(ion, self.conc_eqs_fit[ion])
+            self.ctree.set_conc_eq(ion, self.conc_eqs_fit[ion])
 
         # fit the leak
-        self.ctree.fitEL()
+        self.ctree.fit_e_leak()
 
         return self.ctree
 

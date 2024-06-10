@@ -63,8 +63,8 @@ public:
     int m_parent_index;
     vector< int > m_child_indices;
     // associated location
-    vector< int > m_loc_indices;
-    vector< int > m_newloc_indices;
+    vector< int > m_loc_idxices;
+    vector< int > m_newloc_idxices;
     // voltage variable
     double m_v_node;
     // integration kernel constants
@@ -229,15 +229,15 @@ public:
     void initFromPython(double dt, double integ_mode, bool print_tree);
     void addNodeFromPython(int node_index, int parent_index,
                             int64_t* child_indices, int n_children,
-                            int64_t* loc_indices, int n_locinds,
-                            int64_t* newloc_indices, int n_newlocinds,
+                            int64_t* loc_idxices, int n_locinds,
+                            int64_t* newloc_idxices, int n_newlocinds,
                             double* alphas, double* gammas, int n_exp);
-    void addLinTermFromPython(int loc_index,
+    void addLinTermFromPython(int loc_idxex,
                             double* alphas, double* gammas, int n_exp);
-    void addIonChannelFromPython(string channel_name, int loc_ind, double g_bar, double e_rev,
+    void addIonChannelFromPython(string channel_name, int loc_idx, double g_bar, double e_rev,
                                  bool instantaneous, double* vs, int v_size);
-    void addSynapseFromType(int loc_ind, int syn_type);
-    void addSynapseFromParams(int loc_ind, double e_r,
+    void addSynapseFromType(int loc_idx, int syn_type);
+    void addSynapseFromParams(int loc_idx, double e_r,
                             double *params, int p_size);
     void reset();
 
@@ -246,25 +246,25 @@ public:
     vector< NETNode* > getPathToRoot(NETNode* node);
 
     // other structure functions
-    void removeSynapseFromIndex(int loc_ind, int syn_ind);
+    void removeSynapseFromIndex(int loc_idx, int syn_ind);
     NETNode* findSomaLeaf();
 
     // getter functions for voltage and synaptic conductance
     void addVLocToArr(double *v_arr, int v_size);
     vector< double > getVLoc();
-    double getVSingleLoc(int loc_index){return m_v_loc[loc_index];};
+    double getVSingleLoc(int loc_idxex){return m_v_loc[loc_idxex];};
     void addVNodeToArr(double *v_arr, int v_size);
     vector< double > getVNode();
     double getVSingleNode(int node_index){return m_nodes[node_index].m_v_node;};
-    double getGSingleSyn(int loc_index, int syn_index);
-    double getSurfaceSingleSyn(int loc_index, int syn_index);
+    double getGSingleSyn(int loc_idxex, int syn_index);
+    double getSurfaceSingleSyn(int loc_idxex, int syn_index);
 
     // integration functions
     // void constructInputs(vector< double > v_m,
     //                         vector< vector< double > > g_syn); // untested
-    void constructInputSyn1Loc(int loc_ind, double v_m,
+    void constructInputSyn1Loc(int loc_idx, double v_m,
                             double *g_syn, int g_size);
-    void constructInputChan1Loc(int loc_ind, double v_m);
+    void constructInputChan1Loc(int loc_idx, double v_m);
     void setInputsToZero();
     void constructMatrix(double dt, double* mat, double* arr, int n_node);
     void solveMatrix();
@@ -272,7 +272,7 @@ public:
     void setVNodeFromVNode(double *v_arr, int v_size);
     void advance(double dt);
     void advanceConvolutions(double dt);
-    void feedSpike(int loc_ind, int syn_ind, double g_max, int n_spike);
+    void feedSpike(int loc_idx, int syn_ind, double g_max, int n_spike);
     void record();
 
     // print functions

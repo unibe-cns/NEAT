@@ -136,7 +136,7 @@ class BrancoSimTree(NeuronSimTree):
         # compute the steady state impedance matrix
         z_mat = greens_tree.calc_impedance_matrix(locs)[0].real
         # fit the conductances to steady state impedance matrix
-        ctree.computeGMC(z_mat, channel_names=['L'])
+        ctree.compute_gmc(z_mat, channel_names=['L'])
 
         if pprint:
             np.set_printoptions(precision=1, linewidth=200)
@@ -150,12 +150,12 @@ class BrancoSimTree(NeuronSimTree):
         # alphas, phimat = alphas[:n_mode], phimat[:n_mode, :]
         importance = sov_tree.get_mode_importance(sov_data=(alphas, phimat), importance_type='full')
         # fit the capacitances from SOV time-scales
-        # ctree.computeC(-alphas*1e3, phimat, weight=importance)
-        ctree.computeC(-alphas[:1]*1e3, phimat[:1,:], importance=importance[:1])
+        # ctree.compute_c(-alphas*1e3, phimat, weight=importance)
+        ctree.compute_c(-alphas[:1]*1e3, phimat[:1,:], importance=importance[:1])
 
         if pprint:
             print(('Taus original (ms) =\n' + str(np.abs(1./alphas))))
-            lambdas, _, _ = ctree.calcEigenvalues()
+            lambdas, _, _ = ctree.calc_eigenvalues()
             print(('Taus fitted (ms) =\n' + str(np.abs(1./lambdas))))
 
         return ctree
@@ -214,7 +214,7 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     fit_locs = simtree.get_locs('soma loc') + simtree.get_locs('syn locs')
     c_fit = CompartmentFitter(simtree, name='sequence_discrimination', path='data/')
     ctree = c_fit.fitModel(fit_locs, recompute=recompute)
-    clocs = ctree.getEquivalentLocs()
+    clocs = ctree.get_equivalent_locs()
 
     # create the reduced model for NEURON simulation
     csimtree_ = NeuronCompartmentTree(ctree)

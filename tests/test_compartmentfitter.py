@@ -184,13 +184,13 @@ class TestCompartmentFitter():
             z_mats_na.append(greens_tree_na.calc_impedance_matrix(locs))
 
         # passive fit
-        ctree.computeGMC(z_mat_pas)
+        ctree.compute_gmc(z_mat_pas)
 
         # potassium channel fit matrices
         fit_mats_k = []
         print(z_mats_k, e_eqs)
         for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
-            mf, vt = ctree.computeGSingleChanFromImpedance(
+            mf, vt = ctree.compute_g_single_channel(
                 'Kv3_1', z_mat_k, e_eq, freqs,
                 all_channel_names=['Kv3_1'], other_channel_names=['L'],
                 action='return'
@@ -200,7 +200,7 @@ class TestCompartmentFitter():
         # sodium channel fit matrices
         fit_mats_na = []
         for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
-            mf, vt = ctree.computeGSingleChanFromImpedance(
+            mf, vt = ctree.compute_g_single_channel(
                 'Na_Ta', z_mat_na, e_eq, freqs,
                 sv=sv,
                 all_channel_names=['Na_Ta'], other_channel_names=['L'],
@@ -278,11 +278,11 @@ class TestCompartmentFitter():
         greens_tree.set_impedance(freqs)
         z_mat = greens_tree.calc_impedance_matrix(fit_locs)[0].real
         ctree = greens_tree.create_compartment_tree(fit_locs)
-        ctree.computeGMC(z_mat)
+        ctree.compute_gmc(z_mat)
         sov_tree = SOVTree(self.tree)
         sov_tree.calc_sov_equations()
         alphas, phimat = sov_tree.get_important_modes(loc_arg=fit_locs)
-        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+        ctree.compute_c(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # fit a tree with compartment fitter
         cm = CompartmentFitter(self.tree, cache_name="passivefit1", cache_path="neatcache/")
@@ -309,11 +309,11 @@ class TestCompartmentFitter():
         greens_tree.set_impedance(freqs)
         z_mat = greens_tree.calc_impedance_matrix(fit_locs)[0].real
         ctree_leak = greens_tree.create_compartment_tree(fit_locs)
-        ctree_leak.computeGMC(z_mat)
+        ctree_leak.compute_gmc(z_mat)
         sov_tree = SOVTree(greens_tree)
         sov_tree.calc_sov_equations()
         alphas, phimat = sov_tree.get_important_modes(loc_arg=fit_locs)
-        ctree_leak.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+        ctree_leak.compute_c(-alphas[0:1].real*1e3, phimat[0:1,:].real)
         # make ball model with leak based on all channels
         tree = PhysTree(self.tree)
         tree.as_passive_membrane()
@@ -324,12 +324,12 @@ class TestCompartmentFitter():
         greens_tree.set_impedance(freqs)
         z_mat = greens_tree.calc_impedance_matrix(fit_locs)[0].real
         ctree_all = greens_tree.create_compartment_tree(fit_locs)
-        ctree_all.computeGMC(z_mat)
+        ctree_all.compute_gmc(z_mat)
         sov_tree = SOVTree(tree)
         sov_tree.set_comp_tree()
         sov_tree.calc_sov_equations()
         alphas, phimat = sov_tree.get_important_modes(loc_arg=fit_locs)
-        ctree_all.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+        ctree_all.compute_c(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # new compartment fitter
         cm = CompartmentFitter(self.tree, cache_name="passivefit2", cache_path="neatcache/")
@@ -472,7 +472,7 @@ class TestCompartmentFitter():
             z_mats_na.append(greens_tree_na.calc_impedance_matrix(locs))
 
         # passive fit
-        ctree.computeGMC(z_mat_pas)
+        ctree.compute_gmc(z_mat_pas)
         # get SOV constants for capacitance fit
         sov_tree = SOVTree(greens_tree_pas)
         sov_tree.set_comp_tree()
@@ -481,22 +481,22 @@ class TestCompartmentFitter():
                                             sort_type='importance', eps=1e-12,
                                             return_importance=True)
         # fit the capacitances from SOV time-scales
-        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
+        ctree.compute_c(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
 
         # potassium channel fit
         for z_mat_k, e_eq in zip(z_mats_k, e_eqs):
-            ctree.computeGSingleChanFromImpedance('Kv3_1', z_mat_k, e_eq, freqs,
+            ctree.compute_g_single_channel('Kv3_1', z_mat_k, e_eq, freqs,
                                                     other_channel_names=['L'])
-        ctree.runFit()
+        ctree.run_fit()
         # sodium channel fit
         for z_mat_na, e_eq, sv in zip(z_mats_na, e_eqs_, svs):
-            ctree.computeGSingleChanFromImpedance('Na_Ta', z_mat_na, e_eq, freqs,
+            ctree.compute_g_single_channel('Na_Ta', z_mat_na, e_eq, freqs,
                                                     sv=sv, other_channel_names=['L'])
-        ctree.runFit()
+        ctree.run_fit()
 
-        ctree.setEEq(-75.)
+        ctree.set_e_eq(-75.)
         ctree.remove_expansion_points()
-        ctree.fitEL()
+        ctree.fit_e_leak()
 
         self.ctree = ctree
 
@@ -511,11 +511,11 @@ class TestCompartmentFitter():
         greens_tree.set_impedance(freqs)
         z_mat = greens_tree.calc_impedance_matrix(fit_locs)[0]
         ctree = greens_tree.create_compartment_tree(fit_locs)
-        ctree.computeGMC(z_mat)
+        ctree.compute_gmc(z_mat)
         sov_tree = SOVTree(self.tree)
         sov_tree.calc_sov_equations()
         alphas, phimat = sov_tree.get_important_modes(loc_arg=fit_locs)
-        ctree.computeC(-alphas[0:1].real*1e3, phimat[0:1,:].real)
+        ctree.compute_c(-alphas[0:1].real*1e3, phimat[0:1,:].real)
 
         # fit a tree with compartmentfitter
         cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)

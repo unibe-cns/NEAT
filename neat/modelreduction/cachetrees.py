@@ -257,7 +257,7 @@ class EquilibriumTree(FitTree):
                 {ion: np.array(conc_eq) for ion, conc_eq in conc_eqs.items()}
             )
 
-    def _setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _set_e_eq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         if ions is None: ions = self.ions
 
         locs = [(n.index, .5) for n in self]
@@ -268,7 +268,7 @@ class EquilibriumTree(FitTree):
             for ion, conc in res[1].items():
                 n.set_conc_ep(ion, conc[ii])
 
-    def setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
+    def set_e_eq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
         """
         Set equilibrium potentials and concentrations in the tree. Computes
         the equilibria through a NEURON simulation without inputs.
@@ -288,7 +288,7 @@ class EquilibriumTree(FitTree):
             pprint=pprint,
             funcs_args_kwargs=[
                 (
-                    self._setEEq,
+                    self._set_e_eq,
                     (),
                     dict(ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
                 ),
@@ -373,7 +373,7 @@ class FitTreeGF(GreensTree, FitTree):
 
         return net, z_mat
 
-    def _addNodeToNET(self, z_min, z_max, z_mat, loc_inds, pnode, net, alpha=1., dz=20.):
+    def _addNodeToNET(self, z_min, z_max, z_mat, loc_idxs, pnode, net, alpha=1., dz=20.):
         # compute mean impedance of node
         inds = [[]]
         while len(inds[0]) == 0:
@@ -384,7 +384,7 @@ class FitTreeGF(GreensTree, FitTree):
         gammas = np.array([z_node])
         self._subtract_parent_kernels(gammas, pnode)
         # add a node to the tree
-        node = NETNode(len(net), loc_inds, z_kernel=(np.array([alpha]), gammas))
+        node = NETNode(len(net), loc_idxs, z_kernel=(np.array([alpha]), gammas))
         if pnode != None:
             net.add_node_with_parent(node, pnode)
         else:
@@ -393,7 +393,7 @@ class FitTreeGF(GreensTree, FitTree):
         d_inds = consecutive(np.where(np.diag(z_mat) > z_max)[0])
         for di in d_inds:
             if len(di) > 0:
-                self._addNodeToNET(z_max, z_max+dz, z_mat[di,:][:,di], loc_inds[di], node, net,
+                self._addNodeToNET(z_max, z_max+dz, z_mat[di,:][:,di], loc_idxs[di], node, net,
                                        alpha=alpha, dz=dz)
 
     def _subtract_parent_kernels(self, gammas, pnode):

@@ -85,7 +85,7 @@ class TestCNET():
            |
         """
         self.v_eq = v_eq
-        loc_ind = np.array([0,1,2])
+        loc_idx = np.array([0,1,2])
 
         # kernel constants
         alphas = 1. / np.array([.5, 8.]); gammas = np.array([-1.,1.])
@@ -119,7 +119,7 @@ class TestCNET():
                 |
         """
         self.v_eq = v_eq
-        loc_ind = np.array([0,1,2])
+        loc_idx = np.array([0,1,2])
 
         # kernel constants
         alphas = 1. / np.array([1.]); gammas = np.array([1.])
@@ -337,9 +337,9 @@ class TestCNET():
         # add synapse and check additional synapse functions
         self.cnet.addSynapse(1, "AMPA", g_max=dt*0.1)
         self.cnet.addSynapse(1, "AMPA+NMDA", g_max=1., nmda_ratio=5.)
-        assert self.cnet.syn_map_py[0] == {'loc_index': 1, 'syn_index_at_loc': 0,
+        assert self.cnet.syn_map_py[0] == {'loc_idxex': 1, 'syn_index_at_loc': 0,
                                             'n_syn_at_loc': 1, 'g_max': [dt*0.1]}
-        assert self.cnet.syn_map_py[1] == {'loc_index': 1, 'syn_index_at_loc': 1,
+        assert self.cnet.syn_map_py[1] == {'loc_idxex': 1, 'syn_index_at_loc': 1,
                                             'n_syn_at_loc': 2, 'g_max': [1., 5.]}
         assert self.cnet.n_syn[1] == 3
         with pytest.raises(ValueError):

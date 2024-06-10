@@ -22,7 +22,7 @@ Basic tree
    STree.__repr__
    STree.__hash__
    STree.unique_hash
-   STree.checkOrdered
+   STree.check_ordered
    STree.get_nodes
    STree.nodes
    STree.gather_nodes
@@ -47,8 +47,8 @@ Basic tree
    STree.path_between_nodes_depth_first
    STree.get_nodes_in_subtree
    STree.sister_leafs
-   STree.upBifurcationNode
-   STree.downBifurcationNode
+   STree.bifurcation_node_to_root
+   STree.bifurcation_node_from_root
    STree.get_bifurcation_nodes
    STree.get_nearest_neighbours
 
@@ -66,23 +66,23 @@ Compartment Tree
 
    CompartmentTree.add_channel_current
    CompartmentTree.set_expansion_points
-   CompartmentTree.setEEq
-   CompartmentTree.getEEq
-   CompartmentTree.fitEL
-   CompartmentTree.getEquivalentLocs
+   CompartmentTree.set_e_eq
+   CompartmentTree.get_e_eq
+   CompartmentTree.fit_e_leak
+   CompartmentTree.get_equivalent_locs
    CompartmentTree.calc_impedance_matrix
-   CompartmentTree.calcConductanceMatrix
-   CompartmentTree.calcSystemMatrix
-   CompartmentTree.calcEigenvalues
-   CompartmentTree.computeGMC
-   CompartmentTree.computeGChanFromImpedance
-   CompartmentTree.computeGSingleChanFromImpedance
-   CompartmentTree.computeConcMechGamma
-   CompartmentTree.computeConcMechTau
-   CompartmentTree.computeC
-   CompartmentTree.resetFitData
-   CompartmentTree.runFit
-   CompartmentTree.computeFakeGeometry
+   CompartmentTree.calc_conductance_matrix
+   CompartmentTree.calc_system_matrix
+   CompartmentTree.calc_eigenvalues
+   CompartmentTree.compute_gmc
+   CompartmentTree.compute_g_channels
+   CompartmentTree.compute_g_single_channel
+   CompartmentTree.compute_concMechGamma
+   CompartmentTree.compute_concMechTau
+   CompartmentTree.compute_c
+   CompartmentTree.reset_fit_data
+   CompartmentTree.run_fit
+   CompartmentTree.compute_fake_geometry
    CompartmentTree.plot_dendrogram
 
 .. autoclass:: neat.CompartmentNode
@@ -354,7 +354,7 @@ Compute equilibrium potentials and concentrations
    :toctree: generated/
 
    EquilibriumTree.calcEEq
-   EquilibriumTree.setEEq
+   EquilibriumTree.set_e_eq
 
 
 *************

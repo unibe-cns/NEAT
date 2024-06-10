@@ -15,7 +15,7 @@ nest.Install("bac_firing_neatmodule")
 
 
 def runCaCoinc(c_tree,
-               ca_loc_ind, soma_ind,
+               ca_loc_idx, soma_ind,
                stim_type='psp',
                dt=0.05, t_max=300., t_calibrate=400.,
                psp_params=dict(tau_r_PSC=.5, tau_d_PSC=5., PSC_amp=.5, t_PSC=50.),
@@ -37,7 +37,7 @@ def runCaCoinc(c_tree,
     cm = createNestModel(c_tree, 'bac_firing')
 
     if stim_type == 'psp' or stim_type == 'coinc':
-        syn_idx = nest.AddReceptor(cm, ca_loc_ind, "PSC", psp_params)
+        syn_idx = nest.AddReceptor(cm, ca_loc_idx, "PSC", psp_params)
         sg_psc = nest.Create('spike_generator', 1, {'spike_times': [psp_params['t_PSC']+t_calibrate]})
         nest.Connect(sg_psc, cm, syn_spec={
             'synapse_model': 'static_synapse', 'weight': 1., 'delay': 0.1, 'receptor_type': syn_idx})

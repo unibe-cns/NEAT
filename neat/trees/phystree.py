@@ -685,7 +685,7 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_inds=False):
+    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_idxs=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -703,7 +703,7 @@ class PhysTree(MorphTree):
                 if `True`, finds the common root of the set of locations and
                 uses that as the soma of the new tree. If `False`, the real soma
                 is used.
-            store_loc_inds: bool (default `False`)
+            store_loc_idxs: bool (default `False`)
                 store the index of each location in the `content` attribute of the
                 new node (under the key 'loc ind')
 
@@ -720,7 +720,7 @@ class PhysTree(MorphTree):
             self.store_locs(loc_arg, name)
 
         new_tree = super().create_new_tree(name,
-            fake_soma=fake_soma, store_loc_inds=True
+            fake_soma=fake_soma, store_loc_idxs=True
         )
         new_locs = self.get_locs(name)
 
@@ -806,7 +806,7 @@ class PhysTree(MorphTree):
             self.store_locs(locs, name)
 
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
-            assert aux_node.content['loc ind'] == fd_node.loc_ind
+            assert aux_node.content['loc ind'] == fd_node.loc_idx
 
             # unit conversion [um] -> [cm]
             R_ = aux_node.R * 1e-4

@@ -539,7 +539,7 @@ class TestConcMechs:
         cfit.fitEEq(ions=['ca'], t_max=10000)
 
         ctree = cfit.ctree
-        clocs = ctree.getEquivalentLocs()
+        clocs = ctree.get_equivalent_locs()
 
         # check whether parameters of original and fitted models match
         node = tree[1]
@@ -620,7 +620,7 @@ class TestConcMechs:
         cfit.fitEEq(ions=['ca'], t_max=10000)
 
         ctree = cfit.ctree
-        clocs = ctree.getEquivalentLocs()
+        clocs = ctree.get_equivalent_locs()
 
         # test fit with fitModel function
         ctree_ = cfit.fitModel(locs, use_all_channels_for_passive=False)
@@ -807,7 +807,7 @@ class TestConcMechs:
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         ctree = cfit.fitModel(locs)
 
-        clocs = ctree.getEquivalentLocs()
+        clocs = ctree.get_equivalent_locs()
         cidxs = [n.index for n in ctree]
 
         res_neuron = self._simulate(NeuronCompartmentTree(ctree),

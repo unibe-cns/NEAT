@@ -1661,7 +1661,7 @@ class MorphTree(STree):
 
         Returns
         -------
-            loc_indices: list of ints
+            loc_idxices: list of ints
                 indices of the locations closest to the given locs
         """
         self._try_name(name)
@@ -1671,28 +1671,28 @@ class MorphTree(STree):
             locs_.append(MorphLoc(loc, self))
         locs = locs_
         # look for the location indices
-        loc_indices = []
+        loc_idxices = []
         for loc in locs:
-            loc_ind1 = None; loc_ind2 = None
+            loc_idx1 = None; loc_idx2 = None
             # find the location indices if necessary
             if direction == 0 or direction == 1:
-                loc_ind1 = self._find_locs_to_root(loc, name, check_siblings=check_siblings)
+                loc_idx1 = self._find_locs_to_root(loc, name, check_siblings=check_siblings)
             if direction == 0 or direction == 2:
-                loc_ind2 = self._find_locs_from_root(loc, name)
+                loc_idx2 = self._find_locs_from_root(loc, name)
             # save the index of the closest location, if it exists and
             # if it is asked for
-            if loc_ind1 == None and (direction == 0 or direction == 2):
-                loc_indices.append(loc_ind2)
-            elif loc_ind2 == None and (direction == 0 or direction == 1):
-                loc_indices.append(loc_ind1)
+            if loc_idx1 == None and (direction == 0 or direction == 2):
+                loc_idxices.append(loc_idx2)
+            elif loc_idx2 == None and (direction == 0 or direction == 1):
+                loc_idxices.append(loc_idx1)
             else:
-                L1 = self.path_length(loc, self.locs[name][loc_ind1])
-                L2 = self.path_length(loc, self.locs[name][loc_ind2])
+                L1 = self.path_length(loc, self.locs[name][loc_idx1])
+                L2 = self.path_length(loc, self.locs[name][loc_idx2])
                 if L1 >= L2:
-                    loc_indices.append(loc_ind2)
+                    loc_idxices.append(loc_idx2)
                 else:
-                    loc_indices.append(loc_ind1)
-        return loc_indices
+                    loc_idxices.append(loc_idx1)
+        return loc_idxices
 
     def _find_locs_from_root(self, loc, name):
         look_further = False
@@ -1700,12 +1700,12 @@ class MorphTree(STree):
         n_inds = np.where(loc['node'] == self.nids[name])[0]
         if len(n_inds) > 0:
             if loc['node'] == 1:
-                loc_ind = n_inds[0]
+                loc_idx = n_inds[0]
             else:
                 x_inds = np.where(loc['x'] <= self.xs[name][n_inds])[0]
                 if len(x_inds) != 0:
                     ind = np.argmin(self.xs[name][n_inds][x_inds])
-                    loc_ind = n_inds[x_inds[ind]]
+                    loc_idx = n_inds[x_inds[ind]]
                 else:
                     look_further = True
         else:
@@ -1715,26 +1715,26 @@ class MorphTree(STree):
         if look_further:
             node = self[loc['node']]
             cnodes = node.get_child_nodes()
-            loc_inds = []
+            loc_idxs = []
             for cnode in cnodes:
-                cloc_ind = self._find_locs_from_root({'node': cnode.index, 'x': 0.}, name)
-                if cloc_ind != None:
-                    loc_inds.append(cloc_ind)
+                cloc_idx = self._find_locs_from_root({'node': cnode.index, 'x': 0.}, name)
+                if cloc_idx != None:
+                    loc_idxs.append(cloc_idx)
             # get the one that is closest, if they exist
             pl_aux = 1e4
             ind_loc = 0
-            for i, l_i in enumerate(loc_inds):
+            for i, l_i in enumerate(loc_idxs):
                 pl = self.path_length({'node': loc['node'], 'x': 1.}, self.locs[name][l_i])
                 if pl < pl_aux:
                     pl_aux = pl
                     ind_loc = i
-            if pl_aux > 0. and len(loc_inds) > 0:
-                loc_ind = loc_inds[ind_loc]
+            if pl_aux > 0. and len(loc_idxs) > 0:
+                loc_idx = loc_idxs[ind_loc]
             elif pl_aux == 0. and node.index == 1:
-                loc_ind = loc_inds[ind_loc]
+                loc_idx = loc_idxs[ind_loc]
             else:
-                loc_ind = None
-        return loc_ind
+                loc_idx = None
+        return loc_idx
 
     def _find_locs_to_root(self, loc, name, check_siblings=True):
         look_further = False
@@ -1742,12 +1742,12 @@ class MorphTree(STree):
         n_inds = np.where(loc['node'] == self.nids[name] )[0]
         if len(n_inds) > 0:
             if loc['node'] == 1:
-                loc_ind = n_inds[0]
+                loc_idx = n_inds[0]
             else:
                 x_inds = np.where(loc['x'] >= self.xs[name][n_inds])[0]
                 if len(x_inds) != 0:
                     ind = np.argmax(self.xs[name][n_inds][x_inds])
-                    loc_ind = n_inds[x_inds[ind]]
+                    loc_idx = n_inds[x_inds[ind]]
                 else:
                     look_further = True
         else:
@@ -1756,13 +1756,13 @@ class MorphTree(STree):
             # if no locs on the same node, then proceed to resp. parent and child nodes
             node = self[loc['node']]
             pnode = node.get_parent_node()
-            loc_inds = []
+            loc_idxs = []
             # check parent node
             if pnode != None:
-                ploc_ind = self._find_locs_to_root({'node': pnode.index, 'x': 1.}, name,
+                ploc_idx = self._find_locs_to_root({'node': pnode.index, 'x': 1.}, name,
                                               check_siblings=check_siblings)
-                if ploc_ind != None:
-                    loc_inds.append(ploc_ind)
+                if ploc_idx != None:
+                    loc_idxs.append(ploc_idx)
             # check other child nodes of parent node
             if pnode != None and check_siblings:
                 ocnodes = copy.copy(pnode.get_child_nodes())
@@ -1770,22 +1770,22 @@ class MorphTree(STree):
             else:
                 ocnodes = []
             for cnode in ocnodes:
-                cloc_ind = self._find_locs_from_root({'node': cnode.index, 'x': 0.}, name)
-                if cloc_ind != None:
-                    loc_inds.append(cloc_ind)
+                cloc_idx = self._find_locs_from_root({'node': cnode.index, 'x': 0.}, name)
+                if cloc_idx != None:
+                    loc_idxs.append(cloc_idx)
             # get the one that is closest, if they exist
             pl_aux = 1e4
             ind_loc = 0
-            for i, l_i in enumerate(loc_inds):
+            for i, l_i in enumerate(loc_idxs):
                 pl = self.path_length({'node': loc['node'], 'x': 1.}, self.locs[name][l_i])
                 if pl < pl_aux:
                     pl_aux = pl
                     ind_loc = i
-            if pl_aux > 0. and len(loc_inds) > 0:
-                loc_ind = loc_inds[ind_loc]
+            if pl_aux > 0. and len(loc_idxs) > 0:
+                loc_idx = loc_idxs[ind_loc]
             else:
-                loc_ind = None
-        return loc_ind
+                loc_idx = None
+        return loc_idx
 
     def get_nearest_neighbour_loc_idxs(self, loc, loc_arg):
         """
@@ -2840,7 +2840,7 @@ class MorphTree(STree):
         rootind = np.argmax([self.order_of_node(node) for node in roots])
         return roots[rootind]
 
-    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_inds=False):
+    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_idxs=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -2856,7 +2856,7 @@ class MorphTree(STree):
                 if `True`, finds the common root of the set of locations and
                 uses that as the soma of the new tree. If `False`, the real soma
                 is used.
-            store_loc_inds: bool (default `False`)
+            store_loc_idxs: bool (default `False`)
                 store the index of each location in the `content` attribute of the
                 new node (under the key 'loc ind')
 
@@ -2886,7 +2886,7 @@ class MorphTree(STree):
         new_snode.L = snode.L
         new_tree.set_root(new_snode)
         new_nodes = [new_snode]
-        if store_loc_inds:
+        if store_loc_idxs:
             new_snode.content['loc ind'] = None if 1 not in nids else \
                                            np.where(nids == 1)[0][0]
         # make two other soma nodes
@@ -2905,7 +2905,7 @@ class MorphTree(STree):
         # make rest of tree
         for cnode in snode.child_nodes:
             self._add_nodes_to_tree(cnode, new_snode, new_tree, new_nodes, name,
-                                 store_loc_inds=store_loc_inds)
+                                 store_loc_idxs=store_loc_idxs)
         # set the lengths of the nodes
         for new_node in new_tree:
             if new_node.parent_node != None:
@@ -2917,7 +2917,7 @@ class MorphTree(STree):
         return new_tree
 
     def _add_nodes_to_tree(self, node, new_pnode, new_tree, new_nodes, name,
-                              store_loc_inds=False):
+                              store_loc_idxs=False):
         # get the specified locs
         xs = self.xs[name]
         # check which locinds are on the branch
@@ -2934,7 +2934,7 @@ class MorphTree(STree):
             # make new node
             p3d = (new_xyz, new_radius, node.swc_type)
             new_node = new_tree._create_corresponding_node(index, p3d)
-            if store_loc_inds:
+            if store_loc_idxs:
                 new_node.content['loc ind'] = ind
             # add new node
             new_tree.add_node_with_parent(new_node, new_pnode)
@@ -2944,7 +2944,7 @@ class MorphTree(STree):
         # continue with the children
         for cnode in node.child_nodes:
             self._add_nodes_to_tree(cnode, new_pnode, new_tree, new_nodes, name,
-                                 store_loc_inds=store_loc_inds)
+                                 store_loc_idxs=store_loc_idxs)
 
     def create_compartment_tree(self, loc_arg):
         """
@@ -2980,17 +2980,17 @@ class MorphTree(STree):
         # find the common root of the set of locations
         snode = self.find_common_root(name)
         # check if that root is in set of locations
-        possible_loc_inds = self.get_loc_idxs_on_node(name, snode)
-        if len(possible_loc_inds) > 0:
+        possible_loc_idxs = self.get_loc_idxs_on_node(name, snode)
+        if len(possible_loc_idxs) > 0:
             # create the new root node
-            new_pnode = CompartmentNode(0, loc_ind=possible_loc_inds[0])
+            new_pnode = CompartmentNode(0, loc_idx=possible_loc_idxs[0])
             new_tree.set_root(new_pnode)
             new_nodes = [new_pnode]
             # create other nodes
-            for loc_ind in possible_loc_inds[1:]:
+            for loc_idx in possible_loc_idxs[1:]:
                 index = len(new_nodes)
                 # make new node
-                new_node = CompartmentNode(index, loc_ind=loc_ind)
+                new_node = CompartmentNode(index, loc_idx=loc_idx)
                 # add new node
                 new_tree.add_node_with_parent(new_node, new_pnode)
                 new_nodes.append(new_node)
@@ -3003,7 +3003,7 @@ class MorphTree(STree):
             locs = [(snode.index, 1.)] + locs
             self.store_locs(locs, name=name)
             # create the new root node
-            new_pnode = CompartmentNode(0, loc_ind=0)
+            new_pnode = CompartmentNode(0, loc_idx=0)
             new_tree.set_root(new_pnode)
             new_nodes = [new_pnode]
         # make rest of tree
@@ -3017,10 +3017,10 @@ class MorphTree(STree):
         # check which locinds are on the branch
         ninds = self.get_loc_idxs_on_node(name, node)
         order_inds = np.argsort(xs[ninds])
-        for loc_ind in np.array(ninds)[order_inds]:
+        for loc_idx in np.array(ninds)[order_inds]:
             index = len(new_nodes)
             # make new node
-            new_node = CompartmentNode(index, loc_ind=loc_ind)
+            new_node = CompartmentNode(index, loc_idx=loc_idx)
             # add new node
             new_tree.add_node_with_parent(new_node, new_pnode)
             new_nodes.append(new_node)

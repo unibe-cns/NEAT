@@ -1054,7 +1054,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Notes
         -----
-        The function `ctree.getEquivalentLocs()` can be used to obtain 'fake'
+        The function `ctree.get_equivalent_locs()` can be used to obtain 'fake'
         locations corresponding to each compartment, which in turn can be used to
         insert hoc point process at the compartments using the same functions
         definitions as for as for a morphological `neat.NeuronSimTree`
@@ -1066,7 +1066,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
     def _createReducedNeuronModel(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
         # calculate geometry that will lead to correct constants
-        arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        arg1, arg2 = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                     factor_r_a=1e-6, delta=1e-10,
                                                     method=method)
         if method == 1:

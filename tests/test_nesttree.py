@@ -37,7 +37,7 @@ class TestNest:
         self.ctree.add_node_with_parent(cnode, pnode)
 
         for ii, cn in enumerate(self.ctree):
-            cn.loc_ind = ii
+            cn.loc_idx = ii
 
     def testModelConstruction(self):
         with pytest.raises(nestexceptions.NESTErrors.DynamicModuleManagementError):

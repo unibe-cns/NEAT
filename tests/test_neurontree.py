@@ -277,7 +277,7 @@ class TestNeuron():
 class TestReducedNeuron():
     def add_locinds(self):
         for ii, cn in enumerate(self.ctree):
-            cn.loc_ind = ii
+            cn.loc_idx = ii
 
     def loadTwoCompartmentModel(self, w_locinds=True):
         # simple two compartment model
@@ -339,7 +339,7 @@ class TestReducedNeuron():
         self.loadTwoCompartmentModel()
         ctree = self.ctree
         # check if fake geometry is correct
-        points, _ = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        points, _ = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                               factor_r_a=1e-6, delta=1e-14,
                                               method=1)
         # create a neuron comparemtns
@@ -365,7 +365,7 @@ class TestReducedNeuron():
         self.loadThreeCompartmentModel()
         ctree = self.ctree
         # check if fake geometry is correct
-        points, _ = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        points, _ = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                               factor_r_a=1e-6, delta=1e-14,
                                               method=1)
         # create a neuron comparemtns
@@ -394,7 +394,7 @@ class TestReducedNeuron():
         self.loadTModel()
         ctree = self.ctree
         # check if fake geometry is correct
-        points, _ = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        points, _ = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                               factor_r_a=1e-6, delta=1e-14,
                                               method=1)
         # create a neuron comparemtns
@@ -429,7 +429,7 @@ class TestReducedNeuron():
         # create the two compartment model without locinds
         self.loadTwoCompartmentModel(w_locinds=False)
         ctree = self.ctree
-        # check if error is raised if loc_inds have not been set
+        # check if error is raised if loc_idxs have not been set
         with pytest.raises(AttributeError):
             ctree.calc_impedance_matrix()
 
@@ -489,7 +489,7 @@ class TestReducedNeuron():
         self.loadTwoCompartmentModel()
         ctree = self.ctree
         # check if fake geometry is correct
-        lengths, radii = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        lengths, radii = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                    factor_r_a=1e-6, delta=1e-14,
                                                    method=2)
         # create a neuron comparemtns
@@ -513,7 +513,7 @@ class TestReducedNeuron():
         self.loadThreeCompartmentModel()
         ctree = self.ctree
         # check if fake geometry is correct
-        lengths, radii = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        lengths, radii = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                    factor_r_a=1e-6, delta=1e-14,
                                                    method=2)
         # create a neuron comparemtns
@@ -540,7 +540,7 @@ class TestReducedNeuron():
         self.loadTModel()
         ctree = self.ctree
         # check if fake geometry is correct
-        lengths, radii = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        lengths, radii = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                    factor_r_a=1e-6, delta=1e-14,
                                                    method=2)
         # create a neuron comparemtns

@@ -15,6 +15,7 @@ import matplotlib.pyplot as pl
 from .stree import STree, SNode
 
 import copy
+import warnings
 
 
 class Kernel(object):
@@ -215,9 +216,9 @@ class NETNode(SNode):
 
     Attributes
     ----------
-    loc_inds: list of int
+    loc_idxs: list of int
         The inidices of locations which the node integrates
-    newloc_inds: list of int
+    newloc_idxs: list of int
         The locations for which the node is the most local component to integrate
         them
     z_kernel: `neat.Kernel`
@@ -225,25 +226,25 @@ class NETNode(SNode):
     z_bar: float
         The steady state impedance associated with the impedance kernel
     """
-    def __init__(self, index, loc_inds, newloc_inds=[], z_kernel=None):
+    def __init__(self, index, loc_idxs, newloc_idxs=[], z_kernel=None):
         super().__init__(index)
         # location indices that node integrates
-        self.loc_inds = loc_inds
-        self.newloc_inds = newloc_inds
+        self.loc_idxs = loc_idxs
+        self.newloc_idxs = newloc_idxs
         # kernel associated with node
         self.z_kernel = z_kernel
 
     def __str__(self):
         if self.parent_node is not None:
             return 'NETNode ' + str(self.index) + \
-                    ', loc inds: ' + str(self.loc_inds) + \
-                    ', newloc inds: ' + str(self.newloc_inds) + \
+                    ', loc inds: ' + str(self.loc_idxs) + \
+                    ', newloc inds: ' + str(self.newloc_idxs) + \
                     ', parent: ' + str(self.parent_node.index) + \
                     ', z_bar (MOhm) = ' + str(self.z_bar)
         else:
             return 'NETNode ' + str(self.index) + \
-                    ', loc inds: ' + str(self.loc_inds) + \
-                    ', newloc inds: ' + str(self.newloc_inds) + \
+                    ', loc inds: ' + str(self.loc_idxs) + \
+                    ', newloc inds: ' + str(self.newloc_idxs) + \
                     ', parent: None' \
                     ', z_bar (MOhm) = ' + str(self.z_bar)
 
@@ -259,8 +260,8 @@ class NETNode(SNode):
     z_kernel = property(get_z_kernel, set_z_kernel)
     z_bar = property(get_z, set_z_kernel)
 
-    def __contains__(self, loc_ind):
-        return loc_ind in self.loc_inds
+    def __contains__(self, loc_idx):
+        return loc_idx in self.loc_idxs
 
     def _set_compartment_data(self, node_list, z_root_list, z_comp_list, Iz=5.):
         node_inds  = [node.index for node in node_list if node != None]
@@ -282,8 +283,8 @@ class NETNode(SNode):
         node_str = super().__str__(with_parent=with_parent)
 
         node_str += f' --- ' \
-            f' loc inds: {str(self.loc_inds)}' \
-            f', newloc inds: {str(self.newloc_inds)}' \
+            f' loc inds: {str(self.loc_idxs)}' \
+            f', newloc inds: {str(self.newloc_idxs)}' \
             f', z_bar = {self.z_bar} MOhm'
 
         return node_str
@@ -291,8 +292,8 @@ class NETNode(SNode):
     def _get_repr_dict(self):
         repr_dict = super()._get_repr_dict()
         repr_dict.update({
-            "loc_inds": self.loc_inds,
-            "newloc_inds": self.newloc_inds,
+            "loc_idxs": self.loc_idxs,
+            "newloc_idxs": self.newloc_idxs,
             "z_kernel": repr(self.z_kernel)
         })
         return repr_dict
@@ -333,21 +334,21 @@ class NET(STree):
 
         Returns
         -------
-        loc_inds: indices of locations
+        loc_idxs: indices of locations
         """
         if isinstance(sroot, int):
             sroot = self[sroot]
         elif sroot is None:
             sroot = self.root
-        return sroot.loc_inds
+        return sroot.loc_idxs
 
-    def get_leaf_loc_node(self, loc_ind):
+    def get_leaf_loc_node(self, loc_idx):
         """
-        Get the node for which ``loc_ind`` is a new location
+        Get the node for which ``loc_idx`` is a new location
 
         Parameters
         ----------
-        loc_ind: int
+        loc_idx: int
             index of the location
 
         Returns
@@ -355,7 +356,7 @@ class NET(STree):
         :obj:`NETNode`
         """
         for node in self:
-            if loc_ind in node.newloc_inds:
+            if loc_idx in node.newloc_idxs:
                 return node
 
     def set_new_loc_idxs(self):
@@ -363,75 +364,75 @@ class NET(STree):
         Set the new location indices in a tree
         """
         for node in self:
-            cloc_inds = set()
+            cloc_idxs = set()
             for cnode in node.child_nodes:
-                cloc_inds = cloc_inds.union(set(cnode.loc_inds))
-            node.newloc_inds = list(set(node.loc_inds) - cloc_inds)
+                cloc_idxs = cloc_idxs.union(set(cnode.loc_idxs))
+            node.newloc_idxs = list(set(node.loc_idxs) - cloc_idxs)
 
-    def get_reduced_tree(self, loc_inds, indexing='NET eval'):
+    def get_reduced_tree(self, loc_idxs, indexing='NET eval'):
         """
-        Construct a reduced tree where only the locations index by ``loc_inds''
+        Construct a reduced tree where only the locations index by ``loc_idxs''
         are retained
 
         Parameters
         ----------
-        loc_inds : iterable of ints
+        loc_idxs : iterable of ints
             the indices of the locations that are to be retained
         indexing : 'NET eval' or 'locs'
-            if 'NET eval', indexing of ``NETNode.loc_inds`` will be taken to be the
+            if 'NET eval', indexing of ``NETNode.loc_idxs`` will be taken to be the
             indices of locations for which the full NET is evaluated. Otherwise
-            will be indices of the input ``loc_inds``
+            will be indices of the input ``loc_idxs``
         """
-        loc_inds_newtree = list({loc_ind for loc_ind in loc_inds \
-                                         if loc_ind in self.root})
-        if loc_inds_newtree:
-            new_root = NETNode(0, loc_inds_newtree,
+        loc_idxs_newtree = list({loc_idx for loc_idx in loc_idxs \
+                                         if loc_idx in self.root})
+        if loc_idxs_newtree:
+            new_root = NETNode(0, loc_idxs_newtree,
                                 z_kernel=self.root.z_kernel)
             new_tree = NET(new_root)
             for cnode in self.root.child_nodes:
                 if cnode is not None:
-                    self._construct_reduced_tree(cnode, loc_inds_newtree,
+                    self._construct_reduced_tree(cnode, loc_idxs_newtree,
                                                 new_root, new_tree)
             new_tree.set_new_loc_idxs()
             if indexing == 'NET eval':
                 return new_tree
             else:
                 for node in new_tree:
-                    # node.loc_inds = [np.where(loc_inds == ind)[0][0] for ind in node.loc_inds]
-                    # node.loc_inds = sum([np.where(loc_inds == ind)[0].tolist() for ind in set(node.loc_inds)], [])
-                    node.loc_inds = sum([np.where(loc_inds == ind)[0].tolist() for ind in node.loc_inds], [])
+                    # node.loc_idxs = [np.where(loc_idxs == ind)[0][0] for ind in node.loc_idxs]
+                    # node.loc_idxs = sum([np.where(loc_idxs == ind)[0].tolist() for ind in set(node.loc_idxs)], [])
+                    node.loc_idxs = sum([np.where(loc_idxs == ind)[0].tolist() for ind in node.loc_idxs], [])
                 new_tree.set_new_loc_idxs()
                 return new_tree
         else:
             return None
 
-    def _construct_reduced_tree(self, node, loc_inds, node_newtree, new_tree):
-        loc_inds_subtree = list({loc_ind for loc_ind in loc_inds \
-                                         if loc_ind in node})
-        if len(loc_inds_subtree) > 0:
-            if loc_inds_subtree == loc_inds:
+    def _construct_reduced_tree(self, node, loc_idxs, node_newtree, new_tree):
+        loc_idxs_subtree = list({loc_idx for loc_idx in loc_idxs \
+                                         if loc_idx in node})
+        if len(loc_idxs_subtree) > 0:
+            if loc_idxs_subtree == loc_idxs:
                 node_newtree.z_kernel += node.z_kernel
             else:
-                newnode_newtree = NETNode(len(new_tree), loc_inds_subtree,
+                newnode_newtree = NETNode(len(new_tree), loc_idxs_subtree,
                                             z_kernel=node.z_kernel)
                 new_tree.add_node_with_parent(newnode_newtree, node_newtree)
                 node_newtree = newnode_newtree
             for cnode in node.child_nodes:
                 if cnode is not None:
-                    self._construct_reduced_tree(cnode, loc_inds_subtree,
+                    self._construct_reduced_tree(cnode, loc_idxs_subtree,
                                                 node_newtree, new_tree)
 
     # def matchInputImpedance(self, z_input):
     #     assert imp_mat.shape[0] == imp_mat.shape[1]
-    #     assert imp_mat.shape[0] == len(self.root.loc_inds)
+    #     assert imp_mat.shape[0] == len(self.root.loc_idxs)
     #     for node in self:
     #         if self.is_leaf(node):
-    #             if len(node.loc_inds) == 1:
+    #             if len(node.loc_idxs) == 1:
     #                 p_imp = self.calc_total_impedance(node.parent_node)
     #                 node.z_kernel.c *= (z_input[node.locs_inds[0]] - p_imp) / node.z_kernel.k_bar
     #             else:
-    #                 for loc_ind in node.loc_inds:
-    #                     new_node = NETNode(len(tree), [loc_ind])
+    #                 for loc_idx in node.loc_idxs:
+    #                     new_node = NETNode(len(tree), [loc_idx])
     #                     self.add_node_with_parent
 
     def calc_total_impedance(self, node):
@@ -469,13 +470,13 @@ class NET(STree):
                 z_k += pn.z_kernel
         return z_k
 
-    def calc_i_z(self, loc_inds):
+    def calc_i_z(self, loc_idxs):
         """
-        compute I_Z between any pair of locations in ``loc_inds``
+        compute I_Z between any pair of locations in ``loc_idxs``
 
         Parameters
         ----------
-        loc_inds : iterable of ints
+        loc_idxs : iterable of ints
             the indices of locations between which I_Z has to be evaluated
 
         Returns
@@ -486,20 +487,20 @@ class NET(STree):
             and I_Z values as values
         """
         Iz_dict = {}
-        for ii, loc_ind0 in enumerate(loc_inds):
-            for jj, loc_ind1 in enumerate(loc_inds):
+        for ii, loc_idx0 in enumerate(loc_idxs):
+            for jj, loc_idx1 in enumerate(loc_idxs):
                 if jj < ii:
-                    net_red = self.get_reduced_tree([loc_ind0, loc_ind1])
-                    key = (loc_ind0, loc_ind1) if loc_ind0 < loc_ind1 \
-                                               else (loc_ind1, loc_ind0)
-                    n0 = net_red.get_leaf_loc_node(loc_ind0)
+                    net_red = self.get_reduced_tree([loc_idx0, loc_idx1])
+                    key = (loc_idx0, loc_idx1) if loc_idx0 < loc_idx1 \
+                                               else (loc_idx1, loc_idx0)
+                    n0 = net_red.get_leaf_loc_node(loc_idx0)
                     z0 = n0.z_bar if n0 != net_red.root else 0.
-                    n1 = net_red.get_leaf_loc_node(loc_ind1)
+                    n1 = net_red.get_leaf_loc_node(loc_idx1)
                     z1 = n1.z_bar if n1 != net_red.root else 0.
                     Iz_dict[key] = (z0 + z1) / (2. * net_red.root.z_bar)
                 else:
                     break
-        if len(loc_inds) == 2:
+        if len(loc_idxs) == 2:
             return list(Iz_dict.values())[0]
         else:
             return Iz_dict
@@ -526,14 +527,14 @@ class NET(STree):
         np.ndarray (ndim = 2)
             the impedance matrix approximation
         """
-        n_loc = len(self.root.loc_inds)
-        loc_map = {loc_ind: map_ind for map_ind, loc_ind in enumerate(self.root.loc_inds)}
+        n_loc = len(self.root.loc_idxs)
+        loc_map = {loc_idx: map_ind for map_ind, loc_idx in enumerate(self.root.loc_idxs)}
         z_mat = np.zeros((n_loc, n_loc))
         self._add_node_to_imp_mat(self.root, z_mat, loc_map)
         return z_mat
 
     def _add_node_to_imp_mat(self, node, z_mat, loc_map):
-        inds = np.array([loc_map[loc_ind] for loc_ind in node.loc_inds])
+        inds = np.array([loc_map[loc_idx] for loc_idx in node.loc_idxs])
         z_mat[np.tile(inds, len(inds)), np.repeat(inds, len(inds))] += node.z_bar
         for cnode in node.child_nodes:
             self._add_node_to_imp_mat(cnode, z_mat, loc_map)
@@ -686,7 +687,7 @@ class NET(STree):
         node._set_tentative_compartments(node_comps)
 
     def compute_cond_rescale(self, gs):
-        assert len(gs) == len(self.root.loc_inds)
+        assert len(gs) == len(self.root.loc_idxs)
         # array for storing shunt factors
         sfs = np.ones_like(gs)
         # counter for recursion algorithm
@@ -705,8 +706,8 @@ class NET(STree):
         if node.counter >= len(node.child_nodes):
             if not self.is_root(node):
                 # compute the rescaled shunt factors
-                denom = 1. + node.z_bar * np.sum(sfs[node.loc_inds] * gs[node.loc_inds])
-                sfs[node.loc_inds] = sfs[node.loc_inds] / denom
+                denom = 1. + node.z_bar * np.sum(sfs[node.loc_idxs] * gs[node.loc_idxs])
+                sfs[node.loc_idxs] = sfs[node.loc_idxs] / denom
                 # further recursion
                 self._sweep(node.parent_node, leafs, sfs, gs)
         else:
@@ -715,8 +716,8 @@ class NET(STree):
     def improve_input_resistance(self, z_mat):
         nmaxind = np.max([n.index for n in self])
         for node in self.get_nodes():
-            if len(node.loc_inds) == 1:
-                ind = node.loc_inds[0]
+            if len(node.loc_idxs) == 1:
+                ind = node.loc_idxs[0]
                 # recompute the kernel of this single loc layer
                 if node.parent_node is not None:
                     p_k = self.calc_total_kernel(node.parent_node)
@@ -724,11 +725,11 @@ class NET(STree):
                     p_k = Kernel((node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
                 f_z = (z_mat[ind,ind] - p_k.k_bar) / node.z_bar
                 node.z_kernel.c *= f_z
-            elif len(node.newloc_inds) > 0:
+            elif len(node.newloc_idxs) > 0:
                 z_k_approx = self.calc_total_kernel(node)
                 # add new input nodes for the nodes that don't have one
                 tbr_inds = []
-                for ind in node.newloc_inds:
+                for ind in node.newloc_idxs:
                     nmaxind += 1
                     f_z = (z_mat[ind,ind] - z_k_approx.k_bar)
                     if np.abs(f_z) > 1e-7:
@@ -736,12 +737,12 @@ class NET(STree):
                         z_k_real = Kernel(dict(a=node.z_kernel.a, c=node.z_kernel.c*f_z))
                         # add node
                         newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real)
-                        newnode.newloc_inds = [ind]
+                        newnode.newloc_idxs = [ind]
                         self.add_node_with_parent(newnode, node)
                         tbr_inds.append(ind)
-                for ind in tbr_inds: node.newloc_inds.remove(ind)
+                for ind in tbr_inds: node.newloc_idxs.remove(ind)
                 # empty the new indices
-                node.newloc_inds = []
+                node.newloc_idxs = []
 
         self.set_new_loc_idxs()
 
@@ -807,7 +808,7 @@ class NET(STree):
         if z_max == None:
             z_dict = {}
             for node in self.nodes:
-                for ind in node.loc_inds:
+                for ind in node.loc_idxs:
                     try:
                         z_dict[ind] += node.z_bar
                     except KeyError:
@@ -906,7 +907,7 @@ class NET(STree):
                                     bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
                                     **textargs)
             else:
-                ax.annotate(r'$N='+''.join([str(ind) for ind in node.loc_inds])+'$',
+                ax.annotate(r'$N='+''.join([str(ind) for ind in node.loc_idxs])+'$',
                                  xy=(x0, ynew), xytext=(x0+0.04, ynew+z_max*0.04),
                                  bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
                                  **textargs)
@@ -915,14 +916,14 @@ class NET(STree):
                 if inlabels != None:
                     lwidth = plotargs['lw'] if 'lw' in plotargs else 1.
                     ax.vlines(x0, ynew+z_max*0.04, z_max*1.1, lw=lwidth, linestyle=':', color='k')
-                    if node.loc_inds[0] in incolors:
-                        bboxdict = dict(boxstyle='round', ec=incolors[node.loc_inds[0]], fc=incolors[node.loc_inds[0]], alpha=0.5)
+                    if node.loc_idxs[0] in incolors:
+                        bboxdict = dict(boxstyle='round', ec=incolors[node.loc_idxs[0]], fc=incolors[node.loc_idxs[0]], alpha=0.5)
                     else:
                         bboxdict = dict(boxstyle='round', ec=(0.5, 0.5, 1.), fc=(0.8, 0.8, 1.))
-                    if node.loc_inds[0] in inlabels:
-                        textstr = inlabels[node.loc_inds[0]]
+                    if node.loc_idxs[0] in inlabels:
+                        textstr = inlabels[node.loc_idxs[0]]
                     else:
-                        textstr = r'$'+str(node.loc_inds[0])+'$'
+                        textstr = r'$'+str(node.loc_idxs[0])+'$'
                     ax.annotate(textstr,
                                         xy=(x0, z_max*1.1), xytext=(x0, z_max*1.14), ha='center',
                                         bbox=bboxdict,

@@ -317,7 +317,7 @@ class STree(object):
 
         return h.hexdigest()
 
-    def checkOrdered(self):
+    def check_ordered(self):
         """
         Check if the indices of the tree are number in the same order as they
         appear in the iterator

@@ -60,7 +60,7 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
         ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
                                      use_all_channels_for_passive=False,
                                      recompute=recompute_biophys)
-        clocs = ctree.getEquivalentLocs()
+        clocs = ctree.get_equivalent_locs()
         print('>>>> writing file %s'%f_name)
         file = open(f_name + '.p', 'wb')
         pickle.dump(ctree, file)
@@ -70,7 +70,7 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
 
 
 def runCaCoinc(sim_tree, locs,
-               ca_loc_ind, soma_ind,
+               ca_loc_idx, soma_ind,
                stim_type='psp',
                dt=0.1, t_max=300., t_calibrate=100.,
                psp_params=dict(t_rise=.5, t_decay=5., i_amp=.5, t_stim=50.),
@@ -87,12 +87,12 @@ def runCaCoinc(sim_tree, locs,
     sim_tree.init_model(dt=dt, t_calibrate=t_calibrate, factor_lambda=10.)
     sim_tree.store_locs(locs, 'rec locs')
     if stim_type == 'psp' or stim_type == 'coinc':
-        sim_tree.addDoubleExpCurrent(locs[ca_loc_ind], psp_params['t_rise'], psp_params['t_decay'])
+        sim_tree.addDoubleExpCurrent(locs[ca_loc_idx], psp_params['t_rise'], psp_params['t_decay'])
         sim_tree.setSpikeTrain(0, psp_params['i_amp'], [psp_params['t_stim']])
     if stim_type == 'psp':
         sim_tree.addIClamp(locs[soma_ind], 0., i_in_params['t_onset'], i_in_params['t_dur'])
     if stim_type == 'current':
-        sim_tree.addDoubleExpCurrent(locs[ca_loc_ind], psp_params['t_rise'], psp_params['t_decay'])
+        sim_tree.addDoubleExpCurrent(locs[ca_loc_idx], psp_params['t_rise'], psp_params['t_decay'])
         sim_tree.setSpikeTrain(0, 0., [psp_params['t_stim']])
     if stim_type == 'current' or stim_type == 'coinc':
         sim_tree.addIClamp(locs[soma_ind], i_in_params['i_amp'], i_in_params['t_onset'], i_in_params['t_dur'])
