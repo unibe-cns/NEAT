@@ -35,10 +35,9 @@ import importlib
 
 # neat = loadNEATCorrectPath()
 import neat
-from neat import IonChannel
-from neat.tools.actions.list import _list_models
-from neat.tools.actions.uninstall import _uninstall_models
-from neat.tools.actions.install import _install_models
+from neat.actions.list import _list_models
+from neat.actions.uninstall import _uninstall_models
+from neat.actions.install import _install_models
 
 
 def parse_cmd_args():
