@@ -18,8 +18,8 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree
-    loadNeuronModel("channels")
+    from neat import load_neuron_model, NeuronSimTree, NeuronCompartmentTree
+    load_neuron_model("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
@@ -87,18 +87,18 @@ def runCaCoinc(sim_tree, locs,
     sim_tree.init_model(dt=dt, t_calibrate=t_calibrate, factor_lambda=10.)
     sim_tree.store_locs(locs, 'rec locs')
     if stim_type == 'psp' or stim_type == 'coinc':
-        sim_tree.addDoubleExpCurrent(locs[ca_loc_idx], psp_params['t_rise'], psp_params['t_decay'])
-        sim_tree.setSpikeTrain(0, psp_params['i_amp'], [psp_params['t_stim']])
+        sim_tree.add_double_exp_current(locs[ca_loc_idx], psp_params['t_rise'], psp_params['t_decay'])
+        sim_tree.set_spiketrain(0, psp_params['i_amp'], [psp_params['t_stim']])
     if stim_type == 'psp':
-        sim_tree.addIClamp(locs[soma_ind], 0., i_in_params['t_onset'], i_in_params['t_dur'])
+        sim_tree.add_i_clamp(locs[soma_ind], 0., i_in_params['t_onset'], i_in_params['t_dur'])
     if stim_type == 'current':
-        sim_tree.addDoubleExpCurrent(locs[ca_loc_idx], psp_params['t_rise'], psp_params['t_decay'])
-        sim_tree.setSpikeTrain(0, 0., [psp_params['t_stim']])
+        sim_tree.add_double_exp_current(locs[ca_loc_idx], psp_params['t_rise'], psp_params['t_decay'])
+        sim_tree.set_spiketrain(0, 0., [psp_params['t_stim']])
     if stim_type == 'current' or stim_type == 'coinc':
-        sim_tree.addIClamp(locs[soma_ind], i_in_params['i_amp'], i_in_params['t_onset'], i_in_params['t_dur'])
+        sim_tree.add_i_clamp(locs[soma_ind], i_in_params['i_amp'], i_in_params['t_onset'], i_in_params['t_dur'])
     # simulate the NEURON model
     res = sim_tree.run(t_max, pprint=pprint, **rec_kwargs)
-    sim_tree.deleteModel()
+    sim_tree.delete_model()
     return res
 
 

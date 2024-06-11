@@ -74,7 +74,7 @@ class NestCompartmentNode(CompartmentNode):
     def __init__(self, index, **kwargs):
         super().__init__(index, **kwargs)
 
-    def _makeCompartmentDict(self, channel_storage=None):
+    def _make_compartment_dict(self, channel_storage=None):
 
         # channel parameters
         g_dict = {
@@ -146,13 +146,13 @@ class NestCompartmentTree(CompartmentTree):
         """
         return NestCompartmentNode(index, **kwargs)
 
-    def _getCompartmentsStatus(self):
+    def _make_compartments_params_list(self):
         # ensure that the all node indices are equal to the position where
         # they appear in the iteration, so that they also correspond to the NEST
         # model indices
         self.reset_indices()
 
-        return [node._makeCompartmentDict(channel_storage=self.channel_storage) for node in self]
+        return [node._make_compartment_dict(channel_storage=self.channel_storage) for node in self]
 
     def init_model(self, model_name, n, suffix="_model", v_th=-20., **kwargs):
         """
@@ -172,6 +172,6 @@ class NestCompartmentTree(CompartmentTree):
         """
         models = nest.Create(model_name + suffix, n, **kwargs)
         models.V_th = v_th
-        models.compartments = self._getCompartmentsStatus()
+        models.compartments = self._make_compartments_params_list()
 
         return models

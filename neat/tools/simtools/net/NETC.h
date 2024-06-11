@@ -203,12 +203,12 @@ private:
 
     //recursion function
     void feedInputs(NETNode* node_ptr);
-    void solveMatrixDownSweep(NETNode* node_ptr, vector< NETNode* >::iterator leaf_it,
+    void solve_matrixDownSweep(NETNode* node_ptr, vector< NETNode* >::iterator leaf_it,
                                                 double& determinant);
-    void solveMatrixUpSweep(NETNode& node, double vv, int det_sign);
+    void solve_matrixUpSweep(NETNode& node, double vv, int det_sign);
     void calcLinTerms(NETNode& node, NETNode& pnode);
     void sumV(NETNode& node, double& vv);
-    void setVNodeFromVLocUpSweep(NETNode* node, double v_p, double *v_arr);
+    void set_v_node_from_v_locUpSweep(NETNode* node, double v_p, double *v_arr);
     // void solveLinDownSweep(NETNode* node, vector< NETNode* >:: iterator leaf_it,
     //                                             IOLinOutput& out);
 
@@ -226,18 +226,18 @@ public:
     ~NETSimulator();
 
     // initialization functions from python
-    void initFromPython(double dt, double integ_mode, bool print_tree);
-    void addNodeFromPython(int node_index, int parent_index,
+    void init_from_python(double dt, double integ_mode, bool print_tree);
+    void add_node_from_python(int node_index, int parent_index,
                             int64_t* child_indices, int n_children,
                             int64_t* loc_idxices, int n_locinds,
                             int64_t* newloc_idxices, int n_newlocinds,
                             double* alphas, double* gammas, int n_exp);
-    void addLinTermFromPython(int loc_idxex,
+    void add_lin_term_from_python(int loc_idxex,
                             double* alphas, double* gammas, int n_exp);
-    void addIonChannelFromPython(string channel_name, int loc_idx, double g_bar, double e_rev,
+    void add_ionchannel_from_python(string channel_name, int loc_idx, double g_bar, double e_rev,
                                  bool instantaneous, double* vs, int v_size);
-    void addSynapseFromType(int loc_idx, int syn_type);
-    void addSynapseFromParams(int loc_idx, double e_r,
+    void add_synapse_from_type(int loc_idx, int syn_type);
+    void add_synapse_from_params(int loc_idx, double e_r,
                             double *params, int p_size);
     void reset();
 
@@ -246,30 +246,30 @@ public:
     vector< NETNode* > getPathToRoot(NETNode* node);
 
     // other structure functions
-    void removeSynapseFromIndex(int loc_idx, int syn_ind);
+    void remove_synapse_from_index(int loc_idx, int syn_ind);
     NETNode* findSomaLeaf();
 
     // getter functions for voltage and synaptic conductance
-    void addVLocToArr(double *v_arr, int v_size);
-    vector< double > getVLoc();
-    double getVSingleLoc(int loc_idxex){return m_v_loc[loc_idxex];};
-    void addVNodeToArr(double *v_arr, int v_size);
-    vector< double > getVNode();
-    double getVSingleNode(int node_index){return m_nodes[node_index].m_v_node;};
-    double getGSingleSyn(int loc_idxex, int syn_index);
-    double getSurfaceSingleSyn(int loc_idxex, int syn_index);
+    void add_v_loc_to_arr(double *v_arr, int v_size);
+    vector< double > get_v_loc();
+    double get_v_single_loc(int loc_idxex){return m_v_loc[loc_idxex];};
+    void add_v_node_to_arr(double *v_arr, int v_size);
+    vector< double > get_v_node();
+    double get_v_single_node(int node_index){return m_nodes[node_index].m_v_node;};
+    double get_g_single_syn(int loc_idxex, int syn_index);
+    double get_surface_single_syn(int loc_idxex, int syn_index);
 
     // integration functions
     // void constructInputs(vector< double > v_m,
     //                         vector< vector< double > > g_syn); // untested
-    void constructInputSyn1Loc(int loc_idx, double v_m,
+    void construct_input_syn_1_loc(int loc_idx, double v_m,
                             double *g_syn, int g_size);
-    void constructInputChan1Loc(int loc_idx, double v_m);
-    void setInputsToZero();
-    void constructMatrix(double dt, double* mat, double* arr, int n_node);
-    void solveMatrix();
-    void setVNodeFromVLoc(double *v_arr, int v_size);
-    void setVNodeFromVNode(double *v_arr, int v_size);
+    void construct_input_chan_1_loc(int loc_idx, double v_m);
+    void set_inputs_to_zero();
+    void construct_matrix(double dt, double* mat, double* arr, int n_node);
+    void solve_matrix();
+    void set_v_node_from_v_loc(double *v_arr, int v_size);
+    void set_v_node_from_v_node(double *v_arr, int v_size);
     void advance(double dt);
     void advanceConvolutions(double dt);
     void feedSpike(int loc_idx, int syn_ind, double g_max, int n_spike);

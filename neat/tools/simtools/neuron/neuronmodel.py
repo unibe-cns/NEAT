@@ -59,7 +59,7 @@ except ModuleNotFoundError:
     np.array = array
 
 
-def loadNeuronModel(name):
+def load_neuron_model(name):
     path = os.path.join(
         os.path.dirname(__file__),
         f'tmp/{name}/{platform.machine()}/.libs/libnrnmech.so'
@@ -97,7 +97,7 @@ class NeuronSimNode(PhysNode):
     def __init__(self, index, p3d=None):
         super().__init__(index, p3d)
 
-    def _makeSection(self, factorlambda=1., pprint=False):
+    def _make_section(self, factorlambda=1., pprint=False):
         compartment = h.Section(name=str(self.index))
         compartment.push()
         # create the compartment
@@ -146,7 +146,7 @@ class NeuronSimNode(PhysNode):
 
         return compartment
 
-    def _makeShunt(self, compartment):
+    def _make_shunt(self, compartment):
         if self.g_shunt > 1e-10:
             shunt = h.Shunt(compartment(1.))
             shunt.g = self.g_shunt # uS
@@ -210,7 +210,7 @@ class NeuronSimTree(PhysTree):
                 self.storage_container_for_point_process.append(pp)
 
     If you define a custom storage container, make sure that you overwrite the
-    `__init__()` and `deleteModel()` functions to make sure it is created and
+    `__init__()` and `delete_model()` functions to make sure it is created and
     deleted properly.
     """
     def __init__(self, arg=None, types=[1,3,4]):
@@ -280,11 +280,11 @@ class NeuronSimTree(PhysTree):
             dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda,
         )
         # reset all storage
-        self.deleteModel()
+        self.delete_model()
         # create the NEURON model
-        self._createNeuronTree(pprint=pprint)
+        self._create_neuron_tree(pprint=pprint)
 
-    def deleteModel(self):
+    def delete_model(self):
         '''
         Delete all stored hoc-objects
         '''
@@ -299,21 +299,21 @@ class NeuronSimTree(PhysTree):
         self.vecs = []
         self.store_locs([{'node': 1, 'x': 0.}], 'rec locs')
 
-    def _createNeuronTree(self, pprint):
+    def _create_neuron_tree(self, pprint):
         for node in self:
             # create the NEURON section
-            compartment = node._makeSection(self.factor_lambda, pprint=pprint)
+            compartment = node._make_section(self.factor_lambda, pprint=pprint)
             # connect with parent section
             if not self.is_root(node):
                 compartment.connect(self.sections[node.parent_node.index], 1, 0)
             # store
             self.sections.update({node.index: compartment})
             # create a static shunt
-            shunt = node._makeShunt(compartment)
+            shunt = node._make_shunt(compartment)
             if shunt is not None:
                 self.shunts.append(shunt)
 
-    def addShunt(self, loc, g, e_r):
+    def add_shunt(self, loc, g, e_r):
         """
         Adds a static conductance at a given location
 
@@ -334,7 +334,7 @@ class NeuronSimTree(PhysTree):
         # store the shunt
         self.shunts.append(shunt)
 
-    def addDoubleExpCurrent(self, loc, tau1, tau2):
+    def add_double_exp_current(self, loc, tau1, tau2):
         """
         Adds a double exponential input current at a given location
 
@@ -355,7 +355,7 @@ class NeuronSimTree(PhysTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addExpSynapse(self, loc, tau, e_r):
+    def add_exp_synapse(self, loc, tau, e_r):
         """
         Adds a single-exponential conductance-based synapse
 
@@ -376,7 +376,7 @@ class NeuronSimTree(PhysTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addDoubleExpSynapse(self, loc, tau1, tau2, e_r):
+    def add_double_exp_synapse(self, loc, tau1, tau2, e_r):
         """
         Adds a double-exponential conductance-based synapse
 
@@ -400,7 +400,7 @@ class NeuronSimTree(PhysTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addNMDASynapse(self, loc, tau, tau_nmda, e_r=0., nmda_ratio=1.7):
+    def add_nmda_synapse(self, loc, tau, tau_nmda, e_r=0., nmda_ratio=1.7):
         """
         Adds a single-exponential conductance-based synapse with an AMPA and an
         NMDA component
@@ -430,7 +430,7 @@ class NeuronSimTree(PhysTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addDoubleExpNMDASynapse(self, loc, tau1, tau2, tau1_nmda, tau2_nmda,
+    def add_double_exp_nmda_synapse(self, loc, tau1, tau2, tau1_nmda, tau2_nmda,
                                      e_r=0., nmda_ratio=1.7):
         """
         Adds a double-exponential conductance-based synapse with an AMPA and an
@@ -467,7 +467,7 @@ class NeuronSimTree(PhysTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addIClamp(self, loc, amp, delay, dur):
+    def add_i_clamp(self, loc, amp, delay, dur):
         """
         Injects a DC current step at a given lcoation
 
@@ -491,7 +491,7 @@ class NeuronSimTree(PhysTree):
         # store the iclamp
         self.iclamps.append(iclamp)
 
-    def addSinClamp(self, loc, amp, delay, dur, bias, freq, phase):
+    def add_sin_clamp(self, loc, amp, delay, dur, bias, freq, phase):
         """
         Injects a sinusoidal current at a given lcoation
 
@@ -524,7 +524,7 @@ class NeuronSimTree(PhysTree):
         # store the iclamp
         self.iclamps.append(iclamp)
 
-    def addOUClamp(self, loc, tau, mean, stdev, delay, dur, seed=None):
+    def add_ou_clamp(self, loc, tau, mean, stdev, delay, dur, seed=None):
         """
         Injects a Ornstein-Uhlenbeck current at a given lcoation
 
@@ -600,7 +600,7 @@ class NeuronSimTree(PhysTree):
         # store the iclamp
         self.iclamps.append(iclamp)
 
-    def addOUReversal(self, loc, tau, mean, stdev, g_val, delay, dur, seed=None):
+    def add_ou_reversal(self, loc, tau, mean, stdev, g_val, delay, dur, seed=None):
         seed = np.random.randint(1e16) if seed is None else seed
         loc = MorphLoc(loc, self)
         # create the current clamp
@@ -616,7 +616,7 @@ class NeuronSimTree(PhysTree):
         # store the iclamp
         self.iclamps.append(iclamp)
 
-    def addVClamp(self, loc, e_c, dur):
+    def add_v_clamp(self, loc, e_c, dur):
         """
         Adds a voltage clamp at a given location
 
@@ -638,19 +638,19 @@ class NeuronSimTree(PhysTree):
         # store the vclamp
         self.vclamps.append(vclamp)
 
-    def setSpikeTrain(self, syn_index, syn_weight, spike_times):
+    def set_spiketrain(self, syn_index, syn_weight, spike_times):
         """
         Each hoc point process that receive spikes through should by appended to
         the synapse stack (stored under the list `self.syns`).
 
         Default :class:`NeuronSimTree` point processes that are added to
         `self.syns` are:
-        - `self.addDoubleExpCurrent()`
+        - `self.add_double_exp_current()`
         - `self.addExpSyn()`
         - `self.addDoubleExpSyn()`
         - `self.addDoubleExpSyn()`
-        - `self.addNMDASynapse()`
-        - `self.addDoubleExpNMDASynapse()`
+        - `self.add_nmda_synapse()`
+        - `self.add_double_exp_nmda_synapse()`
 
         With this function, these synapse can be set to receive a specific spike
         train.
@@ -929,11 +929,11 @@ class NeuronSimTree(PhysTree):
                 self.init_model(
                     dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
                 )
-                self.addIClamp(loc0, i_amp, 0., t_dur)
+                self.add_i_clamp(loc0, i_amp, 0., t_dur)
                 self.store_locs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_dur)
-                self.deleteModel()
+                self.delete_model()
                 # voltage deflections
                 # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].v_ep
                 v_trans = res['v_m'][1][-int(1./self.dt)] - res['v_m'][1][0]
@@ -947,7 +947,7 @@ class NeuronSimTree(PhysTree):
 
         return z_mat
 
-    def calcImpedanceKernelMatrix(self, loc_arg, 
+    def calc_impedance_kernel_matrix(self, loc_arg, 
             i_amp=0.001,
             dt_pulse=0.1, dstep=-2, t_max=100.,
             factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
@@ -969,11 +969,11 @@ class NeuronSimTree(PhysTree):
                     dt=dt, t_calibrate=t_calibrate,
                     v_init=v_init, factor_lambda=factor_lambda
                 )
-                self.addIClamp(loc0, i_amp, 0., dt_pulse)
+                self.add_i_clamp(loc0, i_amp, 0., dt_pulse)
                 self.store_locs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
                 res = self.run(t_max+dt_pulse+10.)
-                self.deleteModel()
+                self.delete_model()
                 # voltage deflections
                 v_trans = res['v_m'][1][i0+dstep:i0+dstep+nt] - self[loc1['node']].v_ep
                 # compute impedances
@@ -988,7 +988,7 @@ class NeuronCompartmentNode(NeuronSimNode):
     def get_child_nodes(self, skip_inds=[]):
         return super().get_child_nodes(skip_inds=skip_inds)
 
-    def _makeSection(self, pprint=False):
+    def _make_section(self, pprint=False):
         compartment = neuron.h.Section(name=str(self.index))
         compartment.push()
         # create the compartment
@@ -1060,11 +1060,11 @@ class NeuronCompartmentTree(NeuronSimTree):
         definitions as for as for a morphological `neat.NeuronSimTree`
         """
         super().__init__(ctree, types=[1,3,4])
-        self._createReducedNeuronModel(ctree, 
+        self._create_reduced_neuron_model(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=method,
         )
 
-    def _createReducedNeuronModel(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
+    def _create_reduced_neuron_model(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
         # calculate geometry that will lead to correct constants
         arg1, arg2 = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                     factor_r_a=1e-6, delta=1e-10,
@@ -1138,17 +1138,17 @@ class NeuronCompartmentTree(NeuronSimTree):
         """
         return NeuronCompartmentNode(node_index)
 
-    def _createNeuronTree(self, pprint):
+    def _create_neuron_tree(self, pprint):
         for node in self:
             # create the NEURON section
-            compartment = node._makeSection(pprint=pprint)
+            compartment = node._make_section(pprint=pprint)
             # connect with parent section
             if not self.is_root(node):
                 compartment.connect(self.sections[node.parent_node.index], 0.5, 0)
             # store
             self.sections.update({node.index: compartment})
             # create a static shunt
-            shunt = node._makeShunt(compartment)
+            shunt = node._make_shunt(compartment)
             if shunt is not None:
                 self.shunts.append(shunt)
 

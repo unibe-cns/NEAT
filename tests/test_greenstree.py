@@ -311,7 +311,7 @@ class TestGreensTreeTime():
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zt_mat_expl[:,ii,jj] = self.ft.ftInv(zf_mat_gtf[:,ii,jj])[1].real * 1e-3
         # simulate the temporal matrix
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix(locs, t_max=self.tmax)
+        tk, zt_mat_sim = sim_tree.calc_impedance_kernel_matrix(locs, t_max=self.tmax)
 
         nt = min(len(tk), len(self.ft.t))
         t_arr = self.ft.t[:nt]
@@ -394,7 +394,7 @@ class TestGreensTreeTime():
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zt_mat_expl[:,ii,jj] = self.ft.ftInv(zf_mat_gtf[:,ii,jj])[1].real * 1e-3
         # simulate the temporal matrix
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix(locs)
+        tk, zt_mat_sim = sim_tree.calc_impedance_kernel_matrix(locs)
 
         assert np.allclose(
             zt_mat_expl[int(1.5/self.dt):,:,:],
@@ -466,11 +466,11 @@ class TestGreensTreeTime():
         delay_pulse = 10. # ms
         tmax = self.tmax + delay_pulse
         sim_tree.init_model(dt=self.dt, t_calibrate=10., factor_lambda=100)
-        sim_tree.addIClamp(locs[idx_in], i_amp, delay_pulse, dt_pulse)
+        sim_tree.add_i_clamp(locs[idx_in], i_amp, delay_pulse, dt_pulse)
         sim_tree.store_locs(locs, 'rec locs', warn=False)
         # simulate
         res = sim_tree.run(tmax, record_from_channels=True)
-        sim_tree.deleteModel()
+        sim_tree.delete_model()
 
         slice_sim = np.s_[int((delay_pulse+dt_pulse) / self.dt - 2):]
         t_sim = res['t'][slice_sim] - (delay_pulse+dt_pulse)
@@ -602,7 +602,7 @@ class TestGreensTreeTime():
 
         # simulate the temporal matrix
         sim_tree = NeuronSimTree(self.tree)
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix([(1,0.5)])
+        tk, zt_mat_sim = sim_tree.calc_impedance_kernel_matrix([(1,0.5)])
 
         soma = self.tree[1]
         a_soma = 4. * np.pi * soma.R**2 *1e-8 # cm^2

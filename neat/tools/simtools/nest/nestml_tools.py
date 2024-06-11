@@ -14,7 +14,7 @@ PERMITTED_BLOCK_NAMES = [
 ]
 
 
-def stripVComp(contents):
+def strip_v_comp(contents):
     ss = "v_comp real"
     idx = None
     for ll, line in enumerate(contents):
@@ -25,7 +25,7 @@ def stripVComp(contents):
         del contents[idx]
 
 
-def stripComments(contents):
+def strip_comments(contents):
     for ll, line in enumerate(contents):
         try:
             s0 = line.index('#')
@@ -35,7 +35,7 @@ def stripComments(contents):
             pass
 
 
-def _getIndexOfBlock(contents, block_name):
+def _get_index_of_block(contents, block_name):
     found, kk = False, 0
     while not found and kk < len(contents):
         if block_name in contents[kk]:
@@ -46,13 +46,13 @@ def _getIndexOfBlock(contents, block_name):
     return kk
 
 
-def getBlockString(contents, block_name):
+def get_block_string(contents, block_name):
     try:
-        c0 = _getIndexOfBlock(contents, block_name+":")
+        c0 = _get_index_of_block(contents, block_name+":")
         s0 = contents[c0].index(block_name) + len(block_name+":")
 
         c1 = min([
-            _getIndexOfBlock(contents[c0+1:], block_name+":") + c0 \
+            _get_index_of_block(contents[c0+1:], block_name+":") + c0 \
             for block_name in PERMITTED_BLOCK_NAMES
         ])
 
@@ -66,19 +66,19 @@ def getBlockString(contents, block_name):
     return block_str
 
 
-def getFunctionsString(contents):
+def get_functions_string(contents):
     function_str = ""
 
     try:
         kk = 0
         while kk < len(contents):
-            c0 = _getIndexOfBlock(contents[kk:], "function") + kk
+            c0 = _get_index_of_block(contents[kk:], "function") + kk
             s0 = contents[c0].index("function")
 
             c1 = min([
-                    _getIndexOfBlock(contents[c0+1:], block_name) + c0 \
+                    _get_index_of_block(contents[c0+1:], block_name) + c0 \
                     for block_name in PERMITTED_BLOCK_NAMES
-                ] + [_getIndexOfBlock(contents[c0+1:], "function") + c0]
+                ] + [_get_index_of_block(contents[c0+1:], "function") + c0]
             )
 
             function_str += "\n    " + \
@@ -97,23 +97,23 @@ def getFunctionsString(contents):
     return function_str
 
 
-def parseNestmlFile(f_name):
+def parse_nestml_file(f_name):
     with open(f_name, 'r') as file:
         contents = file.readlines()
 
-    stripComments(contents)
+    strip_comments(contents)
 
     blocks = dict(zip(PERMITTED_BLOCK_NAMES, [""]*len(PERMITTED_BLOCK_NAMES)))
     for block_name in blocks:
         if block_name != "output" and block_name != "function":
-            blocks[block_name] += getBlockString(contents, block_name)
+            blocks[block_name] += get_block_string(contents, block_name)
         elif block_name == "function":
-            blocks[block_name] += getFunctionsString(contents)
+            blocks[block_name] += get_functions_string(contents)
 
     return blocks
 
 
-def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
+def write_nestml_blocks(blocks, path_name, neuron_name, v_comp=0.,
                       write_blocks=['parameters', 'state', 'equations',
                                     'input', 'output', 'functions']):
     for block, blockstr in blocks.items():
@@ -137,4 +137,4 @@ def writeNestmlBlocks(blocks, path_name, neuron_name, v_comp=0.,
     return fname
 
 if __name__ == "__main__":
-    writeNestmlBlocks(blocks_default_syns, "", "default_syns")
+    write_nestml_blocks(blocks_default_syns, "", "default_syns")

@@ -18,8 +18,8 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import loadNeuronModel, NeuronSimTree, NeuronCompartmentTree
-    loadNeuronModel("channels")
+    from neat import load_neuron_model, NeuronSimTree, NeuronCompartmentTree
+    load_neuron_model("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
@@ -94,7 +94,7 @@ def calcAmpDelayWidth(res):
     res['width'] = dt*np.sum(res['v_m'] > v_half[:,None], axis=1)
 
 
-def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur':1.}):
+def run_sim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur':1.}):
     """
     Runs simulation to inject somatic current in order to elicit AP
     """
@@ -102,11 +102,11 @@ def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur'
     global T_DUR, G_SYN, N_INP
 
     simtree.init_model(dt=DT, t_calibrate=TC, factor_lambda=1.)
-    simtree.addIClamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
+    simtree.add_i_clamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
     simtree.store_locs([soma_loc] + locs, 'rec locs')
 
     res = simtree.run(40., record_from_iclamps=True)
-    simtree.deleteModel()
+    simtree.delete_model()
 
     return res
 
@@ -157,14 +157,14 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     print(ctree)
 
     # run the simulation of he full tree
-    res = runSim(sim_tree, locs, SLOCS[0], stim_params=STIM_PARAMS)
+    res = run_sim(sim_tree, locs, SLOCS[0], stim_params=STIM_PARAMS)
     calcAmpDelayWidth(res)
 
     amp_diffs_biop[:] = res['amp'][1:]
     delay_diffs_biop[:] = res['delay'][1:]
 
     # run the simulation of the reduced tree
-    cres = runSim(csimtree, clocs[1:], clocs[0], stim_params=STIM_PARAMS)
+    cres = run_sim(csimtree, clocs[1:], clocs[0], stim_params=STIM_PARAMS)
     calcAmpDelayWidth(cres)
 
     amp_diffs_3loc[:] = cres['amp'][1:]
@@ -180,7 +180,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
         print(ctree)
 
         # run the simulation of the reduced tree
-        cres_ss = runSim(csimtree, [clocs[1]], clocs[0], stim_params=STIM_PARAMS)
+        cres_ss = run_sim(csimtree, [clocs[1]], clocs[0], stim_params=STIM_PARAMS)
         calcAmpDelayWidth(cres_ss)
         creslist.append(cres_ss)
 

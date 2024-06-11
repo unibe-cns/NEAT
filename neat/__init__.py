@@ -35,7 +35,7 @@ from .trees.compartmenttree import CompartmentTree
 from .trees.compartmenttree import CompartmentNode
 
 try:
-    from .tools.simtools.neuron.neuronmodel import loadNeuronModel
+    from .tools.simtools.neuron.neuronmodel import load_neuron_model
     from .tools.simtools.neuron.neuronmodel import NeuronSimTree
     from .tools.simtools.neuron.neuronmodel import NeuronSimNode
     from .tools.simtools.neuron.neuronmodel import NeuronCompartmentTree

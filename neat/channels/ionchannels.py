@@ -878,7 +878,7 @@ class IonChannel(object):
 
         return code_str
 
-    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=-75., g=0., e=None):
+    def write_nestml_blocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=-75., g=0., e=None):
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]

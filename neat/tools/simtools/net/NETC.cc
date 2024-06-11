@@ -230,7 +230,7 @@ NETSimulator::NETSimulator(int n_loc, double* v_eq):
 // destructor
 NETSimulator::~NETSimulator(){};
 
-void NETSimulator::initFromPython(double dt, double integ_mode, bool print_tree){
+void NETSimulator::init_from_python(double dt, double integ_mode, bool print_tree){
     if(print_tree)
         printTree();
     m_dt = dt;
@@ -260,7 +260,7 @@ void NETSimulator::initFromPython(double dt, double integ_mode, bool print_tree)
     }
 };
 
-void NETSimulator::addNodeFromPython(int node_index, int parent_index,
+void NETSimulator::add_node_from_python(int node_index, int parent_index,
                                      int64_t* child_indices, int n_children,
                                      int64_t* loc_idxices, int n_locinds,
                                      int64_t* newloc_idxices, int n_newlocinds,
@@ -282,7 +282,7 @@ void NETSimulator::addNodeFromPython(int node_index, int parent_index,
     m_nodes.push_back(node);
 };
 
-void NETSimulator::addLinTermFromPython(int loc_idxex,
+void NETSimulator::add_lin_term_from_python(int loc_idxex,
                                         double* alphas, double* gammas, int n_exp){
     if(loc_idxex < 0 || loc_idxex > m_n_loc) cerr << "'loc_idxex' out of range" << endl;
     LinTerm lin_term;
@@ -291,7 +291,7 @@ void NETSimulator::addLinTermFromPython(int loc_idxex,
     m_lin_terms.insert(pair< int, LinTerm >(loc_idxex, lin_term));
 }
 
-void NETSimulator::addIonChannelFromPython(string channel_name, int loc_idx, double g_bar, double e_rev,
+void NETSimulator::add_ionchannel_from_python(string channel_name, int loc_idx, double g_bar, double e_rev,
                                            bool instantaneous, double* vs, int v_size){
     if(loc_idx < 0 || loc_idx > m_n_loc) cerr << "'loc_idx' out of range" << endl;
     if(g_bar < 0.) cerr << "'g_bar' must be positive" << endl;
@@ -304,7 +304,7 @@ void NETSimulator::addIonChannelFromPython(string channel_name, int loc_idx, dou
     m_chan[loc_idx].push_back(chan);
 };
 
-void NETSimulator::addSynapseFromType(int loc_idx, int syn_type){
+void NETSimulator::add_synapse_from_type(int loc_idx, int syn_type){
     if(loc_idx < 0 || loc_idx > m_n_loc) cerr << "'loc_idx' out of range" << endl;
     if(syn_type == 0){
         DrivingForce* syn = new DrivingForce(0.0);
@@ -329,7 +329,7 @@ void NETSimulator::addSynapseFromType(int loc_idx, int syn_type){
                     "'1' for NMDA or '2' for GABA" << endl;
     }
 };
-void NETSimulator::addSynapseFromParams(int loc_idx, double e_r,
+void NETSimulator::add_synapse_from_params(int loc_idx, double e_r,
                                             double *params, int p_size){
     if(loc_idx < 0 || loc_idx > m_n_loc) cerr << "'loc_idx out of range" << endl;
     DrivingForce* syn = new DrivingForce(e_r);
@@ -348,7 +348,7 @@ void NETSimulator::addSynapseFromParams(int loc_idx, double e_r,
     }
 }
 
-void NETSimulator::removeSynapseFromIndex(int loc_idx, int syn_ind){
+void NETSimulator::remove_synapse_from_index(int loc_idx, int syn_ind){
     if(loc_idx < 0 || loc_idx > m_n_loc)
         cerr << "'loc_idx' out of range" << endl;
     if(syn_ind < 0 || syn_ind > (int)m_v_dep[loc_idx].size())
@@ -377,7 +377,7 @@ void NETSimulator::reset(){
 
 }
 
-void NETSimulator::addVLocToArr(double *v_arr, int v_size){
+void NETSimulator::add_v_loc_to_arr(double *v_arr, int v_size){
     if(v_size != int(m_n_loc)) cerr << "'v_arr' has wrong size" << endl;
     // set the array elements to equilibrium potential
     for(int ii = 0; ii < m_n_loc; ii++)
@@ -395,40 +395,40 @@ void NETSimulator::addVLocToArr(double *v_arr, int v_size){
         v_arr[0] += lt_it->second.m_v_lin;
     }
 };
-vector< double > NETSimulator::getVLoc(){
+vector< double > NETSimulator::get_v_loc(){
     vector< double > v_loc(m_n_loc);
-    addVLocToArr(&v_loc[0], m_n_loc);
+    add_v_loc_to_arr(&v_loc[0], m_n_loc);
     return v_loc;
 };
 
-void NETSimulator::addVNodeToArr(double *v_arr, int v_size){
+void NETSimulator::add_v_node_to_arr(double *v_arr, int v_size){
     if(v_size != int(m_nodes.size())) cerr << "'v_arr' has wrong size" << endl;
     for(int ii = 0; ii < m_nodes.size(); ii++){
         v_arr[ii] += m_nodes[ii].m_v_node;
     }
 };
-vector< double > NETSimulator::getVNode(){
+vector< double > NETSimulator::get_v_node(){
     int n_nodes = int(m_nodes.size());
     vector< double > v_node(n_nodes, 0.0);
-    addVNodeToArr(&v_node[0], n_nodes);
+    add_v_node_to_arr(&v_node[0], n_nodes);
     return v_node;
 };
 
-double NETSimulator::getGSingleSyn(int loc_idxex, int syn_index){
+double NETSimulator::get_g_single_syn(int loc_idxex, int syn_index){
     return m_cond_w[loc_idxex][syn_index]->getCond();
 };
 
-double NETSimulator::getSurfaceSingleSyn(int loc_idxex, int syn_index){
+double NETSimulator::get_surface_single_syn(int loc_idxex, int syn_index){
     return m_cond_w[loc_idxex][syn_index]->getSurface();
 };
 
-void NETSimulator::setVNodeFromVLoc(double *v_arr, int v_size){
+void NETSimulator::set_v_node_from_v_loc(double *v_arr, int v_size){
     if(v_size != m_n_loc) cerr << "'v_arr' has wrong size" << endl;
     vector< double > v_vec;
     arr2vec(v_vec, v_arr, v_size);
-    setVNodeFromVLocUpSweep(&m_nodes[0], 0.0, v_arr);
+    set_v_node_from_v_locUpSweep(&m_nodes[0], 0.0, v_arr);
 };
-void NETSimulator::setVNodeFromVLocUpSweep(NETNode* node_ptr, double v_p,
+void NETSimulator::set_v_node_from_v_locUpSweep(NETNode* node_ptr, double v_p,
                                 double *v_arr){
     // compute the voltage at current node
     double v_aux = 0.0;
@@ -445,11 +445,11 @@ void NETSimulator::setVNodeFromVLocUpSweep(NETNode* node_ptr, double v_p,
     for(vector< int >:: iterator ii = node_ptr->m_child_indices.begin();
         ii != node_ptr->m_child_indices.end(); ii++){
         if(*ii != -1)
-            setVNodeFromVLocUpSweep(&m_nodes[*ii], v_p, v_arr);
+            set_v_node_from_v_locUpSweep(&m_nodes[*ii], v_p, v_arr);
     }
 }
 
-void NETSimulator::setVNodeFromVNode(double *v_arr, int v_size){
+void NETSimulator::set_v_node_from_v_node(double *v_arr, int v_size){
     if (v_size != int(m_nodes.size())) cerr << "'v_arr' has wrong size" << endl;
     for(vector< NETNode >::iterator node_it = m_nodes.begin();
         node_it != m_nodes.end(); node_it++){
@@ -536,25 +536,25 @@ void NETSimulator::_getPathToRoot(NETNode* node, vector< NETNode* > &path){
 //         }
 //     }
 //     // construct the inputs
-//     setInputsToZero();
+//     set_inputs_to_zero();
 //     for(int ii = 0; ii < m_n_loc; ii++){
 //         // synapse
 //         int n_syn = int(g_syn.size());
 //         if(n_syn > 0)
-//             constructInputSyn1Loc(ii, v_m[ii], &g_syn[ii][0], n_syn);
+//             construct_input_syn_1_loc(ii, v_m[ii], &g_syn[ii][0], n_syn);
 //         // ion channels
 //         int n_chan = int(m_chan.size());
 //         if(n_chan > 0)
-//             constructInputChan1Loc(ii, v_m[ii]);
+//             construct_input_chan_1_loc(ii, v_m[ii]);
 //     }
 // }
 
-void NETSimulator::setInputsToZero(){
+void NETSimulator::set_inputs_to_zero(){
     fill(m_f_in.begin(), m_f_in.end(), 0.0);
     fill(m_df_dv_in.begin(), m_df_dv_in.end(), 0.0);
 }
 
-void NETSimulator::constructInputSyn1Loc(int loc_idx, double v_m,
+void NETSimulator::construct_input_syn_1_loc(int loc_idx, double v_m,
                                       double *g_syn, int g_size){
     for(int jj = 0; jj < g_size; jj++){
         m_f_in[loc_idx] -= g_syn[jj] * m_v_dep[loc_idx][jj]->f(v_m);
@@ -562,7 +562,7 @@ void NETSimulator::constructInputSyn1Loc(int loc_idx, double v_m,
     }
 }
 
-void NETSimulator::constructInputChan1Loc(int loc_idx, double v_m){
+void NETSimulator::construct_input_chan_1_loc(int loc_idx, double v_m){
     // construct aglrotihm input values at current location for channel
     for(int jj = 0; jj < m_chan[loc_idx].size(); jj++){
         m_f_in[loc_idx] -= m_chan[loc_idx][jj]->getCondNewton() *
@@ -572,7 +572,7 @@ void NETSimulator::constructInputChan1Loc(int loc_idx, double v_m){
     }
 }
 
-void NETSimulator::constructMatrix(double dt,
+void NETSimulator::construct_matrix(double dt,
                                    double* mat, double* vec, int n_node){
     if(n_node != (int)m_nodes.size()){cerr << "input size wrong!" << endl;}
     // construct vector with nodes with new loc indices
@@ -661,18 +661,18 @@ void NETSimulator::feedInputs(NETNode* node_ptr){
 }
 
 // solve matrix with O(n) algorithm
-void NETSimulator::solveMatrix(){
+void NETSimulator::solve_matrix(){
     vector< NETNode* >::iterator leaf_it = m_leafs.begin();
     double det = 1.0;
     double& determinant = det;
     // start the down sweep (puts to zero the sub diagonal matrix elements)
-    solveMatrixDownSweep(m_leafs[0], leaf_it, determinant);
+    solve_matrixDownSweep(m_leafs[0], leaf_it, determinant);
     // determinant sign
     double det_sign = (determinant < 0.0) - (determinant > 0.0);
     // do up sweep to set voltages
-    solveMatrixUpSweep(m_nodes[0], 0.0, det_sign);
+    solve_matrixUpSweep(m_nodes[0], 0.0, det_sign);
 }
-void NETSimulator::solveMatrixDownSweep(NETNode* node_ptr,
+void NETSimulator::solve_matrixDownSweep(NETNode* node_ptr,
                              vector< NETNode* >::iterator leaf_it,
                              double& determinant){
     // add the new inputs
@@ -694,16 +694,16 @@ void NETSimulator::solveMatrixDownSweep(NETNode* node_ptr,
         if(pnode_ptr->m_n_passed == int(pnode_ptr->m_child_indices.size())){
             pnode_ptr->m_n_passed = 0;
             // move on to next node
-            solveMatrixDownSweep(pnode_ptr, leaf_it, determinant);
+            solve_matrixDownSweep(pnode_ptr, leaf_it, determinant);
         } else {
             // start at next leaf
             leaf_it++;
             if(leaf_it != m_leafs.end())
-                solveMatrixDownSweep(*leaf_it, leaf_it, determinant);
+                solve_matrixDownSweep(*leaf_it, leaf_it, determinant);
         }
     }
 }
-void NETSimulator::solveMatrixUpSweep(NETNode& node, double vv, int det_sign){
+void NETSimulator::solve_matrixUpSweep(NETNode& node, double vv, int det_sign){
     // compute node voltage
     if(m_integ_mode == 0){
         vv = node.calcV(vv, det_sign);
@@ -717,7 +717,7 @@ void NETSimulator::solveMatrixUpSweep(NETNode& node, double vv, int det_sign){
     for(vector< int >:: iterator ii = node.m_child_indices.begin();
         ii != node.m_child_indices.end(); ii++){
         if(*ii != -1)
-            solveMatrixUpSweep(m_nodes[*ii], vv, det_sign);
+            solve_matrixUpSweep(m_nodes[*ii], vv, det_sign);
     }
 }
 void NETSimulator::calcLinTerms(NETNode& node, NETNode& pnode){
@@ -743,7 +743,7 @@ void NETSimulator::advance(double dt){
     fill(m_f_in.begin(), m_f_in.end(), 0.0);
     fill(m_df_dv_in.begin(), m_df_dv_in.end(), 0.0);
     // get the location voltage
-    addVLocToArr(&m_v_loc[0], m_v_loc.size());
+    add_v_loc_to_arr(&m_v_loc[0], m_v_loc.size());
     // synaptic inputs
     for(int loc_idx = 0; loc_idx < m_n_loc; loc_idx++){
         // advance the synaptic inputs at current location
@@ -779,7 +779,7 @@ void NETSimulator::advance(double dt){
     //compute the convolutions at nodes and linear layers
     advanceConvolutions(dt);
     // solve for the next time step's voltage
-    solveMatrix();
+    solve_matrix();
 }
 
 void NETSimulator::advanceConvolutions(double dt){

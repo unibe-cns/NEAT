@@ -185,7 +185,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
     print(
         f'\n------------------------------\n'
         f'The compiled .mod-files can be loaded into neuron using:\n'
-        f'    neat.loadNeuronModel(\"{model_name}\")\n'
+        f'    neat.load_neuron_model(\"{model_name}\")\n'
         f'------------------------------\n'
     )
 
@@ -215,18 +215,18 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
     )
 
     if path_nestresource is not None:
-        blocks = nestml_tools.parseNestmlFile(path_nestresource)
+        blocks = nestml_tools.parse_nestml_file(path_nestresource)
 
     for chan in channels:
         print(' - writing .nestml blocks for:', chan.__class__.__name__)
-        blocks_ = chan.writeNestmlBlocks(v_comp=-75.)
+        blocks_ = chan.write_nestml_blocks(v_comp=-75.)
 
         for block, blockstr in blocks_.items():
             blocks[block] = blockstr + blocks[block]
 
     for ion in ions:
         concmech = ExpConcMech(ion)
-        blocks_ = concmech.writeNestmlBlocks(channels=channels)
+        blocks_ = concmech.write_nestml_blocks(channels=channels)
 
         for block, blockstr in blocks_.items():
             blocks[block] = blocks[block] + blockstr
@@ -235,7 +235,7 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
     if not os.path.exists(path_for_nestml_compilation):
         os.makedirs(path_for_nestml_compilation)
     # write the nestml file
-    nestml_file_path = nestml_tools.writeNestmlBlocks(
+    nestml_file_path = nestml_tools.write_nestml_blocks(
         blocks,
         path_for_nestml_compilation,
         model_name + "_model",
@@ -263,7 +263,7 @@ def _installModels(
     ----------
     model_name: str
         The name of the compiled model that can be used to load it with
-        `neat.loadNeuronModel()` or `neat.loadNestModel()`
+        `neat.load_neuron_model()` or `neat.loadNestModel()`
     path_neat: str
         The path to the root directory of the imported neat module
     channel_path_arg: list of str

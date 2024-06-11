@@ -147,7 +147,7 @@ class TestNeuron():
         )
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=1.)
         # test the temporal matrix
-        tk, zk_mat_neuron = self.neurontree.calcImpedanceKernelMatrix(locs,
+        tk, zk_mat_neuron = self.neurontree.calc_impedance_kernel_matrix(locs,
             dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
         )
         nt = min(zk_mat_gf.shape[0], zk_mat_neuron.shape[0])
@@ -183,7 +183,7 @@ class TestNeuron():
         )
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=5.)
         # test the temporal matrix
-        tk, zk_mat_neuron = self.neurontree.calcImpedanceKernelMatrix(locs,
+        tk, zk_mat_neuron = self.neurontree.calc_impedance_kernel_matrix(locs,
             dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
         )
         nt = min(zk_mat_gf.shape[0], zk_mat_neuron.shape[0])
@@ -262,13 +262,13 @@ class TestNeuron():
         self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
         self.neurontree.store_locs(locs, name='rec locs')
         res1 = self.neurontree.run(10., downsample=10, dt_rec=None, record_from_channels=True)
-        self.neurontree.deleteModel()
+        self.neurontree.delete_model()
         # test simulation 2
         self.loadTTreeTestChannel()
         self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
         self.neurontree.store_locs(locs, name='rec locs')
         res2 = self.neurontree.run(10., downsample=1, dt_rec=1., record_from_channels=True)
-        self.neurontree.deleteModel()
+        self.neurontree.delete_model()
 
         assert len(res1['t']) == len(res2['t'])
         assert res1['v_m'].shape == res2['v_m'].shape

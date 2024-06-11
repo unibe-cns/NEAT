@@ -56,7 +56,7 @@ class ExpConcMech(ConcMech):
     def __repr__(self):
         return f"ExpConcMech(ion={self.ion}, gamma={self.gamma:1.6g}, tau={self.tau:1.6g}, inf={self.inf:1.6g})"
 
-    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], channels=[]):
+    def write_nestml_blocks(self, blocks=['state', 'parameters', 'equations', 'function'], channels=[]):
         ion = self.ion
         ion_channels = [chan for chan in channels if chan.ion == ion]
         read_channels = [chan for chan in channels if ion in chan.conc]

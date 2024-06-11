@@ -150,7 +150,7 @@ class EquilibriumTree(FitTree):
         sim_tree_biophys.init_model(dt=dt, factor_lambda=factor_lambda)
         sim_tree_biophys.store_locs(locs, 'rec locs', warn=False)
         res_biophys = sim_tree_biophys.run(t_max, dt_rec=20., record_concentrations=ions)
-        sim_tree_biophys.deleteModel()
+        sim_tree_biophys.delete_model()
 
         return (
             np.array([v_m[-1] for v_m in res_biophys['v_m']]),

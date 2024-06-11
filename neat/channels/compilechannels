@@ -108,6 +108,6 @@ subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
 print(
     f'\n------------------------------\n'
     f'The compiled .mod-files can be loaded into neuron using:\n'
-    f'    neat.loadNeuronModel(user_model)\n'
+    f'    neat.load_neuron_model(user_model)\n'
     f'------------------------------\n'
 )

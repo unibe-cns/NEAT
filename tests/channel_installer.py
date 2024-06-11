@@ -7,7 +7,7 @@ except ImportError as e:
 import os
 import subprocess
 
-from neat import loadNeuronModel, loadNestModel
+from neat import load_neuron_model, loadNestModel
 
 
 def load_or_install_neuron_testchannels():
@@ -19,18 +19,18 @@ def load_or_install_neuron_testchannels():
         'channelcollection_for_tests.py'
     ))
     try:
-        # loadNeuronModel() calls will raise a RuntimeError is a compiled model
+        # load_neuron_model() calls will raise a RuntimeError is a compiled model
         # is loaded multiple times
         try:
             # raises FileNotFoundError if not compiled
-            loadNeuronModel("multichannel_test")
+            load_neuron_model("multichannel_test")
         except FileNotFoundError:
             subprocess.call([
                 "neatmodels", "install", "multichannel_test",
                 "-s", "neuron",
                 "-p", channel_file
             ])
-            loadNeuronModel("multichannel_test")
+            load_neuron_model("multichannel_test")
     except RuntimeError as e:
         # the neuron model "multichannel_test" has already been loaded
         pass

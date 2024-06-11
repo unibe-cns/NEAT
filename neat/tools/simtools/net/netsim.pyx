@@ -33,39 +33,39 @@ cdef extern from "NETC.h":
         NETSimulator(int n_loc, double *v_eq)
 
         # initialize from python
-        void initFromPython(double dt, double integ_mode, bool print_tree)
-        void addNodeFromPython(int node_index, int parent_index,
+        void init_from_python(double dt, double integ_mode, bool print_tree)
+        void add_node_from_python(int node_index, int parent_index,
                                int64_t *child_indices, int n_children,
                                int64_t *loc_idxices, int n_locinds,
                                int64_t *newloc_idxices, int n_newlocinds,
                                double *alphas, double *gammas, int n_exp)
-        void addLinTermFromPython(int loc_idxex,
+        void add_lin_term_from_python(int loc_idxex,
                                 double *alphas, double *gammas, int n_exp)
-        void addIonChannelFromPython(string channel_name, int loc_idx,
+        void add_ionchannel_from_python(string channel_name, int loc_idx,
                                      double g_bar, double e_rev,
                                      bool instantaneous, double *vs, int v_size);
-        void addSynapseFromType(int loc_idx, int syn_type)
-        void addSynapseFromParams(int loc_idx, double e_r,
+        void add_synapse_from_type(int loc_idx, int syn_type)
+        void add_synapse_from_params(int loc_idx, double e_r,
                                 double *params, int p_size)
         void reset()
         # other structure functions
-        void removeSynapseFromIndex(int loc_idx, int syn_ind)
+        void remove_synapse_from_index(int loc_idx, int syn_ind)
         # getter functions for voltage
-        void addVLocToArr(double *v_arr, int v_size)
-        void addVNodeToArr(double *v_arr, int v_size)
-        double getVSingleLoc(int loc_idxex)
-        double getVSingleNode(int node_index)
-        double getGSingleSyn(int loc_idxex, int syn_index)
-        double getSurfaceSingleSyn(int loc_idxex, int syn_index)
-        void setVNodeFromVLoc(double *v_arr, int v_size)
-        void setVNodeFromVNode(double *v_arr, int v_size)
+        void add_v_loc_to_arr(double *v_arr, int v_size)
+        void add_v_node_to_arr(double *v_arr, int v_size)
+        double get_v_single_loc(int loc_idxex)
+        double get_v_single_node(int node_index)
+        double get_g_single_syn(int loc_idxex, int syn_index)
+        double get_surface_single_syn(int loc_idxex, int syn_index)
+        void set_v_node_from_v_loc(double *v_arr, int v_size)
+        void set_v_node_from_v_node(double *v_arr, int v_size)
         # integration functions
-        void solveMatrix()
-        void constructMatrix(double dt, double* mat, double* arr, int n_node);
-        void setInputsToZero()
-        void constructInputSyn1Loc(int loc_idx, double v_m,
+        void solve_matrix()
+        void construct_matrix(double dt, double* mat, double* arr, int n_node);
+        void set_inputs_to_zero()
+        void construct_input_syn_1_loc(int loc_idx, double v_m,
                                 double *g_syn, int g_size)
-        void constructInputChan1Loc(int loc_idx, double v_m)
+        void construct_input_chan_1_loc(int loc_idx, double v_m)
         void advance(double dt)
         void feedSpike(int loc_idx, int syn_ind, double g_max, int n_spike)
 
@@ -116,7 +116,7 @@ cdef class NETSim:
                                 if len(node.newloc_idxs) > 0 else np.array([-1], dtype=np.int64)
             (alphas, gammas) = (-node.z_kernel.a, node.z_kernel.c)
             alphas = alphas.astype(complex); gammas = gammas.astype(complex)
-            self._addNode(node.index, pnode_ind,
+            self._add_node(node.index, pnode_ind,
                             cnode_inds,
                             locinds,
                             newlocinds,
@@ -127,34 +127,34 @@ cdef class NETSim:
                 for ind, lin_term in lin_terms.iteritems():
                     alphas, gammas = -lin_term.a, lin_term.c
                     alphas, gammas = alphas.astype(complex), gammas.astype(complex)
-                    self._addLinTerm(ind, c2r(alphas), c2r(gammas))
+                    self._add_lin_term(ind, c2r(alphas), c2r(gammas))
             else:
                 raise IOError('`lin_terms` should be dict')
         self.initialize(mode=0, print_tree=print_tree)
 
     def initialize(self, dt=.1, mode=1, print_tree=False):
         self.mode = mode
-        self.net_ptr.initFromPython(dt, mode, print_tree)
+        self.net_ptr.init_from_python(dt, mode, print_tree)
 
-    def _addNode(self, node_index, parent_index,
+    def _add_node(self, node_index, parent_index,
                        np.ndarray[np.int64_t, ndim=1] child_indices,
                        np.ndarray[np.int64_t, ndim=1] loc_idxices,
                        np.ndarray[np.int64_t, ndim=1] newloc_idxices,
                        np.ndarray[np.double_t, ndim=2] alphas,
                        np.ndarray[np.double_t, ndim=2] gammas):
-        self.net_ptr.addNodeFromPython(node_index, parent_index,
+        self.net_ptr.add_node_from_python(node_index, parent_index,
                                    &child_indices[0], child_indices.shape[0],
                                    &loc_idxices[0], loc_idxices.shape[0],
                                    &newloc_idxices[0], newloc_idxices.shape[0],
                                    &alphas[0,0], &gammas[0,0], alphas.shape[0])
 
-    def _addLinTerm(self, loc_idxex,
+    def _add_lin_term(self, loc_idxex,
                        np.ndarray[np.double_t, ndim=2] alphas,
                        np.ndarray[np.double_t, ndim=2] gammas):
-        self.net_ptr.addLinTermFromPython(loc_idxex,
+        self.net_ptr.add_lin_term_from_python(loc_idxex,
                                     &alphas[0,0], &gammas[0,0], alphas.shape[0])
 
-    def setVNodeFromVNode(self, v_node):
+    def set_v_node_from_v_node(self, v_node):
         """
         Set the node voltage
 
@@ -166,9 +166,9 @@ cdef class NETSim:
         if v_node.shape[0] != self.n_node:
             raise ValueError('Input has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_node
-        self.net_ptr.setVNodeFromVNode(&vc_arr[0], vc_arr.shape[0])
+        self.net_ptr.set_v_node_from_v_node(&vc_arr[0], vc_arr.shape[0])
 
-    def setVNodeFromVLoc(self, v_loc):
+    def set_v_node_from_v_loc(self, v_loc):
         """
         Set the node voltage starting from the location voltage array. This
         transformation is not unique. The implementation chosen here is so that
@@ -183,9 +183,9 @@ cdef class NETSim:
         if v_loc.shape[0] != self.n_loc:
             raise ValueError('Input has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_loc
-        self.net_ptr.setVNodeFromVLoc(&vc_arr[0], vc_arr.shape[0])
+        self.net_ptr.set_v_node_from_v_loc(&vc_arr[0], vc_arr.shape[0])
 
-    def getVLoc(self):
+    def get_v_loc(self):
         """
         Returns the location voltages
 
@@ -194,10 +194,10 @@ cdef class NETSim:
         numpy.ndarray (`ndim` = 1, `size` = ``n_loc``)
         """
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = np.zeros((self.n_loc,), dtype=float)
-        self.net_ptr.addVLocToArr(&vc_arr[0], vc_arr.shape[0])
+        self.net_ptr.add_v_loc_to_arr(&vc_arr[0], vc_arr.shape[0])
         return vc_arr
 
-    def addVLocToArr(self, v_arr):
+    def add_v_loc_to_arr(self, v_arr):
         """
         Add the location voltages to the input array
 
@@ -208,9 +208,9 @@ cdef class NETSim:
         if v_arr.shape[0] != self.n_loc:
             raise ValueError('Input has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
-        self.net_ptr.addVLocToArr(&vc_arr[0], vc_arr.shape[0])
+        self.net_ptr.add_v_loc_to_arr(&vc_arr[0], vc_arr.shape[0])
 
-    def getVNode(self):
+    def get_v_node(self):
         """
         Returns the NET node voltages
 
@@ -219,10 +219,10 @@ cdef class NETSim:
         numpy.ndarray (`ndim` = 1, `size` = ``n_node``)
         """
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = np.zeros((self.n_node,), dtype=float)
-        self.net_ptr.addVNodeToArr(&vc_arr[0], vc_arr.shape[0])
+        self.net_ptr.add_v_node_to_arr(&vc_arr[0], vc_arr.shape[0])
         return vc_arr
 
-    def addVNodeToArr(self, v_arr):
+    def add_v_node_to_arr(self, v_arr):
         """
         Add the NET node voltages to the input array
 
@@ -233,9 +233,9 @@ cdef class NETSim:
         if v_arr.shape[0] != self.n_node:
             raise ValueError('Input array has incorrect size')
         cdef np.ndarray[np.double_t, ndim=1] vc_arr = v_arr
-        self.net_ptr.addVNodeToArr(&vc_arr[0], vc_arr.shape[0])
+        self.net_ptr.add_v_node_to_arr(&vc_arr[0], vc_arr.shape[0])
 
-    def addChannel(self, chan, loc_idxex, g_max, e_rev,
+    def add_channel(self, chan, loc_idxex, g_max, e_rev,
                          instantaneous=False, v_const={}):
         """
         Add an ion channel to the NET model
@@ -272,10 +272,10 @@ cdef class NETSim:
             for ii, svar in enumerate(chan.varnames.flatten()):
                 vs_arr[ii] = v_const[svar] if svar in v_const else 1e4
         # add the channel
-        self.net_ptr.addIonChannelFromPython(cname, loc_idxex, g_max, e_rev,
+        self.net_ptr.add_ionchannel_from_python(cname, loc_idxex, g_max, e_rev,
                                              instantaneous, &vs_arr[0], vs_arr.shape[0])
 
-    def addSynapse(self, loc_idxex, synarg, g_max=0.001, nmda_ratio=1.6):
+    def add_synapse(self, loc_idxex, synarg, g_max=0.001, nmda_ratio=1.6):
         """
         Add a synapse to the NET model
 
@@ -296,8 +296,8 @@ cdef class NETSim:
         if isinstance(synarg, str):
             if synarg == 'AMPA+NMDA':
                 # add the synapses
-                self.net_ptr.addSynapseFromType(loc_idxex, 0)
-                self.net_ptr.addSynapseFromType(loc_idxex, 1)
+                self.net_ptr.add_synapse_from_type(loc_idxex, 0)
+                self.net_ptr.add_synapse_from_type(loc_idxex, 1)
                 # synapse parameters for simulation
                 syn_map = {'loc_idxex': loc_idxex,
                             'syn_index_at_loc': self.n_syn[loc_idxex],
@@ -315,7 +315,7 @@ cdef class NETSim:
                     raise ValueError('``synarg`` should be \'AMPA\', ' \
                                         '\'NMDA\' or \'GABA\' or \'AMPA+NMDA\'')
                 # add the synapse
-                self.net_ptr.addSynapseFromType(loc_idxex, synarg)
+                self.net_ptr.add_synapse_from_type(loc_idxex, synarg)
                 # synapse parameters for simulation
                 syn_map = {'loc_idxex': loc_idxex,
                             'syn_index_at_loc': self.n_syn[loc_idxex],
@@ -325,7 +325,7 @@ cdef class NETSim:
         elif isinstance(synarg, float):
             tau_arr = np.array([.2,3.])
             # add the synapse
-            self.net_ptr.addSynapseFromParams(loc_idxex, synarg,
+            self.net_ptr.add_synapse_from_params(loc_idxex, synarg,
                                               &tau_arr[0], tau_arr.shape[0])
             # synapse parameters for simulation
             syn_map = {'loc_idxex': loc_idxex,
@@ -342,7 +342,7 @@ cdef class NETSim:
                 raise KeyError('No time scale keys found in `dict` ``synarg`` ' + \
                                 'use \'tau\' or \'tau_r\' and \'tau_d\'')
             # add the synapse
-            self.net_ptr.addSynapseFromParams(loc_idxex, synarg['e_r'],
+            self.net_ptr.add_synapse_from_params(loc_idxex, synarg['e_r'],
                                               &tau_arr[0], tau_arr.shape[0])
             # synapse parameters for simulation
             syn_map = {'loc_idxex': loc_idxex,
@@ -356,7 +356,7 @@ cdef class NETSim:
         self.syn_map_py.append(syn_map)
         self.spike_times_py.append([])
 
-    def _getSynListIndex(self, loc_idxex, syn_index):
+    def _get_syn_list_index(self, loc_idxex, syn_index):
         if loc_idxex < 0 or loc_idxex >= self.n_loc:
             raise IndexError('`loc_idxex` out of range')
         if syn_index < 0 or syn_index >= self.n_syn[loc_idxex]:
@@ -368,14 +368,14 @@ cdef class NETSim:
                 return ii
         return None
 
-    def getCondSurfFromLoc(self, loc_idxex, syn_index):
-        return self.net_ptr.getSurfaceSingleSyn(loc_idxex, syn_index)
+    def get_cond_surf_from_loc(self, loc_idxex, syn_index):
+        return self.net_ptr.get_surface_single_syn(loc_idxex, syn_index)
 
-    def getCondSurf(self, index):
-        return self.net_ptr.getSurfaceSingleSyn(self.syn_map[index]['loc_idxex'], \
+    def get_cond_surf(self, index):
+        return self.net_ptr.get_surface_single_syn(self.syn_map[index]['loc_idxex'], \
                                                self.syn_map[index]['syn_index_at_loc'])
 
-    def removeSynapseFromLoc(self, loc_idxex, syn_index):
+    def remove_synapse_from_loc(self, loc_idxex, syn_index):
         """
         Remove synapse at location ``loc_idxex``, and at position ``syn_index`` in
         the synapse array of that location
@@ -387,10 +387,10 @@ cdef class NETSim:
         syn_index : int
             index of the synapse
         """
-        index = self._getSynListIndex(loc_idxex, syn_index)
-        self.removeSynapse(index)
+        index = self._get_syn_list_index(loc_idxex, syn_index)
+        self.remove_synapse(index)
 
-    def removeSynapse(self, index):
+    def remove_synapse(self, index):
         """
         Remove synapse at position ``index`` in synapse stack
 
@@ -406,12 +406,12 @@ cdef class NETSim:
         syn_map_del = self.syn_map_py.pop(index)
         self.n_syn[syn_map_del['loc_idxex']] -= syn_map_del['n_syn_at_loc']
         for _ in xrange(syn_map_del['n_syn_at_loc']):
-            self.net_ptr.removeSynapseFromIndex(syn_map_del['loc_idxex'],
+            self.net_ptr.remove_synapse_from_index(syn_map_del['loc_idxex'],
                                                 syn_map_del['syn_index_at_loc'])
         # reassign indices of other spike times
         del self.spike_times_py[index]
 
-    def _constructInput(self, v_arr, g_syn):
+    def _construct_input(self, v_arr, g_syn):
         """
         constructs the NET solver input for the given conductance and voltage
 
@@ -430,16 +430,16 @@ cdef class NETSim:
         # declare c array
         cdef np.ndarray[np.double_t, ndim=1] g_c
         # reset the arrays
-        self.net_ptr.setInputsToZero()
+        self.net_ptr.set_inputs_to_zero()
         for ii, (v_a, g_s) in enumerate(zip(v_arr, g_syn)):
             if g_s.size != self.n_syn[ii]:
                 raise ValueError('`g_syn[%d]` has incorrect size'%ii)
             if g_s.size > 0:
                 g_c = g_s
-                self.net_ptr.constructInputSyn1Loc(ii, v_a, &g_c[0], g_c.shape[0])
-            self.net_ptr.constructInputChan1Loc(ii, v_a)
+                self.net_ptr.construct_input_syn_1_loc(ii, v_a, &g_c[0], g_c.shape[0])
+            self.net_ptr.construct_input_chan_1_loc(ii, v_a)
 
-    def recastInput(self, g_syn):
+    def recast_input(self, g_syn):
         """
         executes the Newton iteration to find the steady state location voltage
 
@@ -464,10 +464,10 @@ cdef class NETSim:
                 g_syn[syn_map['loc_idxex']].append(g_syn_[ii])
                 # automatically assumes second synapse (if present) is NMDA
                 # synapse, multiplies maximal conductance with NMDA ratio
-                surf_ampa = self.net_ptr.getSurfaceSingleSyn(\
+                surf_ampa = self.net_ptr.get_surface_single_syn(\
                             syn_map['loc_idxex'], syn_map['syn_index_at_loc'])
                 for jj, g_s in enumerate(syn_map['g_max'][1:]):
-                    surf_nmda = self.net_ptr.getSurfaceSingleSyn(\
+                    surf_nmda = self.net_ptr.get_surface_single_syn(\
                             syn_map['loc_idxex'], syn_map['syn_index_at_loc']+jj+1)
                     g_syn[syn_map['loc_idxex']].append( \
                                 g_syn_[ii] * g_s / syn_map['g_max'][0] * \
@@ -477,18 +477,18 @@ cdef class NETSim:
         else:
             return g_syn
 
-    def getMatAndVec(self, dt=0.1):
+    def get_mat_and_vec(self, dt=0.1):
         # construct the data arrays
         cdef np.ndarray[np.double_t, ndim=2] mat = np.zeros((self.n_node, self.n_node))
         cdef np.ndarray[np.double_t, ndim=1] vec = np.zeros(self.n_node)
         # fill matrix and vector
-        self.net_ptr.constructMatrix(dt, &mat[0,0], &vec[0], self.n_node)
+        self.net_ptr.construct_matrix(dt, &mat[0,0], &vec[0], self.n_node)
         return mat, vec
 
-    def invertMatrix(self):
-        self.net_ptr.solveMatrix()
+    def invert_matrix(self):
+        self.net_ptr.solve_matrix()
 
-    def solveNewton(self, g_syn,
+    def solve_newton(self, g_syn,
                            v_eps=.1, n_max=100,
                            v_0=None, v_alt=None,
                            n_iter=0):
@@ -527,20 +527,20 @@ cdef class NETSim:
             v_0 = self.v_eq
             v_alt = np.zeros(self.n_loc)
         if n_iter == 0:
-            self.setVNodeFromVLoc(v_0)
+            self.set_v_node_from_v_loc(v_0)
             # recast input in other form
-            g_syn = self.recastInput(g_syn)
+            g_syn = self.recast_input(g_syn)
         # construct the inputs
-        self._constructInput(v_0, g_syn)
+        self._construct_input(v_0, g_syn)
         # compute solution
-        self.net_ptr.solveMatrix()
-        v_new = self.getVLoc()
+        self.net_ptr.solve_matrix()
+        v_new = self.get_v_loc()
         # check for instability
         if np.max(np.abs(v_new)) > 1000.:
             # v_0 failed, so try v_alt
             if v_alt is not None:
-                self.setVNodeFromVLoc(v_alt)
-                v_new = self.solveNewton(g_syn, v_eps=v_eps,
+                self.set_v_node_from_v_loc(v_alt)
+                v_new = self.solve_newton(g_syn, v_eps=v_eps,
                                             n_iter=0, n_max=n_max,
                                             v_0=v_alt, v_alt=None)
             else:
@@ -548,12 +548,12 @@ cdef class NETSim:
                 return np.array([np.nan for _ in range(self.n_loc)])
         elif np.linalg.norm(v_new - v_0) > v_eps and n_iter < n_max:
             # no convergence yet, move on to next step
-            v_new = self.solveNewton(g_syn, v_eps=v_eps,
+            v_new = self.solve_newton(g_syn, v_eps=v_eps,
                                         n_iter=n_iter+1, n_max=n_max,
                                         v_0=v_new, v_alt=v_alt)
         return v_new
 
-    def setSpikeTimesFromLoc(self, loc_idxex, syn_index, spike_times):
+    def set_spiketimes_from_loc(self, loc_idxex, syn_index, spike_times):
         """
         Set spike times for a synapse indexed by it's location ``loc_idxex`` and
         position ``syn_index`` at that location
@@ -567,10 +567,10 @@ cdef class NETSim:
         spike_times : iterable
             iterable collection of spike times. Needs to be ordered
         """
-        index = self._getSynListIndex(loc_idxex, syn_index)
-        self.setSpikeTimes(index, spike_times)
+        index = self._get_syn_list_index(loc_idxex, syn_index)
+        self.set_spiketimes(index, spike_times)
 
-    def setSpikeTimes(self, index, spike_times):
+    def set_spiketimes(self, index, spike_times):
         """
         Set spike times for a synapse indexed by it's position in the synapse
         stack
@@ -589,7 +589,7 @@ cdef class NETSim:
             raise IndexError('\'index\' out of range')
         self.spike_times_py[index] = spike_times
 
-    def runSim(self, double tmax, double dt, int step_skip=1,
+    def run_sim(self, double tmax, double dt, int step_skip=1,
                     bool rec_v_node=False, list rec_g_syn_inds=[], bool pprint=False):
         """
         Run the simulation using the CNET.
@@ -693,14 +693,14 @@ cdef class NETSim:
             # store the variables
             if kk % step_skip == store_ind:
                 for ll in xrange(self.n_loc):
-                    v_loc[ll,mm] = self.net_ptr.getVSingleLoc(ll)
+                    v_loc[ll,mm] = self.net_ptr.get_v_single_loc(ll)
                 if rec_v_node:
                     for ll in xrange(self.n_node):
-                        v_node[ll,mm] = self.net_ptr.getVSingleNode(ll)
+                        v_node[ll,mm] = self.net_ptr.get_v_single_node(ll)
                 for ii, g_store in g_syn.iteritems():
                     for ll in xrange(n_syn_at_loc[ii]):
                         g_store[ll][mm] = \
-                                self.net_ptr.getGSingleSyn(loc_idxex[ii],
+                                self.net_ptr.get_g_single_syn(loc_idxex[ii],
                                                            syn_index_at_loc[ii]+ll)
                 mm += 1
 

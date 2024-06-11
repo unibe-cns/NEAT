@@ -327,20 +327,20 @@ Simulate NEURON models
    :toctree: generated/
 
    NeuronSimTree.init_model
-   NeuronSimTree.deleteModel
-   NeuronSimTree.addShunt
-   NeuronSimTree.addDoubleExpCurrent
-   NeuronSimTree.addExpSynapse
-   NeuronSimTree.addDoubleExpSynapse
-   NeuronSimTree.addNMDASynapse
-   NeuronSimTree.addDoubleExpNMDASynapse
-   NeuronSimTree.addIClamp
-   NeuronSimTree.addSinClamp
-   NeuronSimTree.addOUClamp
+   NeuronSimTree.delete_model
+   NeuronSimTree.add_shunt
+   NeuronSimTree.add_double_exp_current
+   NeuronSimTree.add_exp_synapse
+   NeuronSimTree.add_double_exp_synapse
+   NeuronSimTree.add_nmda_synapse
+   NeuronSimTree.add_double_exp_nmda_synapse
+   NeuronSimTree.add_i_clamp
+   NeuronSimTree.add_sin_clamp
+   NeuronSimTree.add_ou_clamp
    NeuronSimTree.addOUconductance
-   NeuronSimTree.addOUReversal
-   NeuronSimTree.addVClamp
-   NeuronSimTree.setSpikeTrain
+   NeuronSimTree.add_ou_reversal
+   NeuronSimTree.add_v_clamp
+   NeuronSimTree.set_spiketrain
    NeuronSimTree.run
    NeuronSimTree.calc_e_eq
 

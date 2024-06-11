@@ -265,7 +265,7 @@ class TestConcMechs:
         simtree.store_locs(rec_locs, name='rec locs')
 
         # initialize input
-        simtree.addIClamp(rec_locs[0], amp, delay, dur)
+        simtree.add_i_clamp(rec_locs[0], amp, delay, dur)
 
         # run test simulation
         res = simtree.run(1.5*dur,

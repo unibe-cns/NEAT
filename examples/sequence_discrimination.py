@@ -59,8 +59,8 @@ class BrancoSimTree(NeuronSimTree):
             self.store_locs(locs, name='syn locs')
             self.store_locs([(1., 0.5)], name='soma loc')
 
-    def deleteModel(self):
-        super(BrancoSimTree, self).deleteModel()
+    def delete_model(self):
+        super(BrancoSimTree, self).delete_model()
         self.pres = []
         self.nmdas = []
 
@@ -73,7 +73,7 @@ class BrancoSimTree(NeuronSimTree):
         # store the synapse
         self.syns.append(syn)
 
-    def addNMDASynapse(self, loc, g_max, e_rev, c_mg, dur_rel, amp_rel):
+    def add_nmda_synapse(self, loc, g_max, e_rev, c_mg, dur_rel, amp_rel):
         loc = MorphLoc(loc, self)
         # create the synapse
         syn = h.NMDA_Mg_T(self.sections[loc['node']](loc['x']))
@@ -108,7 +108,7 @@ class BrancoSimTree(NeuronSimTree):
             # ampa synapse
             self.addAMPASynapse(loc, G_MAX_AMPA, TAU_AMPA)
             # nmda synapse
-            self.addNMDASynapse(loc, G_MAX_NMDA, E_REV_NMDA, C_MG, DUR_REL, AMP_REL)
+            self.add_nmda_synapse(loc, G_MAX_NMDA, E_REV_NMDA, C_MG, DUR_REL, AMP_REL)
 
     def setSequence(self, delta_t, centri='fugal', t0=10., tadd=100.):
         n_loc = len(self.get_locs('syn locs'))
@@ -160,7 +160,7 @@ class BrancoSimTree(NeuronSimTree):
 
         return ctree
 
-    def runSim(self, delta_t=12.):
+    def run_sim(self, delta_t=12.):
         try:
             el = self[0].currents['L'][1]
         except AttributeError:
@@ -176,7 +176,7 @@ class BrancoSimTree(NeuronSimTree):
         # run the simulation
         res_centripetal = self.run(t_max, pprint=True)
         # delete the model
-        self.deleteModel()
+        self.delete_model()
 
         self.init_model(dt=0.025, t_calibrate=0., v_init=el, factor_lambda=10.)
         # add the synapses
@@ -187,7 +187,7 @@ class BrancoSimTree(NeuronSimTree):
         # run the simulation
         res_centrifugal = self.run(t_max, pprint=True)
         # delete the model
-        self.deleteModel()
+        self.delete_model()
 
         return res_centripetal, res_centrifugal
 
@@ -254,11 +254,11 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     # plot voltage traces
     legend_handles = []
     for ii, delta_t in enumerate(delta_ts):
-        res_cp, res_cf = simtree.runSim(delta_t=delta_t)
+        res_cp, res_cf = simtree.run_sim(delta_t=delta_t)
         ax1.plot(res_cp['t'], res_cp['v_m'][0], c='DarkGrey', lw=lwidth)
         ax1.plot(res_cf['t'], res_cf['v_m'][0], c='DarkGrey', lw=lwidth)
 
-        cres_cp, cres_cf = csimtree.runSim(delta_t=delta_t)
+        cres_cp, cres_cf = csimtree.run_sim(delta_t=delta_t)
         line = ax1.plot(cres_cp['t'], cres_cp['v_m'][0], c=colours[ii%len(colours)],
                         ls='--', lw=1.6*lwidth, label=r'$\Delta t = ' + '%.1f$ ms'%delta_t)
         ax1.plot(cres_cf['t'], cres_cf['v_m'][0], c=colours[ii%len(colours)], ls='-.', lw=1.6*lwidth)
