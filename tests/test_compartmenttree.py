@@ -354,10 +354,10 @@ class TestCompartmentTree():
         svs = []; e_eqs_ = []
         na_chan = greens_tree_na.channel_storage['Na_Ta']
         for e_eq1 in e_eqs:
-            sv1 = na_chan.computeVarinf(e_eq1)
+            sv1 = na_chan.compute_varinf(e_eq1)
             for e_eq2 in e_eqs:
                 e_eqs_.append(e_eq2)
-                sv2 = na_chan.computeVarinf(e_eq2)
+                sv2 = na_chan.compute_varinf(e_eq2)
                 svs.append({'m': sv2['m'], 'h': sv1['h']})
         # compute sodium impedance matrices
         z_mats_na = []

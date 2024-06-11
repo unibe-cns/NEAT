@@ -94,7 +94,7 @@ def get_expansion_points(e_hs, channel, only_e_h=False):
         the expansion points at every holding potential
     """
     if len(channel.statevars) == 1 or only_e_h:
-        sv_hs = channel.computeVarinf(e_hs)
+        sv_hs = channel.compute_varinf(e_hs)
         sv_hs['v'] = e_hs
     else:
         # create different combinations of holding potentials
@@ -361,7 +361,7 @@ class CompartmentFitter(object):
             )
 
             # compute open probability to weigh fit matrices
-            po_h = channel.computePOpen(e_h, **sv)
+            po_h = channel.compute_p_open(e_h, **sv)
             w_f = 1. / po_h
 
             fit_mats.append([m_f, v_t, w_f])

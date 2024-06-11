@@ -104,8 +104,8 @@ class TestNest:
         nest.Simulate(400.)
         res_nest = nest.GetStatus(mm, 'events')[0]
 
-        sv_na = self.na_chan.computeVarinf(v_eq)
-        sv_k = self.k_chan.computeVarinf(v_eq)
+        sv_na = self.na_chan.compute_varinf(v_eq)
+        sv_k = self.k_chan.compute_varinf(v_eq)
 
         assert np.abs(res_nest["v_comp0"][0] - v_eq) < 1e-8
         assert np.abs(res_nest["m_Kv3_10"][0] - sv_k['m']) < 1e-8

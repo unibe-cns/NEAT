@@ -885,7 +885,7 @@ class NeuronSimTree(PhysTree):
                 for varname in channel.statevars:
                     var = str(varname)
                     sv[var] = res['chan'][channel_name][var]
-                res['chan'][channel_name]['p_open'] = channel.computePOpen(res['v_m'], **sv)
+                res['chan'][channel_name]['p_open'] = channel.compute_p_open(res['v_m'], **sv)
         # cast spike recording to numpy array
         if 'spikes' in res:
             res['spikes'] = np.array(list(res['spikes'])) - self.t_calibrate

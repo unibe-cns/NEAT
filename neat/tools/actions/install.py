@@ -170,7 +170,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
 
     for chan in channels:
         print(' - writing .mod file for:', chan.__class__.__name__)
-        chan.writeModFile(path_for_mod_files)
+        chan.write_mod_file(path_for_mod_files)
 
     # # copy possible mod-files within the source directory to the compile directory
     # for mod_file in glob.glob(os.path.join(path_for_channels, '*.mod')):

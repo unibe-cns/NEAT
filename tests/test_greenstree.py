@@ -625,10 +625,10 @@ class TestGreensTreeTime():
             v, sv = soma._construct_channel_args(channel)
 
             # add open probability to total conductance
-            g_soma -= g * a_soma * channel.computePOpen(v)
+            g_soma -= g * a_soma * channel.compute_p_open(v)
 
             # add linearized channel contribution to membrane conductance
-            dp_dx = channel.computeDerivatives(v)[0]
+            dp_dx = channel.compute_derivatives(v)[0]
 
             svar_terms[channel_name] = {}
             for svar, dp_dx_ in dp_dx.items():

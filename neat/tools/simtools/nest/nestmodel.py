@@ -111,7 +111,7 @@ class NestCompartmentNode(CompartmentNode):
             channel = channel_storage[key]
 
             # append asymptotic state variables to initialization dictionary
-            svs = channel.computeVarinf(i_dict['v_comp'])
+            svs = channel.compute_varinf(i_dict['v_comp'])
             for sv, val in svs.items():
                 i_dict[f'{sv}_{key}'] = val
 

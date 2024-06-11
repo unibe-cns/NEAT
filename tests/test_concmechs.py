@@ -338,9 +338,9 @@ class TestConcMechs:
             sv.update(conc)
 
             # compute linearized channel contribution to membrane impedance
-            g_m_ca = g_m_ca - g * channel.computeLinSum(v, freqs, e=e, **sv)
+            g_m_ca = g_m_ca - g * channel.compute_lin_sum(v, freqs, e=e, **sv)
 
-        c_ca = node.concmechs[ion].computeLinear(freqs) * g_m_ca
+        c_ca = node.concmechs[ion].compute_linear(freqs) * g_m_ca
 
         return g_m_ca, c_ca
 
@@ -380,14 +380,14 @@ class TestConcMechs:
             sv.update(conc)
 
             # compute linearized channel contribution to membrane impedance
-            g_m_k = g_m_k - g * channel.computeLinSum(v, freqs, e=e, **sv)
+            g_m_k = g_m_k - g * channel.compute_lin_sum(v, freqs, e=e, **sv)
 
             if 'ca' in channel.conc:
                 # add concentration contribution to linearized membrane
                 # conductance
                 g_m_k = g_m_k - \
                     g * \
-                    channel.computeLinConc(v, freqs, 'ca', e=e, **sv) * \
+                    channel.compute_lin_conc(v, freqs, 'ca', e=e, **sv) * \
                     c_ca #* 1e-6
 
         return g_m_k
@@ -428,7 +428,7 @@ class TestConcMechs:
 
         # test whether computed and simulated open probabilities are the same
         calc_p_open2 = {
-            cname: chan.computePOpen(eq2['v'], ca=eq2['ca']) \
+            cname: chan.compute_p_open(eq2['v'], ca=eq2['ca']) \
             for cname, chan in tree2.channel_storage.items()
         }
         for cname, p_o_sim in sim_p_open2.items():

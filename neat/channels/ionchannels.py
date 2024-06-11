@@ -30,9 +30,12 @@ class IfExpVisitor(ast.NodeVisitor):
         self.ifexp_node = None
 
     def visit_IfExp(self, node):
+        """
+        Function can NOT be renamed, is implicitly called by `ast.NodeVisitor.visit()`
+        """
         self.ifexp_node = node
 
-    def findIfExpNode(self, node):
+    def find_IfExp_node(self, node):
         self.visit(node)
         return_node = self.ifexp_node
         self.ifexp_node = None
@@ -206,7 +209,7 @@ class IonChannel(object):
     temp: float, optional
         The temperature at which the ion channel is evaluated. Can be modified
         after initializiation by calling
-        `IonChannel.setDefaultParams(temp=new_temperature)`. If not given, the
+        `IonChannel.set_default_params(temp=new_temperature)`. If not given, the
         evaluates `self.q10` at the default temperature of 36 degC.
     e: float, optional
         Reversal of the ion channel in ``[mV]``. functions that need it allow
@@ -343,8 +346,8 @@ class IonChannel(object):
         except KeyError:
             warnings.warn('No default reversal potential defined.')
 
-        # self._lambdifyChannel()
-        self.setDefaultParams(**kwargs)
+        # self._lambdify_channel()
+        self.set_default_params(**kwargs)
 
     def __getstate__(self):
         """
@@ -365,18 +368,18 @@ class IonChannel(object):
         since lambdified functions were not pickled we need to restore them
         """
         self.__dict__ = s
-        self._lambdifyChannel()
+        self._lambdify_channel()
 
-    def setDefaultParams(self, **kwargs):
+    def set_default_params(self, **kwargs):
         """
         **kwargs
             Default values for temperature (`temp`), reversal (`e`)
         """
         self.default_params.update(kwargs)
         # set the lambda functions for efficient numpy evaluation
-        self._lambdifyChannel()
+        self._lambdify_channel()
 
-    def _substituteDefaults(self, expr):
+    def _substitute_defaults(self, expr):
         """
         Substitute default values in input expression
 
@@ -392,7 +395,7 @@ class IonChannel(object):
     def ordered_statevars(self):
         return list(sorted(self.statevars, key=str))
 
-    def _lambdifyChannel(self):
+    def _lambdify_channel(self):
         """
         Create lambda functions based on sympy expression for relevant ion
         channel functions
@@ -413,9 +416,9 @@ class IonChannel(object):
         self.df_dv, self.df_dx, self.df_dc = CallDict(), CallDict(), CallDict()
 
         for svar, f_svar in self.fstatevar.items():
-            f_svar = self._substituteDefaults(f_svar)
-            varinf = self._substituteDefaults(self.varinf[svar])
-            tauinf = self._substituteDefaults(self.tauinf[svar])
+            f_svar = self._substitute_defaults(f_svar)
+            varinf = self._substitute_defaults(self.varinf[svar])
+            tauinf = self._substitute_defaults(self.tauinf[svar])
 
             # state variable function
             self.f_statevar = _broadcast(sp.lambdify(args, f_svar))
@@ -438,7 +441,7 @@ class IonChannel(object):
                 CallDict({c: _broadcast(sp.lambdify(args, sp.diff(f_svar, c, 1))) \
                           for c in self.sp_c})
 
-    def _argsAsList(self, v, w_statevar=True, **kwargs):
+    def _args_as_list(self, v, w_statevar=True, **kwargs):
         """
         Converts arguments to list for lambdified functions
         """
@@ -452,7 +455,7 @@ class IonChannel(object):
                 except KeyError:
                     # state variable is not in kwargs
                     # set default value based on voltage
-                    args = self._argsAsList(v, w_statevar=False, **kwargs)
+                    args = self._args_as_list(v, w_statevar=False, **kwargs)
                     arg_list.append(self.f_varinf[svar](*args))
 
         for c in self.sp_c:
@@ -466,7 +469,7 @@ class IonChannel(object):
 
         return arg_list
 
-    def computePOpen(self, v, **kwargs):
+    def compute_p_open(self, v, **kwargs):
         """
         Compute the open probability of the ion channel
 
@@ -482,10 +485,10 @@ class IonChannel(object):
         float or `np.ndarray` of float
             The open probability
         """
-        args = self._argsAsList(v, **kwargs)
+        args = self._args_as_list(v, **kwargs)
         return self.f_p_open(*args)
 
-    def computeDerivatives(self, v, **kwargs):
+    def compute_derivatives(self, v, **kwargs):
         """
         Compute:
         (i) the derivatives of the open probability to the state variables
@@ -504,10 +507,10 @@ class IonChannel(object):
         tuple of three floats or three `np.ndarray`s of float
             The derivatives
         """
-        args = self._argsAsList(v, **kwargs)
+        args = self._args_as_list(v, **kwargs)
         return self.dp_dx(*args), self.df_dv(*args), self.df_dx(*args)
 
-    def computeDerivativesConc(self, v, **kwargs):
+    def compute_derivativesConc(self, v, **kwargs):
         """
         Compute the derivatives of the state functions to the concentrations
 
@@ -523,10 +526,10 @@ class IonChannel(object):
         tuple of three floats or three `np.ndarray`s of float
             The derivatives
         """
-        args = self._argsAsList(v, **kwargs)
+        args = self._args_as_list(v, **kwargs)
         return self.df_dc(*args)
 
-    def computeVarinf(self, v):
+    def compute_varinf(self, v):
         """
         Compute the asymptotic values for the state variables at a given
         activation level
@@ -541,10 +544,10 @@ class IonChannel(object):
         dict of `np.ndarray` of dict of float
             The asymptotic activations, items are of same type (and shape) as `v`
         """
-        args = self._argsAsList(v, w_statevar=False, **{})
+        args = self._args_as_list(v, w_statevar=False, **{})
         return self.f_varinf(*args)
 
-    def computeTauinf(self, v):
+    def compute_tauinf(self, v):
         """
         Compute the time-scales for the state variables at a given
         activation level
@@ -559,10 +562,10 @@ class IonChannel(object):
         dict of `np.ndarray` of dict of float
             The asymptotic activations, items are of same type (and shape) as `v`
         """
-        args = self._argsAsList(v, w_statevar=False, **{})
+        args = self._args_as_list(v, w_statevar=False, **{})
         return self.f_tauinf(*args)
 
-    def computeLinStatevarResponse(self, v, freqs, v_resp, **kwargs):
+    def compute_lin_statevar_response(self, v, freqs, v_resp, **kwargs):
         """
         Combute the linearizations of the individual state variables
 
@@ -584,10 +587,10 @@ class IonChannel(object):
             The linearized current. Key are the state variable name. Shape of
             each entry is dimension of `freqs` followed by the dimensions of `v`.
         """
-        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
+        dp_dx, df_dv, df_dx = self.compute_derivatives(v, **kwargs)
 
         # determine the output shape according to numpy broadcasting rules
-        args_aux = [v_resp] + self._argsAsList(v, **kwargs)
+        args_aux = [v_resp] + self._args_as_list(v, **kwargs)
         out_shape = np.broadcast(*args_aux).shape
 
         lin_svar = SPDict({
@@ -601,7 +604,7 @@ class IonChannel(object):
             lin_svar[str(svar)] = df_dv_ / (freqs - df_dx_) * v_resp
         return lin_svar
 
-    def computeLinear(self, v, freqs, **kwargs):
+    def compute_linear(self, v, freqs, **kwargs):
         """
         Combute the contributions of the state variables to the linearized
         channel current
@@ -621,10 +624,10 @@ class IonChannel(object):
             The linearized current. Shape is dimension of `freqs` followed by
             the dimensions of `v`.
         """
-        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
+        dp_dx, df_dv, df_dx = self.compute_derivatives(v, **kwargs)
 
         # determine the output shape according to numpy broadcasting rules
-        args_aux = [freqs] + self._argsAsList(v, **kwargs)
+        args_aux = [freqs] + self._args_as_list(v, **kwargs)
         out_shape = np.broadcast(*args_aux).shape
 
         lin_f = np.zeros(out_shape, dtype=np.array(freqs).dtype)
@@ -635,7 +638,7 @@ class IonChannel(object):
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
 
-    def computeLinearConc(self, v, freqs, ion, **kwargs):
+    def compute_linear_conc(self, v, freqs, ion, **kwargs):
         """
         Combute the contributions of the state variables to the linearized
         channel current
@@ -657,11 +660,11 @@ class IonChannel(object):
             The linearized current. Shape is dimension of `freqs` followed by
             the dimensions of `v`.
         """
-        dp_dx, df_dv, df_dx = self.computeDerivatives(v, **kwargs)
-        df_dc = self.computeDerivativesConc(v, **kwargs)
+        dp_dx, df_dv, df_dx = self.compute_derivatives(v, **kwargs)
+        df_dc = self.compute_derivativesConc(v, **kwargs)
 
         # determine the output shape according to numpy broadcasting rules
-        args_aux = [freqs] + self._argsAsList(v, **kwargs)
+        args_aux = [freqs] + self._args_as_list(v, **kwargs)
         out_shape = np.broadcast(*args_aux).shape
 
         lin_f = np.zeros(out_shape, dtype=np.array(freqs).dtype)
@@ -672,7 +675,7 @@ class IonChannel(object):
             lin_f += dp_dx_ * df_dc_ / (freqs - df_dx_)
         return lin_f
 
-    def _getReversal(self, e):
+    def _get_reversal(self, e):
         if e is None:
             try:
                 e = self.default_params['e']
@@ -680,10 +683,10 @@ class IonChannel(object):
                 raise KeyError('No default reversal defined, provide value for `e`.')
         return e
 
-    def computeLinSum(self, v, freqs, e=None, **kwargs):
+    def compute_lin_sum(self, v, freqs, e=None, **kwargs):
         """
         Combute the linearized channel current contribution
-        (without concentributions from the concentration - see `computeLinConc()`)
+        (without concentributions from the concentration - see `compute_lin_conc()`)
 
         Parameters
         ----------
@@ -703,11 +706,11 @@ class IonChannel(object):
             The linearized current. Shape is dimension of `freqs` followed by
             the dimensions of `v`.
         """
-        e = self._getReversal(e)
-        return (e - v) * self.computeLinear(v, freqs, **kwargs) - \
-               self.computePOpen(v, **kwargs)
+        e = self._get_reversal(e)
+        return (e - v) * self.compute_linear(v, freqs, **kwargs) - \
+               self.compute_p_open(v, **kwargs)
 
-    def computeLinConc(self, v, freqs, ion, e=None, **kwargs):
+    def compute_lin_conc(self, v, freqs, ion, e=None, **kwargs):
         """
         Combute the linearized channel current contribution from the concentrations
 
@@ -731,18 +734,18 @@ class IonChannel(object):
             The linearized current. Shape is dimension of `freqs` followed by
             the dimensions of `v`.
         """
-        e = self._getReversal(e)
-        return (e - v) * self.computeLinearConc(v, freqs, ion, **kwargs)
+        e = self._get_reversal(e)
+        return (e - v) * self.compute_linear_conc(v, freqs, ion, **kwargs)
 
 
-    def writeModFile(self, path, g=0., e=None):
+    def write_mod_file(self, path, g=0., e=None):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
         cname =  self.__class__.__name__
         sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
-        e = self._getReversal(e)
+        e = self._get_reversal(e)
 
         modname = 'I' + cname + '.mod'
         fname = os.path.join(path, modname)
@@ -850,11 +853,11 @@ class IonChannel(object):
         """
         tree = ast.parse(code_str)
         iev = IfExpVisitor()
-        ifexp = iev.findIfExpNode(tree)
+        ifexp = iev.find_IfExp_node(tree)
 
         if ifexp is not None:
             # sanity check
-            assert iev.findIfExpNode(ifexp.test) is None
+            assert iev.find_IfExp_node(ifexp.test) is None
             # if test is True
             cond_1_str = self._create_nestml_funcstr(
                 ast.unparse(ifexp.body),
@@ -873,9 +876,13 @@ class IonChannel(object):
                 " "*indent + f"else:\n" + \
                     f"{cond_0_str}"
         else:
-            code_str = \
+            print("-----\n",code_str)
+            try:
+                code_str = \
                 " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
-
+            except TypeError as e:
+                print(e)
+                breakpoint()
         return code_str
 
     def write_nestml_blocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=-75., g=0., e=None):
@@ -883,8 +890,8 @@ class IonChannel(object):
         sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
         sv_suff = [sv_ + '_' + cname for sv_ in sv]
-        e = self._getReversal(e)
-        sv_init = self.computeVarinf(v_comp)
+        e = self._get_reversal(e)
+        sv_init = self.compute_varinf(v_comp)
 
         blocks_dict = {block: '' for block in blocks}
 
@@ -938,14 +945,12 @@ class IonChannel(object):
         def _customsimplify(expr):
             return sp.logcombine(sp.powsimp(sp.expand(expr)))
 
-        from sympy import pycode
-
         if 'function' in blocks:
             func_str = '\n' + \
                        '    # functions %s\n'%cname
             for svar, sv_, sv_suff_ in zip(self.ordered_statevars, sv, sv_suff):
                 # substitute possible default values and concentrations
-                varinf_func = self._substituteDefaults(self.varinf[svar])
+                varinf_func = self._substitute_defaults(self.varinf[svar])
                 func_args = ["v_comp real"]
                 for ckey, cval in self.conc.items():
                     func_args.append(f"{ckey} real")
@@ -962,7 +967,7 @@ class IonChannel(object):
                             f'        return val\n\n'
 
                 # substitute possible default values and concentrations
-                tauinf_func = self._substituteDefaults(self.tauinf[svar])
+                tauinf_func = self._substitute_defaults(self.tauinf[svar])
                 for ckey, cval in self.conc.items():
                     tauinf_func = tauinf_func.subs(ckey, cval)
 
@@ -980,7 +985,7 @@ class IonChannel(object):
         return blocks_dict
 
 
-    def writeCPPCode(self, path):
+    def write_cpp_code(self, path):
         """
         Concentration dependent ion channels get constant concentrations
         substituted for c++ simulation
@@ -1033,8 +1038,8 @@ class IonChannel(object):
         # function in cc file
         fcc.write('void %s::calcFunStatevar(double v){\n'%c_name)
         for svar in self.ordered_statevars:
-            varinf = self._substituteDefaults(self.varinf[svar])
-            tauinf = self._substituteDefaults(self.tauinf[svar])
+            varinf = self._substitute_defaults(self.varinf[svar])
+            tauinf = self._substitute_defaults(self.tauinf[svar])
             sv = str(svar)
             vi = _replaceConc(sp.printing.ccode(varinf), prefix='m_')
             ti = _replaceConc(sp.printing.ccode(tauinf), prefix='m_')
@@ -1105,7 +1110,7 @@ class IonChannel(object):
         for svar in self.ordered_statevars:
             sv = 'v_' + str(svar)
             # substitute default parameters
-            vi = self._substituteDefaults(self.varinf[svar])
+            vi = self._substitute_defaults(self.varinf[svar])
             # write ccode and substitute variable names
             vi_ccode = sp.printing.ccode(vi)
             vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
@@ -1131,7 +1136,7 @@ class IonChannel(object):
             v_var = sp.symbols(sv)
 
             # substitute default parameters
-            vi = self._substituteDefaults(self.varinf[svar])
+            vi = self._substitute_defaults(self.varinf[svar])
             # write ccode and substitute variable names
             vi_ccode = sp.printing.ccode(vi)
             vi_ccode = vi_ccode.replace(str(self.sp_v), sv)

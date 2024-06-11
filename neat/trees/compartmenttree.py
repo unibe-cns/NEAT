@@ -246,7 +246,7 @@ class CompartmentNode(SNode):
 
             v, sv = self._construct_channel_args(channel)
             # add linearized channel contribution to membrane conductance
-            cond_terms[channel_name] = - channel.computeLinSum(v, freqs, e, **sv)
+            cond_terms[channel_name] = - channel.compute_lin_sum(v, freqs, e, **sv)
 
         return cond_terms
 
@@ -293,20 +293,20 @@ class CompartmentNode(SNode):
             # if the channel adds to ion channel current, add it here
             if channel.ion == ion:
                 conc_write_channels = conc_write_channels - \
-                    g * channel.computeLinSum(v, freqs, e, **sv)
+                    g * channel.compute_lin_sum(v, freqs, e, **sv)
 
             # if channel reads the ion channel current, add it here
             if ion in channel.conc:
                 conc_read_channels = conc_read_channels - \
-                    g * channel.computeLinConc(v, freqs, ion, e, **sv)
+                    g * channel.compute_lin_conc(v, freqs, ion, e, **sv)
 
         if fit_type == 'gamma':
             return conc_write_channels * \
                    conc_read_channels * \
-                   self.concmechs[ion].computeLin(freqs)
+                   self.concmechs[ion].compute_lin(freqs)
 
         elif fit_type == "tau":
-            c0, c1 = self.concmechs[ion].computeLinTauFit(freqs)
+            c0, c1 = self.concmechs[ion].compute_lin_tau_fit(freqs)
             return conc_write_channels * conc_read_channels * c0, c1
 
         else:
@@ -353,7 +353,7 @@ class CompartmentNode(SNode):
 
             # open probability
             if p_open_channels is None:
-                p_o = channel.computePOpen(v, **sv)
+                p_o = channel.compute_p_open(v, **sv)
             else:
                 p_o = p_open_channels[channel_name]
 
@@ -402,7 +402,7 @@ class CompartmentNode(SNode):
             v, sv = self._construct_channel_args(channel)
 
             if channel_name not in p_open_channels:
-                i_tot = i_tot + g * channel.computePOpen(v, **sv) * (v - e)
+                i_tot = i_tot + g * channel.compute_p_open(v, **sv) * (v - e)
 
             else:
                 i_tot = i_tot + g * p_open_channels[channel_name] * (v - e)
@@ -444,7 +444,7 @@ class CompartmentNode(SNode):
             v, sv = self._construct_channel_args(channel)
 
             # add linearized channel contribution to membrane conductance
-            dp_dx = channel.computeDerivatives(v, **sv)[0]
+            dp_dx = channel.compute_derivatives(v, **sv)[0]
 
             svar_terms[channel_name] = {}
             for svar, dp_dx_ in dp_dx.items():
@@ -500,8 +500,8 @@ class CompartmentNode(SNode):
             sv_idxs = list(range(cc, cc+n_sv))
 
             # add linearized channel contribution to membrane conductance
-            p_o = channel.computePOpen(v, **sv)
-            dp_dx, df_dv, df_dx = channel.computeDerivatives(v, **sv)
+            p_o = channel.compute_p_open(v, **sv)
+            dp_dx, df_dv, df_dx = channel.compute_derivatives(v, **sv)
 
             dp_dx = np.array([dp_dx[sv] for sv in channel.ordered_statevars])
             df_dv = np.array([df_dv[sv] for sv in channel.ordered_statevars])

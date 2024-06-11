@@ -156,7 +156,7 @@ class GreensNode(PhysNode):
             v, sv = self._construct_channel_args(channel)
 
             # compute linearized channel contribution to membrane impedance
-            g_m_chan = g * channel.computeLinSum(v, freqs, e=e, **sv)
+            g_m_chan = g * channel.compute_lin_sum(v, freqs, e=e, **sv)
 
             # add channel contribution to total ionic current
             if use_conc and channel.ion in g_m_ions:
@@ -190,8 +190,8 @@ class GreensNode(PhysNode):
                 # conductance
                 g_m_aux = g_m_aux - \
                     g * \
-                    channel.computeLinConc(v, freqs, ion, e=e, **sv) * \
-                    self.concmechs[ion].computeLinear(freqs) * \
+                    channel.compute_lin_conc(v, freqs, ion, e=e, **sv) * \
+                    self.concmechs[ion].compute_linear(freqs) * \
                     g_m_ions[ion]
 
         return 1. / (2. * np.pi * self.R_ * g_m_aux)
@@ -233,7 +233,7 @@ class GreensNode(PhysNode):
             v, sv = self._construct_channel_args(channel)
 
             # compute linearized channel contribution to membrane impedance
-            svar_terms[channel_name] = channel.computeLinStatevarResponse(
+            svar_terms[channel_name] = channel.compute_lin_statevar_response(
                 v, freqs, v_resp, **sv
             )
 

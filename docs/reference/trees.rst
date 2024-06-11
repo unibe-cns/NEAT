@@ -408,16 +408,16 @@ Defining ion channels
 .. autosummary::
    :toctree: generated/
 
-   IonChannel.setDefaultParams
-   IonChannel.computePOpen
-   IonChannel.computeDerivatives
-   IonChannel.computeDerivativesConc
-   IonChannel.computeVarinf
-   IonChannel.computeTauinf
-   IonChannel.computeLinear
-   IonChannel.computeLinearConc
-   IonChannel.computeLinSum
-   IonChannel.computeLinConc
+   IonChannel.set_default_params
+   IonChannel.compute_p_open
+   IonChannel.compute_derivatives
+   IonChannel.compute_derivativesConc
+   IonChannel.compute_varinf
+   IonChannel.compute_tauinf
+   IonChannel.compute_linear
+   IonChannel.compute_linear_conc
+   IonChannel.compute_lin_sum
+   IonChannel.compute_lin_conc
 
 
 Neural evaluation tree simulator

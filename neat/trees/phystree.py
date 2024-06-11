@@ -185,7 +185,7 @@ class PhysNode(MorphNode):
             g, e = self.currents[channel_name]
 
             # compute channel conductance and current
-            p_open = channel_storage[channel_name].computePOpen(e_eq_target)
+            p_open = channel_storage[channel_name].compute_p_open(e_eq_target)
             g_chan = g * p_open
 
             gsum += g_chan
@@ -235,7 +235,7 @@ class PhysNode(MorphNode):
                 g_tot += g
             else:
                 conc = self._construct_conc_args(channel_storage[channel_name])
-                g_tot += g * channel_storage[channel_name].computePOpen(v, **conc)
+                g_tot += g * channel_storage[channel_name].compute_p_open(v, **conc)
 
         return g_tot
 
@@ -272,7 +272,7 @@ class PhysNode(MorphNode):
                 i_tot += g * (v - e)
             else:
                 conc = self._construct_conc_args(channel_storage[channel_name])
-                p_open = channel_storage[channel_name].computePOpen(v, **conc)
+                p_open = channel_storage[channel_name].compute_p_open(v, **conc)
                 i_tot += g * p_open * (v - e)
 
 

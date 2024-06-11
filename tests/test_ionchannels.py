@@ -43,18 +43,18 @@ class TestChannels():
 
         # test whether activations are correct
         var_inf = varinf(v_arr)
-        var_inf_chan = tcn.computeVarinf(v_arr)
+        var_inf_chan = tcn.compute_varinf(v_arr)
         for ind, varname in np.ndenumerate(varnames):
             assert np.allclose(var_inf[ind], var_inf_chan[varname])
 
         # test whether open probability is correct
         p_open = np.sum(factors[:, np.newaxis] * \
                         np.product(var_inf ** powers[:, :, np.newaxis], 1), 0)
-        p_open_ = tcn.computePOpen(v_arr)
+        p_open_ = tcn.compute_p_open(v_arr)
         assert np.allclose(p_open_, p_open)
 
         # test whether derivatives are correct
-        dp_dx_chan, df_dv_chan, df_dx_chan = tcn.computeDerivatives(v_arr)
+        dp_dx_chan, df_dv_chan, df_dx_chan = tcn.compute_derivatives(v_arr)
 
         # first: derivatives of open probability
         for ind, varname in np.ndenumerate(varnames):
@@ -84,16 +84,16 @@ def test_ionchannel_simplified(remove=True):
 
     na = channelcollection.Na_Ta()
 
-    p_o = na.computePOpen(-35.)
+    p_o = na.compute_p_open(-35.)
     assert np.allclose(p_o, 0.002009216860105564)
 
-    l_s = na.computeLinSum(-35., 0., 50.)
+    l_s = na.compute_lin_sum(-35., 0., 50.)
     assert np.allclose(l_s, -0.00534261017220376)
 
-    na.writeModFile('mech/')
+    na.write_mod_file('mech/')
 
     sk = channelcollection.SK()
-    sk.writeModFile('mech/')
+    sk.write_mod_file('mech/')
 
     if remove:
         shutil.rmtree('mech/')
@@ -121,37 +121,37 @@ def test_broadcasting():
 
     # error must be raised if arguments are not broadcastable
     with pytest.raises(ValueError):
-        na_ta.computeLinSum(v, s)
+        na_ta.compute_lin_sum(v, s)
 
     # check if broadcasting rules are applied correctly for voltage and frequency
-    ll = na_ta.computeLinSum(v[:,None], s[None,:])
-    l1 = na_ta.computeLinear(v[:,None], s[None,:])
-    l2 = na_ta.computePOpen(v[:,None])
+    ll = na_ta.compute_lin_sum(v[:,None], s[None,:])
+    l1 = na_ta.compute_linear(v[:,None], s[None,:])
+    l2 = na_ta.compute_p_open(v[:,None])
 
     assert ll.shape == (3,4)
     assert l1.shape == (3,4)
     assert l2.shape == (3,1)
-    assert np.allclose(ll, (na_ta._getReversal(None) - v[:,None]) * l1 - l2)
+    assert np.allclose(ll, (na_ta._get_reversal(None) - v[:,None]) * l1 - l2)
 
     # check if broadcasting rules are applied correctly for state variables
     sv = {'m': .2,
           'h': .4}
-    ll = na_ta.computeLinSum(v[:,None], s[None,:], **sv)
+    ll = na_ta.compute_lin_sum(v[:,None], s[None,:], **sv)
     assert ll.shape == (3,4)
 
     sv = {'m': np.array([0.1, 0.2, 0.3]),
           'h': np.array([0.9, 0.6, 0.3])}
     with pytest.raises(ValueError):
-        ll = na_ta.computeLinSum(v[:,None], s[None,:], **sv)
+        ll = na_ta.compute_lin_sum(v[:,None], s[None,:], **sv)
 
     sv_ = {'m': sv['m'][:,None],
            'h': sv['h'][:,None]}
-    ll = na_ta.computeLinSum(v[:,None], s[None,:], **sv_)
+    ll = na_ta.compute_lin_sum(v[:,None], s[None,:], **sv_)
     assert ll.shape == (3,4)
 
     sv__ = {'m': sv['m'][:, None, None],
             'h': sv['h'][None, None, :]}
-    l_ = na_ta.computeLinSum(v[:, None, None], s[None, :, None], **sv__)
+    l_ = na_ta.compute_lin_sum(v[:, None, None], s[None, :, None], **sv__)
     assert l_.shape == (3,4,3)
     for ii in range(4):
         assert np.allclose([ll[0,ii], ll[1,ii], ll[2,ii]],
@@ -159,8 +159,8 @@ def test_broadcasting():
 
     # test braodcasting for piecewise channel
     pwc = channelcollection.PiecewiseChannel()
-    varinf = pwc.computeVarinf(v)
-    tauinf = pwc.computeTauinf(v)
+    varinf = pwc.compute_varinf(v)
+    tauinf = pwc.compute_tauinf(v)
 
     assert np.allclose(varinf['a'], np.array([0.1, 0.1, 0.9]))
     assert np.allclose(varinf['b'], np.array([0.8, 0.8, 0.2]))
