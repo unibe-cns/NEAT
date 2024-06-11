@@ -1,0 +1,8 @@
+*.pyc
+*.py~
+*#
+.DS_Store
+__pycache__
+mech/
+tmp/
+report/

@@ -125,12 +125,12 @@ Neural Evaluation Tree
 Simulate reduced compartmental models
 ======================================
 
-.. autoclass:: neat.tools.simtools.neuron.neuronmodel.NeuronCompartmentTree
+.. autoclass:: neat.simulations.neuron.neuronmodel.NeuronCompartmentTree
 
 .. autosummary::
    :toctree: generated/
 
-.. autofunction:: neat.tools.simtools.neuron.neuronmodel.createReducedNeuronModel
+.. autofunction:: neat.simulations.neuron.neuronmodel.createReducedNeuronModel
 
 .. autosummary::
    :toctree: generated/
@@ -321,7 +321,7 @@ Greens Tree
 Simulate NEURON models
 ======================
 
-.. autoclass:: neat.tools.simtools.neuron.neuronmodel.NeuronSimTree
+.. autoclass:: neat.simulations.neuron.neuronmodel.NeuronSimTree
 
 .. autosummary::
    :toctree: generated/

@@ -21,7 +21,7 @@ from ..trees.netree import NET, NETNode
 
 
 try:
-    from ..tools.simtools.neuron import neuronmodel as neurm
+    from ..simulations.neuron import neuronmodel as neurm
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, equilibrium evaluation not working', UserWarning)
 

@@ -9,7 +9,7 @@ import subprocess
 
 
 from neat import IonChannel, ExpConcMech
-from neat.tools.simtools.nest import nestml_tools
+from neat.simulations.nest import nestml_tools
 
 
 def _allBaseClasses(cls):

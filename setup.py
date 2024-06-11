@@ -66,14 +66,14 @@ s_ = setup(
               'neat.tools',
               'neat.tools.fittools',
               'neat.tools.plottools',
-              'neat.tools.simtools.neuron',
-              'neat.tools.simtools.nest',
+              'neat.simulations.neuron',
+              'neat.simulations.nest',
               'neat.modelreduction',
               'neat.channels',
               'neat.channels.channelcollection'],
     package_data={
-        "neat.tools.simtools.neuron": ["mech_storage/*.mod"],
-        "neat.tools.simtools.nest": ["default_syns.nestml"]
+        "neat.simulations.neuron": ["mech_storage/*.mod"],
+        "neat.simulations.nest": ["default_syns.nestml"]
     },
     ext_package='neat',
     ext_modules=cythonize([ext], language_level=3),

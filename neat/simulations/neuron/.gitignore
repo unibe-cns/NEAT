@@ -1,0 +1,9 @@
+*.pyc
+*.py~
+*#
+.DS_Store
+__pycache__
+mech/
+x86_64/
+arm64/
+tmp/
