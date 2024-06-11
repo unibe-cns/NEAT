@@ -1,5 +1,5 @@
-from ....trees.compartmenttree import CompartmentTree, CompartmentNode
-from ....factorydefaults import DefaultPhysiology
+from ...trees.compartmenttree import CompartmentTree, CompartmentNode
+from ...factorydefaults import DefaultPhysiology
 
 import numpy as np
 
@@ -54,7 +54,7 @@ except ModuleNotFoundError:
     np.array = array
 
 
-def loadNestModel(name):
+def load_nest_model(name):
     # Currently, we have no way of checking whether the *.so-file
     # associated with the model is in {nest build directory}/lib/nest,
     # so instead we check whether the model is installed in NEAT

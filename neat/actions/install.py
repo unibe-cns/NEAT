@@ -143,7 +143,7 @@ def _compile_neuron(model_name, path_neat, channels, path_neuronresource=None):
     # combine `model_name` with the neuron compilation path
     path_for_neuron_compilation = os.path.join(
         path_neat,
-        'tools/simtools/neuron/tmp/',
+        'simulations/neuron/tmp/',
         model_name
     )
     path_for_mod_files = os.path.join(
@@ -200,7 +200,7 @@ def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=
     # combine `model_name` with the nestml compilation path
     path_for_nestml_compilation = os.path.join(
         path_neat,
-        'tools/simtools/nest/tmp/',
+        'simulations/nest/tmp/',
         model_name
     )
 
@@ -263,7 +263,7 @@ def _install_models(
     ----------
     model_name: str
         The name of the compiled model that can be used to load it with
-        `neat.load_neuron_model()` or `neat.loadNestModel()`
+        `neat.load_neuron_model()` or `neat.load_nest_model()`
     path_neat: str
         The path to the root directory of the imported neat module
     channel_path_arg: list of str

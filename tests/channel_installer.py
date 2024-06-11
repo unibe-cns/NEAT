@@ -7,7 +7,7 @@ except ImportError as e:
 import os
 import subprocess
 
-from neat import load_neuron_model, loadNestModel
+from neat import load_neuron_model, load_nest_model
 
 
 def load_or_install_neuron_testchannels():
@@ -46,12 +46,12 @@ def load_or_install_nest_testchannels():
     ))
     try:
         # raises FileNotFoundError if not compiled
-        loadNestModel("multichannel_test")
+        load_nest_model("multichannel_test")
     except (nestexceptions.NESTErrors.DynamicModuleManagementError, FileNotFoundError):
         subprocess.call([
             "neatmodels", "install", "multichannel_test",
             "-s", "nest",
             "-p", channel_file
         ])
-        loadNestModel("multichannel_test")
+        load_nest_model("multichannel_test")
 

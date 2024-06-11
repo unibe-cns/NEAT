@@ -10,5 +10,5 @@ for name, channel_class in list(channelcollection.__dict__.items()):
     if isinstance(channel_class, type) and name != 'IonChannel' and name != '_func':
         chan = channel_class()
         chan.write_mod_file(os.path.join(os.path.dirname(__file__),
-                                       '../tools/simtools/neuron/mech'))
+                                       '../simulations/neuron/mech'))
         del chan

@@ -41,7 +41,7 @@ def _uninstall_models(*model_names,
             try:
                 path_nest = os.path.join(
                     path_neat,
-                    "tools/simtools/",
+                    "simulations/",
                     f"nest/tmp/{model_name}/"
                 )
                 shutil.rmtree(path_nest)
@@ -53,7 +53,7 @@ def _uninstall_models(*model_names,
             try:
                 path_neuron = os.path.join(
                     path_neat,
-                    "tools/simtools/",
+                    "simulations/",
                     f"neuron/tmp/{model_name}/"
                 )
                 shutil.rmtree(path_neuron)

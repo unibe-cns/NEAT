@@ -74,14 +74,14 @@ def parse_cmd_args():
              "Default is \'neuron\'"
     )
     parser.add_argument("--neuronresource",
-        default=os.path.join(path_neat, "tools/simtools/neuron/mech_storage/"),
+        default=os.path.join(path_neat, "simulations/neuron/mech_storage/"),
         help="Path to directory containing additional .mod-file mechanisms "
              "(e.g. synapses) that will be compiled together with the "
              "generated ion channel mod files.\n"\
              "Only used when the [action] is 'install'."
     )
     parser.add_argument("--nestresource",
-        default=os.path.join(path_neat, "tools/simtools/nest/default_syns.nestml"),
+        default=os.path.join(path_neat, "simulations/nest/default_syns.nestml"),
         help="Path to directory containing additional .mod-file mechanisms "
              "(e.g. synapses) that will be compiled together with the "
              "generated ion channel mod files.\n"
@@ -107,8 +107,8 @@ def parse_cmd_args():
 
 # set all neat dependent path variables
 path_neat = neat.__path__[0]
-path_for_neuron_compilation = os.path.join(path_neat, 'tools/simtools/neuron/tmp/')
-path_for_nestml_compilation = os.path.join(path_neat, 'tools/simtools/nest/tmp/')
+path_for_neuron_compilation = os.path.join(path_neat, 'simulations/neuron/tmp/')
+path_for_nestml_compilation = os.path.join(path_neat, 'simulations/nest/tmp/')
 # parse the commandline args
 cmd_args = parse_cmd_args()
 

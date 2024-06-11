@@ -10,8 +10,8 @@ from .channelcollection import channelcollection
 def write():
 
     print('--> Writing c++ channel file')
-    path = os.path.join(os.path.dirname(__file__), '../tools/simtools/net/')
-    # path = '../tools/simtools/net/'
+    path = os.path.join(os.path.dirname(__file__), '../simulations/net/')
+    # path = '../simulations/net/'
 
     fcc = open(os.path.join(path, 'Ionchannels.cc'), 'w')
     fh = open(os.path.join(path, 'Ionchannels.h'), 'w')

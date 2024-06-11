@@ -136,5 +136,3 @@ def write_nestml_blocks(blocks, path_name, neuron_name, v_comp=0.,
 
     return fname
 
-if __name__ == "__main__":
-    write_nestml_blocks(blocks_default_syns, "", "default_syns")

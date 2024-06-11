@@ -19,7 +19,7 @@ def _list_models(path_neat,
     models = {sim: [] for sim in simulators}
 
     if 'nest' in simulators:
-        path_nest = os.path.join(path_neat, 'tools/simtools/', 'nest/tmp/*/')
+        path_nest = os.path.join(path_neat, 'simulations/', 'nest/tmp/*/')
 
         for file_path in glob.glob(path_nest):
             file_name = os.path.basename(os.path.normpath(file_path))
@@ -29,7 +29,7 @@ def _list_models(path_neat,
                 models['nest'].append(file_name)
 
     if 'neuron' in simulators:
-        path_neuron = os.path.join(path_neat, 'tools/simtools/', 'neuron/tmp/*/')
+        path_neuron = os.path.join(path_neat, 'simulations/', 'neuron/tmp/*/')
 
         print(path_neuron)
 

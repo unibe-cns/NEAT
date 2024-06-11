@@ -6,8 +6,8 @@ import platform
 
 import numpy as np
 
-from ....trees.morphtree import MorphLoc
-from ....trees.phystree import PhysTree, PhysNode
+from ...trees.morphtree import MorphLoc
+from ...trees.phystree import PhysTree, PhysNode
 
 try:
     import neuron

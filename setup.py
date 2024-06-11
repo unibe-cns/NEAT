@@ -40,16 +40,16 @@ class DelayedIncludeDirs(list):
 
     def __iter__(self):
         import numpy
-        return iter([numpy.get_include(), "neat/tools/simtools/net/*.h"])
+        return iter([numpy.get_include(), "neat/simulations/net/*.h"])
 
 
 ext = Extension(name="netsim",
-                sources=["neat/tools/simtools/net/netsim.pyx",
-                         "neat/tools/simtools/net/Ionchannels.cc",
-                         "neat/tools/simtools/net/netsim.pyx",
-                         "neat/tools/simtools/net/NETC.cc",
-                         "neat/tools/simtools/net/Synapses.cc",
-                         "neat/tools/simtools/net/Tools.cc"
+                sources=["neat/simulations/net/netsim.pyx",
+                         "neat/simulations/net/Ionchannels.cc",
+                         "neat/simulations/net/netsim.pyx",
+                         "neat/simulations/net/NETC.cc",
+                         "neat/simulations/net/Synapses.cc",
+                         "neat/simulations/net/Tools.cc"
                          ],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],

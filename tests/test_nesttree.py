@@ -14,7 +14,7 @@ except ImportError as e:
 from neat import PhysTree
 from neat import CompartmentNode, CompartmentTree
 from neat import CompartmentFitter, NeuronCompartmentTree
-from neat import NestCompartmentNode, NestCompartmentTree, loadNestModel
+from neat import NestCompartmentNode, NestCompartmentTree, load_nest_model
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
@@ -41,7 +41,7 @@ class TestNest:
 
     def testModelConstruction(self):
         with pytest.raises(nestexceptions.NESTErrors.DynamicModuleManagementError):
-            loadNestModel("default")
+            load_nest_model("default")
 
         self.loadTwoCompartmentModel()
 
