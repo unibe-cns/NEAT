@@ -2,7 +2,7 @@ import os
 import glob
 
 
-def _listModels(path_neat,
+def _list_models(path_neat,
         simulators=['nest', 'neuron'],
         pprint=True
     ):

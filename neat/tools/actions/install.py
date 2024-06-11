@@ -24,7 +24,7 @@ class ChannelPathExtractor:
         self.path_neat = path_neat
         self.model_name = model_name
 
-    def _extractChannelPathAndModules(self, channel_path_arg):
+    def _extract_channel_path_and_modules(self, channel_path_arg):
         """
         Extract the path to the directory with the ".py" files containing ion
         ion channels, as well as a list of all ".py" modules that need to be scanned
@@ -59,7 +59,7 @@ class ChannelPathExtractor:
 
         return path_with_channels, channel_modules
 
-    def _collectChannels(self, path_with_channels, channel_modules):
+    def _collect_channels(self, path_with_channels, channel_modules):
         """
         Returns list with all channels found in the list of modules
         """
@@ -81,22 +81,22 @@ class ChannelPathExtractor:
 
         return channels
 
-    def collectChannels(self, *channel_path_arg):
+    def collect_channels(self, *channel_path_arg):
         """
         Collect all channels that can be found in the provided path arguments
         """
         channels = []
         for arg in channel_path_arg:
             channel_path, channel_modules = \
-                self._extractChannelPathAndModules(arg)
+                self._extract_channel_path_and_modules(arg)
             channels.extend(
-                self._collectChannels(channel_path, channel_modules)
+                self._collect_channels(channel_path, channel_modules)
             )
 
         return channels
 
 
-def _checkModelName(model_name):
+def _check_model_name(model_name):
     if not len(model_name) > 0:
         raise IOError(
             "No model name [name] argument was provided. "
@@ -111,7 +111,7 @@ def _checkModelName(model_name):
         )
 
 
-def _resolveModelName(model_name, channel_path_arg):
+def _resolve_model_name(model_name, channel_path_arg):
     if len(channel_path_arg) == 1:
 
         if model_name == 'default':
@@ -130,15 +130,15 @@ def _resolveModelName(model_name, channel_path_arg):
             model_name = os.path.basename(os.path.normpath(path_aux))
 
         else:
-            _checkModelName(model_name)
+            _check_model_name(model_name)
 
     else:
-        _checkModelName(model_name)
+        _check_model_name(model_name)
 
     return model_name
 
 
-def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
+def _compile_neuron(model_name, path_neat, channels, path_neuronresource=None):
 
     # combine `model_name` with the neuron compilation path
     path_for_neuron_compilation = os.path.join(
@@ -190,7 +190,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
     )
 
 
-def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=['ca']):
+def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=['ca']):
     from pynestml.frontend.pynestml_frontend import generate_nest_compartmental_target
 
     # assert that `model_name` is a pure name
@@ -249,7 +249,7 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
         logging_level="DEBUG"
     )
 
-def _installModels(
+def _install_models(
         model_name,
         path_neat,
         channel_path_arg,
@@ -278,19 +278,19 @@ def _installModels(
         copied to the NEURON install directory and compiled together with the
         generated channel .mod files
     """
-    model_name = _resolveModelName(model_name, channel_path_arg)
+    model_name = _resolve_model_name(model_name, channel_path_arg)
 
     # collect the ion channels from the provide path arguments
     cpex = ChannelPathExtractor(path_neat, model_name)
-    channels = cpex.collectChannels(*channel_path_arg)
+    channels = cpex.collect_channels(*channel_path_arg)
 
     if 'neuron' in simulators:
-        _compileNeuron(
+        _compile_neuron(
             model_name, path_neat, channels,
             path_neuronresource=path_neuronresource
         )
     if 'nest' in simulators:
-        _compileNest(
+        _compile_nest(
             model_name, path_neat, channels,
             path_nestresource=path_nestresource
         )
