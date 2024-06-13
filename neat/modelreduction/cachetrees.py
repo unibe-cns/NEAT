@@ -117,6 +117,8 @@ class EquilibriumTree(FitTree):
 
     Uses the NEURON simulator to evaluate the equibrium potentials. Can cache
     the results of the computation.
+
+    The equilibrium potential is stored under the `v_ep` attribute of each node.
     """
 
     def _calc_e_eq(self, loc_arg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
@@ -296,7 +298,11 @@ class EquilibriumTree(FitTree):
         )
 
 
-class FitTreeGF(GreensTree, FitTree):
+class CachedGreensTree(GreensTree, FitTree):
+    """
+    Derived class of `neat.GreensTree` that caches the impedance calculation at each
+    node.
+    """
     def __init__(self,
             *args,
             recompute_cache=False,
@@ -402,7 +408,10 @@ class FitTreeGF(GreensTree, FitTree):
             self._subtract_parent_kernels(gammas, pnode.parent_node)
 
 
-class FitTreeC(GreensTreeTime, FitTree):
+class CachedGreensTreeTime(GreensTreeTime, FitTree):
+    """
+    Derived class of `neat.GreensTreeTime` that caches the separation of variables calculation
+    """
     def __init__(self,
             *args,
             recompute_cache=False,
@@ -446,7 +455,11 @@ class FitTreeC(GreensTreeTime, FitTree):
         )
 
 
-class FitTreeSOV(SOVTree, FitTree):
+class CachedSOVTree(SOVTree, FitTree):
+    """
+    Derived class of `neat.GreensTreeTime` that caches the impedance calculation at each
+    node.
+    """
     def __init__(self,
             *args,
             recompute_cache=False,

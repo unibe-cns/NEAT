@@ -107,7 +107,7 @@ class TestCompartmentFitter():
         cm.set_ctree(fit_locs1, extend_w_bifurc=True)
 
     def _check_channels(self, tree, channel_names):
-        assert isinstance(tree, compartmentfitter.FitTreeGF)
+        assert isinstance(tree, compartmentfitter.CachedGreensTree)
         assert set(tree.channel_storage.keys()) == set(channel_names)
         for node in tree:
             assert set(node.currents.keys()) == set(channel_names + ['L'])

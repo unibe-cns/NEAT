@@ -14,7 +14,7 @@ from ..trees.netree import  Kernel
 from ..channels.ionchannels import SPDict
 from ..factorydefaults import DefaultFitting, DefaultMechParams
 from ..tools import kernelextraction as ke
-from .cachetrees import FitTreeGF, FitTreeSOV, FitTreeC, EquilibriumTree
+from .cachetrees import CachedGreensTree, CachedSOVTree, EquilibriumTree
 
 import warnings
 import copy
@@ -24,17 +24,6 @@ import contextlib
 import multiprocessing
 import os
 import ctypes
-
-
-def cpu_count(use_hyperthreading=True):
-    """
-    Return number of available cores.
-    Makes use of hypterthreading by default.
-    """
-    if use_hyperthreading:
-        return multiprocessing.cpu_count()
-    else:
-        return multiprocessing.cpu_count() // 2
 
 
 def _statevar_is_activating(f_statevar):
@@ -54,7 +43,7 @@ def _statevar_is_activating(f_statevar):
     return sv_test[0] < sv_test[1]
 
 
-def get_two_variable_holding_potentials(e_hs):
+def _get_two_variable_holding_potentials(e_hs):
     e_hs_aux_act   = list(e_hs)
     e_hs_aux_inact = list(e_hs)
     for ii, e_h1 in enumerate(e_hs):
@@ -98,7 +87,7 @@ def get_expansion_points(e_hs, channel, only_e_h=False):
         sv_hs['v'] = e_hs
     else:
         # create different combinations of holding potentials
-        e_hs_aux_act, e_hs_aux_inact = get_two_variable_holding_potentials(e_hs)
+        e_hs_aux_act, e_hs_aux_inact = _get_two_variable_holding_potentials(e_hs)
 
         sv_hs = SPDict(v=e_hs_aux_act)
         for svar, f_inf in channel.f_varinf.items():
@@ -246,7 +235,7 @@ class CompartmentFitter(object):
             unmasked_nodes=None,
         ):
         """
-        Create a `FitTreeGF` copy of the old tree, but only with the
+        Create a `CachedGreensTree` copy of the old tree, but only with the
         channels in ``channel_names``. Leak 'L' is included in the tree by
         default.
 
@@ -263,7 +252,7 @@ class CompartmentFitter(object):
 
         Returns
         -------
-        `FitTreeGF()`
+        `CachedGreensTree()`
 
         """
         unmasked_node_indices = [
@@ -271,7 +260,7 @@ class CompartmentFitter(object):
         ]
 
         # create new tree and empty channel storage
-        tree = FitTreeGF(
+        tree = CachedGreensTree(
             self.tree,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
@@ -516,7 +505,7 @@ class CompartmentFitter(object):
             # set the channels to passive
             fit_tree.as_passive_membrane()
             # convert to a greens tree for further evaluation
-            fit_tree = FitTreeGF(
+            fit_tree = CachedGreensTree(
                 fit_tree,
                 cache_path=self.cache_path,
                 cache_name=self.cache_name + "_gf" + suffix,
@@ -606,7 +595,7 @@ class CompartmentFitter(object):
 
         Returns
         -------
-        `neat.tools.fittools.compartmentfitter.FitTreeSOV`
+        `neat.tools.fittools.compartmentfitter.CachedSOVTree`
 
         """
         if self.use_all_channels_for_passive:
@@ -615,7 +604,7 @@ class CompartmentFitter(object):
             cache_name_suffix = '_SOV_only_leak_'
 
         # create new tree and empty channel storage
-        tree = FitTreeSOV(
+        tree = CachedSOVTree(
             self.tree,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
