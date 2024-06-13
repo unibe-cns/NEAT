@@ -13,7 +13,7 @@ except ImportError as e:
 
 from neat import PhysTree
 from neat import CompartmentNode, CompartmentTree
-from neat import CompartmentFitter, createReducedNeuronModel
+from neat import CompartmentFitter, NeuronCompartmentTree
 from neat import NestCompartmentNode, NestCompartmentTree, loadNestModel
 
 import channelcollection_for_tests as channelcollection
@@ -32,7 +32,7 @@ class TestNest:
     def loadTwoCompartmentModel(self):
         # simple two compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
-        self.ctree = CompartmentTree(root=pnode)
+        self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
         self.ctree.addNodeWithParent(cnode, pnode)
 
@@ -45,7 +45,7 @@ class TestNest:
 
         self.loadTwoCompartmentModel()
 
-        nct = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        nct = NestCompartmentTree(self.ctree)
         cm_model = nct.initModel("cm_default", 1, suffix="")
 
         compartments_info = cm_model.compartments
@@ -58,7 +58,7 @@ class TestNest:
         '''
         Load point neuron model
         '''
-        self.tree = PhysTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         # ion channels
@@ -94,7 +94,7 @@ class TestNest:
         )
         self.ctree = cfit.fitModel([(1,0.5)])
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         mm = nest.Create('multimeter', 1,
             {'record_from': ["v_comp0", "m_Kv3_10", "m_NaTa_t0", "h_NaTa_t0"], 'interval': dt}
@@ -123,14 +123,14 @@ class TestNest:
 
         self.loadBall()
 
-        csimtree_neuron = createReducedNeuronModel(self.ctree)
+        csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
         csimtree_neuron.storeLocs([(0, .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
@@ -181,7 +181,7 @@ class TestNest:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -211,14 +211,14 @@ class TestNest:
 
         self.loadAxonTree()
 
-        csimtree_neuron = createReducedNeuronModel(self.ctree)
+        csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
         csimtree_neuron.storeLocs([(0, .5), (1, .5), (2., .5)], name='rec locs')
         csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
         csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
@@ -279,7 +279,7 @@ class TestNest:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Ttree_segments.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -316,7 +316,7 @@ class TestNest:
         dend_idx = 9
 
         clocs = [(ii, .5) for ii in range(len(self.ctree))]
-        csimtree_neuron = createReducedNeuronModel(self.ctree)
+        csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.initModel(dt=dt, t_calibrate=tcal)
         csimtree_neuron.storeLocs(clocs, name='rec locs')
         csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)
@@ -325,7 +325,7 @@ class TestNest:
         csimtree_neuron.setSpikeTrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
         res_neuron = csimtree_neuron.run(tmax, record_from_channels=True, pprint=True)
 
-        csimtree_nest = self.ctree.__copy__(new_tree=NestCompartmentTree())
+        csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.initModel("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{

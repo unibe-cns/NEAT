@@ -37,13 +37,6 @@ def cpu_count(use_hyperthreading=True):
         return multiprocessing.cpu_count() // 2
 
 
-def consecutive(inds):
-    """
-    split a list of ints into consecutive sublists
-    """
-    return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
-
-
 def _statevar_is_activating(f_statevar):
     """
     check whether a statevar is activating or inactivating
@@ -162,25 +155,24 @@ class CompartmentFitter(object):
             os.makedirs(cache_path)
 
         # original tree
-        self.tree = phys_tree.__copy__(
-            new_tree=EquilibriumTree(
-                cache_path=self.cache_path,
-                cache_name=self.cache_name + "_orig_",
-                save_cache=self.save_cache,
-                recompute_cache=self.recompute_cache,
-            )
+        self.tree = EquilibriumTree(
+            phys_tree,
+            cache_path=self.cache_path,
+            cache_name=self.cache_name + "_orig_",
+            save_cache=self.save_cache,
+            recompute_cache=self.recompute_cache,
         )
-        self.tree.treetype = 'original'
-        # set the equilibrium potentials in the tree
-        self.tree.setEEq(pprint=True)
-        # get all channels in the tree
-        self.channel_names = self.tree.getChannelsInTree()
+        with self.tree.as_original_tree:
+            # set the equilibrium potentials in the tree
+            self.tree.setEEq(pprint=True)
+            # get all channels in the tree
+            self.channel_names = self.tree.getChannelsInTree()
 
-        self.cfg = fit_cfg
-        if fit_cfg is None:
-            self.cfg = DefaultFitting()
-        if concmech_cfg is None:
-            self.concmech_cfg = DefaultMechParams()
+            self.cfg = fit_cfg
+            if fit_cfg is None:
+                self.cfg = DefaultFitting()
+            if concmech_cfg is None:
+                self.concmech_cfg = DefaultMechParams()
 
 
         # boolean flag that is reset the first time `self.fitPassive` is called
@@ -279,8 +271,8 @@ class CompartmentFitter(object):
         ]
 
         # create new tree and empty channel storage
-        tree = self.tree.__copy__(new_tree=FitTreeGF())
-        tree.set_cache_params(
+        tree = FitTreeGF(
+            self.tree,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
             save_cache=self.save_cache,
@@ -343,7 +335,6 @@ class CompartmentFitter(object):
         fit_tree = self.createTreeGF([channel_name],
             cache_name_suffix=f"_{channel_name}_",
         )
-
         # set the impedances in the tree
         fit_tree.setImpedancesInTree(
             freqs=self.cfg.freqs,
@@ -515,7 +506,7 @@ class CompartmentFitter(object):
             suffix = f"_passified_"
 
         if use_all_channels:
-            fit_tree = self.tree.__copy__(new_tree=EquilibriumTree())
+            fit_tree = EquilibriumTree(self.tree)
             fit_tree.set_cache_params(
                 cache_path=self.cache_path,
                 cache_name=self.cache_name + "_eq" + suffix,
@@ -525,8 +516,8 @@ class CompartmentFitter(object):
             # set the channels to passive
             fit_tree.asPassiveMembrane()
             # convert to a greens tree for further evaluation
-            fit_tree = fit_tree.__copy__(new_tree=FitTreeGF())
-            fit_tree.set_cache_params(
+            fit_tree = FitTreeGF(
+                fit_tree,
                 cache_path=self.cache_path,
                 cache_name=self.cache_name + "_gf" + suffix,
                 save_cache=self.save_cache,
@@ -624,8 +615,8 @@ class CompartmentFitter(object):
             cache_name_suffix = '_SOV_only_leak_'
 
         # create new tree and empty channel storage
-        tree = self.tree.__copy__(new_tree=FitTreeSOV())
-        tree.set_cache_params(
+        tree = FitTreeSOV(
+            self.tree,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
             save_cache=self.save_cache,

@@ -273,9 +273,11 @@ class SOVTree(PhysTree):
     `neat.MorphNode`). Thus it makes no sense to look for sov quantities in the
     original tree.
     """
-    def __init__(self, file_n=None, types=[1,3,4]):
-        super().__init__(file_n=file_n, types=types)
+
+    def __init__(self, arg=None, types=[1,3,4]):
         self.maxspace_freq = None
+        super().__init__(arg=arg, types=types)
+        
 
     def _getReprDict(self):
         repr_dict = super()._getReprDict()
@@ -302,7 +304,7 @@ class SOVTree(PhysTree):
         else:
             return SOVNode(node_index, p3d=p3d)
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def getSOVMatrices(self, locarg):
         """
         returns the alphas, the reciprocals of the mode time scales [1/ms]
@@ -349,7 +351,7 @@ class SOVTree(PhysTree):
         # return the matrices
         return alphas, gammas
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcSOVEquations(self, maxspace_freq=500., pprint=False):
         """
         Calculate the timescales and spatial functions of the separation of

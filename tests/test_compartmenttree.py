@@ -152,7 +152,7 @@ class TestCompartmentTree():
         assert all([loc == loc_ for loc, loc_ in zip(locs_equiv, [(0, .5), (2, .5), (1, .5)])])
 
     def loadBallAndStick(self):
-        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
+        self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.greens_tree.setPhysiology(0.8, 100./1e6)
         self.greens_tree.setLeakCurrent(100., -75.)
         self.greens_tree.setCompTree()
@@ -160,7 +160,7 @@ class TestCompartmentTree():
         self.freqs = np.array([0.]) * 1j
         self.greens_tree.setImpedance(self.freqs)
         # create sov tree
-        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree = SOVTree(self.greens_tree)
         self.sov_tree.calcSOVEquations(maxspace_freq=50.)
 
     def testLocationMapping(self, n_loc=20):
@@ -298,7 +298,7 @@ class TestCompartmentTree():
                            np.ones(len(self.ctree)) * np.max(1e-3/np.abs(alphas)))
 
     def loadBall(self):
-        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.greens_tree.setPhysiology(0.8, 100./1e6)
         # ion channels
@@ -314,7 +314,7 @@ class TestCompartmentTree():
         self.freqs = np.array([0.])
         self.greens_tree.setImpedance(self.freqs)
         # create sov tree
-        self.sov_tree = self.greens_tree.__copy__(new_tree=SOVTree())
+        self.sov_tree = SOVTree(self.greens_tree)
         self.sov_tree.calcSOVEquations(maxspace_freq=100.)
 
     def testChannelFit(self):
@@ -327,7 +327,7 @@ class TestCompartmentTree():
         ctree.addCurrent(channelcollection.Kv3_1(), -85.)
 
         # create tree with only leak
-        greens_tree_pas = self.greens_tree.__copy__()
+        greens_tree_pas = GreensTree(self.greens_tree)
         greens_tree_pas[1].currents = {'L': greens_tree_pas[1].currents['L']}
         greens_tree_pas.setCompTree()
         greens_tree_pas.setImpedance(self.freqs)
@@ -335,7 +335,7 @@ class TestCompartmentTree():
         z_mat_pas = greens_tree_pas.calcImpedanceMatrix(locs)[0]
 
         # create tree with only potassium
-        greens_tree_k = self.greens_tree.__copy__()
+        greens_tree_k = GreensTree(self.greens_tree)
         greens_tree_k[1].currents = {key: val for key, val in greens_tree_k[1].currents.items() \
                                                if key != 'Na_Ta'}
         # compute potassium impedance matrices
@@ -347,7 +347,7 @@ class TestCompartmentTree():
             z_mats_k.append(greens_tree_k.calcImpedanceMatrix(locs))
 
         # create tree with only sodium
-        greens_tree_na = self.greens_tree.__copy__()
+        greens_tree_na = GreensTree(self.greens_tree)
         greens_tree_na[1].currents = {key: val for key, val in greens_tree_na[1].currents.items() \
                                                if key != 'Kv3_1'}
         # create state variable expansion points
@@ -379,7 +379,7 @@ class TestCompartmentTree():
         # passive fit
         ctree.computeGMC(z_mat_pas)
         # get SOV constants for capacitance fit
-        sov_tree = greens_tree_pas.__copy__(new_tree=SOVTree())
+        sov_tree = SOVTree(greens_tree_pas)
         sov_tree.setCompTree()
         sov_tree.calcSOVEquations()
         alphas, phimat, importance = sov_tree.getImportantModes(locarg=locs,
@@ -531,7 +531,7 @@ class TestCompartmentTreePlotting():
         cnode1 = CompartmentNode(1, loc_ind=1)
         cnode2 = CompartmentNode(2, loc_ind=2)
 
-        ctree = CompartmentTree(root=croot)
+        ctree = CompartmentTree(croot)
         ctree.addNodeWithParent(cnode1, croot)
         ctree.addNodeWithParent(cnode2, croot)
 
@@ -550,7 +550,7 @@ class TestCompartmentTreePlotting():
         cnode2 = CompartmentNode(2, loc_ind=2)
         cnode3 = CompartmentNode(3, loc_ind=3)
 
-        ctree = CompartmentTree(root=croot)
+        ctree = CompartmentTree(croot)
         ctree.addNodeWithParent(cnode1, croot)
         ctree.addNodeWithParent(cnode2, cnode1)
         ctree.addNodeWithParent(cnode3, cnode2)
@@ -566,7 +566,7 @@ class TestCompartmentTreePlotting():
         #      0
         cns = [CompartmentNode(ii, loc_ind=ii) for ii in range(9)]
 
-        ctree = CompartmentTree(root=cns[0])
+        ctree = CompartmentTree(cns[0])
         # first order children
         ctree.addNodeWithParent(cns[1], cns[0])
         ctree.addNodeWithParent(cns[2], cns[0])

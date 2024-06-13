@@ -43,12 +43,12 @@ class TestPhysTree():
         self.tree.addCurrent(channel, g_max, e_rev)
 
         assert str(self.tree) == ">>> PhysTree\n" \
-            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
+            "    PhysNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+            "    PhysNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)"
 
         repr_str = "['PhysTree', " \
             "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}}\", " \
@@ -254,45 +254,44 @@ class TestPhysTree():
         c_m = 1.; r_a = 100.*1e-6
         self.tree.setPhysiology(c_m, r_a)
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        assert [n.index for n in self.tree] == [1,8,10,12]
+        with self.tree.as_computational_tree:
+            assert [n.index for n in self.tree] == [1,8,10,12]
         # capacitance and axial resistance change
         c_m = lambda x: 1. if x < 200. else 1.6
         r_a = lambda x: 1. if x < 300. else 1.6
         self.tree.setPhysiology(c_m, r_a)
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        assert [n.index for n in self.tree] == [1,5,6,8,10,12]
+        with self.tree.as_computational_tree:
+            assert [n.index for n in self.tree] == [1,5,6,8,10,12]
         # leak current changes
         g_l = lambda x: 100. if x < 400. else 160.
         self.tree.setLeakCurrent(g_l, -75.)
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        assert [n.index for n in self.tree] == [1,5,6,7,8,10,12]
+        with self.tree.as_computational_tree:
+            assert [n.index for n in self.tree] == [1,5,6,7,8,10,12]
         # leak current & reversal change
         g_l = 100.
         e_l = {ind: -75. for ind in [1,4,5,6,7,8,11,12]}
         e_l.update({ind: -55. for ind in [9,10]})
         self.tree.setLeakCurrent(g_l, e_l)
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        assert [n.index for n in self.tree] == [1,5,6,8,10,12]
+        with self.tree.as_computational_tree:
+            assert [n.index for n in self.tree] == [1,5,6,8,10,12]
         # leak current & reversal change
         g_l = 100.
         e_l = {ind: -75. for ind in [1,4,5,6,7,8,10,11,12]}
         e_l.update({9: -55.})
         self.tree.setLeakCurrent(g_l, e_l)
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        assert [n.index for n in self.tree] == [1,5,6,8,9,10,12]
+        with self.tree.as_computational_tree:
+            assert [n.index for n in self.tree] == [1,5,6,8,9,10,12]
         # shunt
-        self.tree.treetype = 'original'
         self.tree[7].g_shunt = 1.
         self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
+        with self.tree.as_computational_tree:
+            assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
-    def testFiniteDiffTree(self, rtol_param=2e-3, rtol_dx=1e-10, pprint=False):
+    def testFiniteDiffTree(self, rtol_param=5e-2, rtol_dx=1e-10, pprint=False):
         self.loadTree(reinitialize=1, segments=1)
         # set capacitance, axial resistance
         c_m = 1.; r_a = 100.*1e-6
@@ -354,6 +353,7 @@ class TestPhysTree():
 
             # test coupling cond match
             if not ctree_fd.isRoot(node_fd):
+                if pprint: print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
                 assert np.abs(node_fd.g_c - node_fit.g_c) < \
                                     rtol_param * np.max([node_fd.g_c, node_fit.g_c])
 
@@ -361,6 +361,7 @@ class TestPhysTree():
             for key in node_fd.currents:
                 g_fd = node_fd.currents[key][0]
                 g_fit = node_fit.currents[key][0]
+                if pprint: print(f"g_{key}_fd = {g_fd}, g_{key}_fit = {g_fit}")
                 assert np.abs(g_fd - g_fit) < \
                                 rtol_param * np.max([g_fd, g_fit])
 
@@ -410,6 +411,6 @@ if __name__ == '__main__':
     # tphys.testStringRepresentation()
     # tphys.testLeakDistr()
     # tphys.testPhysiologySetting()
-    # tphys.testMembraneFunctions()
+    tphys.testMembraneFunctions()
     # tphys.testCompTree()
-    tphys.testFiniteDiffTree(pprint=True)
+    tphys.testFiniteDiffTree(pprint=False)

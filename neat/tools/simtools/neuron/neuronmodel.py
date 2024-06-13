@@ -213,9 +213,7 @@ class NeuronSimTree(PhysTree):
     `__init__()` and `deleteModel()` functions to make sure it is created and
     deleted properly.
     """
-    def __init__(self, file_n=None, types=[1,3,4],
-                       factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.):
-        super().__init__(file_n=file_n, types=types)
+    def __init__(self, arg=None, types=[1,3,4]):
         # neuron storage
         self.sections = {}
         self.shunts = []
@@ -226,11 +224,13 @@ class NeuronSimTree(PhysTree):
         self.netcons = []
         self.vecs = []
         # simulation parameters
-        self.dt = dt # ms
-        self.t_calibrate = t_calibrate # ms
-        self.factor_lambda = factor_lambda
-        self.v_init = v_init # mV
-        self.indstart = int(t_calibrate / dt)
+        self.dt = .1 # ms
+        self.t_calibrate = 0. # ms
+        self.factor_lambda = 1.
+        self.v_init = -75. # mV
+        self.indstart = 0
+        # initialize the tree structure
+        super().__init__(arg=arg, types=types)
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """
@@ -242,6 +242,16 @@ class NeuronSimTree(PhysTree):
                 index of the new node
         """
         return NeuronSimNode(node_index, p3d=p3d)
+    
+    def set_simulation_parameters(self,
+            factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
+        ):
+        # simulation parameters
+        self.dt = dt # ms
+        self.t_calibrate = t_calibrate # ms
+        self.indstart = int(t_calibrate / dt)
+        self.factor_lambda = factor_lambda
+        self.v_init = v_init # mV
 
     def initModel(self, dt=0.025, t_calibrate=0., v_init=-75., factor_lambda=1.,
                         pprint=False):
@@ -266,11 +276,9 @@ class NeuronSimTree(PhysTree):
         pprint: bool (default ``False``)
             Whether or not to print info on the NEURON model's creation
         """
-        self.t_calibrate = t_calibrate
-        self.dt = dt
-        self.indstart = int(self.t_calibrate / self.dt)
-        self.v_init = v_init
-        self.factor_lambda = factor_lambda
+        self.set_simulation_parameters(
+            dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda,
+        )
         # reset all storage
         self.deleteModel()
         # create the NEURON model
@@ -304,9 +312,6 @@ class NeuronSimTree(PhysTree):
             shunt = node._makeShunt(compartment)
             if shunt is not None:
                 self.shunts.append(shunt)
-        # if pprint:
-        #     print(h.topology())
-
 
     def addShunt(self, loc, g, e_r):
         """
@@ -911,18 +916,22 @@ class NeuronSimTree(PhysTree):
         res = self.run(t_dur)
         v_eq = res['v_m'][:-1]
         if set_v_ep:
-            for (node, e) in zip(self, v_eq): node.setVEP(v_ep)
+            for (node, e) in zip(self, v_eq): node.setVEP(v_eq)
 
 
         return v_eq
 
-    def calcImpedanceMatrix(self, locarg, i_amp=0.001, t_dur=100., pplot=False):
+    def calcImpedanceMatrix(self, locarg, 
+            i_amp=0.001, t_dur=100., pplot=False,
+            factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
+        ):
         locs = self._convertLocArgToLocs(locarg)
         z_mat = np.zeros((len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
-                self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                               v_init=self.v_init, factor_lambda=self.factor_lambda)
+                self.initModel(
+                    dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
+                )
                 self.addIClamp(loc0, i_amp, 0., t_dur)
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
@@ -941,18 +950,22 @@ class NeuronSimTree(PhysTree):
 
         return z_mat
 
-    def calcImpedanceKernelMatrix(self, locarg, i_amp=0.001,
-            dt_pulse=0.1, dstep=-2, t_max=100.
+    def calcImpedanceKernelMatrix(self, locarg, 
+            i_amp=0.001,
+            dt_pulse=0.1, dstep=-2, t_max=100.,
+            factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
         ):
         locs = self._convertLocArgToLocs(locarg)
-        nt = int(t_max / self.dt)
+        nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
         zk_mat = np.zeros((nt, len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):
             for jj, loc1 in enumerate(locs):
                 loc1 = locs[jj]
-                self.initModel(dt=self.dt, t_calibrate=self.t_calibrate,
-                               v_init=self.v_init, factor_lambda=self.factor_lambda)
+                self.initModel(
+                    dt=dt, t_calibrate=t_calibrate,
+                    v_init=v_init, factor_lambda=factor_lambda
+                )
                 self.addIClamp(loc0, i_amp, 0., dt_pulse)
                 self.storeLocs([loc0, loc1], 'rec locs', warn=False)
                 # simulate
@@ -1021,9 +1034,79 @@ class NeuronCompartmentTree(NeuronSimTree):
     effectively single compartments. Should be created from a
     `neat.CompartmentTree` using `neat.createReducedCompartmentModel()`
     """
-    def __init__(self, t_calibrate=0., dt=0.025, v_init=-75.):
-        super().__init__(file_n=None, types=[1,3,4],
-                         t_calibrate=t_calibrate, dt=dt, v_init=v_init)
+    def __init__(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):        
+        """
+        Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
+        models from a `neat.CompartmentTree`.
+
+        Parameters
+        ----------
+        ctree: `neat.CompartmentTree`
+            The tree containing the parameters of the reduced compartmental model
+            to be simulated
+
+        Returns
+        -------
+        `neat.NeuronCompartmentTree`
+
+        Notes
+        -----
+        The function `ctree.getEquivalentLocs()` can be used to obtain 'fake'
+        locations corresponding to each compartment, which in turn can be used to
+        insert hoc point process at the compartments using the same functions
+        definitions as for as for a morphological `neat.NeuronSimTree`
+        """
+        super().__init__(ctree, types=[1,3,4])
+        self._createReducedNeuronModel(ctree, 
+            fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=method,
+        )
+
+    def _createReducedNeuronModel(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
+        # calculate geometry that will lead to correct constants
+        arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+                                                    factor_r_a=1e-6, delta=1e-10,
+                                                    method=method)
+        if method == 1:
+            points = arg1; surfaces = arg2
+            for ii, comp_node in enumerate(ctree):
+                pts = points[ii]
+                sim_node = self.__getitem__(comp_node.index, skip_inds=[])
+                sim_node.setP3D(np.array(pts[0][:3]), (pts[0][3] + pts[-1][3]) / 2., 3)
+
+            # fill the tree with the currents
+            for ii, sim_node in enumerate(self):
+                comp_node = ctree[ii]
+                sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
+                                            for chan, (g, e) in comp_node.currents.items()}
+                sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
+                for concmech in sim_node.concmechs.values():
+                    concmech.gamma *= surfaces[comp_node.index] * 1e6
+                sim_node.c_m = fake_c_m
+                sim_node.r_a = fake_r_a
+                sim_node.content['points_3d'] = points[comp_node.index]
+        elif method == 2:
+            lengths = arg1 ; radii = arg2
+            surfaces = 2. * np.pi * radii * lengths
+            for ii, comp_node in enumerate(ctree):
+                sim_node = self.__getitem__(comp_node.index, skip_inds=[])
+                if self.isRoot(sim_node):
+                    sim_node.setP3D(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
+                else:
+                    sim_node.setP3D(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
+                                    radii[ii]*1e4, 3)
+
+            # fill the tree with the currents
+            for ii, sim_node in enumerate(self):
+                comp_node = ctree[ii]
+                sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
+                                            for chan, (g, e) in comp_node.currents.items()}
+                sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
+                for concmech in sim_node.concmechs.values():
+                    concmech.gamma *= surfaces[comp_node.index] * 1e6
+                sim_node.c_m = fake_c_m
+                sim_node.r_a = fake_r_a
+                sim_node.R = radii[comp_node.index]*1e4    # convert to [um]
+                sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
 
     # redefinition of bunch of standard functions to not include skip inds by default
     def __getitem__(self, index, skip_inds=[]):
@@ -1067,74 +1150,4 @@ class NeuronCompartmentTree(NeuronSimTree):
                 self.shunts.append(shunt)
 
 
-def createReducedNeuronModel(ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):
-    """
-    Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
-    models from a `neat.CompartmentTree`.
-
-    Parameters
-    ----------
-    ctree: `neat.CompartmentTree`
-        The tree containing the parameters of the reduced compartmental model
-        to be simulated
-
-    Returns
-    -------
-    `neat.NeuronCompartmentTree`
-
-    Notes
-    -----
-    The function `ctree.getEquivalentLocs()` can be used to obtain 'fake'
-    locations corresponding to each compartment, which in turn can be used to
-    insert hoc point process at the compartments using the same functions
-    definitions as for as for a morphological `neat.NeuronSimTree`
-    """
-    # calculate geometry that will lead to correct constants
-    arg1, arg2 = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
-                                                 factor_r_a=1e-6, delta=1e-10,
-                                                 method=method)
-    if method == 1:
-        points = arg1; surfaces = arg2
-        sim_tree = ctree.__copy__(new_tree=NeuronCompartmentTree())
-        for ii, comp_node in enumerate(ctree):
-            pts = points[ii]
-            sim_node = sim_tree.__getitem__(comp_node.index, skip_inds=[])
-            sim_node.setP3D(np.array(pts[0][:3]), (pts[0][3] + pts[-1][3]) / 2., 3)
-
-        # fill the tree with the currents
-        for ii, sim_node in enumerate(sim_tree):
-            comp_node = ctree[ii]
-            sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
-                                         for chan, (g, e) in comp_node.currents.items()}
-            sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
-            for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index] * 1e6
-            sim_node.c_m = fake_c_m
-            sim_node.r_a = fake_r_a
-            sim_node.content['points_3d'] = points[comp_node.index]
-    elif method == 2:
-        lengths = arg1 ; radii = arg2
-        surfaces = 2. * np.pi * radii * lengths
-        sim_tree = ctree.__copy__(new_tree=NeuronCompartmentTree())
-        for ii, comp_node in enumerate(ctree):
-            sim_node = sim_tree.__getitem__(comp_node.index, skip_inds=[])
-            if sim_tree.isRoot(sim_node):
-                sim_node.setP3D(np.array([0.,0.,0.]), radii[ii]*1e4, 1)
-            else:
-                sim_node.setP3D(np.array([sim_node.parent_node.xyz[0]+lengths[ii]*1e4, 0., 0.]),
-                                 radii[ii]*1e4, 3)
-
-        # fill the tree with the currents
-        for ii, sim_node in enumerate(sim_tree):
-            comp_node = ctree[ii]
-            sim_node.currents = {chan: [g / surfaces[comp_node.index], e] \
-                                         for chan, (g, e) in comp_node.currents.items()}
-            sim_node.concmechs = copy.deepcopy(comp_node.concmechs)
-            for concmech in sim_node.concmechs.values():
-                concmech.gamma *= surfaces[comp_node.index] * 1e6
-            sim_node.c_m = fake_c_m
-            sim_node.r_a = fake_r_a
-            sim_node.R = radii[comp_node.index]*1e4    # convert to [um]
-            sim_node.L = lengths[comp_node.index]*1e4  # convert to [um]
-    return sim_tree
 

@@ -39,7 +39,6 @@ try:
     from .tools.simtools.neuron.neuronmodel import NeuronSimTree
     from .tools.simtools.neuron.neuronmodel import NeuronSimNode
     from .tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
-    from .tools.simtools.neuron.neuronmodel import createReducedNeuronModel
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
 

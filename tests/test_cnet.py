@@ -28,20 +28,20 @@ class TestCNET():
         gh, eh = 50., -43.
         h_chan = channelcollection.h()
 
-        self.greens_tree = GreensTree(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         self.greens_tree.setPhysiology(1., 100./1e6)
         self.greens_tree.addCurrent(h_chan, gh, eh)
         self.greens_tree.fitLeakCurrent(v_eq, 10.)
         self.greens_tree.setVEP(v_eq)
-        self.greens_tree_pas = self.greens_tree.__copy__(new_tree=GreensTree())
+        self.greens_tree_pas = GreensTree(self.greens_tree)
         self.greens_tree_pas.asPassiveMembrane()
-        self.sim_tree = self.greens_tree.__copy__(new_tree=NeuronSimTree())
+        self.sim_tree = NeuronSimTree(self.greens_tree)
         # set the impedances
         self.greens_tree_pas.setCompTree()
         self.freqs = np.array([0.])
         self.greens_tree_pas.setImpedance(self.freqs)
         # create sov tree
-        self.sov_tree = self.greens_tree_pas.__copy__(new_tree=SOVTree())
+        self.sov_tree = SOVTree(self.greens_tree_pas)
         self.sov_tree.calcSOVEquations(maxspace_freq=50.)
 
         z_inp = self.greens_tree_pas.calcZF((1,.5), (1,.5))[0]

@@ -19,30 +19,17 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings
 import copy
 from functools import reduce
+from typing import Literal
+from contextlib import contextmanager
 
 from .stree import SNode, STree
 from .compartmenttree import CompartmentNode, CompartmentTree
 
 
-def originalTreetypeDecorator(fun):
+def computational_tree_decorator(fun):
     """
-    Decorator that provides the safety that the treetype is set to
-    'original' inside the functions it decorates
-    """
-    # wrapper to access self
-    def wrapped(self, *args, **kwargs):
-        current_treetype = self.treetype
-        self.treetype = 'original'
-        res = fun(self, *args, **kwargs)
-        self.treetype = current_treetype
-        return res
-    wrapped.__doc__ = fun.__doc__
-    return wrapped
-
-def computationalTreetypeDecorator(fun):
-    """
-    Decorator that provides the safety that the treetype is set to
-    'computational' inside the functions it decorates. This decorator also
+    Decorator that provides the safety that the active tree is the
+    computational one inside the functions it decorates. This decorator also
     checks if a computational tree has been defined.
 
     Raises
@@ -54,15 +41,29 @@ def computationalTreetypeDecorator(fun):
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
         if self._computational_root is None:
-            raise AttributeError('No computational tree has been defined, ' + \
-                                  'and this function requires one. Use ' + \
-                                  '`MorphTree.setCompTree()` or its ' + \
-                                  'overwritten version in one of the derived' + \
-                                  'classes')
-        current_treetype = self.treetype
-        self.treetype = 'computational'
-        res = fun(self, *args, **kwargs)
-        self.treetype = current_treetype
+            raise AttributeError(
+                'No computational tree has been defined, ' \
+                'and this function requires one. Use ' \
+                '`MorphTree.setCompTree()` or its ' \
+                'overwritten version in one of the derived' \
+                'classes'
+            )
+        with self.as_computational_tree:
+            res = fun(self, *args, **kwargs)
+        return res
+    wrapped.__doc__ = fun.__doc__
+    return wrapped
+
+
+def original_tree_decorator(fun):
+    """
+    Decorator that provides the safety that active tree is the
+    original one inside the functions it decorates.
+    """
+    # wrapper to access self
+    def wrapped(self, *args, **kwargs):
+        with self.as_original_tree:
+            res = fun(self, *args, **kwargs)
         return res
     wrapped.__doc__ = fun.__doc__
     return wrapped
@@ -131,7 +132,7 @@ class MorphLoc(object):
         if isinstance(key, int) and key in (0,1):
             key = 'node' if key == 0 else 'x'
         if isinstance(key, str):
-            if self.reftree.treetype == 'computational':
+            if self.reftree.check_computational_tree_active():
                 try:
                     return self.comp_loc[key]
                 except AttributeError:
@@ -143,7 +144,7 @@ class MorphLoc(object):
     def __eq__(self, other_loc):
         loc1 = self.loc
         loc2 = MorphLoc(other_loc, self.reftree,
-            set_as_comploc=(self.reftree.treetype == 'computational')
+            set_as_comploc=self.reftree.check_computational_tree_active()
         )
 
         # covering all posible combinations
@@ -219,51 +220,44 @@ class MorphLoc(object):
 
     def _setComputationalLoc(self):
         if self.loc['node'] != 1:
-            current_treetype = self.reftree.treetype
-            self.reftree.treetype = 'original'
-            node = self.reftree[self.loc['node']]
-            # find the computational nodes that are resp. up and down from the node
-            node_start = self.reftree._findCompnodeToRoot(node.parent_node)
-            node_stop  = self.reftree._findCompnodeFromRoot(node)
-            # length between loc and parent computational node to compute segment
-            # length
-            L = self.reftree.pathLength({'node': node_start.index, 'x': 1.},
-                                         self.loc)
+            with self.reftree.as_original_tree:
+                node = self.reftree[self.loc['node']]
+                # find the computational nodes that are resp. up and down from the node
+                node_start = self.reftree._findCompnodeToRoot(node.parent_node)
+                node_stop  = self.reftree._findCompnodeFromRoot(node)
+                # length between loc and parent computational node to compute segment
+                # length
+                L = self.reftree.pathLength({'node': node_start.index, 'x': 1.},
+                                            self.loc)
             # get the computational nodes' length
-            self.reftree.treetype = 'computational'
-            L_cn = self.reftree[node_stop.index].L
-            self.reftree.treetype = 'original'
+            with self.reftree.as_computational_tree:
+                L_cn = self.reftree[node_stop.index].L
             # set the computational loc
             self.comp_loc = {'node': node_stop.index, 'x': L/L_cn}
-            # reset treetype to its former value
-            self.reftree.treetype = current_treetype
         else:
             self.comp_loc = copy.deepcopy(self.loc)
 
     def _setOriginalLoc(self):
         if self.comp_loc['node'] != 1:
-            current_treetype = self.reftree.treetype
-            self.reftree.treetype = 'computational'
-            compnode = self.reftree[self.comp_loc['node']]
-            self.reftree.treetype = 'original'
-            node = self.reftree[self.comp_loc['node']]
-            # find the computational node that is down from the original node
-            pcnode = self.reftree._findCompnodeToRoot(node.parent_node)
-            # find the node index and x-coordinate of the original location
-            path = self.reftree.pathBetweenNodes(pcnode, node)
-            L0 = 0. ; found = False
-            for pathnode in path[1:]:
-                L1 = L0 + pathnode.L
-                Lloc = self.comp_loc['x']*compnode.L
-                if Lloc == 0.: Lloc += 1e-7
-                if Lloc > L0 and Lloc <= L1:
-                    self.loc = {'node': pathnode.index,
-                                'x': (Lloc-L0-1e-8) / pathnode.L}
-                L0 = L1
-            if self.loc['x'] > 1. or self.loc['x'] < 0.:
-                raise ValueError('x-value should be in [0,1]')
-            # reset treetype to its former value
-            self.reftree.treetype = current_treetype
+            with self.reftree.as_computational_tree:
+                compnode = self.reftree[self.comp_loc['node']]
+            with self.reftree.as_original_tree:
+                node = self.reftree[self.comp_loc['node']]
+                # find the computational node that is down from the original node
+                pcnode = self.reftree._findCompnodeToRoot(node.parent_node)
+                # find the node index and x-coordinate of the original location
+                path = self.reftree.pathBetweenNodes(pcnode, node)
+                L0 = 0. ; found = False
+                for pathnode in path[1:]:
+                    L1 = L0 + pathnode.L
+                    Lloc = self.comp_loc['x']*compnode.L
+                    if Lloc == 0.: Lloc += 1e-7
+                    if Lloc > L0 and Lloc <= L1:
+                        self.loc = {'node': pathnode.index,
+                                    'x': (Lloc-L0-1e-8) / pathnode.L}
+                    L0 = L1
+                if self.loc['x'] > 1. or self.loc['x'] < 0.:
+                    raise ValueError('x-value should be in [0,1]')
         else:
             self.loc = copy.deepcopy(self.comp_loc)
 
@@ -385,20 +379,18 @@ class MorphTree(STree):
     Subclass of simple tree that implements neuronal morphologies. Reads in
     trees from '.swc' files (http://neuromorpho.org/).
 
-    Neural morphologies are assumed to follow the three-point soma conventions.
+    Neural morphologies are assumed to follow the three-point soma convention.
     Internally however, the soma is represented as a sphere. Hence nodes with
     indices 2 and 3 do not represent anything and are skipped in iterations and
     getters.
 
-    Can also store a simplified version of the original tree, where only nodes
-    are retained that should hold computational parameters - the root, the
-    bifurcation nodes and the leafs at least, although the user can also
-    specify additional nodes. One tree is set as primary by changing the
-    `treetype` attribute (select 'original' for the original morphology and
-    'computational' for the computational morphology). Lookup operations will
-    often use the primary tree. Using nodes from the other tree for lookup
-    operations is unsafe and should be avoided, it is better to set the proper
-    tree to primary first.
+    The `MorphTree` can also store a simplified version of the original tree, 
+    where only nodes are retained that should hold computational parameters, 
+    i.e. the root, the bifurcation nodes and the leafs at least, although the 
+    user can also specify additional nodes. By default, the active tree is the 
+    original one, where nodes correspond to the underlying '.swc' file. Trough the 
+    `MorphTree.as_computational_tree` context, the computational tree can be
+    accessed.
 
     For computational efficiency, it is possible to store sets of locations on
     the morphology, under user-specified names. These sets are stored as
@@ -434,15 +426,11 @@ class MorphTree(STree):
             distances to nearest bifurcation in the direction of the soma
             of locations. Initialized as empty dict.
     """
-
-    def __init__(self, file_n=None, types=[1,3,4]):
-        self._treetype = 'original' # alternative 'computational'
-        if file_n != None:
-            self.readSWCTreeFromFile(file_n, types=types)
-            # self._original_root = self.root
-        else:
-            self._original_root = None
+    def __init__(self, arg=None, types=[1,3,4]):
+        # we initialize two root nodes, one for the original tree mimicking the
+        # .swc file, and one for the coarse grained tree for computational efficiency
         self._computational_root = None
+        self._original_root = None
         # to store sets of locations on the morphology
         self.locs = {}
         self._nids_orig = {}; self._nids_comp = {}
@@ -450,6 +438,22 @@ class MorphTree(STree):
         self.d2s = {}
         self.d2b = {}
         self.leafinds = {}
+
+        # instantiate the tree structure
+        if isinstance(arg, str):
+            self.readSWCTreeFromFile(arg, types=types)
+        else:
+            super().__init__(arg)
+            # STree will always initialize `self._root`, independent of whether the
+            # input argument is a node or a tree. 
+            # When the input argument is a node, it will *only* initialize `self._root`.
+            # When the input argument is a tree, it will call `self.__copy__`, which
+            # ensures that both the `self._original_root`` and `self._computational_root``
+            # (when the comptree is already set, see `self.setCompTree()`) are initialized.
+            # Therefor, the following code ensures that `self._original_root` is always set
+            # to the correct value.
+            with self.as_original_tree:
+                self._original_root = self._root
 
     def __getitem__(self, index, skip_inds=(2,3)):
         """
@@ -528,36 +532,19 @@ class MorphTree(STree):
         for ind, node in enumerate(self):
             node.index = ind+1
 
-    def getRoot(self):
-        """
-        Returns the root of the original or the computational tree, depending
-        on which `treetype` is active.
-        """
-        if self.treetype == 'original':
-            return self._original_root
-        else:
-            return self._computational_root
-
     def setRoot(self, node):
-        if self.treetype == 'original':
-            node.parent_node = None
-            self._original_root = node
-        else:
-            node.parent_node = None
-            self._computational_root = node
+        node.parent_node = None
+        self._original_root = node
+        self._root = node
 
-    root = property(getRoot, setRoot)
-
-    def getNodes(self, recompute_flag=0, skip_inds=(2,3)):
+    def getNodes(self, skip_inds=(2,3)):
         """
         Overloads the parent function to allow skipping nodes with certain
         indices and to return the nodes associated with the corresponding
-        `treetype`.
+        active tree.
 
         Parameters
         ----------
-            recompute_flag: bool
-                whether or not to re-evaluate the node list. Defaults to False.
             skip_inds: tuple of ints
                 Indices of the nodes that are skipped by the iterator. Defaults
                 to ``(2,3)``, the nodes that contain extra geometrical
@@ -567,21 +554,17 @@ class MorphTree(STree):
         -------
             list of `neat.MorphNode`
         """
-        if self.treetype == 'original':
-            if not hasattr(self, '_nodes_orig') or recompute_flag:
-                self._nodes_orig = []
-                self._gatherNodes(self.root, self._nodes_orig,
-                                   skip_inds=skip_inds)
-            return self._nodes_orig
-        else:
-            if not hasattr(self, '_nodes_comp') or recompute_flag:
-                self._nodes_comp = []
-                self._gatherNodes(self.root, self._nodes_comp,
-                                   skip_inds=skip_inds)
-            return self._nodes_comp
+        nodes = []
+        self._gatherNodes(self.root, nodes,
+            skip_inds=skip_inds
+        )
+        return nodes
 
     def setNodes(self, illegal):
-        raise AttributeError("`nodes` is a read-only attribute")
+        raise AttributeError(
+            "`nodes` is a read-only attribute. " \
+            "Add nodes to the tree with `tree.add_node_with_parent(node)`"
+        )
 
     nodes = property(getNodes, setNodes)
 
@@ -599,24 +582,12 @@ class MorphTree(STree):
         for cnode in node.getChildNodes(skip_inds=skip_inds):
             self._gatherNodes(cnode, node_list=node_list, skip_inds=skip_inds)
 
-    def getLeafs(self, recompute_flag=0):
+    def getLeafs(self):
         """
-        Overloads the `getLeafs` of the parent class to return the leafs
-        in the current `treetype`.
-
-        Parameters
-        ----------
-            recompute_flag: bool
-                Whether to force recomputing the leaf list. Defaults to 0.
+        Overloads the `getLeafs` of the parent class to return the leaf nodes
+        in the corresponding active tree.
         """
-        if self.treetype == 'original':
-            if not hasattr(self, '_leafs_orig') or recompute_flag:
-                self._leafs_orig = [node for node in self if self.isLeaf(node)]
-            return self._leafs_orig
-        else:
-            if not hasattr(self, '_leafs_comp') or recompute_flag:
-                self._leafs_comp = [node for node in self if self.isLeaf(node)]
-            return self._leafs_comp
+        return [node for node in self if self.isLeaf(node)]
 
     def setLeafs(self, illegal):
         raise AttributeError("`leafs` is a read-only attribute")
@@ -656,42 +627,50 @@ class MorphTree(STree):
         """
         return [node for node in self if node.swc_type in [2]]
 
-    def setTreetype(self, treetype):
-        """
-        Set the active tree
+    def _check_computational_root(self):
+        if self._computational_root is None:
+            raise AttributeError(
+                'No computational tree has been defined. Use ' \
+                '`MorphTree.setCompTree()` or its overwritten ' \
+                'version in one of the derived classes'
+            )
 
-        Parameters
-        ----------
-        treetype: 'original' or 'computational'
-            the treetype thas is set to active
-        """
-        if treetype == 'original':
-            self._treetype = treetype
+    def set_default_tree(self, default: Literal['original', 'computational'] = 'original'):
+        if default == 'original':
             self.root = self._original_root
-        elif treetype == 'computational':
-            if self._computational_root is not None:
-                self._treetype = treetype
-                self.root = self._computational_root
-            else:
-                raise ValueError('no computational tree has been defined, \
-                                `treetype` can only be \'original\'')
+        elif default == 'computational':
+            self._check_computational_root()
+            self.root = self._computational_root
         else:
-            raise ValueError('`treetype` can be \'original\' or \'computational\'')
+            raise ValueError("Default tree can be 'original' or 'computational'.")
 
-    def getTreetype(self):
-        return self._treetype
+    @property
+    @contextmanager
+    def as_computational_tree(self):
+        self._check_computational_root()
+        temp_root = self.root
+        self.root = self._computational_root
+        try:
+            yield self
+        except Exception as e:
+            raise
+        finally:
+            self.root = temp_root
 
-    treetype = property(getTreetype, setTreetype)
+    @property
+    @contextmanager
+    def as_original_tree(self):
+        temp_root = self.root
+        self.root = self._original_root
+        try:
+            yield self
+        except Exception as e:
+            raise
+        finally:
+            self.root = temp_root
 
-    def setComputationalRoot(self, node):
-        if node is None:
-            self._treetype = 'original'
-        self.__computational_root = node
-
-    def getComputationalRoot(self):
-        return self.__computational_root
-
-    _computational_root = property(getComputationalRoot, setComputationalRoot)
+    def check_computational_tree_active(self):
+        return self.root == self._computational_root
 
     def _createCorrespondingNode(self, node_index, p3d=None):
         """
@@ -806,7 +785,7 @@ class MorphTree(STree):
         if soma_type == 0:
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
                 if index == 1:
-                    self.setRoot(node)
+                    self.root = node
                 else:
                     parent_node = all_nodes[parent_index][1]
                     self.addNodeWithParent(node, parent_node)
@@ -835,7 +814,7 @@ class MorphTree(STree):
         if soma_type == 1:
             for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
                 if index == 1:
-                    self.setRoot(node)
+                    self.root = node
                 elif index in (2,3):
                     # the 3-point soma representation
                     # (https://neuromorpho.org/SomaFormat.html)
@@ -857,7 +836,7 @@ class MorphTree(STree):
 
         # IF multiple cylinder soma representation
         elif soma_type == 2:
-            self.setRoot(all_nodes[1][1])
+            self.root = all_nodes[1][1]
 
             # get all soma info
             soma_cylinders = []
@@ -898,6 +877,9 @@ class MorphTree(STree):
             else:
                 L = 0.
             node.setLength(L)
+
+        # store the created root as the root of the original tree
+        self._original_root = self.root
 
         return self
 
@@ -1011,7 +993,7 @@ class MorphTree(STree):
 
         return rbool
 
-    def setCompTree(self, compnodes=None, set_as_primary_tree=False, eps=1e-8):
+    def setCompTree(self, compnodes=None, eps=1e-8):
         """
         Sets the nodes that contain computational parameters. This are a priori
         either bifurcations, leafs, the root or nodes where the neurons'
@@ -1024,8 +1006,6 @@ class MorphTree(STree):
                 Note that specifying bifurcations, leafs or the root is
                 superfluous, since they are part of the computational tree by
                 default.
-            set_as_primary_tree: bool (default ``False``)
-                if True, sets the computational tree as the primary tree
             eps: float (default ``1e-8``)
                 relative margin for parameter change
         """
@@ -1060,8 +1040,6 @@ class MorphTree(STree):
         self._nodes_comp = []
         self._gatherNodes(self._computational_root, self._nodes_comp)
 
-        if set_as_primary_tree:
-            self.treetype = 'computational'
         # create conversion of all coordinate arrays
         for name in self.locs:
             self._storeCompLocs(name)
@@ -1119,15 +1097,6 @@ class MorphTree(STree):
         Removes the computational tree
         """
         self._computational_root = None
-        try:
-            delattr(self, "_nodes_comp")
-        except AttributeError as err:
-            pass
-        try:
-            delattr(self, "_leafs_comp")
-        except AttributeError as err:
-            pass
-        self.treetype = 'original'
         for node in self:
             node.used_in_comp_tree = False
 
@@ -1167,10 +1136,10 @@ class MorphTree(STree):
             * `neat.MorphNode`: returns list of nodes in the subtree of the given node
             * {'apical', 'basal', 'axonal'}: returns list of nodes in the apical, basal or axonal subtree
             * iterable collection of `neat.MorphNode`: returns the same list of nodes
-                If an iterable collection of original nodes is given, and the treetype
-                is computational, a reduced list is returned where only the corresponding
+                If an iterable collection of original nodes is given, and the computational
+                tree is active, a reduced list is returned where only the corresponding
                 computational nodes are included. If an iterable collection of
-                computational nodes is given, and the treetype is original, a list of
+                computational nodes is given, and the original tree is active, a list of
                 corresponding original nodes is given, but the in between nodes are not
                 added.
 
@@ -1185,7 +1154,7 @@ class MorphTree(STree):
             nodes.extend(self.nodes)
 
         elif isinstance(node_arg, MorphNode):
-            if self.treetype == 'computational':
+            if self.check_computational_tree_active():
                 # assure that a list of computational nodes is returned
                 node_arg = self._findCompnodeFromRoot(node_arg)
                 node_arg = self[node_arg.index]
@@ -1204,7 +1173,7 @@ class MorphTree(STree):
 
             if check_all_morphnode:
                 for node in node_arg:
-                    if self.treetype == 'computational':
+                    if self.check_computational_tree_active():
                         # assure that a list of computational nodes is returned
                         node_ = self._findCompnodeFromRoot(node)
                         compnode = self[node_.index]
@@ -1329,7 +1298,6 @@ class MorphTree(STree):
         else:
             return L
 
-    @originalTreetypeDecorator
     def storeLocs(self, locs, name, warn=True):
         """
         Store locations under a specified name
@@ -1363,12 +1331,11 @@ class MorphTree(STree):
         if self._computational_root != None:
             self._storeCompLocs(name)
 
-    @computationalTreetypeDecorator
+    @computational_tree_decorator
     def _storeCompLocs(self, name):
         self._nids_comp[name] = np.array([loc['node'] for loc in self.locs[name]])
         self._xs_comp[name] = np.array([loc['x'] for loc in self.locs[name]])
 
-    @originalTreetypeDecorator
     def addLoc(self, loc, name):
         """
         Add location to set of locations of given name
@@ -1387,7 +1354,7 @@ class MorphTree(STree):
         if self._computational_root != None:
             self._addCompLoc(loc, name)
 
-    @computationalTreetypeDecorator
+    @computational_tree_decorator
     def _addCompLoc(self, loc, name):
         self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc['node']]))
         self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc['x']]))
@@ -1486,16 +1453,16 @@ class MorphTree(STree):
         return self.nids[name]
 
     def getNids(self):
-        if self.treetype == 'original':
-            return self._nids_orig
-        else:
+        if self.check_computational_tree_active():
             return self._nids_comp
+        else:
+            return self._nids_orig
 
     def setNids(self, nids):
-        if self.treetype == 'original':
-            self._nids_orig = nids
-        else:
+        if self.check_computational_tree_active():
             self._nids_comp = nids
+        else:
+            self._nids_orig = nids
 
     nids = property(getNids, setNids)
 
@@ -1512,16 +1479,16 @@ class MorphTree(STree):
         return self.xs[name]
 
     def getXs(self):
-        if self.treetype == 'original':
-            return self._xs_orig
-        else:
+        if self.check_computational_tree_active():
             return self._xs_comp
+        else:
+            return self._xs_orig
 
     def setXs(self, xs):
-        if self.treetype == 'original':
-            self._xs_orig = xs
-        else:
+        if self.check_computational_tree_active():
             self._xs_comp = xs
+        else:
+            self._xs_orig = xs
 
     xs = property(getXs, setXs)
 
@@ -2083,7 +2050,7 @@ class MorphTree(STree):
         if name != 'dont save': self.storeLocs(locs, name=name)
         return locs
 
-    @computationalTreetypeDecorator
+    @computational_tree_decorator
     def distributeLocsUniform(self, dx, node_arg=None, add_bifurcations=False,
                               name='dont save'):
         """
@@ -2329,22 +2296,13 @@ class MorphTree(STree):
                 if nodes[0] in node.child_nodes:
                     raise ValueError('Input `node_arg` is not a depth-first ordered'
                                      ' list of nodes.')
-            # set the node colors for both trees
-            if self.treetype == 'original':
-                rootnode_orig = nodes[0]
-                tempnode = self._findCompnodeFromRoot(nodes[0])
-                self.setNodeColors(rootnode_orig)
-                self.treetype = 'computational'
-                rootnode_comp = self[tempnode.index]
-                self.setNodeColors(rootnode_comp)
-                self.treetype = 'original'
-            else:
-                rootnode_comp = nodes[0]
-                self.setNodeColors(rootnode_comp)
-                self.treetype = 'original'
-                rootnode_orig = self[rootnode.comp.index]
-                self.setNodeColors(rootnode_orig)
-                self.treetype = 'computational'
+            # set the node colors for original and computational trees
+            tempnode_orig = self._findCompnodeFromRoot(nodes[0])
+            self.setNodeColors(tempnode_orig)
+            with self.as_computational_tree:
+                tempnode_comp = self[tempnode_orig.index]
+                self.setNodeColors(tempnode_comp)
+
         else:
             if isinstance(loc_arg, list):
                 self.storeLocs(loc_arg, name='xaxis')
@@ -2894,7 +2852,6 @@ class MorphTree(STree):
         cid = fig.canvas.mpl_connect('pick_event', onPick)
         pl.show()
 
-    @originalTreetypeDecorator
     def findCommonRoot(self, name):
         self._tryName(name)
         # get the node indices of nodes
@@ -2907,7 +2864,6 @@ class MorphTree(STree):
         rootind = np.argmax([self.orderOfNode(node) for node in roots])
         return roots[rootind]
 
-    @originalTreetypeDecorator
     def createNewTree(self, loc_arg, fake_soma=False, store_loc_inds=False):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
@@ -3014,7 +2970,6 @@ class MorphTree(STree):
             self._addNodesToTree(cnode, new_pnode, new_tree, new_nodes, name,
                                  store_loc_inds=store_loc_inds)
 
-    @originalTreetypeDecorator
     def createCompartmentTree(self, locarg):
         """
         Creates a new compartment tree where the provided set of locations
@@ -3099,6 +3054,7 @@ class MorphTree(STree):
         for cnode in node.child_nodes:
             self._addCompNodesToTree(cnode, new_pnode, new_tree, new_nodes, name)
 
+    @original_tree_decorator
     def __copy__(self, new_tree=None):
         """
         Fill the ``new_tree`` with it's corresponding nodes in the same
@@ -3118,20 +3074,18 @@ class MorphTree(STree):
         if new_tree is None:
             new_tree = self.__class__()
 
-        current_treetype = self.treetype
-        self.treetype = 'original'
         super().__copy__(new_tree=new_tree)
+        new_tree._original_root = new_tree.root
         try:
-            # set the computational tree
-            self.treetype = 'computational'
-            new_node = new_tree._createCorrespondingNode(self.root.index)
-            self.root.__copy__(new_node=new_node)
-            new_tree._computational_root = new_node
-            new_tree.treetype = 'computational'
-            self._recurseCopy(self.root, new_tree)
-        except ValueError:
+            with self.as_computational_tree:
+                # set the computational tree
+                new_node = new_tree._createCorrespondingNode(self.root.index)
+                self.root.__copy__(new_node=new_node)
+                new_tree._computational_root = new_node
+                with new_tree.as_computational_tree:
+                    self._recurseCopy(self.root, new_tree)
+        except AttributeError:
+            # computational tree is not defined
             pass
-        self.treetype = current_treetype
-        new_tree.treetype = current_treetype
 
         return new_tree

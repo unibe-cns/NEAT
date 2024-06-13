@@ -398,11 +398,8 @@ class IonChannel(object):
         channel functions
         """
         from sympy.utilities.autowrap import ufuncify
-        # ufuncify = sp.utilities.autowrap.ufuncify
 
         # arguments for lambda function
-        # if self.__class__.__name__ == "SK_E2":
-        #     breakpoint()
         args = [self.sp_v] + self.ordered_statevars + self.sp_c
         args_ = [self.sp_v] + self.sp_c
 

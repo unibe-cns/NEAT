@@ -80,26 +80,30 @@ class TestGreensTree():
         self.tree.addCurrent(channel, g_max, e_rev)
         self.tree.setCompTree()
         self.tree.setImpedance(np.array([0.,100.])*1j)
-        self.tree.treetype = "original"
+        
+        with self.tree.as_original_tree:
+            print(self.tree)
 
-        assert str(self.tree) == ">>> GreensTree\n" \
-            "    SomaGreensNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    GreensNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    GreensNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    GreensNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)\n" \
-            "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1.0 uF/cm^2, v_ep = -75.0 mV, (g_L = 100.0 uS/cm^2, e_L = -75.0 mV), (g_TestChannel2 = 100.0 uS/cm^2, e_TestChannel2 = 100.0 mV)"
+            print(repr(self.tree))
+            str_str = ">>> GreensTree\n" \
+                "    SomaGreensNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+                "    GreensNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+                "    GreensNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+                "    GreensNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+                "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
+                "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)"
+            assert str(self.tree) == str_str
 
-        repr_str = "['GreensTree', " \
-            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
-        "]{'channel_storage': ['TestChannel2'], 'freqs': array([0.  +0.j, 0.+100.j])}"
-        assert repr(self.tree) == repr_str
-
+            repr_str = "['GreensTree', " \
+                "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
+            "]{'channel_storage': ['TestChannel2'], 'freqs': array([0.  +0.j, 0.+100.j])}"
+            assert repr(self.tree) == repr_str
+    
     def testBasicProperties(self):
         self.loadTTree()
         # test Fourrier impedance matrix
@@ -257,7 +261,7 @@ class TestGreensTreeTime():
         '''
         Load point neuron model
         '''
-        self.tree = GreensTreeTime(file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
+        self.tree = GreensTreeTime(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.tree.setPhysiology(0.8, 100./1e6)
         if is_active:
@@ -287,8 +291,8 @@ class TestGreensTreeTime():
 
     def testPassiveKernels(self, pplot=False):
         self.loadTTree()
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        greens_tree = GreensTree(self.tree)
+        sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         self.tree.setImpedance(self.ft)
@@ -359,8 +363,8 @@ class TestGreensTreeTime():
 
     def testActiveKernels(self, pplot=True):
         self.loadAxonTree()
-        greens_tree = self.tree.__copy__(new_tree=GreensTree())
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        greens_tree = GreensTree(self.tree)
+        sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .5), (5, .95)]
         self.tree.setImpedance(self.ft)
@@ -420,7 +424,7 @@ class TestGreensTreeTime():
     def testChannelResponses(self, pplot=True):
         self.loadAxonTree()
         self.tree.setImpedance(self.ft)
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .05), (5, .45), (5, .5)]
         nl = len(locs)
@@ -582,7 +586,7 @@ class TestGreensTreeTime():
         crt_ = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=0, method='quadrature')
 
         # simulate the temporal matrix
-        sim_tree = self.tree.__copy__(new_tree=NeuronSimTree())
+        sim_tree = NeuronSimTree(self.tree)
         tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix([(1,0.5)])
 
         soma = self.tree[1]

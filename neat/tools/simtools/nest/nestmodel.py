@@ -130,8 +130,8 @@ class NestCompartmentNode(CompartmentNode):
 
 
 class NestCompartmentTree(CompartmentTree):
-    def __init__(self, root=None):
-        super().__init__(root=root)
+    def __init__(self, arg=None):
+        super().__init__(arg)
 
     def _createCorrespondingNode(self, index, **kwargs):
         """

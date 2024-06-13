@@ -35,7 +35,6 @@ class SNode(object):
     content: dict
         arbitrary items can be stored at the node
     """
-
     def __init__(self, index):
         self.index = index
         self._parent_node = None
@@ -141,8 +140,10 @@ class STree(object):
 
     Parameters
     ----------
-    root: `neat.SNode`, optional
-        The root of the tree, default is ``None`` which creates an empty tree
+    arg: `neat.SNode` or subclass, `neat.STree` or subclass, or ``None``
+        When arg is a `neat.SNode`, it specifies the root of the tree.
+        When arg is a `neat.STree`, it constructs a deep copy of the provided tree.
+        Default is ``None``, which creates an empty tree.
 
     Attributes
     ----------
@@ -150,14 +151,22 @@ class STree(object):
         The root of the tree
     """
 
-    def __init__(self, root=None):
+    def __init__(self, arg=None):
         """
         Initialize an empty tree by default
         """
-        if root is not None:
-            self.root = root
+        self._root = None
+        
+        if issubclass(type(arg), STree):
+            # copy the provided tree into self
+            arg.__copy__(new_tree=self)
+        elif issubclass(type(arg), SNode) or arg is None:
+            self.root = arg
         else:
-            self._root = None
+            raise ValueError(
+                f"`arg` should be a node (the root node of the tree), " \
+                f"a tree, or ``None``. Provided `arg` is {type(arg)}"
+            )
 
     def __getitem__(self, index, **kwargs):
         """
@@ -394,7 +403,9 @@ class STree(object):
             node: `neat.SNode`
                 node to be set as root of the tree
         """
-        node.parent_node = None
+        if node is not None:
+            assert issubclass(type(node), SNode)
+            node.parent_node = None
         self._root = node
 
     def getRoot(self):
@@ -953,17 +964,19 @@ class STree(object):
         if new_tree is None:
             new_tree = self.__class__()
 
-        new_node = new_tree._createCorrespondingNode(self.root.index)
-
-        self.root.__copy__(new_node=new_node)
-        new_tree.setRoot(new_node)
-        self._recurseCopy(self.root, new_tree)
         # copy all attributes not related to tree structure
         orig_keys = set(self.__dict__.keys())
         copy_keys = orig_keys.intersection(set(new_tree.__dict__.keys()))
         for key in copy_keys:
             if key not in ['root', '_root', '_computational_root', '_original_root']:
                 new_tree.__dict__[key] = copy.deepcopy(self.__dict__[key])
+
+        # copy the tree structure
+        if self.root is not None:
+            new_node = new_tree._createCorrespondingNode(self.root.index)
+            self.root.__copy__(new_node=new_node)
+            new_tree.setRoot(new_node)
+            self._recurseCopy(self.root, new_tree)
 
         return new_tree
 

@@ -19,7 +19,7 @@ except ImportError as e:
     WITH_NEST = False
 
 from neat import PhysTree, GreensTree, NeuronSimTree, CompartmentFitter
-from neat import createReducedNeuronModel
+from neat import NeuronCompartmentTree
 import neat.channels.ionchannels as ionchannels
 from neat.factorydefaults import DefaultPhysiology
 
@@ -42,7 +42,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -120,7 +120,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -156,7 +156,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -197,7 +197,7 @@ class TestConcMechs:
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         tree = PhysTree(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
@@ -282,8 +282,8 @@ class TestConcMechs:
         tree_no_ca = self.loadAxonTree(w_ca_conc=False)
 
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (5, 1.)]
-        res_w_ca = self._simulate(tree_w_ca.__copy__(new_tree=NeuronSimTree()), locs)
-        res_no_ca = self._simulate(tree_no_ca.__copy__(new_tree=NeuronSimTree()), locs)
+        res_w_ca = self._simulate(NeuronSimTree(tree_w_ca), locs)
+        res_no_ca = self._simulate(NeuronSimTree(tree_no_ca), locs)
 
         assert len(res_no_ca["spikes"]) == 25
         assert len(res_w_ca["spikes"]) == 7
@@ -394,15 +394,15 @@ class TestConcMechs:
 
     def testImpedance(self, pplot=False, amp=0.001):
 
-        tree0 = self.loadBall(w_ca_conc=False).__copy__(new_tree=GreensTree())
-        tree1 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
-        tree2 = self.loadBall(w_ca_conc=True, gamma_factor=1e2).__copy__(new_tree=GreensTree())
+        tree0 = GreensTree(self.loadBall(w_ca_conc=False))
+        tree1 = GreensTree(self.loadBall(w_ca_conc=True, gamma_factor=1e2))
+        tree2 = GreensTree(self.loadBall(w_ca_conc=True, gamma_factor=1e2))
 
         locs = [(1, .5)]
-        res0 = self._simulate(tree0.__copy__(new_tree=NeuronSimTree()),
+        res0 = self._simulate(NeuronSimTree(tree0),
             locs, amp=amp, dur=20000., delay=100., cal=10000.
         )
-        res2 = self._simulate(tree2.__copy__(new_tree=NeuronSimTree()),
+        res2 = self._simulate(NeuronSimTree(tree2),
             locs, amp=amp, dur=20000., delay=100., cal=10000.
         )
 
@@ -530,7 +530,7 @@ class TestConcMechs:
         cfit.fitCapacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True, parallel=False)
+        cfit.fitChannels(pprint=True)
 
         # fit the concentration mechanism
         cfit.fitConcentration('ca', fit_tau=fit_tau, pprint=True)
@@ -568,10 +568,10 @@ class TestConcMechs:
             ) < np.abs(node.concmechs[ion].tau) * eps_tau
 
         # run test simulations
-        res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
+        res_full = self._simulate(NeuronSimTree(tree),
             locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
-        res_reduced = self._simulate(createReducedNeuronModel(ctree),
+        res_reduced = self._simulate(NeuronCompartmentTree(ctree),
             clocs, amp=amp, dur=1000., delay=100., cal=1000.
         )
 
@@ -611,7 +611,7 @@ class TestConcMechs:
         cfit.fitCapacitance(pprint=False, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=False, parallel=False)
+        cfit.fitChannels(pprint=False)
 
         # fit the concentration mechanism
         cfit.fitConcentration('ca', pprint=False)
@@ -652,10 +652,10 @@ class TestConcMechs:
                 ) < np.abs(cnode_.concmechs[ion].tau) * 1e-8
 
         # run test simulations
-        res_full = self._simulate(tree.__copy__(new_tree=NeuronSimTree()),
+        res_full = self._simulate(NeuronSimTree(tree),
             locs, amp=amp, dur=1000., delay=100., cal=1000.
         )
-        res_reduced = self._simulate(createReducedNeuronModel(ctree),
+        res_reduced = self._simulate(NeuronCompartmentTree(ctree),
             clocs, amp=amp, dur=1000., delay=100., cal=1000.
         )
 
@@ -723,7 +723,7 @@ class TestConcMechs:
         cfit.fitCapacitance(pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fitChannels(pprint=True, parallel=False)
+        cfit.fitChannels(pprint=True)
 
         # fit the concentration mechanism
         cfit.fitConcentration('ca', pprint=True)
@@ -810,12 +810,12 @@ class TestConcMechs:
         clocs = ctree.getEquivalentLocs()
         cidxs = [n.index for n in ctree]
 
-        res_neuron = self._simulate(createReducedNeuronModel(ctree),
+        res_neuron = self._simulate(NeuronCompartmentTree(ctree),
             clocs, amp=amp, dur=20000., delay=1000., cal=10000.,
             rec_currs=['ca'],
         )
 
-        res_nest = self._simulateNest(ctree.__copy__(new_tree=NestCompartmentTree()),
+        res_nest = self._simulateNest(NestCompartmentTree(ctree),
             cidxs, amp=amp, dur=20000., delay=1000., cal=10000.
         )
 
@@ -852,8 +852,8 @@ if __name__ == "__main__":
     # tcm.testImpedance(pplot=True)
     # tcm.testFittingBall(pplot=True)
     # tcm.testTauFitBall(pplot=True)
-    # tcm.testFittingBallAndStick(pplot=True)
-    tcm.testFiniteDifference()
+    tcm.testFittingBallAndStick(pplot=True)
+    # tcm.testFiniteDifference()
     # tcm.testLocalizedConcMechPasAxon()
     # tcm.testLocalizedConcMechActAxon()
     # tcm.testNestNeuronSimBall(pplot=True, amp=2.0)

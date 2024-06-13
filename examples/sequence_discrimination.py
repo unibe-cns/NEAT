@@ -18,7 +18,7 @@ SIM_FLAG = 1
 try:
     import neuron
     from neuron import h
-    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    from neat import NeuronSimTree, NeuronCompartmentTree
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
@@ -53,13 +53,11 @@ class BrancoSimTree(NeuronSimTree):
         global SYN_NODE_IND, SYN_XCOMP
         # set computational tree
         self.setCompTree()
-        self.treetype = 'computational'
-        # define the locations
-        locs = [MorphLoc((SYN_NODE_IND, x), self, set_as_comploc=True) for x in SYN_XCOMP]
-        self.storeLocs(locs, name='syn locs')
-        self.storeLocs([(1., 0.5)], name='soma loc')
-        # set treetype back
-        self.treetype = 'original'
+        with self.as_computational_tree:
+            # define the locations
+            locs = [MorphLoc((SYN_NODE_IND, x), self, set_as_comploc=True) for x in SYN_XCOMP]
+            self.storeLocs(locs, name='syn locs')
+            self.storeLocs([(1., 0.5)], name='soma loc')
 
     def deleteModel(self):
         super(BrancoSimTree, self).deleteModel()
@@ -198,7 +196,7 @@ class BrancoReducedTree(NeuronCompartmentTree, BrancoSimTree):
     def __init__(self):
         # call the initializer of :class:`NeuronSimTree`, follows after
         # :class:`BrancoSimTree` in MRO
-        super(BrancoSimTree, self).__init__(file_n=None, types=[1,3,4])
+        super(BrancoSimTree, self).__init__(None, types=[1,3,4])
 
     def setSynLocs(self, equivalent_locs):
         self.storeLocs(equivalent_locs[1:], name='syn locs')
@@ -219,7 +217,7 @@ def plotSim(delta_ts=[0.,1.,2.,3.,4.,5.,6.,7.,8.], recompute=False):
     clocs = ctree.getEquivalentLocs()
 
     # create the reduced model for NEURON simulation
-    csimtree_ = createReducedNeuronModel(ctree)
+    csimtree_ = NeuronCompartmentTree(ctree)
     csimtree = csimtree_.__copy__(new_tree=BrancoReducedTree())
     csimtree.setSynLocs(clocs)
 

@@ -391,9 +391,9 @@ class GreensTree(PhysTree):
     freqs: np.array of complex
         Frequencies at which impedances are evaluated ``[Hz]``
     """
-    def __init__(self, file_n=None, types=[1,3,4]):
-        super().__init__(file_n=file_n, types=types)
+    def __init__(self, arg=None, types=[1,3,4]):
         self.freqs = None
+        super().__init__(arg=arg, types=types)
 
     def _getReprDict(self):
         repr_dict = super()._getReprDict()
@@ -427,7 +427,7 @@ class GreensTree(PhysTree):
         for node in self:
             node.expansion_points = {}
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def setImpedance(self, freqs, use_conc=False, pprint=False):
         """
         Set the boundary impedances for each node in the tree
@@ -481,7 +481,7 @@ class GreensTree(PhysTree):
         for cnode in node.child_nodes:
             self._impedanceFromRoot(cnode)
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcZF(self, loc1, loc2):
         """
         Computes the transfer impedance between two locations for all frequencies
@@ -532,7 +532,7 @@ class GreensTree(PhysTree):
 
         return z_f
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcImpedanceMatrix(self, locarg, explicit_method=True):
         """
         Computes the impedance matrix of a given set of locations for each
@@ -634,7 +634,7 @@ class GreensTree(PhysTree):
         for c_node in node.child_nodes:
             self._calcImpedanceMatrixDown(ii, z_new, c_node, locs, z_mat)
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcChannelResponseF(self, loc1, loc2):
         """
         Compute linearized ion channel state variable responses in the frequency
@@ -665,7 +665,7 @@ class GreensTree(PhysTree):
 
         return c_resp
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcChannelResponseMatrix(self, locarg):
         """
         Compute linearized ion channel state variable response matrix in the
@@ -702,14 +702,12 @@ class GreensTree(PhysTree):
 
 
 class GreensTreeTime(GreensTree):
-    freqs_vfit = None
-    ft = None
-
-    _slice_vfit = None
-    _slice_quad = None
-
-    def __init__(self, file_n=None, types=[1,3,4]):
-        super().__init__(file_n=file_n, types=types)
+    def __init__(self, arg=None, types=[1,3,4]):
+        self.freqs_vfit = None
+        self.ft = None
+        self._slice_vfit = None
+        self._slice_quad = None
+        super().__init__(arg=arg, types=types)
 
     def _getReprDict(self):
         t = self.ft.t if self.ft is not None else None
@@ -845,7 +843,7 @@ class GreensTreeTime(GreensTree):
         else:
             return func_vals_t
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcZT(self, loc1, loc2,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=True,
@@ -885,7 +883,7 @@ class GreensTreeTime(GreensTree):
             compute_time_derivative=compute_time_derivative
         )
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcImpulseResponseMatrix(self, locarg,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=False,
@@ -960,7 +958,7 @@ class GreensTreeTime(GreensTree):
         else:
             return zt_mat
 
-    @morphtree.computationalTreetypeDecorator
+    @morphtree.computational_tree_decorator
     def calcChannelResponseT(self, loc1, loc2,
             method: Literal["", "exp fit", "quadrature"] = "",
             compute_time_derivative=False,
