@@ -96,7 +96,7 @@ class TestCompartmentFitter():
 
     def test_tree_structure(self):
         self.load_T_tree()
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, cach_path="neatcache/")
         # set of locations
         fit_locs1 = [(1,.5), (4,.5), (5,.5)] # no bifurcations
         fit_locs2 = [(1,.5), (4,.5), (5,.5), (8,.5)] # w bifurcation, should be added
@@ -114,7 +114,7 @@ class TestCompartmentFitter():
 
     def test_create_tree_gf(self):
         self.load_ball()
-        cm = CompartmentFitter(self.tree)
+        cm = CompartmentFitter(self.tree, cach_path="neatcache/")
 
         # create tree with only 'L'
         tree_pas = cm.create_tree_gf()
@@ -378,7 +378,7 @@ class TestCompartmentFitter():
         # test with z based on all channels (passive)
         # compute impedances explicitly
         greens_tree = cm.create_tree_gf(
-            channel_names=list(cm.tree.channel_storage.keys()),
+            channel_names=list(cm.channel_storage.keys()),
         )
         greens_tree.set_v_ep(-75.)
         greens_tree.set_impedances_in_tree(freqs=0., pprint=True)
@@ -388,7 +388,7 @@ class TestCompartmentFitter():
         z_calc = np.array([
             cm.recalc_impedance_matrix(
                 'fit locs', [g_i], 
-                channel_names=list(cm.tree.channel_storage.keys())
+                channel_names=list(cm.channel_storage.keys())
             ) for g_i in g_inp
         ])
         z_calc = np.swapaxes(z_calc, 0, 2)
@@ -585,6 +585,7 @@ class TestCompartmentFitter():
             t1 = timer()
             print('Parallel: %.8f s'%(t1-t0))
 
+
     def test_cacheing(self):
         self.load_T_segment_tree()
         locs = [(1, 0.5), (4,.9)]
@@ -625,7 +626,7 @@ class TestCompartmentFitter():
 
         print(tree_na_1.unique_hash())
 
-        assert tree_na_1.unique_hash() == "eca2103ed2fccfada7706b1f0675df2e0d5f926c54c26527f087d419d2088f16"
+        assert tree_na_1.unique_hash() == "41061ba7674c6a237bd7e15428904ba9524629cd5ea83a525d6fc7da305d3f34"
         assert repr(tree_na_1) == repr(tree_na_2)
 
 

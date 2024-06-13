@@ -100,9 +100,9 @@ def get_expansion_points(e_hs, channel, only_e_h=False):
     return sv_hs
 
 
-class CompartmentFitter(object):
+class CompartmentFitter(EquilibriumTree):
     """
-    Helper class to streamline fitting reduced compartmental models
+    Tree class that streamlines fitting reduced compartmental models
 
     Attributes
     ----------
@@ -134,28 +134,19 @@ class CompartmentFitter(object):
             cache_name='', cache_path='',
             save_cache=True, recompute_cache=False,
         ):
-        # cache related params
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
-
-        if len(cache_path) > 0 and not os.path.isdir(cache_path):
-            os.makedirs(cache_path)
-
         # original tree
-        self.tree = EquilibriumTree(
+        super().__init__(
             phys_tree,
-            cache_path=self.cache_path,
-            cache_name=self.cache_name + "_orig_",
-            save_cache=self.save_cache,
-            recompute_cache=self.recompute_cache,
+            cache_path=cache_path,
+            cache_name=cache_name + "_orig_",
+            save_cache=save_cache,
+            recompute_cache=recompute_cache,
         )
-        with self.tree.as_original_tree:
+        with self.as_original_tree:
             # set the equilibrium potentials in the tree
-            self.tree.set_e_eq(pprint=True)
+            self.set_e_eq(pprint=True)
             # get all channels in the tree
-            self.channel_names = self.tree.get_channels_in_tree()
+            self.channel_names = self.get_channels_in_tree()
 
             self.cfg = fit_cfg
             if fit_cfg is None:
@@ -171,7 +162,7 @@ class CompartmentFitter(object):
         """
         Store an initial `neat.CompartmentTree`, providing a tree
         structure scaffold for the fit for a given set of locations. The
-        locations are also stored on ``self.tree`` under the name 'fit locs'
+        locations are also stored on ``self`` under the name 'fit locs'
 
         Parameters
         ----------
@@ -185,24 +176,24 @@ class CompartmentFitter(object):
         pprint: bool
             whether to print additional info
         """
-        locs = self.tree.convert_loc_arg_to_locs(loc_arg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         if extend_w_bifurc:
-            locs = self.tree.extend_with_bifurcation_locs(locs)
+            locs = self.extend_with_bifurcation_locs(locs)
         else:
             warnings.warn(
                 'Not adding bifurcations to `loc_arg`, this could ' \
                 'lead to inaccurate fits. To add bifurcation, set' \
                 'kwarg `extend_w_bifurc` to ``True``'
             )
-        self.tree.store_locs(locs, name='fit locs')
+        self.store_locs(locs, name='fit locs')
 
         # create the reduced compartment tree
-        self.ctree = self.tree.create_compartment_tree(locs)
+        self.ctree = self.create_compartment_tree(locs)
 
         # add currents to compartmental model
-        for c_name, channel in self.tree.channel_storage.items():
+        for c_name, channel in self.channel_storage.items():
             e_revs = []
-            for node in self.tree:
+            for node in self:
                 if c_name in node.currents:
                     e_revs.append(node.currents[c_name][1])
             # reversal potential is the same throughout the reduced model
@@ -210,12 +201,12 @@ class CompartmentFitter(object):
 
         for node in self.ctree:
             loc_idx = node.loc_idx
-            concmechs = self.tree[locs[loc_idx]['node']].concmechs
+            concmechs = self[locs[loc_idx]['node']].concmechs
 
             # try to set default parameters as the ones from the original tree
             # if the concmech is not present at the corresponding location,
             # use the default parameters
-            for ion in self.tree.ions:
+            for ion in self.ions:
                 if ion in concmechs:
                     cparams = {
                         pname: pval for pname, pval in concmechs[ion].items()
@@ -225,7 +216,7 @@ class CompartmentFitter(object):
                     node.add_conc_mech(ion, **self.concmech_cfg.exp_conc_mech)
 
         # set the equilibirum potentials at fit locations
-        eq = self.tree.calc_e_eq('fit locs', pprint=pprint)
+        eq = self.calc_e_eq('fit locs', pprint=pprint)
         self.v_eqs_fit = eq[0]
         self.conc_eqs_fit = eq[1]
 
@@ -235,7 +226,7 @@ class CompartmentFitter(object):
             unmasked_nodes=None,
         ):
         """
-        Create a `CachedGreensTree` copy of the old tree, but only with the
+        Create a `CachedGreensTree` copy of the original tree, but only with the
         channels in ``channel_names``. Leak 'L' is included in the tree by
         default.
 
@@ -256,12 +247,12 @@ class CompartmentFitter(object):
 
         """
         unmasked_node_indices = [
-            node.index for node in self.tree.convert_node_arg_to_nodes(unmasked_nodes)
+            node.index for node in self.convert_node_arg_to_nodes(unmasked_nodes)
         ]
 
         # create new tree and empty channel storage
         tree = CachedGreensTree(
-            self.tree,
+            self,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
             save_cache=self.save_cache,
@@ -270,7 +261,7 @@ class CompartmentFitter(object):
         tree.channel_storage = {}
         # add the ion channel to the tree
         channel_names_newtree = set()
-        for node, node_orig in zip(tree, self.tree):
+        for node, node_orig in zip(tree, self):
             node.currents = {}
             g_l, e_l = node_orig.currents['L']
             # add the current to the tree
@@ -288,7 +279,7 @@ class CompartmentFitter(object):
                     pass
 
         tree.channel_storage = {
-            channel_name: self.tree.channel_storage[channel_name] \
+            channel_name: self.channel_storage[channel_name] \
             for channel_name in channel_names_newtree
         }
         tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
@@ -315,9 +306,9 @@ class CompartmentFitter(object):
         ------
         fit_mats
         """
-        locs = self.tree.get_locs('fit locs')
+        locs = self.get_locs('fit locs')
         # find the expansion point parameters for the channel
-        channel = self.tree.channel_storage[channel_name]
+        channel = self.channel_storage[channel_name]
         sv_h = get_expansion_points(self.cfg.e_hs, channel)
 
         # create the trees with only a single channel and multiple expansion points
@@ -408,7 +399,7 @@ class CompartmentFitter(object):
         if ion not in orig_node.concmechs:
             return
 
-        channel_storage = self.tree.channel_storage
+        channel_storage = self.channel_storage
         currents_orig = copy.deepcopy(orig_node.currents)
         currents_comp = copy.deepcopy(comp_node.currents)
 
@@ -457,15 +448,15 @@ class CompartmentFitter(object):
             `True` otherwise
         """
         has_concmech = False
-        for node in self.tree:
+        for node in self:
             if ion in node.concmechs:
                 has_concmech = True
                 break
         if not has_concmech:
             return 0
 
-        orig_nodes = [self.tree[loc["node"]] for loc in self.tree.get_locs("fit locs")]
-        comp_nodes = self.ctree.get_nodes_from_loc_idxs(list(range(len(self.tree.get_locs("fit locs")))))
+        orig_nodes = [self[loc["node"]] for loc in self.get_locs("fit locs")]
+        comp_nodes = self.ctree.get_nodes_from_loc_idxs(list(range(len(self.get_locs("fit locs")))))
 
         for orig_node, comp_node in zip(orig_nodes, comp_nodes):
             self._calibrate_conc_mechs(ion, orig_node, comp_node)
@@ -488,14 +479,14 @@ class CompartmentFitter(object):
 
         """
         self.use_all_channels_for_passive = use_all_channels
-        locs = self.tree.get_locs('fit locs')
+        locs = self.get_locs('fit locs')
 
         suffix = "_pas_"
         if use_all_channels:
             suffix = f"_passified_"
 
         if use_all_channels:
-            fit_tree = EquilibriumTree(self.tree)
+            fit_tree = EquilibriumTree(self)
             fit_tree.set_cache_params(
                 cache_path=self.cache_path,
                 cache_name=self.cache_name + "_eq" + suffix,
@@ -552,7 +543,7 @@ class CompartmentFitter(object):
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
         """
-        locs = self.tree.get_locs('fit locs')
+        locs = self.get_locs('fit locs')
         # compute the steady state impedance matrix
         fit_tree = self.create_tree_gf(
             [],
@@ -605,7 +596,7 @@ class CompartmentFitter(object):
 
         # create new tree and empty channel storage
         tree = CachedSOVTree(
-            self.tree,
+            self,
             cache_path=self.cache_path,
             cache_name=self.cache_name + cache_name_suffix,
             save_cache=self.save_cache,
@@ -614,7 +605,7 @@ class CompartmentFitter(object):
         if not self.use_all_channels_for_passive:
             tree.channel_storage = {}
 
-            for node, node_orig in zip(tree, self.tree):
+            for node, node_orig in zip(tree, self):
                 node.currents = {}
                 g_l, e_l = node_orig.currents['L']
                 # add the current to the tree
@@ -665,7 +656,7 @@ class CompartmentFitter(object):
             whether to plot the eigenmode timescales
         """
         # compute SOV matrices for fit
-        locs = self.tree.get_locs('fit locs')
+        locs = self.get_locs('fit locs')
         alphas, phimat, importance, sov_tree = \
                 self._calc_sov_mats(locs, pprint=pprint)
 
@@ -689,7 +680,7 @@ class CompartmentFitter(object):
             taus_m = []
             for l in clocs:
                 g_m = sov_tree[l[0]].calc_g_tot(channel_storage=sov_tree.channel_storage)
-                taus_m.append(self.tree[l[0]].c_m / g_m *1e3)
+                taus_m.append(self[l[0]].c_m / g_m *1e3)
             taus_m_orig = np.array(taus_m)
             # fitted membrance time scales
             taus_m_fit = np.array([node.ca / node.currents['L'][0]
@@ -737,7 +728,7 @@ class CompartmentFitter(object):
         return self.ctree
 
     def plot_sov(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
 
         if alphas is None or phimat is None or importance is None:
             alphas, phimat, importance, _ = self._calc_sov_mats(
@@ -746,7 +737,7 @@ class CompartmentFitter(object):
         if alphas2 is None:
             alphas2, _, _ = self.ctree.calc_eigenvalues()
 
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
         markers = Line2D.filled_markers
@@ -776,7 +767,7 @@ class CompartmentFitter(object):
         ax3.legend(loc=0)
 
     def _construct_kernels(self, a, c):
-        nn = len(self.tree.get_locs('fit locs'))
+        nn = len(self.get_locs('fit locs'))
         return [[Kernel((a, c[:,ii,jj])) for ii in range(nn)] for jj in range(nn)]
 
     def get_kernels(self, alphas=None, phimat=None,
@@ -805,7 +796,7 @@ class CompartmentFitter(object):
         k_comp: list of list of `neat.Kernel`
             The kernels of the reduced model
         """
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
         if alphas is None or phimat is None:
             alphas, phimat, _, _ = self._calc_sov_mats(
                 fit_locs, pprint=pprint
@@ -820,26 +811,6 @@ class CompartmentFitter(object):
         k_comp = self._construct_kernels(-alphas_comp, np.einsum('ik,kj->kij', phimat_comp, phimat_inv_comp))
 
         return k_orig, k_comp
-
-    # def get_kernels(self, pprint=False):
-    #     """
-    #     Returns the impedance kernels as a double nested list of "neat.Kernel".
-    #     The element at the position i,j represents the transfer impedance kernel
-    #     between compartments i and j.
-
-    #     Parameters
-    #     ----------
-    #     pprint: bool
-    #         Is verbose if ``True``
-
-    #     Returns
-    #     -------
-    #     k_orig: list of list of `neat.Kernel`
-    #         The kernels of the full model
-    #     k_comp: list of list of `neat.Kernel`
-    #         The kernels of the reduced model
-    #     """
-    #     return self.get_kernels(pprint=pprint)
 
     def plot_kernels(self, alphas=None, phimat=None, t_arr=None,
                           pprint=False):
@@ -868,7 +839,7 @@ class CompartmentFitter(object):
         k_comp: list of list of `neat.Kernel`
             The kernels of the reduced model
         """
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
         nn = len(fit_locs)
 
         if alphas is None or phimat is None:
@@ -900,13 +871,13 @@ class CompartmentFitter(object):
                 ax.set_title(pstring, pad=-10)
 
     def _store_sov_mats(self):
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
         self.alphas, self.phimat, _, _ = self._calc_sov_mats(
             fit_locs, pprint=False
         )
 
     def kernel_objective(self, t_arr=None):
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
         nn = len(fit_locs)
 
         if t_arr is None:
@@ -959,14 +930,14 @@ class CompartmentFitter(object):
                             force_tau_m_fit=force_tau_m_fit,
                             pprint=pprint, pplot=False)
 
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
 
         pl.figure('tree')
         ax = pl.gca()
         loc_args = [dict(marker='o', mec='k', mfc=lc, markersize=6.) for lc in loc_colours]
-        self.tree.plot_2d_morphology(ax, marklocs=fit_locs, loc_args=loc_args, use_radius=False)
+        self.plot_2d_morphology(ax, marklocs=fit_locs, loc_args=loc_args, use_radius=False)
 
         pl.tight_layout()
         pl.show()
@@ -999,11 +970,11 @@ class CompartmentFitter(object):
         kwargs:
             arguments to the `CompartmentFitter.calc_e_eq()` function
         """
-        fit_locs = self.tree.get_locs('fit locs')
+        fit_locs = self.get_locs('fit locs')
 
         # set the equilibria
         self.ctree.set_e_eq(self.v_eqs_fit)
-        for ion in self.tree.ions:
+        for ion in self.ions:
             self.ctree.set_conc_eq(ion, self.conc_eqs_fit[ion])
 
         # fit the leak
@@ -1056,7 +1027,7 @@ class CompartmentFitter(object):
         self.fit_channels(pprint=pprint)
 
         # fit the concentration mechansims
-        for ion in self.tree.ions:
+        for ion in self.ions:
             found = self.fit_concentration(ion, fit_tau=False, pprint=pprint)
 
         # fit the resting potentials
@@ -1067,13 +1038,13 @@ class CompartmentFitter(object):
     def recalc_impedance_matrix(self, loc_arg, g_syns,
                               channel_names=None):
         # process input
-        locs = self.tree.convert_loc_arg_to_locs(loc_arg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         n_syn = len(locs)
         assert n_syn == len(g_syns)
         if n_syn == 0:
             return np.array([[]])
         if channel_names is None:
-            channel_names = list(self.tree.channel_storage.keys())
+            channel_names = list(self.channel_storage.keys())
         suffix = '_'.join(channel_names)
 
         # create a greenstree with equilibrium potentials at rest
@@ -1126,15 +1097,15 @@ class CompartmentFitter(object):
             The rescale values for the synaptic weights
         """
         # process input
-        c_locs = self.tree.convert_loc_arg_to_locs(c_loc_arg)
-        s_locs = self.tree.convert_loc_arg_to_locs(s_loc_arg)
+        c_locs = self.convert_loc_arg_to_locs(c_loc_arg)
+        s_locs = self.convert_loc_arg_to_locs(s_loc_arg)
         n_comp, n_syn = len(c_locs), len(s_locs)
         assert n_syn == len(g_syns) and n_syn == len(e_revs)
         assert len(c_locs) > 0
         if n_syn == 0:
             return np.array([])
         if channel_names is None:
-            channel_names = list(self.tree.channel_storage.keys())
+            channel_names = list(self.channel_storage.keys())
         cs_locs = c_locs + s_locs
         cg_syns = np.concatenate((np.zeros(n_comp), np.array(g_syns)))
         comp_inds, g_syns, e_revs = np.array(comp_inds), np.array(g_syns), np.array(e_revs)
@@ -1150,7 +1121,7 @@ class CompartmentFitter(object):
         zc_mat = z_mat[:n_comp, :n_comp]
 
         # get the reversal potentials of the synapse locations
-        e_eqs = self.tree.calc_e_eq(cs_locs)[0]
+        e_eqs = self.calc_e_eq(cs_locs)[0]
         e_cs = e_eqs[:n_comp]
         e_ss = e_eqs[-n_syn:]
 
@@ -1217,7 +1188,7 @@ class CompartmentFitter(object):
         assumes the root node is in `c_loc_arg`
         """
         if channel_names is None:
-            channel_names = list(self.tree.channel_storage.keys())
+            channel_names = list(self.channel_storage.keys())
 
         # create a greenstree with equilibrium potentials at rest
         greens_tree = self.create_tree_gf(
@@ -1227,17 +1198,17 @@ class CompartmentFitter(object):
         greens_tree.set_impedances_in_tree(self.cfg.freqs, pprint=False)
 
         # process input
-        c_locs = self.tree.convert_loc_arg_to_locs(c_loc_arg)
-        s_locs = self.tree.convert_loc_arg_to_locs(s_loc_arg)
+        c_locs = self.convert_loc_arg_to_locs(c_loc_arg)
+        s_locs = self.convert_loc_arg_to_locs(s_loc_arg)
         # find nodes corresponding to locs
-        c_nodes = [self.tree[loc['node']] for loc in c_locs]
-        s_nodes = [self.tree[loc['node']] for loc in s_locs]
+        c_nodes = [self[loc['node']] for loc in c_locs]
+        s_nodes = [self[loc['node']] for loc in s_locs]
         # compute input impedances
         c_zins = [greens_tree.calc_zf(c_loc, c_loc)[0] for c_loc in c_locs]
         s_zins = [greens_tree.calc_zf(s_loc, s_loc)[0] for s_loc in s_locs]
         # paths to root
-        c_ptrs = [self.tree.path_to_root(node) for node in c_nodes]
-        s_ptrs = [self.tree.path_to_root(node) for node in s_nodes]
+        c_ptrs = [self.path_to_root(node) for node in c_nodes]
+        s_ptrs = [self.path_to_root(node) for node in s_nodes]
 
         c_inds = []
         for s_node, s_path, s_loc, s_zin in zip(s_nodes, s_ptrs, s_locs, s_zins):

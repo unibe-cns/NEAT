@@ -56,6 +56,9 @@ class FitTree(PhysTree):
             cache_name='',
             cache_path='',
         ):
+        if len(cache_path) > 0 and not os.path.isdir(cache_path):
+            os.makedirs(cache_path)
+            
         self.cache_name = cache_name
         self.cache_path = cache_path
         self.save_cache = save_cache

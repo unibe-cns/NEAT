@@ -1604,7 +1604,7 @@ class CompartmentTree(STree):
     def _fit_res_action(self, action, mat_feature, vec_target, weight,
                             ca_lim=[], **kwargs):
         if action == 'fit':
-            res = np.linalg.lstsq(mat_feature, vec_target)
+            res = np.linalg.lstsq(mat_feature, vec_target, rcond=None)
             vec_res = res[0].real
             vec_res = np.maximum(vec_res, 0.)
             # set the conductances
