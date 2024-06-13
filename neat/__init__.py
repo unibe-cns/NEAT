@@ -56,5 +56,9 @@ from .channels.concmechs import ExpConcMech
 
 from .modelreduction.compartmentfitter import CompartmentFitter
 from .modelreduction.cachetrees import EquilibriumTree
+from .modelreduction.cachetrees import CachedGreensTree
+from .modelreduction.cachetrees import CachedGreensTreeTime
+from .modelreduction.cachetrees import CachedSOVTree
+
 
 from .__version__ import __version__

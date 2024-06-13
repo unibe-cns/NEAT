@@ -782,7 +782,6 @@ class GreensTreeTime(GreensTree):
         criterion = criterion_eval <= 1e-3
 
         if criterion_eval > 1e-10:
-        # if False:
             # if there is substantial spectral power in the max frequency
             # components, we smooth the function with a squared cosine window
             # to reduce oscillations
