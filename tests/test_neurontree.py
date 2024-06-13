@@ -620,7 +620,7 @@ class TestReducedNeuron():
 
 if __name__ == '__main__':
     tn = TestNeuron()
-    tn.test_passive(pplot=Trsue)
+    tn.test_passive(pplot=True)
     tn.test_active()
     tn.test_channel_recording()
     tn.test_recording_timestep()
