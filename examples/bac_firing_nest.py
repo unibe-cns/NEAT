@@ -15,7 +15,7 @@ nest.Install("bac_firing_neatmodule")
 
 
 def runCaCoinc(c_tree,
-               ca_loc_ind, soma_ind,
+               ca_loc_idx, soma_ind,
                stim_type='psp',
                dt=0.05, t_max=300., t_calibrate=400.,
                psp_params=dict(tau_r_PSC=.5, tau_d_PSC=5., PSC_amp=.5, t_PSC=50.),
@@ -37,7 +37,7 @@ def runCaCoinc(c_tree,
     cm = createNestModel(c_tree, 'bac_firing')
 
     if stim_type == 'psp' or stim_type == 'coinc':
-        syn_idx = nest.AddReceptor(cm, ca_loc_ind, "PSC", psp_params)
+        syn_idx = nest.AddReceptor(cm, ca_loc_idx, "PSC", psp_params)
         sg_psc = nest.Create('spike_generator', 1, {'spike_times': [psp_params['t_PSC']+t_calibrate]})
         nest.Connect(sg_psc, cm, syn_spec={
             'synapse_model': 'static_synapse', 'weight': 1., 'delay': 0.1, 'receptor_type': syn_idx})
@@ -81,17 +81,17 @@ def runCalciumCoinc(dt=0.05):
     phys_tree = getL5Pyramid()
 
     # single branch initiation zone
-    branch = phys_tree.pathToRoot(phys_tree[236])[::-1]
-    locs_sb = phys_tree.distributeLocsOnNodes(bac_firing.D2S_CASPIKE, node_arg=branch, name='single branch')
+    branch = phys_tree.path_to_root(phys_tree[236])[::-1]
+    locs_sb = phys_tree.distribute_locs_on_nodes(bac_firing.D2S_CASPIKE, node_arg=branch, name='single branch')
     # abpical trunk locations
-    apic = phys_tree.pathToRoot(phys_tree[221])[::-1]
-    locs_apic = phys_tree.distributeLocsOnNodes(bac_firing.D2S_APIC, node_arg=apic, name='apic connection')
+    apic = phys_tree.path_to_root(phys_tree[221])[::-1]
+    locs_apic = phys_tree.distribute_locs_on_nodes(bac_firing.D2S_APIC, node_arg=apic, name='apic connection')
 
     # store set of locations
     fit_locs = [(1, .5)] + locs_apic + locs_sb
-    phys_tree.storeLocs(fit_locs, name='ca coinc')
+    phys_tree.store_locs(fit_locs, name='ca coinc')
     # PSP input location index
-    ca_ind = phys_tree.getNearestLocinds([bac_firing.CA_LOC], name='ca coinc')[0]
+    ca_ind = phys_tree.get_nearest_loc_idxs([bac_firing.CA_LOC], name='ca coinc')[0]
 
     # obtain the simplified tree
     file = open('data/ctree_bac_firing.p', 'rb')

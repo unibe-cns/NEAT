@@ -33,7 +33,7 @@ public:
     virtual double DfDvNewton(double v){return 0.0;};
 };
 
-class TestChannel: public IonChannel{
+class test_channel: public IonChannel{
 private:
     double m_a01;
     double m_a01_inf, m_tau_a01;
@@ -69,7 +69,7 @@ public:
     double DfDvNewton(double v) override;
 };
 
-class TestChannel2: public IonChannel{
+class test_channel2: public IonChannel{
 private:
     double m_a11;
     double m_a11_inf, m_tau_a11;
@@ -193,11 +193,11 @@ public:
 class ChannelCreator{
 public:
     IonChannel* createInstance(string channel_name){
-        if(channel_name == "TestChannel"){
-            return new TestChannel();
+        if(channel_name == "test_channel"){
+            return new test_channel();
         }
-        else if(channel_name == "TestChannel2"){
-            return new TestChannel2();
+        else if(channel_name == "test_channel2"){
+            return new test_channel2();
         }
         else if(channel_name == "Na_Ta"){
             return new Na_Ta();

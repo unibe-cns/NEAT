@@ -41,22 +41,19 @@ class ExpConcMech(ConcMech):
     def items(self):
         return [('gamma', self.gamma), ('tau', self.tau), ('inf', self.inf)]
 
-    def computeLinear(self, freqs):
+    def compute_linear(self, freqs):
         return -self.gamma * 1e3 / (freqs + 1e3 / self.tau)
 
-    def computeLin(self, freqs):
+    def compute_lin(self, freqs):
         return - 1e3 / (freqs + 1e3 / self.tau)
 
-    def computeLinTauFit(self, freqs):
+    def compute_lin_tau_fit(self, freqs):
         return -self.gamma * 1e3 * self.tau, 1e3
-
-    # def __str__(self):
-    #     return 'tau: %.2f ms, gamma: %.6f (ms/nA)'%(self.tau, self.gamma)
 
     def __repr__(self):
         return f"ExpConcMech(ion={self.ion}, gamma={self.gamma:1.6g}, tau={self.tau:1.6g}, inf={self.inf:1.6g})"
 
-    def writeNestmlBlocks(self, blocks=['state', 'parameters', 'equations', 'function'], channels=[]):
+    def write_nestml_blocks(self, blocks=['state', 'parameters', 'equations', 'function'], channels=[]):
         ion = self.ion
         ion_channels = [chan for chan in channels if chan.ion == ion]
         read_channels = [chan for chan in channels if ion in chan.conc]

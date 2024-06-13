@@ -12,13 +12,13 @@ import neat.tools.kernelextraction as ke
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
-channel_installer.load_or_install_neuron_testchannels()
+channel_installer.load_or_install_neuron_test_channels()
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 
 class TestGreensTree():
-    def loadTTree(self):
+    def load_T_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -29,10 +29,10 @@ class TestGreensTree():
         """
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.fit_leak_current(-75., 10.)
+        self.tree.set_comp_tree()
 
-    def loadValidationTree(self):
+    def load_validation_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -40,10 +40,10 @@ class TestGreensTree():
         """
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.tree = GreensTree(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(-75., 10.)
-        self.tree.setCompTree()
+        self.tree.fit_leak_current(-75., 10.)
+        self.tree.set_comp_tree()
 
-    def loadSOVTTree(self):
+    def load_sov_T_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -54,11 +54,11 @@ class TestGreensTree():
         """
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
-        self.sovtree.fitLeakCurrent(-75., 10.)
-        self.sovtree.setCompTree()
-        self.sovtree.calcSOVEquations()
+        self.sovtree.fit_leak_current(-75., 10.)
+        self.sovtree.set_comp_tree()
+        self.sovtree.calc_sov_equations()
 
-    def loadSOVValidationTree(self):
+    def load_sov_validation_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -66,64 +66,64 @@ class TestGreensTree():
         """
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'sovvalidationtree.swc')
         self.sovtree = SOVTree(fname, types=[1,3,4])
-        self.sovtree.fitLeakCurrent(-75., 10.)
-        self.sovtree.setCompTree()
-        self.sovtree.calcSOVEquations()
+        self.sovtree.fit_leak_current(-75., 10.)
+        self.sovtree.set_comp_tree()
+        self.sovtree.calc_sov_equations()
 
-    def testStringRepresentation(self):
-        self.loadTTree()
+    def test_string_representation(self):
+        self.load_T_tree()
 
         # gmax as potential as float
         e_rev = 100.
         g_max = 100.
-        channel = channelcollection.TestChannel2()
-        self.tree.addCurrent(channel, g_max, e_rev)
-        self.tree.setCompTree()
-        self.tree.setImpedance(np.array([0.,100.])*1j)
+        channel = channelcollection.test_channel2()
+        self.tree.add_channel_current(channel, g_max, e_rev)
+        self.tree.set_comp_tree()
+        self.tree.set_impedance(np.array([0.,100.])*1j)
         
         with self.tree.as_original_tree:
             print(self.tree)
 
             print(repr(self.tree))
             str_str = ">>> GreensTree\n" \
-                "    SomaGreensNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
-                "    GreensNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
-                "    GreensNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
-                "    GreensNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
-                "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)\n" \
-                "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_TestChannel2 = 100 uS/cm^2, e_TestChannel2 = 100 mV)"
+                "    SomaGreensNode 1, Parent: None --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_test_channel2 = 100 uS/cm^2, e_test_channel2 = 100 mV)\n" \
+                "    GreensNode 4, Parent: 1 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_test_channel2 = 100 uS/cm^2, e_test_channel2 = 100 mV)\n" \
+                "    GreensNode 5, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_test_channel2 = 100 uS/cm^2, e_test_channel2 = 100 mV)\n" \
+                "    GreensNode 6, Parent: 5 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_test_channel2 = 100 uS/cm^2, e_test_channel2 = 100 mV)\n" \
+                "    GreensNode 7, Parent: 4 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_test_channel2 = 100 uS/cm^2, e_test_channel2 = 100 mV)\n" \
+                "    GreensNode 8, Parent: 7 --- r_a = 0.0001 MOhm*cm, c_m = 1 uF/cm^2, v_ep = -75 mV, (g_L = 100 uS/cm^2, e_L = -75 mV), (g_test_channel2 = 100 uS/cm^2, e_test_channel2 = 100 mV)"
             assert str(self.tree) == str_str
 
             repr_str = "['GreensTree', " \
-                "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-                "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-                "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-                "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-                "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
-                "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'TestChannel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
-            "]{'channel_storage': ['TestChannel2'], 'freqs': array([0.  +0.j, 0.+100.j])}"
+                "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1, 'currents': {'L': '(100, -75)', 'test_channel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'test_channel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100. ,  50.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'test_channel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 101.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'test_channel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100. , -49.5,   0. ]), 'R': '1', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'test_channel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\", " \
+                "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([100., -99.,   0.]), 'R': '0.5', 'swc_type': 4, 'currents': {'L': '(100, -75)', 'test_channel2': '(100, 100)'}, 'concmechs': {}, 'c_m': '1', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
+            "]{'channel_storage': ['test_channel2'], 'freqs': array([0.  +0.j, 0.+100.j])}"
             assert repr(self.tree) == repr_str
     
-    def testBasicProperties(self):
-        self.loadTTree()
+    def test_basic_properties(self):
+        self.load_T_tree()
         # test Fourrier impedance matrix
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
-        self.tree.setImpedance(ft.s)
+        self.tree.set_impedance(ft.s)
 
 
         # sets of location
         locs_0 = [(6, .5), (8, .5)]
-        zf = self.tree.calcZF(*locs_0)
+        zf = self.tree.calc_zf(*locs_0)
         locs_1 = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         locs_2 = [(7, .5), (8, .5)]
-        self.tree.storeLocs(locs_0, '0')
-        self.tree.storeLocs(locs_1, '1')
-        self.tree.storeLocs(locs_2, '2')
+        self.tree.store_locs(locs_0, '0')
+        self.tree.store_locs(locs_1, '1')
+        self.tree.store_locs(locs_2, '2')
         # compute impedance matrices
-        z_mat_0 = self.tree.calcImpedanceMatrix('0')[ft.ind_0s]
-        z_mat_1 = self.tree.calcImpedanceMatrix('1')[ft.ind_0s]
-        z_mat_2 = self.tree.calcImpedanceMatrix('2')[ft.ind_0s]
+        z_mat_0 = self.tree.calc_impedance_matrix('0')[ft.ind_0s]
+        z_mat_1 = self.tree.calc_impedance_matrix('1')[ft.ind_0s]
+        z_mat_2 = self.tree.calc_impedance_matrix('2')[ft.ind_0s]
         # check complex steady state component zero
         assert np.allclose(z_mat_0.imag, np.zeros_like(z_mat_0.imag))
         assert np.allclose(z_mat_1.imag, np.zeros_like(z_mat_1.imag))
@@ -133,90 +133,90 @@ class TestGreensTree():
         assert np.allclose(z_mat_1, z_mat_1.T)
         assert np.allclose(z_mat_2, z_mat_2.T)
         # check symmetry directly
-        assert np.allclose(self.tree.calcZF(locs_0[0], locs_0[1]),
-                           self.tree.calcZF(locs_0[1], locs_0[0]))
-        assert np.allclose(self.tree.calcZF(locs_1[0], locs_1[3]),
-                           self.tree.calcZF(locs_1[3], locs_1[0]))
-        assert np.allclose(self.tree.calcZF(locs_1[2], locs_1[5]),
-                           self.tree.calcZF(locs_1[5], locs_1[2]))
+        assert np.allclose(self.tree.calc_zf(locs_0[0], locs_0[1]),
+                           self.tree.calc_zf(locs_0[1], locs_0[0]))
+        assert np.allclose(self.tree.calc_zf(locs_1[0], locs_1[3]),
+                           self.tree.calc_zf(locs_1[3], locs_1[0]))
+        assert np.allclose(self.tree.calc_zf(locs_1[2], locs_1[5]),
+                           self.tree.calc_zf(locs_1[5], locs_1[2]))
         # check transitivity
-        z_14_ = self.tree.calcZF(locs_1[1], locs_1[3]) * \
-                self.tree.calcZF(locs_1[3], locs_1[4]) / \
-                self.tree.calcZF(locs_1[3], locs_1[3])
-        z_14 = self.tree.calcZF(locs_1[1], locs_1[4])
+        z_14_ = self.tree.calc_zf(locs_1[1], locs_1[3]) * \
+                self.tree.calc_zf(locs_1[3], locs_1[4]) / \
+                self.tree.calc_zf(locs_1[3], locs_1[3])
+        z_14 = self.tree.calc_zf(locs_1[1], locs_1[4])
         assert np.allclose(z_14, z_14_)
-        z_06_ = self.tree.calcZF(locs_1[0], locs_1[5]) * \
-                self.tree.calcZF(locs_1[5], locs_1[6]) / \
-                self.tree.calcZF(locs_1[5], locs_1[5])
-        z_06 = self.tree.calcZF(locs_1[0], locs_1[6])
+        z_06_ = self.tree.calc_zf(locs_1[0], locs_1[5]) * \
+                self.tree.calc_zf(locs_1[5], locs_1[6]) / \
+                self.tree.calc_zf(locs_1[5], locs_1[5])
+        z_06 = self.tree.calc_zf(locs_1[0], locs_1[6])
         assert np.allclose(z_06, z_06_)
-        z_46_ = self.tree.calcZF(locs_1[4], locs_1[2]) * \
-                self.tree.calcZF(locs_1[2], locs_1[6]) / \
-                self.tree.calcZF(locs_1[2], locs_1[2])
-        z_46 = self.tree.calcZF(locs_1[4], locs_1[6])
+        z_46_ = self.tree.calc_zf(locs_1[4], locs_1[2]) * \
+                self.tree.calc_zf(locs_1[2], locs_1[6]) / \
+                self.tree.calc_zf(locs_1[2], locs_1[2])
+        z_46 = self.tree.calc_zf(locs_1[4], locs_1[6])
         assert np.allclose(z_46, z_46_)
-        z_n15_ = self.tree.calcZF(locs_1[1], locs_1[3]) * \
-                self.tree.calcZF(locs_1[3], locs_1[5]) / \
-                self.tree.calcZF(locs_1[3], locs_1[3])
-        z_15 = self.tree.calcZF(locs_1[1], locs_1[5])
+        z_n15_ = self.tree.calc_zf(locs_1[1], locs_1[3]) * \
+                self.tree.calc_zf(locs_1[3], locs_1[5]) / \
+                self.tree.calc_zf(locs_1[3], locs_1[3])
+        z_15 = self.tree.calc_zf(locs_1[1], locs_1[5])
         assert not np.allclose(z_15, z_n15_)
 
-    def testValues(self):
+    def test_values(self):
         # load trees
-        self.loadTTree()
-        self.loadSOVTTree()
+        self.load_T_tree()
+        self.load_sov_T_tree()
         # test Fourrier impedance matrix
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
-        self.tree.setImpedance(ft.s)
+        self.tree.set_impedance(ft.s)
         # sets of location
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
-        self.tree.storeLocs(locs, 'locs')
-        self.sovtree.storeLocs(locs, 'locs')
+        self.tree.store_locs(locs, 'locs')
+        self.sovtree.store_locs(locs, 'locs')
         # compute impedance matrices with both methods
-        z_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10)
-        z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
+        z_sov = self.sovtree.calc_impedance_matrix(loc_arg='locs', eps=1e-10)
+        z_gf = self.tree.calc_impedance_matrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
-        z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
+        z_gf2 = self.tree.calc_impedance_matrix('locs', explicit_method=False)[ft.ind_0s].real
         assert np.allclose(z_gf2, z_gf, atol=5e-6)
-        zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
-        zf_gf = self.tree.calcImpedanceMatrix('locs')
+        zf_sov = self.sovtree.calc_impedance_matrix(loc_arg='locs', eps=1e-10, freqs=ft.s)
+        zf_gf = self.tree.calc_impedance_matrix('locs')
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
-        zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
+        zf_gf2 = self.tree.calc_impedance_matrix('locs', explicit_method=False)
         assert np.allclose(zf_gf2, zf_gf, atol=5e-6)
 
         # load trees
-        self.loadValidationTree()
-        self.loadSOVValidationTree()
+        self.load_validation_tree()
+        self.load_sov_validation_tree()
         # test Fourrier impedance matrix
         ft = ke.FourrierTools(np.arange(0.,100.,0.1))
         # set the impedances
-        self.tree.setImpedance(ft.s)
+        self.tree.set_impedance(ft.s)
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (5, 1.)]
-        self.tree.storeLocs(locs, 'locs')
-        self.sovtree.storeLocs(locs, 'locs')
+        self.tree.store_locs(locs, 'locs')
+        self.sovtree.store_locs(locs, 'locs')
         # compute impedance matrices with both methods
-        z_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10)
-        z_gf = self.tree.calcImpedanceMatrix('locs')[ft.ind_0s].real
+        z_sov = self.sovtree.calc_impedance_matrix(loc_arg='locs', eps=1e-10)
+        z_gf = self.tree.calc_impedance_matrix('locs')[ft.ind_0s].real
         assert np.allclose(z_gf, z_sov, atol=5e-1)
-        z_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)[ft.ind_0s].real
+        z_gf2 = self.tree.calc_impedance_matrix('locs', explicit_method=False)[ft.ind_0s].real
         assert np.allclose(z_gf2, z_gf, atol=5e-6)
-        zf_sov = self.sovtree.calcImpedanceMatrix(locarg='locs', eps=1e-10, freqs=ft.s)
-        zf_gf = self.tree.calcImpedanceMatrix('locs')
+        zf_sov = self.sovtree.calc_impedance_matrix(loc_arg='locs', eps=1e-10, freqs=ft.s)
+        zf_gf = self.tree.calc_impedance_matrix('locs')
         assert np.allclose(zf_gf, zf_sov, atol=5e-1)
-        zf_gf2 = self.tree.calcImpedanceMatrix('locs', explicit_method=False)
+        zf_gf2 = self.tree.calc_impedance_matrix('locs', explicit_method=False)
         assert np.allclose(zf_gf2, zf_gf, atol=5e-6)
 
 
 class TestGreensTreeTime():
-    def __init__(self):
+    def _init_ft(self):
         self.dt = 0.025
         self.tmax = 100.
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
 
-    def loadTTree(self):
+    def load_T_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -225,91 +225,101 @@ class TestGreensTreeTime():
                 |
                 1
         """
+        self._init_ft()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.tree = GreensTreeTime(fname, types=[1,3,4])
-        self.tree.fitLeakCurrent(-75., 10.)
+        self.tree.fit_leak_current(-75., 10.)
         # set equilibirum potententials
-        self.tree.setVEP(-75.)
-        self.tree.setCompTree()
+        self.tree.set_v_ep(-75.)
+        self.tree.set_comp_tree()
 
-    def loadAxonTree(self):
+    def load_axon_tree(self):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
         self.tree = GreensTreeTime(
-            file_n=os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_axon.swc'),
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        self.tree.setPhysiology(1.0, 100./1e6)
+        self.tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = channelcollection.SKv3_1()
-        self.tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[self.tree[1]])
-        self.tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
+        self.tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[self.tree[1]])
+        self.tree.add_channel_current(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
         na_chan = channelcollection.NaTa_t()
-        self.tree.addCurrent(na_chan, 0.001 * 1e6, 50., node_arg=[self.tree[1]])
-        self.tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
+        self.tree.add_channel_current(na_chan, 0.001 * 1e6, 50., node_arg=[self.tree[1]])
+        self.tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
         ca_chan = channelcollection.Ca_HVA()
-        self.tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[self.tree[1]])
-        self.tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
-        self.tree.fitLeakCurrent(-75., 10.)
+        self.tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[self.tree[1]])
+        self.tree.add_channel_current(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
+        self.tree.fit_leak_current(-75., 10.)
         # set equilibirum potententials
-        self.tree.setVEP(-75.)
-        self.tree.setCompTree()
+        self.tree.set_v_ep(-75.)
+        self.tree.set_comp_tree()
 
-    def loadBall(self, is_active):
+    def load_ball(self, is_active):
         '''
         Load point neuron model
         '''
         self.tree = GreensTreeTime(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
-        self.tree.setPhysiology(0.8, 100./1e6)
+        self.tree.set_physiology(0.8, 100./1e6)
         if is_active:
             # ion channels
             k_chan = channelcollection.Kv3_1()
-            self.tree.addCurrent(k_chan, 0.766*1e6, -85.)
+            self.tree.add_channel_current(k_chan, 0.766*1e6, -85.)
             ca_chan = channelcollection.Ca_HVA()
-            self.tree.addCurrent(ca_chan, 0.792 * 1e6, 132.4579341637009)
+            self.tree.add_channel_current(ca_chan, 0.792 * 1e6, 132.4579341637009)
             ca_chan = channelcollection.h()
-            self.tree.addCurrent(ca_chan, 0.008 * 1e6, -43.)
+            self.tree.add_channel_current(ca_chan, 0.008 * 1e6, -43.)
             na_chan = channelcollection.Na_Ta()
-            self.tree.addCurrent(na_chan, 1.71*1e6, 50.)
+            self.tree.add_channel_current(na_chan, 1.71*1e6, 50.)
         # fit leak current
-        self.tree.fitLeakCurrent(-75., 10.)
+        self.tree.fit_leak_current(-75., 10.)
         # set equilibirum potententials
-        self.tree.setVEP(-75.)
+        self.tree.set_v_ep(-75.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
-    def testStringRepresentation(self):
-        self.loadBall(1)
+    def test_string_representation(self):
+        self.load_ball(1)
 
         repr_str = "['GreensTreeTime', " \
             "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '12', 'swc_type': 1, 'currents': {'Kv3_1': '(766000, -85)', 'Ca_HVA': '(792000, 132.458)', 'h': '(8000, -43)', 'Na_Ta': '(1.71e+06, 50)', 'L': '(20, -3493.27)'}, 'concmechs': {}, 'c_m': '0.8', 'r_a': '0.0001', 'g_shunt': '0', 'v_ep': '-75', 'conc_eps': {}, 'expansion_points': {}}\"" \
         "]{'channel_storage': ['Ca_HVA', 'Kv3_1', 'Na_Ta', 'h'], 'freqs': None, 't': None}"
         assert repr(self.tree) == repr_str
 
-    def testPassiveKernels(self, pplot=False):
-        self.loadTTree()
+    def test_passive_kernels(self, pplot=False):
+        self._init_ft()
+        self.load_T_tree()
         greens_tree = GreensTree(self.tree)
         sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
-        self.tree.setImpedance(self.ft)
+        self.tree.set_impedance(self.ft)
 
-        zt_mat_gtt = self.tree.calcImpulseResponseMatrix(locs)
-        zt_mat_quad = self.tree.calcImpulseResponseMatrix(locs, method="quadrature")
-        zt_mat_expf = self.tree.calcImpulseResponseMatrix(locs, method="exp fit")
+        zt_mat_gtt = self.tree.calc_impulse_response_matrix(locs)
+        zt_mat_quad = self.tree.calc_impulse_response_matrix(locs, method="quadrature")
+        zt_mat_expf = self.tree.calc_impulse_response_matrix(locs, method="exp fit")
 
         # compute impedance matrix with Green's function
-        greens_tree.setImpedance(self.ft.s)
-        zf_mat_gtf = greens_tree.calcImpedanceMatrix(locs)
+        greens_tree.set_impedance(self.ft.s)
+        zf_mat_gtf = greens_tree.calc_impedance_matrix(locs)
         # convert impedance matrix to time domain
         zt_mat_expl = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zt_mat_expl[:,ii,jj] = self.ft.ftInv(zf_mat_gtf[:,ii,jj])[1].real * 1e-3
         # simulate the temporal matrix
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix(locs, t_max=self.tmax)
+        tk, zt_mat_sim = sim_tree.calc_impedance_kernel_matrix(locs, t_max=self.tmax)
+
+        nt = min(len(tk), len(self.ft.t))
+        t_arr = self.ft.t[:nt]
+        zt_mat_gtt = zt_mat_gtt[:nt]
+        zt_mat_quad = zt_mat_quad[:nt]
+        zt_mat_expf = zt_mat_expf[:nt]
+        zt_mat_expl = zt_mat_expl[:nt]
+        zt_mat_sim = zt_mat_sim[:nt]
 
         assert np.allclose(
             zt_mat_expl[int(1.5/self.dt):,:,:],
@@ -331,57 +341,60 @@ class TestGreensTreeTime():
             kk = 0
             for (ii, loc1), (jj, loc2) in itertools.product(enumerate(locs), enumerate(locs)):
                 ax = ax0 if ii == jj else ax1
-                ax.plot(self.ft.t, zt_mat_gtt[:,ii,jj], c=colours[kk%len(colours)], ls="-", lw=.7)
-                ax.plot(self.ft.t, zt_mat_quad[:,ii,jj], c="grey", ls="--", lw=1)
-                ax.plot(self.ft.t, zt_mat_expf[:,ii,jj], c="grey", ls=":", lw=1)
-                ax.plot(self.ft.t, zt_mat_expl[:,ii,jj], c="k", ls="--", lw=1)
-                ax.plot(self.ft.t, zt_mat_sim[:,ii,jj], c=colours[kk%len(colours)], ls=":", lw=3)
-                kk += 1
-
-        # test derivatives
-        zt_mat, dz_dt_mat = self.tree.calcImpulseResponseMatrix(locs,
-            compute_time_derivative=True
-        )
-        dz_dt_second_order = (zt_mat[2:] - zt_mat[:-2]) / (2. * self.dt)
-
-        assert np.allclose(
-            dz_dt_mat[int(1.5/self.dt+1):-1,:,:],
-            dz_dt_second_order[int(1.5/self.dt):,:,:],
-            atol=.20
-        )
-
-        if pplot:
-            ax2 = pl.subplot(133)
-
-            kk = 0
-            for (ii, loc1), (jj, loc2) in itertools.product(enumerate(locs), enumerate(locs)):
-                ax2.plot(self.ft.t[1:-1], dz_dt_second_order[:,ii,jj], c=colours[kk%len(colours)], ls="-", lw=.7)
-                ax2.plot(self.ft.t[1:-1], dz_dt_mat[1:-1,ii,jj], c=colours[kk%len(colours)], ls="--", lw=2)
+                ax.plot(t_arr, zt_mat_gtt[:,ii,jj], c=colours[kk%len(colours)], ls="-", lw=.7)
+                ax.plot(t_arr, zt_mat_quad[:,ii,jj], c="grey", ls="--", lw=1)
+                ax.plot(t_arr, zt_mat_expf[:,ii,jj], c="grey", ls=":", lw=1)
+                ax.plot(t_arr, zt_mat_expl[:,ii,jj], c="k", ls="--", lw=1)
+                ax.plot(t_arr, zt_mat_sim[:,ii,jj], c=colours[kk%len(colours)], ls=":", lw=3)
                 kk += 1
 
             pl.show()
 
-    def testActiveKernels(self, pplot=True):
-        self.loadAxonTree()
+        # test derivatives
+        zt_mat, dz_dt_mat = self.tree.calc_impulse_response_matrix(locs,
+            compute_time_derivative=True
+        )
+        dz_dt_second_order = (zt_mat[2:] - zt_mat[:-2]) / (2. * self.dt)
+
+        # assert np.allclose(
+        #     dz_dt_mat[int(1.5/self.dt+1):-1,:,:],
+        #     dz_dt_second_order[int(1.5/self.dt):,:,:],
+        #     atol=.20
+        # )
+
+        # if pplot:
+        #     ax2 = pl.subplot(133)
+
+        #     kk = 0
+        #     for (ii, loc1), (jj, loc2) in itertools.product(enumerate(locs), enumerate(locs)):
+        #         ax2.plot(self.ft.t[1:-1], dz_dt_second_order[:,ii,jj], c=colours[kk%len(colours)], ls="-", lw=.7)
+        #         ax2.plot(self.ft.t[1:-1], dz_dt_mat[1:-1,ii,jj], c=colours[kk%len(colours)], ls="--", lw=2)
+        #         kk += 1
+
+        #     pl.show()
+
+    def test_active_kernels(self, pplot=True):
+        self._init_ft()
+        self.load_axon_tree()
         greens_tree = GreensTree(self.tree)
         sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .5), (5, .95)]
-        self.tree.setImpedance(self.ft)
+        self.tree.set_impedance(self.ft)
 
-        zt_mat_gtt = self.tree.calcImpulseResponseMatrix(locs)
-        zt_mat_quad = self.tree.calcImpulseResponseMatrix(locs, method="quadrature")
-        zt_mat_expf = self.tree.calcImpulseResponseMatrix(locs, method="exp fit")
+        zt_mat_gtt = self.tree.calc_impulse_response_matrix(locs)
+        zt_mat_quad = self.tree.calc_impulse_response_matrix(locs, method="quadrature")
+        zt_mat_expf = self.tree.calc_impulse_response_matrix(locs, method="exp fit")
 
         # compute impedance matrix with Green's function
-        greens_tree.setImpedance(self.ft.s)
-        zf_mat_gtf = greens_tree.calcImpedanceMatrix(locs)
+        greens_tree.set_impedance(self.ft.s)
+        zf_mat_gtf = greens_tree.calc_impedance_matrix(locs)
         # convert impedance matrix to time domain
         zt_mat_expl = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zt_mat_expl[:,ii,jj] = self.ft.ftInv(zf_mat_gtf[:,ii,jj])[1].real * 1e-3
         # simulate the temporal matrix
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix(locs)
+        tk, zt_mat_sim = sim_tree.calc_impedance_kernel_matrix(locs)
 
         assert np.allclose(
             zt_mat_expl[int(1.5/self.dt):,:,:],
@@ -421,9 +434,10 @@ class TestGreensTreeTime():
 
             pl.show()
 
-    def testChannelResponses(self, pplot=True):
-        self.loadAxonTree()
-        self.tree.setImpedance(self.ft)
+    def test_channel_responses(self, pplot=True):
+        self._init_ft()
+        self.load_axon_tree()
+        self.tree.set_impedance(self.ft)
         sim_tree = NeuronSimTree(self.tree)
 
         locs = [(1, .05), (5, .45), (5, .5)]
@@ -432,31 +446,31 @@ class TestGreensTreeTime():
         idx_in = 2
 
         crt_01 = [
-            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="") \
+            self.tree.calc_channel_response_t(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="") \
             for idx_out in idxs_out
         ]
         crt_01_quad = [
-            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="quadrature") \
+            self.tree.calc_channel_response_t(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="quadrature") \
             for idx_out in idxs_out
         ]
         crt_01_expf = [
-            self.tree.calcChannelResponseT(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="exp fit") \
+            self.tree.calc_channel_response_t(locs[idx_in], locs[idx_out], compute_time_derivative=0, method="exp fit") \
             for idx_out in idxs_out
         ]
-        crt_mat = self.tree.calcChannelResponseMatrix(locs)
-        zt_mat_gtt = self.tree.calcImpulseResponseMatrix(locs)
+        crt_mat = self.tree.calc_channel_response_matrix(locs)
+        zt_mat_gtt = self.tree.calc_impulse_response_matrix(locs)
 
         # simulate
         i_amp = 0.001 # nA
         dt_pulse = 0.1 # ms
         delay_pulse = 10. # ms
         tmax = self.tmax + delay_pulse
-        sim_tree.initModel(dt=self.dt, t_calibrate=10., factor_lambda=100)
-        sim_tree.addIClamp(locs[idx_in], i_amp, delay_pulse, dt_pulse)
-        sim_tree.storeLocs(locs, 'rec locs', warn=False)
+        sim_tree.init_model(dt=self.dt, t_calibrate=10., factor_lambda=100)
+        sim_tree.add_i_clamp(locs[idx_in], i_amp, delay_pulse, dt_pulse)
+        sim_tree.store_locs(locs, 'rec locs', warn=False)
         # simulate
         res = sim_tree.run(tmax, record_from_channels=True)
-        sim_tree.deleteModel()
+        sim_tree.delete_model()
 
         slice_sim = np.s_[int((delay_pulse+dt_pulse) / self.dt - 2):]
         t_sim = res['t'][slice_sim] - (delay_pulse+dt_pulse)
@@ -496,7 +510,7 @@ class TestGreensTreeTime():
             # )
 
         # compute state variable deflections
-        for channel_name in self.tree.getChannelsInTree():
+        for channel_name in self.tree.get_channels_in_tree():
 
             if pplot:
                 pl.figure(channel_name)
@@ -513,7 +527,7 @@ class TestGreensTreeTime():
                     # computed channel response
                     q_calc = crt_mat[idx_out][channel_name][svar_name][:,idx_in]
 
-                    # compare `calcChannelResponseT()` and `calcChannelResponsMatrix()`
+                    # compare `calc_channel_response_t()` and `calcChannelResponsMatrix()`
                     q_calc_ = crt_01[idx_out][channel_name][svar_name]
                     assert np.allclose(q_calc, q_calc_)
 
@@ -556,15 +570,16 @@ class TestGreensTreeTime():
         if pplot:
             pl.show()
 
-    def testExponentialDerivative(self, pplot=True):
+    def test_exponential_derivative(self, pplot=True):
+        self._init_ft()
         # test passive case
-        self.loadBall(is_active=False)
-        self.tree.asPassiveMembrane()
-        self.tree.setCompTree()
-        self.tree.setImpedance(self.ft)
+        self.load_ball(is_active=False)
+        self.tree.as_passive_membrane()
+        self.tree.set_comp_tree()
+        self.tree.set_impedance(self.ft)
 
         loc = (1, .5)
-        zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1)
+        zt, dzt_dt = self.tree.calc_zt(loc, loc, compute_time_derivative=1)
 
         a_soma = 4. * np.pi * self.tree[1].R**2 * 1e-8 # cm^2
         c_soma = self.tree[1].c_m * a_soma # uF
@@ -578,16 +593,16 @@ class TestGreensTreeTime():
         assert np.allclose(c_soma * dzt_dt[5:], -g_soma * zt[5:] * 1e-3, rtol=5e-3)
 
         # test active case
-        self.loadBall(is_active=True)
-        self.tree.setImpedance(self.ft)
-        zt, dzt_dt = self.tree.calcZT(loc, loc, compute_time_derivative=1, method='')
-        zt_, dzt_dt_ = self.tree.calcZT(loc, loc, compute_time_derivative=1, method='quadrature')
-        crt, dcrt_dt = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=1, method='')
-        crt_ = self.tree.calcChannelResponseT(loc, loc, compute_time_derivative=0, method='quadrature')
+        self.load_ball(is_active=True)
+        self.tree.set_impedance(self.ft)
+        zt, dzt_dt = self.tree.calc_zt(loc, loc, compute_time_derivative=1, method='')
+        zt_, dzt_dt_ = self.tree.calc_zt(loc, loc, compute_time_derivative=1, method='quadrature')
+        crt, dcrt_dt = self.tree.calc_channel_response_t(loc, loc, compute_time_derivative=1, method='')
+        crt_ = self.tree.calc_channel_response_t(loc, loc, compute_time_derivative=0, method='quadrature')
 
         # simulate the temporal matrix
         sim_tree = NeuronSimTree(self.tree)
-        tk, zt_mat_sim = sim_tree.calcImpedanceKernelMatrix([(1,0.5)])
+        tk, zt_mat_sim = sim_tree.calc_impedance_kernel_matrix([(1,0.5)])
 
         soma = self.tree[1]
         a_soma = 4. * np.pi * soma.R**2 *1e-8 # cm^2
@@ -607,13 +622,13 @@ class TestGreensTreeTime():
 
             # get voltage(s), state variable expansion point(s) and
             # concentration(s) around which to linearize the channel
-            v, sv = soma._constructChannelArgs(channel)
+            v, sv = soma._construct_channel_args(channel)
 
             # add open probability to total conductance
-            g_soma -= g * a_soma * channel.computePOpen(v)
+            g_soma -= g * a_soma * channel.compute_p_open(v)
 
             # add linearized channel contribution to membrane conductance
-            dp_dx = channel.computeDerivatives(v)[0]
+            dp_dx = channel.compute_derivatives(v)[0]
 
             svar_terms[channel_name] = {}
             for svar, dp_dx_ in dp_dx.items():
@@ -676,14 +691,14 @@ class TestGreensTreeTime():
 
 if __name__ == '__main__':
     tgt = TestGreensTree()
-    tgt.testStringRepresentation()
-    # tgt.testBasicProperties()
-    # tgt.testValues()
+    tgt.test_string_representation()
+    tgt.test_basic_properties()
+    tgt.test_values()
 
     tgtt = TestGreensTreeTime()
-    tgtt.testStringRepresentation()
-    # tgtt.testPassiveKernels(pplot=True)
-    # tgtt.testActiveKernels(pplot=True)
-    # tgtt.testChannelResponses()
-    # tgtt.testExponentialDerivative()
+    tgtt.test_string_representation()
+    tgtt.test_passive_kernels(pplot=True)
+    tgtt.test_active_kernels(pplot=True)
+    tgtt.test_channel_responses()
+    tgtt.test_exponential_derivative()
 

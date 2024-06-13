@@ -21,7 +21,7 @@ from ..trees.netree import NET, NETNode
 
 
 try:
-    from ..tools.simtools.neuron import neuronmodel as neurm
+    from ..simulations.neuron import neuronmodel as neurm
 except ModuleNotFoundError:
     warnings.warn('NEURON not available, equilibrium evaluation not working', UserWarning)
 
@@ -119,14 +119,14 @@ class EquilibriumTree(FitTree):
     the results of the computation.
     """
 
-    def _calcEEq(self, locarg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _calc_e_eq(self, loc_arg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         """
         Calculates equilibrium potentials and concentrations in the tree.
         Computes the equilibria through a NEURON simulations without inputs.
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             equilibrium state evaluated, if ``string``, specifies the
             name under which a set of locations is stored
@@ -139,7 +139,7 @@ class EquilibriumTree(FitTree):
         factor_lambda: `float`
             multiplies the number of compartments suggested by the lambda-rule
         """
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         if ions is None: ions = self.ions
         # use longer simulation for Eeq fit if concentration mechansims are present
         t_max = t_max*20. if len(ions) > 0 else t_max
@@ -147,17 +147,17 @@ class EquilibriumTree(FitTree):
         # create a biophysical simulation model
         sim_tree_biophys = neurm.NeuronSimTree(self)
         # compute equilibrium potentials
-        sim_tree_biophys.initModel(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.storeLocs(locs, 'rec locs', warn=False)
+        sim_tree_biophys.init_model(dt=dt, factor_lambda=factor_lambda)
+        sim_tree_biophys.store_locs(locs, 'rec locs', warn=False)
         res_biophys = sim_tree_biophys.run(t_max, dt_rec=20., record_concentrations=ions)
-        sim_tree_biophys.deleteModel()
+        sim_tree_biophys.delete_model()
 
         return (
             np.array([v_m[-1] for v_m in res_biophys['v_m']]),
             {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
         )
 
-    def calcEEq(self, locarg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
+    def calc_e_eq(self, loc_arg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
         """
         Calculates equilibrium potentials and concentrations in the tree.
 
@@ -167,7 +167,7 @@ class EquilibriumTree(FitTree):
 
         Parameters
         ----------
-        locarg: `list` of locations or string
+        loc_arg: `list` of locations or string
             if `list` of locations, specifies the locations for which the
             equilibrium state evaluated, if ``string``, specifies the
             name under which a set of locations is stored
@@ -182,9 +182,9 @@ class EquilibriumTree(FitTree):
             Whether or not to print additional information
         """
         if ions is None: ions = self.ions
-        locs = self._convertLocArgToLocs(locarg)
+        locs = self.convert_loc_arg_to_locs(loc_arg)
         ref_locs = [(n.index, .5) for n in self]
-        self.storeLocs(ref_locs, name="ref locs")
+        self.store_locs(ref_locs, name="ref locs")
 
         e_eqs = []
         conc_eqs = {ion: [] for ion in ions}
@@ -193,8 +193,8 @@ class EquilibriumTree(FitTree):
             if pprint:
                 print("> computing e_eq through interpolation")
 
-            idxs0 = self.getNearestLocinds(locs, "ref locs", direction=1)
-            idxs1 = self.getNearestLocinds(locs, "ref locs", direction=2)
+            idxs0 = self.get_nearest_loc_idxs(locs, "ref locs", direction=1)
+            idxs1 = self.get_nearest_loc_idxs(locs, "ref locs", direction=2)
 
             for loc, idx0, idx1 in zip(locs, idxs0, idxs1):
 
@@ -212,8 +212,8 @@ class EquilibriumTree(FitTree):
                         conc_eqs[ion].append(self[ref_locs[idx][0]].conc_eps[ion])
 
                 else:
-                    L0 = self.pathLength(loc, ref_locs[idx0])
-                    L1 = self.pathLength(loc, ref_locs[idx1])
+                    L0 = self.path_length(loc, ref_locs[idx0])
+                    L1 = self.path_length(loc, ref_locs[idx1])
 
                     if L0 < 1e-10 or L1 < 1e-10:
                         idx = idx0 if L0 < L1 else idx1
@@ -244,7 +244,7 @@ class EquilibriumTree(FitTree):
         if len(e_eqs) < len(locs):
             if pprint:
                 print("> computing e_eq through interpolation failed, simulating")
-            return self._calcEEq(locarg, ions=ions, **kwargs)
+            return self._calc_e_eq(loc_arg, ions=ions, **kwargs)
 
         else:
             if pprint:
@@ -257,18 +257,18 @@ class EquilibriumTree(FitTree):
                 {ion: np.array(conc_eq) for ion, conc_eq in conc_eqs.items()}
             )
 
-    def _setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _set_e_eq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
         if ions is None: ions = self.ions
 
         locs = [(n.index, .5) for n in self]
-        res = self._calcEEq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
+        res = self._calc_e_eq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
 
         for ii, n in enumerate(self):
-            n.setVEP(res[0][ii])
+            n.set_v_ep(res[0][ii])
             for ion, conc in res[1].items():
-                n.setConcEP(ion, conc[ii])
+                n.set_conc_ep(ion, conc[ii])
 
-    def setEEq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
+    def set_e_eq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
         """
         Set equilibrium potentials and concentrations in the tree. Computes
         the equilibria through a NEURON simulation without inputs.
@@ -288,7 +288,7 @@ class EquilibriumTree(FitTree):
             pprint=pprint,
             funcs_args_kwargs=[
                 (
-                    self._setEEq,
+                    self._set_e_eq,
                     (),
                     dict(ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
                 ),
@@ -313,7 +313,7 @@ class FitTreeGF(GreensTree, FitTree):
         )
         super().__init__(*args, **kwargs)
 
-    def setImpedancesInTree(self, freqs, sv_h=None, pprint=False, **kwargs):
+    def set_impedances_in_tree(self, freqs, sv_h=None, pprint=False, **kwargs):
         """
         Sets the impedances in the tree.
 
@@ -343,37 +343,37 @@ class FitTreeGF(GreensTree, FitTree):
 
                 # set the expansion point
                 for node in self:
-                    node.setExpansionPoint(c_name, statevar=sv)
+                    node.set_expansion_point(c_name, statevar=sv)
 
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.setCompTree, [], {}),
-                (self.setImpedance, [freqs], {"pprint": pprint, **kwargs})
+                (self.set_comp_tree, [], {}),
+                (self.set_impedance, [freqs], {"pprint": pprint, **kwargs})
             ]
         )
 
     @computational_tree_decorator
-    def calcNETSteadyState(self, root_loc=None, dx=5., dz=5.):
+    def calc_net_steadystate(self, root_loc=None, dx=5., dz=5.):
         if root_loc is None: root_loc = (1, .5)
         root_loc = MorphLoc(root_loc, self)
         # distribute locs on nodes
-        st_nodes = self.gatherNodes(self[root_loc['node']])
-        d2s_loc = self.pathLength(root_loc, (1,0.5))
-        net_locs = self.distributeLocsOnNodes(d2s=np.arange(d2s_loc, 5000., dx),
+        st_nodes = self.gather_nodes(self[root_loc['node']])
+        d2s_loc = self.path_length(root_loc, (1,0.5))
+        net_locs = self.distribute_locs_on_nodes(d2s=np.arange(d2s_loc, 5000., dx),
                                    node_arg=st_nodes, name='net eval')
         # compute the impedance matrix for net calculation
-        z_mat = self.calcImpedanceMatrix('net eval', explicit_method=False)[0]
+        z_mat = self.calc_impedance_matrix('net eval', explicit_method=False)[0]
         # assert np.allclose(z_mat, z_mat_)
         # derive the NET
         net = NET()
-        self._addNodeToNET(0., z_mat[0,0], z_mat, np.arange(z_mat.shape[0]), None, net,
+        self._add_node_to_net(0., z_mat[0,0], z_mat, np.arange(z_mat.shape[0]), None, net,
                            alpha=1., dz=dz)
-        net.setNewLocInds()
+        net.set_new_loc_idxs()
 
         return net, z_mat
 
-    def _addNodeToNET(self, z_min, z_max, z_mat, loc_inds, pnode, net, alpha=1., dz=20.):
+    def _add_node_to_net(self, z_min, z_max, z_mat, loc_idxs, pnode, net, alpha=1., dz=20.):
         # compute mean impedance of node
         inds = [[]]
         while len(inds[0]) == 0:
@@ -382,24 +382,24 @@ class FitTreeGF(GreensTree, FitTree):
         z_node = np.mean(z_mat[inds])
         # subtract impedances of parent nodes
         gammas = np.array([z_node])
-        self._subtractParentKernels(gammas, pnode)
+        self._subtract_parent_kernels(gammas, pnode)
         # add a node to the tree
-        node = NETNode(len(net), loc_inds, z_kernel=(np.array([alpha]), gammas))
+        node = NETNode(len(net), loc_idxs, z_kernel=(np.array([alpha]), gammas))
         if pnode != None:
-            net.addNodeWithParent(node, pnode)
+            net.add_node_with_parent(node, pnode)
         else:
             net.root = node
         # recursion for following nodes
         d_inds = consecutive(np.where(np.diag(z_mat) > z_max)[0])
         for di in d_inds:
             if len(di) > 0:
-                self._addNodeToNET(z_max, z_max+dz, z_mat[di,:][:,di], loc_inds[di], node, net,
+                self._add_node_to_net(z_max, z_max+dz, z_mat[di,:][:,di], loc_idxs[di], node, net,
                                        alpha=alpha, dz=dz)
 
-    def _subtractParentKernels(self, gammas, pnode):
+    def _subtract_parent_kernels(self, gammas, pnode):
         if pnode != None:
             gammas -= pnode.z_kernel['c']
-            self._subtractParentKernels(gammas, pnode.parent_node)
+            self._subtract_parent_kernels(gammas, pnode.parent_node)
 
 
 class FitTreeC(GreensTreeTime, FitTree):
@@ -419,7 +419,7 @@ class FitTreeC(GreensTreeTime, FitTree):
         )
         super().__init__(*args, **kwargs)
 
-    def setImpedancesInTree(self, t_arr, pprint=False):
+    def set_impedances_in_tree(self, t_arr, pprint=False):
         """
         Sets the impedances in the tree that are necessary for the evaluation
         of the response kernels.
@@ -435,13 +435,13 @@ class FitTreeC(GreensTreeTime, FitTree):
             cname_string = ', '.join(list(self.channel_storage.keys()))
             print(f'>>> evaluating response kernels with {cname_string}')
 
-        self._setFreqAndTimeArrays(t_arr)
+        self._set_freq_and_time_arrays(t_arr)
 
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.setCompTree, [], {}),
-                (self.setImpedance, [t_arr], {})
+                (self.set_comp_tree, [], {}),
+                (self.set_impedance, [t_arr], {})
             ]
         )
 
@@ -462,7 +462,8 @@ class FitTreeSOV(SOVTree, FitTree):
             cache_path=cache_path,
         )
         super().__init__(*args, **kwargs)
-    def setSOVInTree(self, maxspace_freq=100., pprint=False):
+
+    def set_sov_in_tree(self, maxspace_freq=100., pprint=False):
         if pprint:
             print(f'>>> evaluating SOV expansion')
 
@@ -471,8 +472,8 @@ class FitTreeSOV(SOVTree, FitTree):
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.setCompTree, [], {"eps": 1.}),
-                (self.calcSOVEquations, [], {
+                (self.set_comp_tree, [], {"eps": 1.}),
+                (self.calc_sov_equations, [], {
                     "maxspace_freq": maxspace_freq,"pprint": pprint,
                 })
             ]

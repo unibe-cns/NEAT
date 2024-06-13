@@ -10,8 +10,8 @@ from .channelcollection import channelcollection
 def write():
 
     print('--> Writing c++ channel file')
-    path = os.path.join(os.path.dirname(__file__), '../tools/simtools/net/')
-    # path = '../tools/simtools/net/'
+    path = os.path.join(os.path.dirname(__file__), '../simulations/net/')
+    # path = '../simulations/net/'
 
     fcc = open(os.path.join(path, 'Ionchannels.cc'), 'w')
     fh = open(os.path.join(path, 'Ionchannels.h'), 'w')
@@ -61,7 +61,7 @@ def write():
         if isinstance(channel_class, type) and \
            (name != 'IonChannel' and name != 'IonChannelSimplified') and '_func' not in name:
             chan = channel_class()
-            chan.writeCPPCode(path)
+            chan.write_cpp_code(path)
 
 
     fh = open(os.path.join(path, 'Ionchannels.h'), 'a')

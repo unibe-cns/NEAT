@@ -9,7 +9,7 @@ import subprocess
 
 
 from neat import IonChannel, ExpConcMech
-from neat.tools.simtools.nest import nestml_tools
+from neat.simulations.nest import nestml_tools
 
 
 def _allBaseClasses(cls):
@@ -24,7 +24,7 @@ class ChannelPathExtractor:
         self.path_neat = path_neat
         self.model_name = model_name
 
-    def _extractChannelPathAndModules(self, channel_path_arg):
+    def _extract_channel_path_and_modules(self, channel_path_arg):
         """
         Extract the path to the directory with the ".py" files containing ion
         ion channels, as well as a list of all ".py" modules that need to be scanned
@@ -59,7 +59,7 @@ class ChannelPathExtractor:
 
         return path_with_channels, channel_modules
 
-    def _collectChannels(self, path_with_channels, channel_modules):
+    def _collect_channels(self, path_with_channels, channel_modules):
         """
         Returns list with all channels found in the list of modules
         """
@@ -81,22 +81,22 @@ class ChannelPathExtractor:
 
         return channels
 
-    def collectChannels(self, *channel_path_arg):
+    def collect_channels(self, *channel_path_arg):
         """
         Collect all channels that can be found in the provided path arguments
         """
         channels = []
         for arg in channel_path_arg:
             channel_path, channel_modules = \
-                self._extractChannelPathAndModules(arg)
+                self._extract_channel_path_and_modules(arg)
             channels.extend(
-                self._collectChannels(channel_path, channel_modules)
+                self._collect_channels(channel_path, channel_modules)
             )
 
         return channels
 
 
-def _checkModelName(model_name):
+def _check_model_name(model_name):
     if not len(model_name) > 0:
         raise IOError(
             "No model name [name] argument was provided. "
@@ -111,7 +111,7 @@ def _checkModelName(model_name):
         )
 
 
-def _resolveModelName(model_name, channel_path_arg):
+def _resolve_model_name(model_name, channel_path_arg):
     if len(channel_path_arg) == 1:
 
         if model_name == 'default':
@@ -130,20 +130,20 @@ def _resolveModelName(model_name, channel_path_arg):
             model_name = os.path.basename(os.path.normpath(path_aux))
 
         else:
-            _checkModelName(model_name)
+            _check_model_name(model_name)
 
     else:
-        _checkModelName(model_name)
+        _check_model_name(model_name)
 
     return model_name
 
 
-def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
+def _compile_neuron(model_name, path_neat, channels, path_neuronresource=None):
 
     # combine `model_name` with the neuron compilation path
     path_for_neuron_compilation = os.path.join(
         path_neat,
-        'tools/simtools/neuron/tmp/',
+        'simulations/neuron/tmp/',
         model_name
     )
     path_for_mod_files = os.path.join(
@@ -170,7 +170,7 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
 
     for chan in channels:
         print(' - writing .mod file for:', chan.__class__.__name__)
-        chan.writeModFile(path_for_mod_files)
+        chan.write_mod_file(path_for_mod_files)
 
     # # copy possible mod-files within the source directory to the compile directory
     # for mod_file in glob.glob(os.path.join(path_for_channels, '*.mod')):
@@ -185,12 +185,12 @@ def _compileNeuron(model_name, path_neat, channels, path_neuronresource=None):
     print(
         f'\n------------------------------\n'
         f'The compiled .mod-files can be loaded into neuron using:\n'
-        f'    neat.loadNeuronModel(\"{model_name}\")\n'
+        f'    neat.load_neuron_model(\"{model_name}\")\n'
         f'------------------------------\n'
     )
 
 
-def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=['ca']):
+def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=['ca']):
     from pynestml.frontend.pynestml_frontend import generate_nest_compartmental_target
 
     # assert that `model_name` is a pure name
@@ -200,7 +200,7 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
     # combine `model_name` with the nestml compilation path
     path_for_nestml_compilation = os.path.join(
         path_neat,
-        'tools/simtools/nest/tmp/',
+        'simulations/nest/tmp/',
         model_name
     )
 
@@ -215,18 +215,18 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
     )
 
     if path_nestresource is not None:
-        blocks = nestml_tools.parseNestmlFile(path_nestresource)
+        blocks = nestml_tools.parse_nestml_file(path_nestresource)
 
     for chan in channels:
         print(' - writing .nestml blocks for:', chan.__class__.__name__)
-        blocks_ = chan.writeNestmlBlocks(v_comp=-75.)
+        blocks_ = chan.write_nestml_blocks(v_comp=-75.)
 
         for block, blockstr in blocks_.items():
             blocks[block] = blockstr + blocks[block]
 
     for ion in ions:
         concmech = ExpConcMech(ion)
-        blocks_ = concmech.writeNestmlBlocks(channels=channels)
+        blocks_ = concmech.write_nestml_blocks(channels=channels)
 
         for block, blockstr in blocks_.items():
             blocks[block] = blocks[block] + blockstr
@@ -235,7 +235,7 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
     if not os.path.exists(path_for_nestml_compilation):
         os.makedirs(path_for_nestml_compilation)
     # write the nestml file
-    nestml_file_path = nestml_tools.writeNestmlBlocks(
+    nestml_file_path = nestml_tools.write_nestml_blocks(
         blocks,
         path_for_nestml_compilation,
         model_name + "_model",
@@ -249,7 +249,7 @@ def _compileNest(model_name, path_neat, channels, path_nestresource=None, ions=[
         logging_level="DEBUG"
     )
 
-def _installModels(
+def _install_models(
         model_name,
         path_neat,
         channel_path_arg,
@@ -263,7 +263,7 @@ def _installModels(
     ----------
     model_name: str
         The name of the compiled model that can be used to load it with
-        `neat.loadNeuronModel()` or `neat.loadNestModel()`
+        `neat.load_neuron_model()` or `neat.load_nest_model()`
     path_neat: str
         The path to the root directory of the imported neat module
     channel_path_arg: list of str
@@ -278,19 +278,19 @@ def _installModels(
         copied to the NEURON install directory and compiled together with the
         generated channel .mod files
     """
-    model_name = _resolveModelName(model_name, channel_path_arg)
+    model_name = _resolve_model_name(model_name, channel_path_arg)
 
     # collect the ion channels from the provide path arguments
     cpex = ChannelPathExtractor(path_neat, model_name)
-    channels = cpex.collectChannels(*channel_path_arg)
+    channels = cpex.collect_channels(*channel_path_arg)
 
     if 'neuron' in simulators:
-        _compileNeuron(
+        _compile_neuron(
             model_name, path_neat, channels,
             path_neuronresource=path_neuronresource
         )
     if 'nest' in simulators:
-        _compileNest(
+        _compile_nest(
             model_name, path_neat, channels,
             path_nestresource=path_nestresource
         )

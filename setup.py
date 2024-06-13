@@ -40,16 +40,16 @@ class DelayedIncludeDirs(list):
 
     def __iter__(self):
         import numpy
-        return iter([numpy.get_include(), "neat/tools/simtools/net/*.h"])
+        return iter([numpy.get_include(), "neat/simulations/net/*.h"])
 
 
 ext = Extension(name="netsim",
-                sources=["neat/tools/simtools/net/netsim.pyx",
-                         "neat/tools/simtools/net/Ionchannels.cc",
-                         "neat/tools/simtools/net/netsim.pyx",
-                         "neat/tools/simtools/net/NETC.cc",
-                         "neat/tools/simtools/net/Synapses.cc",
-                         "neat/tools/simtools/net/Tools.cc"
+                sources=["neat/simulations/net/netsim.pyx",
+                         "neat/simulations/net/Ionchannels.cc",
+                         "neat/simulations/net/netsim.pyx",
+                         "neat/simulations/net/NETC.cc",
+                         "neat/simulations/net/Synapses.cc",
+                         "neat/simulations/net/Tools.cc"
                          ],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
@@ -59,22 +59,21 @@ ext = Extension(name="netsim",
 s_ = setup(
     name='neatdend',
     version=read_version(),
-    scripts=['neat/channels/compilechannels',
-             'neat/tools/actions/neatmodels'],
+    scripts=['neat/actions/neatmodels'],
     packages=['neat',
               'neat.trees',
+              'neat.actions',
               'neat.tools',
-              'neat.tools.actions',
               'neat.tools.fittools',
               'neat.tools.plottools',
-              'neat.tools.simtools.neuron',
-              'neat.tools.simtools.nest',
+              'neat.simulations.neuron',
+              'neat.simulations.nest',
               'neat.modelreduction',
               'neat.channels',
               'neat.channels.channelcollection'],
     package_data={
-        "neat.tools.simtools.neuron": ["mech_storage/*.mod"],
-        "neat.tools.simtools.nest": ["default_syns.nestml"]
+        "neat.simulations.neuron": ["mech_storage/*.mod"],
+        "neat.simulations.nest": ["default_syns.nestml"]
     },
     ext_package='neat',
     ext_modules=cythonize([ext], language_level=3),

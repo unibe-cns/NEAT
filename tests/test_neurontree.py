@@ -15,7 +15,7 @@ import neat.tools.kernelextraction as ke
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
-channel_installer.load_or_install_neuron_testchannels()
+channel_installer.load_or_install_neuron_test_channels()
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
@@ -28,7 +28,7 @@ colours = ['DeepPink', 'Purple', 'MediumSlateBlue', 'Blue', 'Teal',
 
 
 class TestNeuron():
-    def loadTTreePassive(self):
+    def load_T_tree_passive(self):
         """
         Load the T-tree morphology in memory with passive conductance
 
@@ -45,14 +45,14 @@ class TestNeuron():
         # load the morphology
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
-        self.greenstree.setImpedance(self.ft.s)
+        self.greenstree.fit_leak_current(self.v_eq, 10.)
+        self.greenstree.set_comp_tree()
+        self.greenstree.set_impedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
         self.neurontree.set_default_tree("computational")
 
-    def loadTTreeActive(self):
+    def load_T_tree_active(self):
         """
         Load the T-tree morphology in memory with h-current
 
@@ -70,15 +70,15 @@ class TestNeuron():
         h_chan = channelcollection.h()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.addCurrent(h_chan, 50., -43.)
-        self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
-        self.greenstree.setImpedance(self.ft.s)
+        self.greenstree.add_channel_current(h_chan, 50., -43.)
+        self.greenstree.fit_leak_current(self.v_eq, 10.)
+        self.greenstree.set_comp_tree()
+        self.greenstree.set_impedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
         self.neurontree.set_default_tree("computational")
 
-    def loadTTreeTestChannel(self):
+    def load_T_tree_test_channel(self):
         """
         Load the T-tree morphology in memory with h-current
 
@@ -93,18 +93,18 @@ class TestNeuron():
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
-        test_chan = channelcollection.TestChannel2()
+        test_chan = channelcollection.test_channel2()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.addCurrent(test_chan, 50., -23.)
-        self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
-        self.greenstree.setImpedance(self.ft.s)
+        self.greenstree.add_channel_current(test_chan, 50., -23.)
+        self.greenstree.fit_leak_current(self.v_eq, 10.)
+        self.greenstree.set_comp_tree()
+        self.greenstree.set_impedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
         self.neurontree.set_default_tree("computational")
 
-    def loadTTreeTestChannelSoma(self):
+    def load_T_tree_test_channel_soma(self):
         """
         Load the T-tree morphology in memory with h-current
 
@@ -119,35 +119,35 @@ class TestNeuron():
         # for frequency derivation
         self.ft = ke.FourrierTools(np.arange(0., self.tmax, self.dt))
         # load the morphology
-        test_chan = channelcollection.TestChannel2()
+        test_chan = channelcollection.test_channel2()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
         self.greenstree = GreensTree(fname, types=[1,3,4])
-        self.greenstree.addCurrent(test_chan, 50., 23., node_arg=[self.greenstree[1]])
-        self.greenstree.fitLeakCurrent(self.v_eq, 10.)
-        self.greenstree.setCompTree()
-        self.greenstree.setImpedance(self.ft.s)
+        self.greenstree.add_channel_current(test_chan, 50., 23., node_arg=[self.greenstree[1]])
+        self.greenstree.fit_leak_current(self.v_eq, 10.)
+        self.greenstree.set_comp_tree()
+        self.greenstree.set_impedance(self.ft.s)
         # copy greenstree parameters into NEURON simulation tree
         self.neurontree = NeuronSimTree(self.greenstree)
         self.neurontree.set_default_tree("computational")
 
-    def testPassive(self, pplot=False):
-        self.loadTTreePassive()
+    def test_passive(self, pplot=False):
+        self.load_T_tree_passive()
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # compute impedance matrix with Green's function
-        zf_mat_gf = self.greenstree.calcImpedanceMatrix(locs)
+        zf_mat_gf = self.greenstree.calc_impedance_matrix(locs)
         z_mat_gf = zf_mat_gf[self.ft.ind_0s].real
         # convert impedance matrix to time domain
         zk_mat_gf = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zk_mat_gf[:,ii,jj] = self.ft.ftInv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
         # test the steady state impedance matrix
-        z_mat_neuron = self.neurontree.calcImpedanceMatrix(locs,
+        z_mat_neuron = self.neurontree.calc_impedance_matrix(locs,
             dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
         )
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=1.)
         # test the temporal matrix
-        tk, zk_mat_neuron = self.neurontree.calcImpedanceKernelMatrix(locs,
+        tk, zk_mat_neuron = self.neurontree.calc_impedance_kernel_matrix(locs,
             dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
         )
         nt = min(zk_mat_gf.shape[0], zk_mat_neuron.shape[0])
@@ -166,24 +166,24 @@ class TestNeuron():
                     jj += 1
             pl.show()
 
-    def testActive(self, pplot=False):
-        self.loadTTreeActive()
+    def test_active(self, pplot=False):
+        self.load_T_tree_active()
         # set of locations
         locs = [(1, .5), (4, .5), (6, .5), (7, .5), (8, .5)]
         # compute impedance matrix with Green's function
-        zf_mat_gf = self.greenstree.calcImpedanceMatrix(locs)
+        zf_mat_gf = self.greenstree.calc_impedance_matrix(locs)
         z_mat_gf = zf_mat_gf[self.ft.ind_0s].real
         # convert impedance matrix to time domain
         zk_mat_gf = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for (ii, jj) in itertools.product(list(range(len(locs))), list(range(len(locs)))):
             zk_mat_gf[:,ii,jj] = self.ft.ftInv(zf_mat_gf[:,ii,jj])[1].real * 1e-3
         # test the steady state impedance matrix
-        z_mat_neuron = self.neurontree.calcImpedanceMatrix(locs, t_dur=500.,
+        z_mat_neuron = self.neurontree.calc_impedance_matrix(locs, t_dur=500.,
             dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
         )
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=5.)
         # test the temporal matrix
-        tk, zk_mat_neuron = self.neurontree.calcImpedanceKernelMatrix(locs,
+        tk, zk_mat_neuron = self.neurontree.calc_impedance_kernel_matrix(locs,
             dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
         )
         nt = min(zk_mat_gf.shape[0], zk_mat_neuron.shape[0])
@@ -202,144 +202,144 @@ class TestNeuron():
                     jj += 1
             pl.show()
 
-    def testChannelRecording(self):
-        self.loadTTreeTestChannel()
+    def test_channel_recording(self):
+        self.load_T_tree_test_channel()
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # create simulation tree
-        self.neurontree.initModel(t_calibrate=10., factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.init_model(t_calibrate=10., factor_lambda=10.)
+        self.neurontree.store_locs(locs, name='rec locs')
         # run test simulation
         res = self.neurontree.run(1., record_from_channels=True)
         # check if results are stored correctly
-        assert set(res['chan']['TestChannel2'].keys()) == {'a00', 'a01', 'a10', 'a11', 'p_open'}
+        assert set(res['chan']['test_channel2'].keys()) == {'a00', 'a01', 'a10', 'a11', 'p_open'}
         # check if values are correct
-        assert np.allclose(res['chan']['TestChannel2']['a00'], .3)
-        assert np.allclose(res['chan']['TestChannel2']['a01'], .5)
-        assert np.allclose(res['chan']['TestChannel2']['a10'], .4)
-        assert np.allclose(res['chan']['TestChannel2']['a11'], .6)
-        assert np.allclose(res['chan']['TestChannel2']['p_open'], .9 * .3**3 * .5**2 + .1 * .4**2 * .6**1)
+        assert np.allclose(res['chan']['test_channel2']['a00'], .3)
+        assert np.allclose(res['chan']['test_channel2']['a01'], .5)
+        assert np.allclose(res['chan']['test_channel2']['a10'], .4)
+        assert np.allclose(res['chan']['test_channel2']['a11'], .6)
+        assert np.allclose(res['chan']['test_channel2']['p_open'], .9 * .3**3 * .5**2 + .1 * .4**2 * .6**1)
         # check if shape is correct
         n_loc, n_step = len(locs), len(res['t'])
-        assert res['chan']['TestChannel2']['a00'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['a01'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['a10'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['a11'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['p_open'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a00'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a01'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a10'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a11'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['p_open'].shape == (n_loc, n_step)
         # channel only at soma
-        self.loadTTreeTestChannelSoma()
+        self.load_T_tree_test_channel_soma()
         # create simulation tree
-        self.neurontree.initModel(t_calibrate=100., factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.init_model(t_calibrate=100., factor_lambda=10.)
+        self.neurontree.store_locs(locs, name='rec locs')
         # run test simulation
         res = self.neurontree.run(10., record_from_channels=True)
         # check if results are stored correctly
-        assert set(res['chan']['TestChannel2'].keys()) == {'a00', 'a01', 'a10', 'a11', 'p_open'}
+        assert set(res['chan']['test_channel2'].keys()) == {'a00', 'a01', 'a10', 'a11', 'p_open'}
         # check if values are correct
-        assert np.allclose(res['chan']['TestChannel2']['a00'][0,:], .3)
-        assert np.allclose(res['chan']['TestChannel2']['a01'][0,:], .5)
-        assert np.allclose(res['chan']['TestChannel2']['a10'][0,:], .4)
-        assert np.allclose(res['chan']['TestChannel2']['a11'][0,:], .6)
-        assert np.allclose(res['chan']['TestChannel2']['p_open'][0,:], .9 * .3**3 * .5**2 + .1 * .4**2 * .6**1)
-        assert np.allclose(res['chan']['TestChannel2']['a00'][1:,:], 0.)
-        assert np.allclose(res['chan']['TestChannel2']['a01'][1:,:], 0.)
-        assert np.allclose(res['chan']['TestChannel2']['a10'][1:,:], 0.)
-        assert np.allclose(res['chan']['TestChannel2']['a11'][1:,:], 0.)
-        assert np.allclose(res['chan']['TestChannel2']['p_open'][1:,:], 0.)
+        assert np.allclose(res['chan']['test_channel2']['a00'][0,:], .3)
+        assert np.allclose(res['chan']['test_channel2']['a01'][0,:], .5)
+        assert np.allclose(res['chan']['test_channel2']['a10'][0,:], .4)
+        assert np.allclose(res['chan']['test_channel2']['a11'][0,:], .6)
+        assert np.allclose(res['chan']['test_channel2']['p_open'][0,:], .9 * .3**3 * .5**2 + .1 * .4**2 * .6**1)
+        assert np.allclose(res['chan']['test_channel2']['a00'][1:,:], 0.)
+        assert np.allclose(res['chan']['test_channel2']['a01'][1:,:], 0.)
+        assert np.allclose(res['chan']['test_channel2']['a10'][1:,:], 0.)
+        assert np.allclose(res['chan']['test_channel2']['a11'][1:,:], 0.)
+        assert np.allclose(res['chan']['test_channel2']['p_open'][1:,:], 0.)
         # check if shape is correct
         n_loc, n_step = len(locs), len(res['t'])
-        assert res['chan']['TestChannel2']['a00'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['a01'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['a10'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['a11'].shape == (n_loc, n_step)
-        assert res['chan']['TestChannel2']['p_open'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a00'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a01'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a10'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['a11'].shape == (n_loc, n_step)
+        assert res['chan']['test_channel2']['p_open'].shape == (n_loc, n_step)
 
-    def testRecordingTimestep(self):
-        self.loadTTreeTestChannel()
+    def test_recording_timestep(self):
+        self.load_T_tree_test_channel()
         # set of locations
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (6, .5), (7, .5), (8, .5)]
         # test simulation 1
-        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.store_locs(locs, name='rec locs')
         res1 = self.neurontree.run(10., downsample=10, dt_rec=None, record_from_channels=True)
-        self.neurontree.deleteModel()
+        self.neurontree.delete_model()
         # test simulation 2
-        self.loadTTreeTestChannel()
-        self.neurontree.initModel(t_calibrate=10., dt=.1, factor_lambda=10.)
-        self.neurontree.storeLocs(locs, name='rec locs')
+        self.load_T_tree_test_channel()
+        self.neurontree.init_model(t_calibrate=10., dt=.1, factor_lambda=10.)
+        self.neurontree.store_locs(locs, name='rec locs')
         res2 = self.neurontree.run(10., downsample=1, dt_rec=1., record_from_channels=True)
-        self.neurontree.deleteModel()
+        self.neurontree.delete_model()
 
         assert len(res1['t']) == len(res2['t'])
         assert res1['v_m'].shape == res2['v_m'].shape
 
 
 class TestReducedNeuron():
-    def addLocinds(self):
+    def add_locinds(self):
         for ii, cn in enumerate(self.ctree):
-            cn.loc_ind = ii
+            cn.loc_idx = ii
 
-    def loadTwoCompartmentModel(self, w_locinds=True):
+    def load_two_compartment_model(self, w_locinds=True):
         # simple two compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
-    def loadTModel(self, w_locinds=True):
+    def load_T_model(self, w_locinds=True):
         # simple T compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
         lnode0 = CompartmentNode(2, ca=1.5e-6, g_l=2.5e-4, g_c=3e-3)
-        self.ctree.addNodeWithParent(lnode0, cnode)
+        self.ctree.add_node_with_parent(lnode0, cnode)
         lnode1 = CompartmentNode(3, ca=1.5e-6, g_l=2.5e-4, g_c=5e-3)
-        self.ctree.addNodeWithParent(lnode1, cnode)
+        self.ctree.add_node_with_parent(lnode1, cnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
-    def loadThreeCompartmentModel(self, w_locinds=True):
+    def load_three_compartment_model(self, w_locinds=True):
         # simple 3 compartment model
         pnode = CompartmentNode(0, ca=1.9e-6, g_l=1.8e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2.4e-6, g_l=0.3e-4, g_c=3.9)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
         lnode0 = CompartmentNode(2, ca=1.9e-6, g_l=0.3e-4, g_c=3.8e-3)
-        self.ctree.addNodeWithParent(lnode0, cnode)
+        self.ctree.add_node_with_parent(lnode0, cnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
-    def loadMultiDendModel(self, w_locinds=True):
+    def load_multi_dend_model(self, w_locinds=True):
         # simple 3 compartment model
         pnode = CompartmentNode(0, ca=1.9e-6, g_l=1.8e-3)
         self.ctree = CompartmentTree(pnode)
         cnode0 = CompartmentNode(1, ca=2.4e-6, g_l=0.3e-4, g_c=3.9)
-        self.ctree.addNodeWithParent(cnode0, pnode)
+        self.ctree.add_node_with_parent(cnode0, pnode)
         cnode1 = CompartmentNode(2, ca=1.9e-6, g_l=0.4e-4, g_c=3.8e-3)
-        self.ctree.addNodeWithParent(cnode1, pnode)
+        self.ctree.add_node_with_parent(cnode1, pnode)
         cnode2 = CompartmentNode(3, ca=1.3e-6, g_l=0.5e-4, g_c=2.7e-2)
-        self.ctree.addNodeWithParent(cnode2, pnode)
+        self.ctree.add_node_with_parent(cnode2, pnode)
 
         if w_locinds:
-            self.addLocinds()
+            self.add_locinds()
 
-    def testGeometry1(self):
+    def test_geometry1(self):
         fake_c_m = 1.
         fake_r_a = 100.*1e-6
         factor_r_a = 1e-6
 
         ## test method 1
         # test with two compartments
-        self.loadTwoCompartmentModel()
+        self.load_two_compartment_model()
         ctree = self.ctree
         # check if fake geometry is correct
-        points, _ = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        points, _ = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                               factor_r_a=1e-6, delta=1e-14,
                                               method=1)
         # create a neuron comparemtns
@@ -362,10 +362,10 @@ class TestReducedNeuron():
         assert np.abs((comps[1](0.5).ri() * factor_r_a - comps[1](1.).ri()) / comps[1](1.).ri()) < 1e-6
 
         # test with three compartments
-        self.loadThreeCompartmentModel()
+        self.load_three_compartment_model()
         ctree = self.ctree
         # check if fake geometry is correct
-        points, _ = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        points, _ = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                               factor_r_a=1e-6, delta=1e-14,
                                               method=1)
         # create a neuron comparemtns
@@ -391,10 +391,10 @@ class TestReducedNeuron():
         assert np.abs((comps[2](0.5).ri() * factor_r_a - comps[2](1.).ri()) / comps[2](1.).ri()) < 1e-6
 
         # test the T model
-        self.loadTModel()
+        self.load_T_model()
         ctree = self.ctree
         # check if fake geometry is correct
-        points, _ = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        points, _ = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                               factor_r_a=1e-6, delta=1e-14,
                                               method=1)
         # create a neuron comparemtns
@@ -423,73 +423,73 @@ class TestReducedNeuron():
         assert np.abs((comps[3](0.5).ri() * factor_r_a - comps[3](1.).ri()) / comps[3](1.).ri()) < 1e-6
 
 
-    def testImpedanceProperties1(self):
+    def test_impedance_properties_1(self):
         fake_c_m = 1.
         fake_r_a = 100.*1e-6
         # create the two compartment model without locinds
-        self.loadTwoCompartmentModel(w_locinds=False)
+        self.load_two_compartment_model(w_locinds=False)
         ctree = self.ctree
-        # check if error is raised if loc_inds have not been set
+        # check if error is raised if loc_idxs have not been set
         with pytest.raises(AttributeError):
-            ctree.calcImpedanceMatrix()
+            ctree.calc_impedance_matrix()
 
         # create the two compartment model with locinds
-        self.loadTwoCompartmentModel()
+        self.load_two_compartment_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5)])
 
         # create the three compartmental model
-        self.loadThreeCompartmentModel()
+        self.load_three_compartment_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5), (2,0.5)])
 
         # create the T compartmental model
-        self.loadTModel()
+        self.load_T_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
         # create the multidend model
-        self.loadMultiDendModel()
+        self.load_multi_dend_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, fake_c_m=fake_c_m,
                                                    fake_r_a=fake_r_a,
                                                    method=1)
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
-    def testGeometry2(self):
+    def test_geometry2(self):
         fake_c_m = 1.
         fake_r_a = 100.*1e-6
         factor_r_a = 1e-6
 
         ## test method 2
         # test with two compartments
-        self.loadTwoCompartmentModel()
+        self.load_two_compartment_model()
         ctree = self.ctree
         # check if fake geometry is correct
-        lengths, radii = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        lengths, radii = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                    factor_r_a=1e-6, delta=1e-14,
                                                    method=2)
         # create a neuron comparemtns
@@ -510,10 +510,10 @@ class TestReducedNeuron():
         assert np.abs((comps[1](0.5).ri()  - comps[1](1.).ri()) / comps[1](1.).ri()) < 1e-12
 
         # test with three compartments
-        self.loadThreeCompartmentModel()
+        self.load_three_compartment_model()
         ctree = self.ctree
         # check if fake geometry is correct
-        lengths, radii = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        lengths, radii = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                    factor_r_a=1e-6, delta=1e-14,
                                                    method=2)
         # create a neuron comparemtns
@@ -537,10 +537,10 @@ class TestReducedNeuron():
         assert np.abs((comps[2](0.5).ri()  - comps[2](1.).ri()) / comps[2](1.).ri()) < 1e-12
 
         # test the T model
-        self.loadTModel()
+        self.load_T_model()
         ctree = self.ctree
         # check if fake geometry is correct
-        lengths, radii = ctree.computeFakeGeometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
+        lengths, radii = ctree.compute_fake_geometry(fake_c_m=fake_c_m, fake_r_a=fake_r_a,
                                                    factor_r_a=1e-6, delta=1e-14,
                                                    method=2)
         # create a neuron comparemtns
@@ -566,68 +566,67 @@ class TestReducedNeuron():
         assert np.abs((comps[3](0.5).ri() - 1./ctree[3].g_c) / comps[3](0.5).ri()) < 1e-12
         assert np.abs((comps[3](0.5).ri()  - comps[3](1.).ri()) / comps[3](1.).ri()) < 1e-12
 
-
-    def testImpedanceProperties2(self):
+    def test_impedance_properties_2(self):
         fake_c_m = 1.
         fake_r_a = 100.*1e-6
         # create the two compartment model
-        self.loadTwoCompartmentModel()
+        self.load_two_compartment_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
         )
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp, atol=1e-2)
 
         # create the three compartmental model
-        self.loadThreeCompartmentModel()
+        self.load_three_compartment_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
         )
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5), (2,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
         # create the T compartmental model
-        self.loadTModel()
+        self.load_T_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
         )
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
         # create the multidend model
-        self.loadMultiDendModel()
+        self.load_multi_dend_model()
         ctree = self.ctree
         # compute the impedance matrix exactly
-        z_mat_comp = ctree.calcImpedanceMatrix()
+        z_mat_comp = ctree.calc_impedance_matrix()
         # create a neuron model
         sim_tree = NeuronCompartmentTree(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=2,
         )
-        z_mat_sim = sim_tree.calcImpedanceMatrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
+        z_mat_sim = sim_tree.calc_impedance_matrix([(0,0.5), (1,0.5), (2,0.5), (3,0.5)])
         assert np.allclose(z_mat_sim, z_mat_comp)
 
 
 if __name__ == '__main__':
     tn = TestNeuron()
-    # tn.testPassive(pplot=Trsue)
-    # tn.testActive()
-    tn.testChannelRecording()
-    # tn.testRecordingTimestep()
+    tn.test_passive(pplot=True)
+    tn.test_active()
+    tn.test_channel_recording()
+    tn.test_recording_timestep()
 
-    # trn = TestReducedNeuron()
-    # trn.testGeometry1()
-    # trn.testImpedanceProperties1()
-    # trn.testGeometry2()
-    # trn.testImpedanceProperties2()
+    trn = TestReducedNeuron()
+    trn.test_geometry1()
+    trn.test_impedance_properties_1()
+    trn.test_geometry2()
+    trn.test_impedance_properties_2()

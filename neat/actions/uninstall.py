@@ -3,7 +3,7 @@ import shutil
 
 
 
-def _checkModelName(model_name):
+def _check_model_name(model_name):
     if not len(model_name) > 0:
         raise IOError(
             "No model name [name] argument was provided. "
@@ -17,7 +17,7 @@ def _checkModelName(model_name):
         )
 
 
-def _uninstallModels(*model_names,
+def _uninstall_models(*model_names,
         path_neat,
         simulators=['nest', 'neuron'],
     ):
@@ -34,14 +34,14 @@ def _uninstallModels(*model_names,
         the simulators for which to uninstall the model of a given name
     """
     for model_name in model_names:
-        _checkModelName(model_name)
+        _check_model_name(model_name)
 
 
         if 'nest' in simulators:
             try:
                 path_nest = os.path.join(
                     path_neat,
-                    "tools/simtools/",
+                    "simulations/",
                     f"nest/tmp/{model_name}/"
                 )
                 shutil.rmtree(path_nest)
@@ -53,7 +53,7 @@ def _uninstallModels(*model_names,
             try:
                 path_neuron = os.path.join(
                     path_neat,
-                    "tools/simtools/",
+                    "simulations/",
                     f"neuron/tmp/{model_name}/"
                 )
                 shutil.rmtree(path_neuron)

@@ -13,13 +13,13 @@ def getL5Pyramid():
     phys_tree = PhysTree('models/morphologies/cell1_simplified.swc')
 
     # set specific membrane capacitance and axial resistance
-    phys_tree.setPhysiology(1., # Cm [uF/cm^2]
+    phys_tree.set_physiology(1., # Cm [uF/cm^2]
                             100./1e6, # Ra[MOhm*cm]
                             node_arg=[phys_tree[1]])
     # set specific membrane capacitance and axial resistance
-    phys_tree.setPhysiology(2., # Cm [uF/cm^2]
+    phys_tree.set_physiology(2., # Cm [uF/cm^2]
                             100./1e6, # Ra[MOhm*cm]
-                            node_arg=[n for n in phys_tree if not phys_tree.isRoot(n)])
+                            node_arg=[n for n in phys_tree if not phys_tree.is_root(n)])
 
     # channels present in tree
     Kv3_1  = channels_hay.Kv3_1()
@@ -29,23 +29,23 @@ def getL5Pyramid():
     h_HAY  = channels_hay.h_HAY()
 
     # soma ion channels [uS/cm^2]
-    phys_tree.addCurrent(Kv3_1,  0.766    *1e6, -85., node_arg=[phys_tree[1]])
-    phys_tree.addCurrent(Na_Ta,  1.71     *1e6,  50., node_arg=[phys_tree[1]])
-    phys_tree.addCurrent(Ca_LVA, 0.00432  *1e6,  50., node_arg=[phys_tree[1]])
-    phys_tree.addCurrent(Ca_HVA, 0.000567 *1e6,  50., node_arg=[phys_tree[1]])
-    phys_tree.addCurrent(h_HAY,  0.0002   *1e6, -45., node_arg=[phys_tree[1]])
-    phys_tree.setLeakCurrent(0.0000344 *1e6, -90., node_arg=[phys_tree[1]])
+    phys_tree.add_channel_current(Kv3_1,  0.766    *1e6, -85., node_arg=[phys_tree[1]])
+    phys_tree.add_channel_current(Na_Ta,  1.71     *1e6,  50., node_arg=[phys_tree[1]])
+    phys_tree.add_channel_current(Ca_LVA, 0.00432  *1e6,  50., node_arg=[phys_tree[1]])
+    phys_tree.add_channel_current(Ca_HVA, 0.000567 *1e6,  50., node_arg=[phys_tree[1]])
+    phys_tree.add_channel_current(h_HAY,  0.0002   *1e6, -45., node_arg=[phys_tree[1]])
+    phys_tree.set_leak_current(0.0000344 *1e6, -90., node_arg=[phys_tree[1]])
 
     # basal ion channels [uS/cm^2]
-    phys_tree.addCurrent(h_HAY, 0.0002 *1e6, -45., node_arg='basal')
-    phys_tree.setLeakCurrent(0.0000535 *1e6, -90., node_arg='basal')
+    phys_tree.add_channel_current(h_HAY, 0.0002 *1e6, -45., node_arg='basal')
+    phys_tree.set_leak_current(0.0000535 *1e6, -90., node_arg='basal')
 
     # apical ion channels [uS/cm^2]
-    phys_tree.addCurrent(Kv3_1, 0.000298 *1e6, -85., node_arg='apical')
-    phys_tree.addCurrent(Na_Ta, 0.0211   *1e6,  50., node_arg='apical')
-    phys_tree.addCurrent(Ca_LVA, lambda x: 0.0198*1e6   if (x>685. and x<885.) else 0.0198*1e-2*1e6,   50., node_arg='apical')
-    phys_tree.addCurrent(Ca_HVA, lambda x: 0.000437*1e6 if (x>685. and x<885.) else 0.000437*1e-1*1e6, 50., node_arg='apical')
-    phys_tree.addCurrent(h_HAY,  lambda x: 0.0002*1e6 * (-0.8696 + 2.0870 * np.exp(x/323.)),          -45., node_arg='apical')
-    phys_tree.setLeakCurrent(0.0000447*1e6, -90., node_arg='apical')
+    phys_tree.add_channel_current(Kv3_1, 0.000298 *1e6, -85., node_arg='apical')
+    phys_tree.add_channel_current(Na_Ta, 0.0211   *1e6,  50., node_arg='apical')
+    phys_tree.add_channel_current(Ca_LVA, lambda x: 0.0198*1e6   if (x>685. and x<885.) else 0.0198*1e-2*1e6,   50., node_arg='apical')
+    phys_tree.add_channel_current(Ca_HVA, lambda x: 0.000437*1e6 if (x>685. and x<885.) else 0.000437*1e-1*1e6, 50., node_arg='apical')
+    phys_tree.add_channel_current(h_HAY,  lambda x: 0.0002*1e6 * (-0.8696 + 2.0870 * np.exp(x/323.)),          -45., node_arg='apical')
+    phys_tree.set_leak_current(0.0000447*1e6, -90., node_arg='apical')
 
     return phys_tree

@@ -14,12 +14,12 @@ except ImportError as e:
 from neat import PhysTree
 from neat import CompartmentNode, CompartmentTree
 from neat import CompartmentFitter, NeuronCompartmentTree
-from neat import NestCompartmentNode, NestCompartmentTree, loadNestModel
+from neat import NestCompartmentNode, NestCompartmentTree, load_nest_model
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
-channel_installer.load_or_install_neuron_testchannels()
-channel_installer.load_or_install_nest_testchannels()
+channel_installer.load_or_install_neuron_test_channels()
+channel_installer.load_or_install_nest_test_channels()
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
@@ -29,24 +29,24 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
 
 
 class TestNest:
-    def loadTwoCompartmentModel(self):
+    def load_two_compartment_model(self):
         # simple two compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
         cnode = CompartmentNode(1, ca=2e-6, g_l=3e-4, g_c=4e-3)
-        self.ctree.addNodeWithParent(cnode, pnode)
+        self.ctree.add_node_with_parent(cnode, pnode)
 
         for ii, cn in enumerate(self.ctree):
-            cn.loc_ind = ii
+            cn.loc_idx = ii
 
     def testModelConstruction(self):
         with pytest.raises(nestexceptions.NESTErrors.DynamicModuleManagementError):
-            loadNestModel("default")
+            load_nest_model("default")
 
-        self.loadTwoCompartmentModel()
+        self.load_two_compartment_model()
 
         nct = NestCompartmentTree(self.ctree)
-        cm_model = nct.initModel("cm_default", 1, suffix="")
+        cm_model = nct.init_model("cm_default", 1, suffix="")
 
         compartments_info = cm_model.compartments
         assert compartments_info[0]["comp_idx"] == 0
@@ -54,48 +54,48 @@ class TestNest:
         assert compartments_info[1]["comp_idx"] == 1
         assert compartments_info[1]["parent_idx"] == 0
 
-    def loadBall(self):
+    def load_ball(self):
         '''
         Load point neuron model
         '''
         self.tree = PhysTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
-        self.tree.setPhysiology(0.8, 100./1e6)
+        self.tree.set_physiology(0.8, 100./1e6)
         # ion channels
         self.k_chan = channelcollection.Kv3_1()
-        self.tree.addCurrent(self.k_chan, 0.766*1e6, -85.)
+        self.tree.add_channel_current(self.k_chan, 0.766*1e6, -85.)
         self.na_chan = channelcollection.NaTa_t()
-        self.tree.addCurrent(self.na_chan, 1.71*1e6, 50.)
+        self.tree.add_channel_current(self.na_chan, 1.71*1e6, 50.)
         # fit leak current
-        self.tree.fitLeakCurrent(-75., 10.)
+        self.tree.fit_leak_current(-75., 10.)
         # set equilibirum potententials
-        self.tree.setVEP(-75.)
+        self.tree.set_v_ep(-75.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
 
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
         )
-        self.ctree = cfit.fitModel([(1,0.5)])
+        self.ctree = cfit.fit_model([(1,0.5)])
 
-    def testInitialization(self):
+    def test_initialization(self):
         dt = .1
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
         v_eq = -65.
-        self.loadBall()
-        self.tree.fitLeakCurrent(v_eq, 10.)
+        self.load_ball()
+        self.tree.fit_leak_current(v_eq, 10.)
         # set computational tree
-        self.tree.setCompTree()
+        self.tree.set_comp_tree()
         # fit the tree again
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
         )
-        self.ctree = cfit.fitModel([(1,0.5)])
+        self.ctree = cfit.fit_model([(1,0.5)])
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         mm = nest.Create('multimeter', 1,
             {'record_from': ["v_comp0", "m_Kv3_10", "m_NaTa_t0", "h_NaTa_t0"], 'interval': dt}
         )
@@ -104,8 +104,8 @@ class TestNest:
         nest.Simulate(400.)
         res_nest = nest.GetStatus(mm, 'events')[0]
 
-        sv_na = self.na_chan.computeVarinf(v_eq)
-        sv_k = self.k_chan.computeVarinf(v_eq)
+        sv_na = self.na_chan.compute_varinf(v_eq)
+        sv_k = self.k_chan.compute_varinf(v_eq)
 
         assert np.abs(res_nest["v_comp0"][0] - v_eq) < 1e-8
         assert np.abs(res_nest["m_Kv3_10"][0] - sv_k['m']) < 1e-8
@@ -116,22 +116,22 @@ class TestNest:
         assert np.abs(res_nest["m_NaTa_t0"][-1] - sv_na['m']) < 1e-8
         assert np.abs(res_nest["h_NaTa_t0"][-1] - sv_na['h']) < 1e-8
 
-    def testSingleCompNestNeuronComparison(self, pplot=False):
+    def test_single_comp_nest_neuron_comparison(self, pplot=False):
         dt = .001
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
-        self.loadBall()
+        self.load_ball()
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
-        csimtree_neuron.storeLocs([(0, .5)], name='rec locs')
-        csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
-        csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
+        csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
+        csimtree_neuron.store_locs([(0, .5)], name='rec locs')
+        csimtree_neuron.add_double_exp_synapse((0,.5), .2, 3., 0.)
+        csimtree_neuron.set_spiketrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -176,7 +176,7 @@ class TestNest:
             pl.plot(res_nest['times'][:idx1], res_nest['v_comp0'][:idx1], 'bo--')
             pl.show()
 
-    def loadAxonTree(self):
+    def load_axon_tree(self):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -185,41 +185,41 @@ class TestNest:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = channelcollection.SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
-        tree.addCurrent(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.196957 * 1e6, -85., node_arg="axonal")
         na_chan = channelcollection.NaTa_t()
-        tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
+        tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg="axonal")
         ca_chan = channelcollection.Ca_HVA()
-        tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        tree.addCurrent(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
+        tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.000138 * 1e6, 132.4579341637009, node_arg="axonal")
         # passive leak current
-        tree.setLeakCurrent(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
-        tree.setLeakCurrent(0.000094 * 1e6, -79.315740, node_arg="axonal")
+        tree.set_leak_current(0.000091 * 1e6, -62.442793, node_arg=[tree[1]])
+        tree.set_leak_current(0.000094 * 1e6, -79.315740, node_arg="axonal")
 
         # simplify
         locs = [(1,.5), (4.,0.5), (5,0.5)]
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        self.ctree = cfit.fitModel(locs)
+        self.ctree = cfit.fit_model(locs)
 
-    def testAxonNestNeuronComparison(self, pplot=False):
+    def test_axon_nest_neuron_comparison(self, pplot=False):
         dt = .001
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
-        self.loadAxonTree()
+        self.load_axon_tree()
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=200.)
-        csimtree_neuron.storeLocs([(0, .5), (1, .5), (2., .5)], name='rec locs')
-        csimtree_neuron.addDoubleExpSynapse((0,.5), .2, 3., 0.)
-        csimtree_neuron.setSpikeTrain(0, 0.001, [20., 23., 40.])
+        csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
+        csimtree_neuron.store_locs([(0, .5), (1, .5), (2., .5)], name='rec locs')
+        csimtree_neuron.add_double_exp_synapse((0,.5), .2, 3., 0.)
+        csimtree_neuron.set_spiketrain(0, 0.001, [20., 23., 40.])
         res_neuron = csimtree_neuron.run(200.)
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -274,7 +274,7 @@ class TestNest:
             ax.plot(res_nest['times'], res_nest['v_comp2'], 'bo--')
             pl.show()
 
-    def loadTTree(self):
+    def load_T_tree(self):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -283,25 +283,25 @@ class TestNest:
             types=[1,2,3,4],
         )
         # capacitance and axial resistance
-        tree.setPhysiology(1.0, 100./1e6)
+        tree.set_physiology(1.0, 100./1e6)
         # ion channels
         k_chan = channelcollection.SKv3_1()
-        tree.addCurrent(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
+        tree.add_channel_current(k_chan,  0.653374 * 1e6, -85., node_arg=[tree[1]])
         na_chan = channelcollection.NaTa_t()
-        # tree.addCurrent(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
-        tree.addCurrent(na_chan, 0.15 * 1e6, 50., node_arg=[tree[1]])
+        # tree.add_channel_current(na_chan, 3.418459 * 1e6, 50., node_arg=[tree[1]])
+        tree.add_channel_current(na_chan, 0.15 * 1e6, 50., node_arg=[tree[1]])
         ca_chan = channelcollection.Ca_HVA()
-        # tree.addCurrent(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
-        tree.addCurrent(ca_chan, 0.005 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        # tree.add_channel_current(ca_chan, 0.000792 * 1e6, 132.4579341637009, node_arg=[tree[1]])
+        tree.add_channel_current(ca_chan, 0.005 * 1e6, 132.4579341637009, node_arg=[tree[1]])
         # passive leak current
-        tree.fitLeakCurrent(-70., 15.)
+        tree.fit_leak_current(-70., 15.)
 
         # simplify
         locs = [(n.index, .5) for n in tree]
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        self.ctree = cfit.fitModel(locs)
+        self.ctree = cfit.fit_model(locs)
 
-    def testDendNestNeuronComparison(self, pplot=False):
+    def test_dend_nest_neuron_comparison(self, pplot=False):
         dt = .01
         tmax = 400.
         tcal = 500.
@@ -310,23 +310,23 @@ class TestNest:
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
-        self.loadTTree()
+        self.load_T_tree()
 
         rec_idx = 7
         dend_idx = 9
 
         clocs = [(ii, .5) for ii in range(len(self.ctree))]
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
-        csimtree_neuron.initModel(dt=dt, t_calibrate=tcal)
-        csimtree_neuron.storeLocs(clocs, name='rec locs')
-        csimtree_neuron.addDoubleExpSynapse(clocs[0], .2, 3., 0.)
-        csimtree_neuron.setSpikeTrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
-        csimtree_neuron.addDoubleExpSynapse(clocs[dend_idx], .2, 3., 0.)
-        csimtree_neuron.setSpikeTrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
+        csimtree_neuron.init_model(dt=dt, t_calibrate=tcal)
+        csimtree_neuron.store_locs(clocs, name='rec locs')
+        csimtree_neuron.add_double_exp_synapse(clocs[0], .2, 3., 0.)
+        csimtree_neuron.set_spiketrain(0, 0.005, [t1 + 20., t1 + 23., t1 + 40.])
+        csimtree_neuron.add_double_exp_synapse(clocs[dend_idx], .2, 3., 0.)
+        csimtree_neuron.set_spiketrain(1, 0.005, [t1 + 70., t1 + 74., t1 + 85.])
         res_neuron = csimtree_neuron.run(tmax, record_from_channels=True, pprint=True)
 
         csimtree_nest = NestCompartmentTree(self.ctree)
-        nestmodel = csimtree_nest.initModel("multichannel_test", 1)
+        nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         # inputs
         nestmodel.receptors = [{
             "comp_idx": 0,
@@ -439,7 +439,7 @@ class TestNest:
 if __name__ == "__main__":
     tn = TestNest()
     tn.testModelConstruction()
-    tn.testInitialization()
-    # tn.testSingleCompNestNeuronComparison(pplot=True)
-    # tn.testAxonNestNeuronComparison(pplot=True)
-    # tn.testDendNestNeuronComparison(pplot=True)
+    tn.test_initialization()
+    tn.test_single_comp_nest_neuron_comparison(pplot=True)
+    tn.test_axon_nest_neuron_comparison(pplot=True)
+    tn.test_dend_nest_neuron_comparison(pplot=True)

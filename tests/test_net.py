@@ -6,7 +6,7 @@ from neat import Kernel, NETNode, NET
 
 
 class TestNET():
-    def loadTree(self, reinitialize=0):
+    def load_tree(self, reinitialize=0):
         if not hasattr(self, 'net') or reinitialize:
             alphas = np.array([1.]);
             gammas = np.array([1.])
@@ -20,16 +20,16 @@ class TestNET():
             node_l5 = NETNode(6, [5], [5], z_kernel=(alphas, gammas))
             # add nodes to tree
             self.net = NET()
-            self.net.setRoot(node_r)
-            self.net.addNodeWithParent(node_s, node_r)
-            self.net.addNodeWithParent(node_b1, node_r)
-            self.net.addNodeWithParent(node_b2, node_b1)
-            self.net.addNodeWithParent(node_l3, node_b2)
-            self.net.addNodeWithParent(node_l4, node_b2)
-            self.net.addNodeWithParent(node_l5, node_b1)
+            self.net.set_root(node_r)
+            self.net.add_node_with_parent(node_s, node_r)
+            self.net.add_node_with_parent(node_b1, node_r)
+            self.net.add_node_with_parent(node_b2, node_b1)
+            self.net.add_node_with_parent(node_l3, node_b2)
+            self.net.add_node_with_parent(node_l4, node_b2)
+            self.net.add_node_with_parent(node_l5, node_b1)
 
-    def testStringRepresentation(self):
-        self.loadTree()
+    def test_string_representation(self):
+        self.load_tree()
 
         assert str(self.net) == f">>> NET\n" \
             f"    NETNode 0, Parent: None ---  loc inds: [0, 1, 2, 3, 4, 5], newloc inds: [], z_bar = 1.0 MOhm\n" \
@@ -40,8 +40,8 @@ class TestNET():
             f"    NETNode 5, Parent: 3 ---  loc inds: [4], newloc inds: [4], z_bar = 1.0 MOhm\n" \
             f"    NETNode 6, Parent: 2 ---  loc inds: [5], newloc inds: [5], z_bar = 1.0 MOhm"
 
-    def testNodeFunctionalities(self):
-        self.loadTree()
+    def test_node_functionalities(self):
+        self.load_tree()
         node_r = self.net.root
         node_b = self.net[3]
         node_l = self.net[5]
@@ -50,7 +50,7 @@ class TestNET():
         assert 1 not in node_b and 2 in node_b
         assert 1 not in node_l and 4 in node_l
 
-    def testKernels(self):
+    def test_kernels(self):
         # kernel 1
         a1 = np.array([1., 10.])
         c1 = np.array([2., 20.])
@@ -92,69 +92,69 @@ class TestNET():
         assert np.allclose(k7.c, np.array([2., 20., -1.]))
         assert np.abs(k7.k_bar - 3.) < 1e-12
 
-    def testBasic(self):
-        self.loadTree()
+    def test_basic(self):
+        self.load_tree()
         net = self.net
-        assert net.getLocInds() == [0, 1, 2, 3, 4, 5]
-        assert net.getLocInds(3) == [2, 3, 4]
-        assert net.getLeafLocNode(0).index == 1
-        assert net.getLeafLocNode(1).index == 2
-        assert net.getLeafLocNode(2).index == 3
-        assert net.getLeafLocNode(3).index == 4
-        assert net.getLeafLocNode(4).index == 5
-        assert net.getLeafLocNode(5).index == 6
+        assert net.get_loc_idxs() == [0, 1, 2, 3, 4, 5]
+        assert net.get_loc_idxs(3) == [2, 3, 4]
+        assert net.get_leaf_loc_node(0).index == 1
+        assert net.get_leaf_loc_node(1).index == 2
+        assert net.get_leaf_loc_node(2).index == 3
+        assert net.get_leaf_loc_node(3).index == 4
+        assert net.get_leaf_loc_node(4).index == 5
+        assert net.get_leaf_loc_node(5).index == 6
         # create reduced net
-        net_reduced = net.getReducedTree([4, 5])
+        net_reduced = net.get_reduced_tree([4, 5])
         node_r = net_reduced[0]
-        node_4 = net_reduced.getLeafLocNode(4)
-        node_5 = net_reduced.getLeafLocNode(5)
+        node_4 = net_reduced.get_leaf_loc_node(4)
+        node_5 = net_reduced.get_leaf_loc_node(5)
         assert node_r.z_bar == (net[0].z_kernel + net[2].z_kernel).k_bar
         assert node_4.z_bar == (net[3].z_kernel + net[5].z_kernel).k_bar
         assert node_5.z_bar == net[6].z_bar
         # test Iz
-        Izs = net.calcIZ([1, 3, 5])
+        Izs = net.calc_i_z([1, 3, 5])
         assert np.abs(Izs[(1, 3)] - .5) < 1e-12
         assert np.abs(Izs[(1, 5)] - .25) < 1e-12
         assert np.abs(Izs[(3, 5)] - .75) < 1e-12
         with pytest.raises(KeyError):
             Izs[(5, 3)]
-        assert isinstance(net.calcIZ([4, 5]), float)
+        assert isinstance(net.calc_i_z([4, 5]), float)
         # test impedance matrix calculation
         z_mat_control = np.array([[4., 2.], [2., 3.]])
-        assert np.allclose(net_reduced.calcImpMat(), z_mat_control)
+        assert np.allclose(net_reduced.calc_impedance_matrix(), z_mat_control)
 
-    def testCompartmentalization(self):
-        self.loadTree()
+    def test_compartmentalization(self):
+        self.load_tree()
         net = self.net
-        comps = net.getCompartmentalization(Iz=.1)
+        comps = net.calc_compartmentalization(Iz=.1)
         assert comps == [[1], [4], [5], [6]]
-        comps = net.getCompartmentalization(Iz=.5)
+        comps = net.calc_compartmentalization(Iz=.5)
         assert comps == [[1], [2]]
-        comps = net.getCompartmentalization(Iz=1.)
+        comps = net.calc_compartmentalization(Iz=1.)
         assert comps == [[3]]
-        comps = net.getCompartmentalization(Iz=3.)
+        comps = net.calc_compartmentalization(Iz=3.)
         assert comps == []
-        comps = net.getCompartmentalization(Iz=5.)
+        comps = net.calc_compartmentalization(Iz=5.)
         assert comps == []
 
-    def testPlotting(self, pshow=0):
-        self.loadTree()
+    def test_plotting(self, pshow=0):
+        self.load_tree()
         pl.figure('dendrograms')
         ax = pl.subplot(221)
-        self.net.plotDendrogram(ax)
+        self.net.plot_dendrogram(ax)
         ax = pl.subplot(222)
-        self.net.plotDendrogram(ax,
+        self.net.plot_dendrogram(ax,
                                 plotargs={'lw': 2., 'color': 'DarkGrey'},
                                 labelargs={'marker': 'o', 'ms': 6., 'c': 'r'},
                                 textargs={'size': 'small'})
         ax = pl.subplot(223)
-        self.net.plotDendrogram(ax,
+        self.net.plot_dendrogram(ax,
                                 plotargs={'lw': 2., 'color': 'DarkGrey'},
                                 labelargs={-1: {'marker': 'o', 'ms': 6., 'c': 'r'},
                                            2: {'marker': 'o', 'ms': 10., 'c': 'y'}},
                                 textargs={'size': 'small'})
         ax = pl.subplot(224)
-        self.net.plotDendrogram(ax,
+        self.net.plot_dendrogram(ax,
                                 plotargs={'lw': 2., 'color': 'DarkGrey'},
                                 labelargs={-1: {'marker': 'o', 'ms': 6., 'c': 'r'},
                                            2: {'marker': 'o', 'ms': 10., 'c': 'y'}},
@@ -167,9 +167,9 @@ class TestNET():
 
 if __name__ == '__main__':
     tnet = TestNET()
-    tnet.testStringRepresentation()
-    # tnet.testNodeFunctionalities()
-    # tnet.testKernels()
-    # tnet.testBasic()
-    # tnet.testCompartmentalization()
-    # tnet.testPlotting(pshow=1)
+    tnet.test_string_representation()
+    # tnet.test_node_functionalities()
+    # tnet.test_kernels()
+    # tnet.test_basic()
+    # tnet.test_compartmentalization()
+    # tnet.test_plotting(pshow=1)
