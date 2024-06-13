@@ -11,7 +11,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__
 
 
 class TestSOVTree():
-    def loadTTree(self):
+    def load_T_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -25,8 +25,8 @@ class TestSOVTree():
         self.tree.fit_leak_current(-75., 10.)
         self.tree.set_comp_tree()
 
-    def testStringRepresentation(self):
-        self.loadTTree()
+    def test_string_representation(self):
+        self.load_T_tree()
         self.tree.calc_sov_equations()
 
         assert str(self.tree) == f">>> SOVTree\n"\
@@ -47,7 +47,7 @@ class TestSOVTree():
         "]{'channel_storage': [], 'maxspace_freq': '500'}"
         assert repr(self.tree) == repr_str
 
-    def loadValidationTree(self):
+    def load_validation_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -58,9 +58,9 @@ class TestSOVTree():
         self.tree.fit_leak_current(-75., 10.)
         self.tree.set_comp_tree()
 
-    def testSOVCalculation(self):
+    def test_sov_calculation(self):
         # validate the calculation on analytical model
-        self.loadValidationTree()
+        self.load_validation_tree()
         # do SOV calculation
         self.tree.calc_sov_equations()
         alphas, gammas = self.tree.get_sov_matrices([(1, 0.5)])
@@ -80,7 +80,7 @@ class TestSOVTree():
             ## TODO
 
         # test basic identities
-        self.loadTTree()
+        self.load_T_tree()
         self.tree.calc_sov_equations(maxspace_freq=500)
         # sets of location
         locs_0 = [(6, .5), (8, .5)]
@@ -125,7 +125,7 @@ class TestSOVTree():
         assert np.allclose(z_mat_ft[:ft.ind_0s,:,:].imag, \
                           -z_mat_ft[ft.ind_0s+1:,:,:][::-1,:,:].imag) # check imaginary part odd
 
-    def loadBall(self):
+    def load_ball(self):
         """
         Load point neuron model
         """
@@ -134,8 +134,8 @@ class TestSOVTree():
         self.btree.fit_leak_current(-75., 10.)
         self.btree.set_comp_tree()
 
-    def testSingleCompartment(self):
-        self.loadBall()
+    def test_single_compartment(self):
+        self.load_ball()
         # for validation
         greenstree = GreensTree(self.btree)
         greenstree.set_comp_tree()
@@ -156,14 +156,14 @@ class TestSOVTree():
         assert np.abs(gammas[0,0]**2/np.abs(alphas[0]) - 1./g_s) < 1e-10
         assert np.abs(z_inp_sov - 1./g_s) < 1e-10
 
-    def testNETDerivation(self):
+    def test_net_derivation(self):
         # initialize
-        self.loadValidationTree()
+        self.load_validation_tree()
         self.tree.calc_sov_equations()
         # construct the NET
         net = self.tree.construct_net()
         # initialize
-        self.loadTTree()
+        self.load_T_tree()
         self.tree.calc_sov_equations()
         # construct the NET
         net = self.tree.construct_net(dz=20.)
@@ -179,7 +179,7 @@ class TestSOVTree():
 
 if __name__ == '__main__':
     tsov = TestSOVTree()
-    tsov.testStringRepresentation()
-    # tsov.testSOVCalculation()
-    # tsov.testSingleCompartment()
-    # tsov.testNETDerivation()
+    tsov.test_string_representation()
+    tsov.test_sov_calculation()
+    tsov.test_single_compartment()
+    tsov.test_net_derivation()

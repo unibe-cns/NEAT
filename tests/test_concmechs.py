@@ -25,8 +25,8 @@ from neat.factorydefaults import DefaultPhysiology
 
 from channelcollection_for_tests import *
 import channel_installer
-channel_installer.load_or_install_neuron_testchannels()
-channel_installer.load_or_install_nest_testchannels()
+channel_installer.load_or_install_neuron_test_channels()
+channel_installer.load_or_install_nest_test_channels()
 
 
 CFG = DefaultPhysiology()
@@ -37,7 +37,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
 
 
 class TestConcMechs:
-    def loadAxonTree(self, w_ca_conc=True, gamma_factor=1.):
+    def load_axon_tree(self, w_ca_conc=True, gamma_factor=1.):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -115,7 +115,7 @@ class TestConcMechs:
 
         return tree
 
-    def loadPassiveAxonTree(self, gamma_factor=1.):
+    def load_passive_axon_tree(self, gamma_factor=1.):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -151,7 +151,7 @@ class TestConcMechs:
 
         return tree
 
-    def loadNoCaAxonTree(self, gamma_factor=1.):
+    def load_no_ca_axon_tree(self, gamma_factor=1.):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -192,7 +192,7 @@ class TestConcMechs:
 
         return tree
 
-    def loadBall(self, w_ca_conc=True, gamma_factor=1.):
+    def load_ball(self, w_ca_conc=True, gamma_factor=1.):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -249,8 +249,8 @@ class TestConcMechs:
 
         return tree
 
-    def testStringRepresentation(self):
-        tree = self.loadBall(w_ca_conc=True)
+    def test_string_representation(self):
+        tree = self.load_ball(w_ca_conc=True)
 
         repr_str = "['PhysTree', \"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '12', 'swc_type': 1, " \
             "'currents': {'SKv3_1': '(653374, -85)', 'NaTa_t': '(3.41846e+06, 50)', 'Ca_HVA': '(792, 132.458)', 'Ca_LVAst': '(5574, 132.458)', 'SK_E2': '(653374, -85)', 'L': '(91, -62.4428)'}, " \
@@ -277,9 +277,9 @@ class TestConcMechs:
 
         return res
 
-    def testSpiking(self, pplot=False):
-        tree_w_ca = self.loadAxonTree(w_ca_conc=True)
-        tree_no_ca = self.loadAxonTree(w_ca_conc=False)
+    def test_spiking(self, pplot=False):
+        tree_w_ca = self.load_axon_tree(w_ca_conc=True)
+        tree_no_ca = self.load_axon_tree(w_ca_conc=False)
 
         locs = [(1, .5), (4, .5), (4, 1.), (5, .5), (5, 1.)]
         res_w_ca = self._simulate(NeuronSimTree(tree_w_ca), locs)
@@ -392,11 +392,11 @@ class TestConcMechs:
 
         return g_m_k
 
-    def testImpedance(self, pplot=False, amp=0.001):
+    def test_impedance(self, pplot=False, amp=0.001):
 
-        tree0 = GreensTree(self.loadBall(w_ca_conc=False))
-        tree1 = GreensTree(self.loadBall(w_ca_conc=True, gamma_factor=1e2))
-        tree2 = GreensTree(self.loadBall(w_ca_conc=True, gamma_factor=1e2))
+        tree0 = GreensTree(self.load_ball(w_ca_conc=False))
+        tree1 = GreensTree(self.load_ball(w_ca_conc=True, gamma_factor=1e2))
+        tree2 = GreensTree(self.load_ball(w_ca_conc=True, gamma_factor=1e2))
 
         locs = [(1, .5)]
         res0 = self._simulate(NeuronSimTree(tree0),
@@ -515,10 +515,10 @@ class TestConcMechs:
 
             pl.show()
 
-    def testFittingBall(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
+    def test_fitting_ball(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
         locs = [(1,.5)]
 
-        tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
+        tree = self.load_ball(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         cfit.set_ctree(locs)
@@ -592,13 +592,13 @@ class TestConcMechs:
 
             pl.show()
 
-    def testTauFitBall(self, pplot=False):
-        self.testFittingBall(fit_tau=True, pplot=pplot, eps_gamma=1e-3, eps_tau=1e-1)
+    def test_taufit_ball(self, pplot=False):
+        self.test_fitting_ball(fit_tau=True, pplot=pplot, eps_gamma=1e-3, eps_tau=1e-1)
 
-    def testFittingBallAndStick(self, pplot=False, amp=0.1):
+    def test_fitting_ball_and_stick(self, pplot=False, amp=0.1):
         locs = [(1,.5), (4.,0.5), (5,0.5)]
 
-        tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
+        tree = self.load_axon_tree(w_ca_conc=True, gamma_factor=1e3)
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
 
         # test explicit fit
@@ -671,8 +671,8 @@ class TestConcMechs:
 
             pl.show()
 
-    def testFiniteDifference(self, rtol_param=5e-2, pprint=False):
-        tree = self.loadAxonTree(w_ca_conc=True, gamma_factor=1e3)
+    def test_finite_difference(self, rtol_param=5e-2, pprint=False):
+        tree = self.load_axon_tree(w_ca_conc=True, gamma_factor=1e3)
         # finite difference ctree
         ctree_fd, locs_fd = tree.create_finite_difference_tree(dx_max=22.)
         # fitted ctree
@@ -710,7 +710,7 @@ class TestConcMechs:
                 assert np.abs(gamma_fd - gamma_fit) < \
                                 rtol_param * np.max([gamma_fd, gamma_fit])
 
-    def _runLocalizedConcMech(self, tree):
+    def _run_localized_conc_mech(self, tree):
         locs = [(1,.5), (4.,0.5), (5,0.5)]
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
@@ -745,16 +745,16 @@ class TestConcMechs:
             ctree[2].concmechs['ca'].gamma
         ) < np.abs(ctree[0].concmechs['ca'].gamma) * 1e-10
 
-    def testLocalizedConcMechPasAxon(self):
-        tree = self.loadPassiveAxonTree(gamma_factor=1e3)
-        self._runLocalizedConcMech(tree)
+    def test_localized_conc_mech_pas_axon(self):
+        tree = self.load_passive_axon_tree(gamma_factor=1e3)
+        self._run_localized_conc_mech(tree)
 
     @pytest.mark.skip(reason="Fitting methodology fails in this case, should check if dynamics diverges significantly")
-    def testLocalizedConcMechActAxon(self):
-        tree = self.loadNoCaAxonTree(gamma_factor=1e3)
-        self._runLocalizedConcMech(tree)
+    def test_localized_conc_mech_act_axon(self):
+        tree = self.load_no_ca_axon_tree(gamma_factor=1e3)
+        self._run_localized_conc_mech(tree)
 
-    def _simulateNest(self, simtree, loc_idxs, amp=0.8, dur=100., delay=10., cal=100.):
+    def _simulate_nest(self, simtree, loc_idxs, amp=0.8, dur=100., delay=10., cal=100.):
         dt = .025
         idx0 = int(cal / dt)
         nest.ResetKernel()
@@ -799,10 +799,10 @@ class TestConcMechs:
         return res_nest
 
     @pytest.mark.skipif(WITH_NEST, reason="NEST not installed")
-    def testNestNeuronSimBall(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
+    def test_nest_neuron_sim_ball(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
         locs = [(1,.5)]
 
-        tree = self.loadBall(w_ca_conc=True, gamma_factor=1e3)
+        tree = self.load_ball(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         ctree = cfit.fit_model(locs)
@@ -815,7 +815,7 @@ class TestConcMechs:
             rec_currs=['ca'],
         )
 
-        res_nest = self._simulateNest(NestCompartmentTree(ctree),
+        res_nest = self._simulate_nest(NestCompartmentTree(ctree),
             cidxs, amp=amp, dur=20000., delay=1000., cal=10000.
         )
 
@@ -847,15 +847,15 @@ class TestConcMechs:
 
 if __name__ == "__main__":
     tcm = TestConcMechs()
-    # tcm.testStringRepresentation()
-    # tcm.testSpiking(pplot=True)
-    # tcm.testImpedance(pplot=True)
-    # tcm.testFittingBall(pplot=True)
-    # tcm.testTauFitBall(pplot=True)
-    tcm.testFittingBallAndStick(pplot=True)
-    # tcm.testFiniteDifference()
-    # tcm.testLocalizedConcMechPasAxon()
-    # tcm.testLocalizedConcMechActAxon()
-    # tcm.testNestNeuronSimBall(pplot=True, amp=2.0)
+    tcm.test_string_representation()
+    tcm.test_spiking(pplot=True)
+    tcm.test_impedance(pplot=True)
+    tcm.test_fitting_ball(pplot=True)
+    tcm.test_taufit_ball(pplot=True)
+    tcm.test_fitting_ball_and_stick(pplot=True)
+    tcm.test_finite_difference()
+    tcm.test_localized_conc_mech_pas_axon()
+    tcm.test_localized_conc_mech_act_axon()
+    tcm.test_nest_neuron_sim_ball(pplot=True, amp=2.0)
 
 

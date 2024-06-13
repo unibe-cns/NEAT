@@ -18,8 +18,8 @@ from neat import NestCompartmentNode, NestCompartmentTree, load_nest_model
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
-channel_installer.load_or_install_neuron_testchannels()
-channel_installer.load_or_install_nest_testchannels()
+channel_installer.load_or_install_neuron_test_channels()
+channel_installer.load_or_install_nest_test_channels()
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
@@ -29,7 +29,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
 
 
 class TestNest:
-    def loadTwoCompartmentModel(self):
+    def load_two_compartment_model(self):
         # simple two compartment model
         pnode = CompartmentNode(0, ca=1.5e-5, g_l=2e-3)
         self.ctree = CompartmentTree(pnode)
@@ -43,7 +43,7 @@ class TestNest:
         with pytest.raises(nestexceptions.NESTErrors.DynamicModuleManagementError):
             load_nest_model("default")
 
-        self.loadTwoCompartmentModel()
+        self.load_two_compartment_model()
 
         nct = NestCompartmentTree(self.ctree)
         cm_model = nct.init_model("cm_default", 1, suffix="")
@@ -54,7 +54,7 @@ class TestNest:
         assert compartments_info[1]["comp_idx"] == 1
         assert compartments_info[1]["parent_idx"] == 0
 
-    def loadBall(self):
+    def load_ball(self):
         '''
         Load point neuron model
         '''
@@ -78,13 +78,13 @@ class TestNest:
         )
         self.ctree = cfit.fit_model([(1,0.5)])
 
-    def testInitialization(self):
+    def test_initialization(self):
         dt = .1
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
         v_eq = -65.
-        self.loadBall()
+        self.load_ball()
         self.tree.fit_leak_current(v_eq, 10.)
         # set computational tree
         self.tree.set_comp_tree()
@@ -116,12 +116,12 @@ class TestNest:
         assert np.abs(res_nest["m_NaTa_t0"][-1] - sv_na['m']) < 1e-8
         assert np.abs(res_nest["h_NaTa_t0"][-1] - sv_na['h']) < 1e-8
 
-    def testSingleCompNestNeuronComparison(self, pplot=False):
+    def test_single_comp_nest_neuron_comparison(self, pplot=False):
         dt = .001
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
-        self.loadBall()
+        self.load_ball()
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
@@ -176,7 +176,7 @@ class TestNest:
             pl.plot(res_nest['times'][:idx1], res_nest['v_comp0'][:idx1], 'bo--')
             pl.show()
 
-    def loadAxonTree(self):
+    def load_axon_tree(self):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -204,12 +204,12 @@ class TestNest:
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         self.ctree = cfit.fit_model(locs)
 
-    def testAxonNestNeuronComparison(self, pplot=False):
+    def test_axon_nest_neuron_comparison(self, pplot=False):
         dt = .001
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
-        self.loadAxonTree()
+        self.load_axon_tree()
 
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
@@ -274,7 +274,7 @@ class TestNest:
             ax.plot(res_nest['times'], res_nest['v_comp2'], 'bo--')
             pl.show()
 
-    def loadTTree(self):
+    def load_T_tree(self):
         '''
         Parameters taken from a BBP SST model for a subset of ion channels
         '''
@@ -301,7 +301,7 @@ class TestNest:
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
         self.ctree = cfit.fit_model(locs)
 
-    def testDendNestNeuronComparison(self, pplot=False):
+    def test_dend_nest_neuron_comparison(self, pplot=False):
         dt = .01
         tmax = 400.
         tcal = 500.
@@ -310,7 +310,7 @@ class TestNest:
         nest.ResetKernel()
         nest.SetKernelStatus(dict(resolution=dt))
 
-        self.loadTTree()
+        self.load_T_tree()
 
         rec_idx = 7
         dend_idx = 9
@@ -439,7 +439,7 @@ class TestNest:
 if __name__ == "__main__":
     tn = TestNest()
     tn.testModelConstruction()
-    tn.testInitialization()
-    # tn.testSingleCompNestNeuronComparison(pplot=True)
-    # tn.testAxonNestNeuronComparison(pplot=True)
-    # tn.testDendNestNeuronComparison(pplot=True)
+    tn.test_initialization()
+    tn.test_single_comp_nest_neuron_comparison(pplot=True)
+    tn.test_axon_nest_neuron_comparison(pplot=True)
+    tn.test_dend_nest_neuron_comparison(pplot=True)

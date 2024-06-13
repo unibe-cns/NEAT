@@ -11,9 +11,9 @@ from neat import IonChannel
 import channelcollection_for_tests as channelcollection
 
 
-class TestChannels():
-    def testBasic(self):
-        tcn = channelcollection.TestChannel()
+class test_channels():
+    def test_basic(self):
+        tcn = channelcollection.test_channel()
         v_arr = np.linspace(-80., -10., 10)
 
         factors = np.array([5.,1.])
@@ -75,7 +75,6 @@ class TestChannels():
 
 def sp_exp(x):
     return sp.exp(x, evaluate=False)
-
 
 
 def test_ionchannel_simplified(remove=True):
@@ -168,7 +167,7 @@ def test_broadcasting():
     assert np.allclose(tauinf['b'], np.array([0.1, 0.1, 50.]))
 
 if __name__ == '__main__':
-    tcns = TestChannels()
-    tcns.testBasic()
+    tcns = test_channels()
+    tcns.test_basic()
     test_ionchannel_simplified()
     test_broadcasting()

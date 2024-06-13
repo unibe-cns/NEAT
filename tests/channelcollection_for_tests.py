@@ -14,7 +14,7 @@ def vtrap(x, y):
     )
 
 
-class TestChannel(IonChannel):
+class test_channel(IonChannel):
     """
     Simple channel to test basic functionality
     """
@@ -42,7 +42,7 @@ class TestChannel(IonChannel):
         self.e = -23.
 
 
-class TestChannel2(IonChannel):
+class test_channel2(IonChannel):
     """
     Simple channel to test basic functionality
     """

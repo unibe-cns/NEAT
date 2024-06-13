@@ -17,7 +17,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__
 
 
 class TestCompartmentTree():
-    def loadTTree(self):
+    def load_T_tree(self):
         """
         Load the T-tree morphology in memory
 
@@ -33,9 +33,9 @@ class TestCompartmentTree():
         # do SOV calculation
         self.tree.calc_sov_equations()
 
-    def testStringRepresentation(self):
+    def test_string_representation(self):
         # create simple compartment tree
-        self.loadTTree()
+        self.load_T_tree()
         locs = [(1, 0.5), (4, 0.5)]
         ctree = self.tree.create_compartment_tree(locs)
 
@@ -48,8 +48,8 @@ class TestCompartmentTree():
             "\"{\'node index\': 1, \'parent index\': 0, \'content\': \'{}\', \'loc_idx\': 1, \'ca\': \'1\', \'g_c\': \'0\', \'e_eq\': \'-75\', \'conc_eqs\': {}, \'currents\': {\'L\': \'0.01, -75\'}, \'concmechs\': {}, \'expansion_points\': {}}\"" \
             "]{\'channel_storage\': []}"
 
-    def testTreeDerivation(self):
-        self.loadTTree()
+    def test_tree_derivation(self):
+        self.load_T_tree()
         # locations
         locs_soma         = [(1, 0.5)]
         locs_prox         = [(4, 0.2)]
@@ -87,7 +87,7 @@ class TestCompartmentTree():
         assert ctree[1].loc_idx == 0
 
     def testFitting(self):
-        self.loadTTree()
+        self.load_T_tree()
         # locations
         locs_soma         = [(1, 0.5)]
         locs_prox         = [(4, 0.2)]
@@ -130,8 +130,8 @@ class TestCompartmentTree():
         assert not np.allclose(z_fit_dist_nobifur, z_mat_dist_nobifur, atol=0.5)
         assert np.allclose(z_fit_dist_bifur, z_mat_dist_bifur, atol=0.5)
 
-    def testReordering(self):
-        self.loadTTree()
+    def test_reordering(self):
+        self.load_T_tree()
         # test reordering
         locs_dist_badorder = [(1., 0.5), (8., 0.5), (4, 1.0)]
         self.tree.store_locs(locs_dist_badorder, 'badorder')
@@ -151,7 +151,7 @@ class TestCompartmentTree():
         locs_equiv = ctree_badorder.get_equivalent_locs()
         assert all([loc == loc_ for loc, loc_ in zip(locs_equiv, [(0, .5), (2, .5), (1, .5)])])
 
-    def loadBallAndStick(self):
+    def load_ball_and_stick(self):
         self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball_and_stick.swc'))
         self.greens_tree.set_physiology(0.8, 100./1e6)
         self.greens_tree.set_leak_current(100., -75.)
@@ -163,8 +163,8 @@ class TestCompartmentTree():
         self.sov_tree = SOVTree(self.greens_tree)
         self.sov_tree.calc_sov_equations(maxspace_freq=50.)
 
-    def testLocationMapping(self, n_loc=20):
-        self.loadBallAndStick()
+    def test_location_mapping(self, n_loc=20):
+        self.load_ball_and_stick()
         # define locations
         xvals = np.linspace(0., 1., n_loc+1)[1:]
         locs_1 = [(1, 0.5)] + [(4, x) for x in xvals]
@@ -184,8 +184,8 @@ class TestCompartmentTree():
         assert np.allclose(locinds_1[1:], locinds_2[1:][::-1])
         assert np.allclose(locinds_1[:-1], locinds_3[1:])
 
-    def testGSSFit(self, n_loc=20):
-        self.loadBallAndStick()
+    def test_gss_fit(self, n_loc=20):
+        self.load_ball_and_stick()
         # define locations
         xvals = np.linspace(0., 1., n_loc+1)[1:]
         locs_1 = [(1, 0.5)] + [(4, x) for x in xvals]
@@ -220,8 +220,8 @@ class TestCompartmentTree():
         assert np.allclose(z_fit_1, ctree_3.calc_impedance_matrix(indexing='tree'))
         assert np.allclose(z_fit_1, ctree_4.calc_impedance_matrix(indexing='tree'))
 
-    def testCFit(self, n_loc=20):
-        self.loadBallAndStick()
+    def test_c_fit(self, n_loc=20):
+        self.load_ball_and_stick()
         # define locations
         xvals = np.linspace(0., 1., n_loc+1)[1:]
         locs = [(1, 0.5)] + [(4, x) for x in xvals]
@@ -242,8 +242,8 @@ class TestCompartmentTree():
         taus_fit = np.array([n.ca / n.currents['L'][0] for n in ctree])
         assert np.allclose(taus_orig, taus_fit)
 
-    def fitBallAndStick(self, n_loc=20):
-        self.loadBallAndStick()
+    def fit_ball_and_stick(self, n_loc=20):
+        self.load_ball_and_stick()
         # define locations
         xvals = np.linspace(0., 1., n_loc+1)[1:]
         np.random.shuffle(xvals)
@@ -261,8 +261,8 @@ class TestCompartmentTree():
         ctree.compute_c(-alphas[0:1].real*1e3, phimat[0:1,:].real, weights=importance[0:1])
         self.ctree = ctree
 
-    def testPasFunctionality(self, n_loc=10):
-        self.fitBallAndStick(n_loc=n_loc)
+    def test_pas_functionality(self, n_loc=10):
+        self.fit_ball_and_stick(n_loc=n_loc)
 
         # test equilibrium potential setting
         e_eq = -75. + np.random.randint(10, size=n_loc+1)
@@ -297,7 +297,7 @@ class TestCompartmentTree():
         assert np.allclose(np.array([n.ca / n.currents['L'][0] for n in self.ctree]),
                            np.ones(len(self.ctree)) * np.max(1e-3/np.abs(alphas)))
 
-    def loadBall(self):
+    def load_ball(self):
         self.greens_tree = GreensTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'ball.swc'))
         # capacitance and axial resistance
         self.greens_tree.set_physiology(0.8, 100./1e6)
@@ -317,8 +317,8 @@ class TestCompartmentTree():
         self.sov_tree = SOVTree(self.greens_tree)
         self.sov_tree.calc_sov_equations(maxspace_freq=100.)
 
-    def testChannelFit(self):
-        self.loadBall()
+    def test_channel_fit(self):
+        self.load_ball()
         locs = [(1, 0.5)]
         e_eqs = [-75., -55., -35., -15.]
         # create compartment tree
@@ -523,7 +523,7 @@ class TestCompartmentTree():
 
 
 class TestCompartmentTreePlotting():
-    def _initTree1(self):
+    def _init_tree_1(self):
         # 1   2
         #  \ /
         #   0
@@ -537,7 +537,7 @@ class TestCompartmentTreePlotting():
 
         self.ctree = ctree
 
-    def _initTree2(self):
+    def _init_tree_2(self):
         # 3
         # |
         # 2
@@ -557,7 +557,7 @@ class TestCompartmentTreePlotting():
 
         self.ctree = ctree
 
-    def _initTree3(self):
+    def _init_tree_3(self):
         # 4 5 6 7   8
         #  \|/   \ /
         #   1  2  3
@@ -580,18 +580,18 @@ class TestCompartmentTreePlotting():
 
         self.ctree = ctree
 
-    def testPlot(self, pshow=False):
+    def test_plot(self, pshow=False):
         pl.figure('trees', figsize=(9,4))
         ax1, ax2, ax3 = pl.subplot(131), pl.subplot(132), pl.subplot(133)
 
-        self._initTree1()
+        self._init_tree_1()
         self.ctree.plot_dendrogram(ax1, plotargs={'lw': 1, 'c': 'k'})
 
-        self._initTree2()
+        self._init_tree_2()
         self.ctree.plot_dendrogram(ax2, plotargs={'lw': 1, 'c': 'DarkGrey'},
                                        labelargs={'marker': 'o', 'ms': 6, 'mfc':'y', 'mec':'r'})
 
-        self._initTree3()
+        self._init_tree_3()
         labelargs = {0: {'marker': 'o', 'ms': 6, 'mfc':'y', 'mec':'r'},
                      3: {'marker': 's', 'ms': 10, 'mfc':'c', 'mec':'g'},
                      5: {'marker': 'v', 'ms': 12, 'mfc':'c', 'mec':'k'}}
@@ -608,17 +608,17 @@ class TestCompartmentTreePlotting():
 
 if __name__ == '__main__':
     tcomp = TestCompartmentTree()
-    tcomp.testStringRepresentation()
-    # tcomp.testTreeDerivation()
-    # tcomp.testFitting()
-    # tcomp.testReordering()
-    # tcomp.testLocationMapping()
-    # tcomp.testGSSFit()
-    # tcomp.testCFit()
-    # tcomp.testPasFunctionality()
-    # tcomp.testChannelFit()
+    tcomp.test_string_representation()
+    tcomp.test_tree_derivation()
+    tcomp.testFitting()
+    tcomp.test_reordering()
+    tcomp.test_location_mapping()
+    tcomp.test_gss_fit()
+    tcomp.test_c_fit()
+    tcomp.test_pas_functionality()
+    tcomp.test_channel_fit()
 
-    # tplot = TestCompartmentTreePlotting()
-    # tplot.testPlot(pshow=True)
+    tplot = TestCompartmentTreePlotting()
+    tplot.test_plot(pshow=True)
 
 

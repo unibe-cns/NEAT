@@ -6,7 +6,7 @@ from neat import Kernel, NETNode, NET
 
 
 class TestNET():
-    def loadTree(self, reinitialize=0):
+    def load_tree(self, reinitialize=0):
         if not hasattr(self, 'net') or reinitialize:
             alphas = np.array([1.]);
             gammas = np.array([1.])
@@ -28,8 +28,8 @@ class TestNET():
             self.net.add_node_with_parent(node_l4, node_b2)
             self.net.add_node_with_parent(node_l5, node_b1)
 
-    def testStringRepresentation(self):
-        self.loadTree()
+    def test_string_representation(self):
+        self.load_tree()
 
         assert str(self.net) == f">>> NET\n" \
             f"    NETNode 0, Parent: None ---  loc inds: [0, 1, 2, 3, 4, 5], newloc inds: [], z_bar = 1.0 MOhm\n" \
@@ -40,8 +40,8 @@ class TestNET():
             f"    NETNode 5, Parent: 3 ---  loc inds: [4], newloc inds: [4], z_bar = 1.0 MOhm\n" \
             f"    NETNode 6, Parent: 2 ---  loc inds: [5], newloc inds: [5], z_bar = 1.0 MOhm"
 
-    def testNodeFunctionalities(self):
-        self.loadTree()
+    def test_node_functionalities(self):
+        self.load_tree()
         node_r = self.net.root
         node_b = self.net[3]
         node_l = self.net[5]
@@ -50,7 +50,7 @@ class TestNET():
         assert 1 not in node_b and 2 in node_b
         assert 1 not in node_l and 4 in node_l
 
-    def testKernels(self):
+    def test_kernels(self):
         # kernel 1
         a1 = np.array([1., 10.])
         c1 = np.array([2., 20.])
@@ -92,8 +92,8 @@ class TestNET():
         assert np.allclose(k7.c, np.array([2., 20., -1.]))
         assert np.abs(k7.k_bar - 3.) < 1e-12
 
-    def testBasic(self):
-        self.loadTree()
+    def test_basic(self):
+        self.load_tree()
         net = self.net
         assert net.get_loc_idxs() == [0, 1, 2, 3, 4, 5]
         assert net.get_loc_idxs(3) == [2, 3, 4]
@@ -123,8 +123,8 @@ class TestNET():
         z_mat_control = np.array([[4., 2.], [2., 3.]])
         assert np.allclose(net_reduced.calc_impedance_matrix(), z_mat_control)
 
-    def testCompartmentalization(self):
-        self.loadTree()
+    def test_compartmentalization(self):
+        self.load_tree()
         net = self.net
         comps = net.calc_compartmentalization(Iz=.1)
         assert comps == [[1], [4], [5], [6]]
@@ -137,8 +137,8 @@ class TestNET():
         comps = net.calc_compartmentalization(Iz=5.)
         assert comps == []
 
-    def testPlotting(self, pshow=0):
-        self.loadTree()
+    def test_plotting(self, pshow=0):
+        self.load_tree()
         pl.figure('dendrograms')
         ax = pl.subplot(221)
         self.net.plot_dendrogram(ax)
@@ -167,9 +167,9 @@ class TestNET():
 
 if __name__ == '__main__':
     tnet = TestNET()
-    tnet.testStringRepresentation()
-    # tnet.testNodeFunctionalities()
-    # tnet.testKernels()
-    # tnet.testBasic()
-    # tnet.testCompartmentalization()
-    # tnet.testPlotting(pshow=1)
+    tnet.test_string_representation()
+    # tnet.test_node_functionalities()
+    # tnet.test_kernels()
+    # tnet.test_basic()
+    # tnet.test_compartmentalization()
+    # tnet.test_plotting(pshow=1)

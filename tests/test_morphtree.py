@@ -14,7 +14,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
 
 
 class TestMorphTree():
-    def loadTree(self, reinitialize=0, segments=False):
+    def load_tree(self, reinitialize=0, segments=False):
         """
         Load the T-tree morphology in memory
 
@@ -47,8 +47,8 @@ class TestMorphTree():
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
             self.tree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
 
-    def testStringRepresentation(self):
-        self.loadTree()
+    def test_string_representation(self):
+        self.load_tree()
         tree_str = f">>> MorphTree\n" \
             "    MorphNode 1, Parent: None --- xyz = [0.000, 0.000, 0.000] um, R = 10.00 um, swc_type = 1\n" \
             "    MorphNode 4, Parent: 1 --- xyz = [100.000, 0.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
@@ -69,8 +69,8 @@ class TestMorphTree():
         assert repr(self.tree) == repr_str
 
 
-    def testLocEquality(self):
-        self.loadTree()
+    def test_loc_equality(self):
+        self.load_tree()
         loc1 = MorphLoc((4,.5), self.tree)
         loc2 = MorphLoc((4,.5), self.tree)
         loc3 = MorphLoc((4,.7), self.tree)
@@ -83,8 +83,8 @@ class TestMorphTree():
         loc4 = MorphLoc((1,.5), self.tree)
         assert loc4 == (1,.8) and loc4 != (4,.5)
 
-    def testIteration(self):
-        self.loadTree()
+    def test_iteration(self):
+        self.load_tree()
         indices = [node.index for node in self.tree]
         assert 2 not in indices and 3 not in indices
         assert set(indices) == set([1,4,5,6,7,8])
@@ -92,8 +92,8 @@ class TestMorphTree():
         assert 2 not in indices and 3 not in indices
         assert set(indices) == set([1,4,5,6,7,8])
 
-    def testStructure(self):
-        self.loadTree()
+    def test_structure(self):
+        self.load_tree()
         # check root
         root = self.tree[1]
         assert root.parent_node == None
@@ -119,8 +119,8 @@ class TestMorphTree():
         assert leaf2.parent_node == bn2
         assert len(leaf2.child_nodes) == 0
 
-    def testGeometry(self):
-        self.loadTree()
+    def test_geometry(self):
+        self.load_tree()
         # check root
         root = self.tree[1]
         assert np.allclose(root.xyz, np.array([0.,0.,0.]))
@@ -156,8 +156,8 @@ class TestMorphTree():
         assert np.allclose(leaf2.L, 50.)
         assert leaf2.swc_type == 4
 
-    def testCompTree0(self):
-        self.loadTree(reinitialize=1)
+    def test_comp_tree_0(self):
+        self.load_tree(reinitialize=1)
         # check exception when computational tree has not been set
         with pytest.raises(AttributeError):
             with self.tree.as_computational_tree:
@@ -214,8 +214,8 @@ class TestMorphTree():
         for node in self.tree:
             assert not node.used_in_comp_tree
 
-    def testInputArgConversion(self):
-        self.loadTree()
+    def test_input_arg_conversion(self):
+        self.load_tree()
         nodes = self.tree.convert_node_arg_to_nodes(None)
         assert self.tree.nodes == nodes
         nodes = self.tree.convert_node_arg_to_nodes(self.tree[4])
@@ -251,8 +251,8 @@ class TestMorphTree():
             assert nodes_ != nodes
             assert nodes__ == nodes
 
-    def testLocFunctionality(self):
-        self.loadTree()
+    def test_loc_functionality(self):
+        self.load_tree()
         locs = [MorphLoc({'node': 1, 'x': .5}, self.tree),
                 MorphLoc({'node': 4, 'x': .5}, self.tree),
                 MorphLoc({'node': 5, 'x': .5}, self.tree),
@@ -270,8 +270,8 @@ class TestMorphTree():
             assert locs[4].comp_loc == {'node': 6, 'x': .75}
             assert locs[5].comp_loc == {'node': 8, 'x': .75}
 
-    def testUniqueLocs(self):
-        self.loadTree()
+    def test_unique_locs(self):
+        self.load_tree()
         locs = [
             (1.,.5),
             (4, 0.), (4, .1), (4, 1.),
@@ -290,8 +290,8 @@ class TestMorphTree():
         for loc_tested, loc_groundtruth in zip(unique_locs_tested, unique_locs_groundtruth):
             assert loc_tested == loc_groundtruth
 
-    def testPathLength(self):
-        self.loadTree()
+    def test_path_length(self):
+        self.load_tree()
         # test lengths
         L = self.tree.path_length({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
         assert np.allclose(L, 0.)
@@ -334,8 +334,8 @@ class TestMorphTree():
             L = self.tree.path_length({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
             assert np.allclose(L, 110.)
 
-    def testLocStorageRetrievalLookup(self):
-        self.loadTree()
+    def test_loc_storage_retrieval_lookup(self):
+        self.load_tree()
         locs = [(1,.5), (1, 1.), (4, 1.), (4, .5), (5, .5),
                (5, 1.), (6, .5), (6, 1.), (8, .5), (8, 1.)]
         with pytest.warns(UserWarning):
@@ -438,8 +438,8 @@ class TestMorphTree():
         assert locinds1[0] == 1
         assert locinds2[0] == 1
 
-    def testNearestNeighbours(self):
-        self.loadTree()
+    def test_nearest_neighbours(self):
+        self.load_tree()
 
         locs1 = [(4,1.), (5,.5), (7,.5)]
         inds = self.tree.get_nearest_neighbour_loc_idxs((5,.7), locs1)
@@ -463,8 +463,8 @@ class TestMorphTree():
         inds = self.tree.get_nearest_neighbour_loc_idxs((1,.5), locs4)
         assert set(inds) == {0,2}
 
-    def testDistances(self):
-        self.loadTree()
+    def test_distances(self):
+        self.load_tree()
         locs = [(1,.5), (4, 1.), (5, .5), (6, .5), (6, 1.)]
         self.tree.store_locs(locs, 'testlocs')
         # compute the distances to soma
@@ -473,8 +473,8 @@ class TestMorphTree():
         d2b = self.tree.distances_to_bifurcation('testlocs')
         assert np.allclose(d2b, np.array([0.,100.,25.,75.,100.]))
 
-    def testLocDistribution(self):
-        self.loadTree()
+    def test_loc_distribution(self):
+        self.load_tree()
         # check comptree resetting
         self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
@@ -540,8 +540,8 @@ class TestMorphTree():
         with pytest.raises(IOError):
             self.tree.distribute_locs_random(10, node_arg='bad type')
 
-    def testTreeCreation(self):
-        self.loadTree(self)
+    def test_tree_creation(self):
+        self.load_tree(self)
         locs = [(1,.5),(4,.5),(4,1.),(5,1.),(6,1.),(7,1.),(8,1.)]
         self.tree.store_locs(locs, 'newtree_test')
         # create the new tree
@@ -558,8 +558,8 @@ class TestMorphTree():
             assert np.allclose(new_xyzs[ii], new_node.xyz)
             assert new_inds[ii] == new_node.index
 
-    def testPlotting(self, pshow=0):
-        self.loadTree()
+    def test_plotting(self, pshow=0):
+        self.load_tree()
         self.tree.set_comp_tree()
         # create the x-axis
         self.tree.make_x_axis(50.)
@@ -629,8 +629,8 @@ class TestMorphTree():
                                         cb_draw=True)
             if pshow: pl.show()
 
-    def testCompTree(self):
-        self.loadTree(reinitialize=1, segments=True)
+    def test_comp_tree(self):
+        self.load_tree(reinitialize=1, segments=True)
         self.tree.set_comp_tree()
         # check whether amount of nodes is correct
         assert len(self.tree.nodes) == 10
@@ -687,7 +687,7 @@ class TestMorphTree():
             for node in self.tree: assert node.index in [1,5,8,10,12]
 
 
-    def testOnePointSoma(self):
+    def test_one_point_soma(self):
         mtree1 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'onepoint_soma.swc'))
         mtree3 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
 
@@ -704,7 +704,7 @@ class TestMorphTree():
             assert swc_type1 == swc_type3
 
 
-    def testThreePointSoma(self):
+    def test_three_point_soma(self):
         mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
 
         for n, idx in zip(mtree, [1,4,5]):
@@ -720,7 +720,7 @@ class TestMorphTree():
 
         assert mtree[1].R == s_radius
 
-    def testMultiCylinderSoma(self):
+    def test_multi_cylinder_soma(self):
         mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'multicylinder_soma.swc'))
 
         for n, idx in zip(mtree, [1,7,8,9,10]):
@@ -736,12 +736,12 @@ class TestMorphTree():
 
         assert np.allclose(mtree[1].xyz, np.array([0.,2.5,0.]))
 
-    def testWrongSoma(self):
+    def test_wrong_soma(self):
         with pytest.raises(ValueError):
             MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'wrong_soma.swc'))
 
-    def testCopyConstruct(self):
-        self.loadTree(reinitialize=True, segments=True)
+    def test_copy_construct(self):
+        self.load_tree(reinitialize=True, segments=True)
         tree1 = MorphTree(self.tree)
 
         self.tree.set_comp_tree()
@@ -766,18 +766,18 @@ class TestMorphTree():
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    # tmt.testStringRepresentation()
-    # tmt.testPlotting(pshow=True)
-    # tmt.testCompTree0()
-    # tmt.testInputArgConversion()
-    # tmt.testLocFunctionality()
-    # tmt.testUniqueLocs()
-    # tmt.testLocStorageRetrievalLookup()
-    # tmt.testNearestNeighbours()
-    # tmt.testCompTree()
-    # tmt.testMultiCylinderSoma()
-    # tmt.testOnePointSoma()
-    # tmt.testThreePointSoma()
-    # tmt.testWrongSoma()
-    tmt.testCopyConstruct()
+    tmt.test_string_representation()
+    tmt.test_plotting(pshow=True)
+    tmt.test_comp_tree_0()
+    tmt.test_input_arg_conversion()
+    tmt.test_loc_functionality()
+    tmt.test_unique_locs()
+    tmt.test_loc_storage_retrieval_lookup()
+    tmt.test_nearest_neighbours()
+    tmt.test_comp_tree()
+    tmt.test_multi_cylinder_soma()
+    tmt.test_one_point_soma()
+    tmt.test_three_point_soma()
+    tmt.test_wrong_soma()
+    tmt.test_copy_construct()
 

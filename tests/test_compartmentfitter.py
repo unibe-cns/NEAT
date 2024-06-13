@@ -15,7 +15,7 @@ import neat.modelreduction.compartmentfitter as compartmentfitter
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
-channel_installer.load_or_install_neuron_testchannels()
+channel_installer.load_or_install_neuron_test_channels()
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
@@ -25,7 +25,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
 
 
 class TestCompartmentFitter():
-    def loadTTree(self):
+    def load_T_tree(self):
         '''
         Load the T-tree model
 
@@ -40,7 +40,7 @@ class TestCompartmentFitter():
         self.tree.fit_leak_current(-75., 10.)
         self.tree.set_comp_tree()
 
-    def loadBallAndStick(self):
+    def load_ball_and_stick(self):
         '''
         Load the ball and stick model
 
@@ -51,7 +51,7 @@ class TestCompartmentFitter():
         self.tree.set_leak_current(100., -75.)
         self.tree.set_comp_tree()
 
-    def loadBall(self):
+    def load_ball(self):
         '''
         Load point neuron model
         '''
@@ -70,7 +70,7 @@ class TestCompartmentFitter():
         # set computational tree
         self.tree.set_comp_tree()
 
-    def loadTSegmentTree(self):
+    def load_T_segment_tree(self):
         '''
         Load T tree model
         '''
@@ -94,8 +94,8 @@ class TestCompartmentFitter():
         # set computational tree
         self.tree.set_comp_tree()
 
-    def testTreeStructure(self):
-        self.loadTTree()
+    def test_tree_structure(self):
+        self.load_T_tree()
         cm = CompartmentFitter(self.tree)
         # set of locations
         fit_locs1 = [(1,.5), (4,.5), (5,.5)] # no bifurcations
@@ -106,31 +106,31 @@ class TestCompartmentFitter():
         # input paradigm 1
         cm.set_ctree(fit_locs1, extend_w_bifurc=True)
 
-    def _checkChannels(self, tree, channel_names):
+    def _check_channels(self, tree, channel_names):
         assert isinstance(tree, compartmentfitter.FitTreeGF)
         assert set(tree.channel_storage.keys()) == set(channel_names)
         for node in tree:
             assert set(node.currents.keys()) == set(channel_names + ['L'])
 
-    def testcreate_tree_gf(self):
-        self.loadBall()
+    def test_create_tree_gf(self):
+        self.load_ball()
         cm = CompartmentFitter(self.tree)
 
         # create tree with only 'L'
         tree_pas = cm.create_tree_gf()
-        self._checkChannels(tree_pas, [])
+        self._check_channels(tree_pas, [])
         # create tree with only 'Na_Ta'
         tree_na = cm.create_tree_gf(['Na_Ta'])
-        self._checkChannels(tree_na, ['Na_Ta'])
+        self._check_channels(tree_na, ['Na_Ta'])
         # create tree with only 'Kv3_1'
         tree_k = cm.create_tree_gf(['Kv3_1'])
-        self._checkChannels(tree_k, ['Kv3_1'])
+        self._check_channels(tree_k, ['Kv3_1'])
         # create tree with all channels
         tree_all = cm.create_tree_gf(['Na_Ta', 'Kv3_1'])
-        self._checkChannels(tree_all, ['Na_Ta', 'Kv3_1'])
+        self._check_channels(tree_all, ['Na_Ta', 'Kv3_1'])
 
-    def reduceExplicit(self):
-        self.loadBall()
+    def reduce_explicit(self):
+        self.load_ball()
 
         freqs = np.array([0.])
         locs = [(1, 0.5)]
@@ -210,8 +210,8 @@ class TestCompartmentFitter():
 
         return fit_mats_na, fit_mats_k
 
-    def testChannelFitMats(self):
-        self.loadBall()
+    def test_channel_fit_mats(self):
+        self.load_ball()
         cm = CompartmentFitter(self.tree, cache_name="channelfitmats", cache_path="neatcache/")
         cm.set_ctree([(1,.5)])
         # check if reversals are correct
@@ -224,7 +224,7 @@ class TestCompartmentFitter():
 
         fit_mats_cm_na = cm.eval_channel('Na_Ta')
         fit_mats_cm_k = cm.eval_channel('Kv3_1')
-        fit_mats_control_na, fit_mats_control_k = self.reduceExplicit()
+        fit_mats_control_na, fit_mats_control_k = self.reduce_explicit()
 
         # test whether potassium fit matrices agree
         for fm_cm, fm_control in zip(fit_mats_cm_k, fit_mats_control_k):
@@ -233,18 +233,18 @@ class TestCompartmentFitter():
         for fm_cm, fm_control in zip(fit_mats_cm_na[4:], fit_mats_control_na):
             assert np.allclose(fm_cm[1] / fm_control[1], fm_cm[0] / fm_control[0])
 
-    def _checkPasCondProps(self, ctree1, ctree2):
+    def _check_pas_cond_props(self, ctree1, ctree2):
         assert len(ctree1) == len(ctree2)
         for n1, n2 in zip(ctree1, ctree2):
             assert np.allclose(n1.currents['L'][0], n2.currents['L'][0])
             assert np.allclose(n1.g_c, n2.g_c)
 
-    def _checkPasCaProps(self, ctree1, ctree2):
+    def _check_pas_ca_props(self, ctree1, ctree2):
         assert len(ctree1) == len(ctree2)
         for n1, n2 in zip(ctree1, ctree2):
             assert np.allclose(n1.ca, n2.ca)
 
-    def _checkAllCurrProps(self, ctree1, ctree2):
+    def _check_all_curr_props(self, ctree1, ctree2):
         assert len(ctree1) == len(ctree2)
         assert ctree1.channel_storage.keys() == ctree2.channel_storage.keys()
         for n1, n2 in zip(ctree1, ctree2):
@@ -253,7 +253,7 @@ class TestCompartmentFitter():
                 assert np.allclose(n1.currents[key][0], n2.currents[key][0])
                 assert np.allclose(n1.currents[key][1], n2.currents[key][1])
 
-    def _checkPhysTrees(self, tree1, tree2):
+    def _check_phys_trees(self, tree1, tree2):
         assert len(tree1) == len(tree2)
         assert tree1.channel_storage.keys() == tree2.channel_storage.keys()
         for n1, n2 in zip(tree1, tree2):
@@ -263,12 +263,12 @@ class TestCompartmentFitter():
                 assert np.allclose(n1.currents[key][0], n2.currents[key][0])
                 assert np.allclose(n1.currents[key][1], n2.currents[key][1])
 
-    def _checkEL(self, ctree, e_l):
+    def _check_e_leak(self, ctree, e_l):
         for n in ctree:
             assert np.allclose(n.currents['L'][1], e_l)
 
-    def testPassiveFit(self):
-        self.loadTTree()
+    def test_passive_fit(self):
+        self.load_T_tree()
         fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]
 
         # fit a tree directly from CompartmentTree
@@ -292,12 +292,12 @@ class TestCompartmentFitter():
         cm.fit_e_eq()
 
         # check whether both trees are the same
-        self._checkPasCondProps(ctree, cm.ctree)
-        self._checkPasCaProps(ctree, cm.ctree)
-        self._checkEL(cm.ctree, -75.)
+        self._check_pas_cond_props(ctree, cm.ctree)
+        self._check_pas_ca_props(ctree, cm.ctree)
+        self._check_e_leak(cm.ctree, -75.)
 
         # test whether all channels are used correctly for passive fit
-        self.loadBall()
+        self.load_ball()
         fit_locs = [(1,.5)]
         # fit ball model with only leak
         greens_tree = GreensTree(self.tree)
@@ -338,23 +338,23 @@ class TestCompartmentFitter():
         cm.fit_passive(use_all_channels=False)
         cm.fit_capacitance()
         cm.fit_e_eq()
-        self._checkPasCondProps(ctree_leak, cm.ctree)
-        self._checkPasCaProps(ctree_leak, cm.ctree)
+        self._check_pas_cond_props(ctree_leak, cm.ctree)
+        self._check_pas_ca_props(ctree_leak, cm.ctree)
         with pytest.raises(AssertionError):
-            self._checkEL(cm.ctree, self.tree[1].currents['L'][1])
+            self._check_e_leak(cm.ctree, self.tree[1].currents['L'][1])
         cm.fit_passive(use_all_channels=True)
         cm.fit_capacitance()
         cm.fit_e_eq()
-        self._checkPasCondProps(ctree_all, cm.ctree)
-        self._checkPasCaProps(ctree_all, cm.ctree)
-        self._checkEL(cm.ctree, greens_tree[1].currents['L'][1])
+        self._check_pas_cond_props(ctree_all, cm.ctree)
+        self._check_pas_ca_props(ctree_all, cm.ctree)
+        self._check_e_leak(cm.ctree, greens_tree[1].currents['L'][1])
         with pytest.raises(AssertionError):
-            self._checkEL(cm.ctree, self.tree[1].currents['L'][1])
+            self._check_e_leak(cm.ctree, self.tree[1].currents['L'][1])
         with pytest.raises(AssertionError):
-            self._checkPasCondProps(ctree_leak, ctree_all)
+            self._check_pas_cond_props(ctree_leak, ctree_all)
 
-    def testRecalc_impedance_matrix(self, g_inp=np.linspace(0.,0.01, 20)):
-        self.loadBall()
+    def test_recalc_impedance_matrix(self, g_inp=np.linspace(0.,0.01, 20)):
+        self.load_ball()
         fit_locs = [(1,.5)]
         cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
         cm.set_ctree(fit_locs)
@@ -394,9 +394,9 @@ class TestCompartmentFitter():
         z_calc = np.swapaxes(z_calc, 0, 2)
         assert np.allclose(z_calc, z_test)
 
-    def testSynRescale(self, g_inp=np.linspace(0.,0.01, 20)):
+    def test_syn_rescale(self, g_inp=np.linspace(0.,0.01, 20)):
         e_rev, v_eq = 0., -75.
-        self.loadBallAndStick()
+        self.load_ball_and_stick()
         fit_locs = [(4,.7)]
         syn_locs = [(4,1.)]
         cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
@@ -418,8 +418,8 @@ class TestCompartmentFitter():
         assert np.allclose(beta_calc, beta_cm, atol=.020)
         assert np.allclose(beta_full, beta_cm, atol=.015)
 
-    def fitBall(self):
-        self.loadBall()
+    def fit_ball(self):
+        self.load_ball()
         freqs = np.array([0.])
         locs = [(1, 0.5)]
         e_eqs = [-75., -55., -35., -15.]
@@ -500,8 +500,8 @@ class TestCompartmentFitter():
 
         self.ctree = ctree
 
-    def testfit_model(self):
-        self.loadTTree()
+    def test_fit_model(self):
+        self.load_T_tree()
         fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]
 
         # fit a tree directly from CompartmentTree
@@ -522,12 +522,12 @@ class TestCompartmentFitter():
         ctree_cm = cm.fit_model(fit_locs)
 
         # compare the two trees
-        self._checkPasCondProps(ctree_cm, ctree)
-        self._checkPasCaProps(ctree_cm, ctree)
-        self._checkEL(ctree_cm, -75.)
+        self._check_pas_cond_props(ctree_cm, ctree)
+        self._check_pas_ca_props(ctree_cm, ctree)
+        self._check_e_leak(ctree_cm, -75.)
 
         # check active channel
-        self.fitBall()
+        self.fit_ball()
         locs = [(1, 0.5)]
         cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
         print("(i)")
@@ -536,16 +536,16 @@ class TestCompartmentFitter():
         ctree_cm_2 = cm.fit_model(locs, use_all_channels_for_passive=True)
         print("(iii)")
 
-        self._checkAllCurrProps(self.ctree, ctree_cm_1)
-        self._checkAllCurrProps(self.ctree, ctree_cm_2)
+        self._check_all_curr_props(self.ctree, ctree_cm_1)
+        self._check_all_curr_props(self.ctree, ctree_cm_2)
 
-    def testPickling(self):
-        self.loadBall()
+    def test_pickling(self):
+        self.load_ball()
 
         # of PhysTree
         ss = pickle.dumps(self.tree)
         pt_ = pickle.loads(ss)
-        self._checkPhysTrees(self.tree, pt_)
+        self._check_phys_trees(self.tree, pt_)
 
         # of GreensTree
         greens_tree = GreensTree(self.tree)
@@ -555,7 +555,7 @@ class TestCompartmentFitter():
 
         ss = pickle.dumps(greens_tree)
         gt_ = pickle.loads(ss)
-        self._checkPhysTrees(greens_tree, gt_)
+        self._check_phys_trees(greens_tree, gt_)
 
         # of SOVTree
         sov_tree = SOVTree(self.tree)
@@ -564,11 +564,11 @@ class TestCompartmentFitter():
         # works with pickle
         ss = pickle.dumps(sov_tree)
         st_ = pickle.loads(ss)
-        self._checkPhysTrees(sov_tree, st_)
+        self._check_phys_trees(sov_tree, st_)
 
 
-    def testParallel(self, w_benchmark=False):
-        self.loadTSegmentTree()
+    def test_parallel(self, w_benchmark=False):
+        self.load_T_segment_tree()
         locs = [(nn.index,0.5) for nn in self.tree.nodes[:30]]
         cm = CompartmentFitter(self.tree, save_cache=False, recompute_cache=True)
 
@@ -585,8 +585,8 @@ class TestCompartmentFitter():
             t1 = timer()
             print('Parallel: %.8f s'%(t1-t0))
 
-    def testCacheing(self):
-        self.loadTSegmentTree()
+    def test_cacheing(self):
+        self.load_T_segment_tree()
         locs = [(1, 0.5), (4,.9)]
 
         cm1 = CompartmentFitter(self.tree,
@@ -617,11 +617,11 @@ class TestCompartmentFitter():
         )
         del cm2
 
-        self._checkAllCurrProps(ctree_cm_1a, ctree_cm_2a)
-        self._checkAllCurrProps(ctree_cm_1b, ctree_cm_2b)
+        self._check_all_curr_props(ctree_cm_1a, ctree_cm_2a)
+        self._check_all_curr_props(ctree_cm_1b, ctree_cm_2b)
 
         with pytest.raises(AssertionError):
-            self._checkAllCurrProps(ctree_cm_1a, ctree_cm_1b)
+            self._check_all_curr_props(ctree_cm_1a, ctree_cm_1b)
 
         print(tree_na_1.unique_hash())
 
@@ -629,7 +629,7 @@ class TestCompartmentFitter():
         assert repr(tree_na_1) == repr(tree_na_2)
 
 
-def test_expansionpoints():
+def test_expansion_points():
     kv3_1 = channelcollection.Kv3_1()
     na_ta = channelcollection.Na_Ta()
 
@@ -654,14 +654,14 @@ def test_expansionpoints():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    # tcf.testTreeStructure()
-    # tcf.testcreate_tree_gf()
-    # tcf.testChannelFitMats()
-    tcf.testPassiveFit()
-    # tcf.testRecalc_impedance_matrix()
-    # tcf.testSynRescale()
-    # tcf.testfit_model()
-    # tcf.testPickling()
-    # tcf.testParallel(w_benchmark=True)
-    # tcf.testCacheing()
-    # test_expansionpoints()
+    tcf.test_tree_structure()
+    tcf.test_create_tree_gf()
+    tcf.test_channel_fit_mats()
+    tcf.test_passive_fit()
+    tcf.test_recalc_impedance_matrix()
+    tcf.test_syn_rescale()
+    tcf.test_fit_model()
+    tcf.test_pickling()
+    tcf.test_parallel(w_benchmark=True)
+    tcf.test_cacheing()
+    test_expansion_points()

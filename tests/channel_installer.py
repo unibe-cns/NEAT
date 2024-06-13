@@ -10,7 +10,7 @@ import subprocess
 from neat import load_neuron_model, load_nest_model
 
 
-def load_or_install_neuron_testchannels():
+def load_or_install_neuron_test_channels():
     """
     neatmodels install multichannel_test -s neuron -p channelcollection_for_tests.py
     """
@@ -36,7 +36,7 @@ def load_or_install_neuron_testchannels():
         pass
 
 
-def load_or_install_nest_testchannels():
+def load_or_install_nest_test_channels():
     """
     neatmodels install multichannel_test -s nest -p channelcollection_for_tests.py
     """

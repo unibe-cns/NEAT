@@ -4,7 +4,7 @@ import pytest
 
 
 class TestSTree():
-    def createTree(self, reinitialize=0):
+    def create_tree(self, reinitialize=0):
         # Create a simple tree structure
 
         #  2     3
@@ -27,7 +27,7 @@ class TestSTree():
         self.tree.add_node_with_parent(node2, node1)
         self.tree.add_node_with_parent(node3, node1)
 
-    def createTree2(self, reinitialize=0):
+    def create_tree2(self, reinitialize=0):
         # Create a simple tree structure
 
         #   4     5     6
@@ -60,7 +60,7 @@ class TestSTree():
         self.tree.add_node_with_parent(node6, node3)
 
     def test_copy_create(self):
-        self.createTree2()
+        self.create_tree2()
         new_tree = STree(self.tree)
         assert len(new_tree) == len(self.tree)
 
@@ -72,14 +72,14 @@ class TestSTree():
         empty_tree_copy = STree(empty_tree)
         assert len(empty_tree_copy) == 0
 
-    def testGetitem(self):
-        self.createTree()
+    def test_getitem(self):
+        self.create_tree()
         for ii in range(4):
             assert self.tree[ii].index == ii
         assert self.tree[4] == None
 
-    def testIter(self):
-        self.createTree()
+    def test_iter(self):
+        self.create_tree()
         # full iteration
         nodeset = set([node for node in self.tree])
         assert nodeset == set(self.nodelist)
@@ -87,8 +87,8 @@ class TestSTree():
         nodeset = set([node for node in self.tree.__iter__(self.nodelist[1])])
         assert nodeset == set(self.nodelist[1:])
 
-    def testStringRepresentations(self):
-        self.createTree()
+    def test_string_representations(self):
+        self.create_tree()
 
         node_str = "SNode 0, Parent: None"
         node_repr = \
@@ -109,8 +109,8 @@ class TestSTree():
         assert tree_str == str(self.tree)
         assert tree_repr == repr(self.tree)
 
-    def testHashing(self):
-        self.createTree()
+    def test_hashing(self):
+        self.create_tree()
 
         tree_repr = "['STree', "\
             "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
@@ -125,35 +125,35 @@ class TestSTree():
         # correct, as this hash should be the same in every session
         assert self.tree.unique_hash() == 'd2a693df13fd87b89b4ecb4166713cb9dcd90a13743bcfc8311a3d3d75e854e9'
 
-    def testNodeCounting(self):
-        self.createTree()
+    def test_node_counting(self):
+        self.create_tree()
         assert len(self.tree) == 4
         assert self.tree.__len__(self.tree[1]) == 3
         # test empty tree
         empty_tree = STree()
         assert len(empty_tree) == 0
 
-    def testGetSetNodes(self):
-        self.createTree()
+    def test_get_set_nodes(self):
+        self.create_tree()
         assert self.tree.nodes == self.nodelist
         with pytest.raises(AttributeError):
             self.tree.nodes = [SNode(15)]
 
-    def testGetSetLeafs(self):
-        self.createTree()
+    def test_get_set_leafs(self):
+        self.create_tree()
         assert self.tree.leafs == [self.nodelist[2], self.nodelist[3]]
         with pytest.raises(AttributeError):
             self.tree.leafs = [SNode(15)]
 
-    def testRootLeafCheck(self):
-        self.createTree()
+    def test_root_leaf_check(self):
+        self.create_tree()
         assert self.tree.is_root(self.nodelist[0]) == True
         assert self.tree.is_root(self.nodelist[1]) == False
         assert self.tree.is_leaf(self.nodelist[1]) == False
         assert self.tree.is_leaf(self.nodelist[2]) == True
 
-    def testInsertionRemoval(self):
-        self.createTree()
+    def test_insertion_removal(self):
+        self.create_tree()
         # test node insertion
         newnode = SNode(15)
         self.tree.insert_node(newnode, self.nodelist[1], self.nodelist[2:3])
@@ -190,10 +190,10 @@ class TestSTree():
         with pytest.warns(UserWarning):
             self.tree.add_node_with_parent_from_index(5, None)
         # reinitialize original tree
-        self.createTree(reinitialize=1)
+        self.create_tree(reinitialize=1)
 
-    def testDegreeOrderDepthNode(self):
-        self.createTree()
+    def test_degree_order_depth_node(self):
+        self.create_tree()
         assert self.tree.order_of_node(self.nodelist[0]) == -1
         assert self.tree.order_of_node(self.nodelist[1]) == 0
         assert self.tree.order_of_node(self.nodelist[2]) == 0
@@ -205,8 +205,8 @@ class TestSTree():
         assert self.tree.depth_of_node(self.nodelist[1]) == 1
         assert self.tree.depth_of_node(self.nodelist[2]) == 2
 
-    def testPaths(self):
-        self.createTree()
+    def test_paths(self):
+        self.create_tree()
         # paths to root
         assert self.tree.path_to_root(self.nodelist[0]) == \
                     self.nodelist[0:1]
@@ -231,8 +231,8 @@ class TestSTree():
         assert self.tree.path_between_nodes_depth_first(self.nodelist[2], self.nodelist[2]) == \
                     [self.nodelist[2]]
 
-    def testSisterLeafs(self):
-        self.createTree()
+    def test_sister_leafs(self):
+        self.create_tree()
         # normal case
         bnode, sister_leafs, corresponding_children = \
                                     self.tree.sister_leafs(self.nodelist[2])
@@ -246,8 +246,8 @@ class TestSTree():
         assert sister_leafs == [self.nodelist[1]]
         assert corresponding_children == [self.nodelist[1]]
 
-    def testBifurcationSearchToRoot(self):
-        self.createTree()
+    def test_bifurcation_search_to_root(self):
+        self.create_tree()
         # normal case
         bnode, cnode = self.tree.get_two_variable_expansion_points_to_root(self.nodelist[2])
         assert bnode == self.nodelist[1]
@@ -261,8 +261,8 @@ class TestSTree():
         assert bnode == self.nodelist[0]
         assert cnode == None
 
-    def testNodesInSubtree(self):
-        self.createTree()
+    def test_nodes_in_subtree(self):
+        self.create_tree()
         rn = self.tree[2]
         rr = self.tree[1]
         nodes1 = self.tree.get_nodes_in_subtree(rn, subtree_root=rr)
@@ -272,8 +272,8 @@ class TestSTree():
         nodes3 = self.tree.get_nodes_in_subtree(rn, subtree_root=rn)
         assert len(nodes3) == 1 and nodes3[0].index == 2
 
-    def testBifurcationNodes(self):
-        self.createTree()
+    def test_bifurcation_nodes(self):
+        self.create_tree()
         nodes = [self.tree[3]]
         bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
         assert bnodes == [self.tree[0]]
@@ -281,11 +281,11 @@ class TestSTree():
         bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
         assert bnodes == [self.tree[0], self.tree[1]]
         # more complex tree
-        self.createTree2()
+        self.create_tree2()
         nodes = [self.tree[4], self.tree[5]]
         bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
         assert bnodes == [self.tree[0], self.tree[2]]
-        self.createTree2()
+        self.create_tree2()
         nodes = [self.tree[4], self.tree[5], self.tree[6]]
         bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
         assert bnodes == [self.tree[0], self.tree[1], self.tree[2]]
@@ -294,8 +294,8 @@ class TestSTree():
 
 if __name__ == '__main__':
     tst = TestSTree()
-    tst.testStringRepresentations()
-    tst.testHashing()
-    # tst.testPaths()
-    # tst.testBifurcationNodes()
-    # tst.testDegreeOrderDepthNode()
+    tst.test_string_representations()
+    tst.test_hashing()
+    tst.test_paths()
+    tst.test_bifurcation_nodes()
+    tst.test_degree_order_depth_node()

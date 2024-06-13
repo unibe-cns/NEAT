@@ -22,7 +22,7 @@ except RuntimeError as e:
 
 
 class TestCNET():
-    def createPointNeurons(self, v_eq=-75.):
+    def create_point_neurons(self, v_eq=-75.):
         self.v_eq = v_eq
         self.dt = .025
         gh, eh = 50., -43.
@@ -71,7 +71,7 @@ class TestCNET():
         self.cnet.add_synapse(0, {'tau_r': .2, 'tau_d': 3., 'e_r': 0.}, g_max=0.001)
         self.cnet.set_spiketimes(0, [5.+self.dt])
 
-    def createTree(self, reinitialize=1, v_eq=-75.):
+    def create_tree(self, reinitialize=1, v_eq=-75.):
         """
         Create simple NET structure
 
@@ -105,7 +105,7 @@ class TestCNET():
         self.net_py = net_py
         self.cnet = netsim.NETSim(net_py, v_eq=self.v_eq)
 
-    def createTree2(self, reinitialize=1, add_lin=True, v_eq=-75.):
+    def create_tree2(self, reinitialize=1, add_lin=True, v_eq=-75.):
         """
         Create simple NET structure
 
@@ -146,7 +146,7 @@ class TestCNET():
         self.cnet = netsim.NETSim(net_py, lin_terms=self.lin_terms,
                                   v_eq=self.v_eq)
 
-    def createTree3(self, reinitialize=1, add_lin=True, v_eq=-75.):
+    def create_tree3(self, reinitialize=1, add_lin=True, v_eq=-75.):
         """
         Create simple NET structure
 
@@ -192,8 +192,8 @@ class TestCNET():
         self.net_py = net_py
         self.cnet = netsim.NETSim(net_py, lin_terms=self.lin_terms)
 
-    def testIOFunctions(self):
-        self.createTree()
+    def test_io_functions(self):
+        self.create_tree()
         # storing and reading voltages from node voltage
         vnode = np.array([8.,10.,12.,14.])
         self.cnet.set_v_node_from_v_node(vnode)
@@ -237,8 +237,8 @@ class TestCNET():
         with pytest.raises(ValueError):
             self.cnet.add_v_loc_to_arr(np.zeros(4))
 
-    def testSolver(self):
-        self.createTree()
+    def test_solver(self):
+        self.create_tree()
         netp = self.net_py
         # test if single AMPA synapse agrees with analytical solution
         # add synapse
@@ -331,9 +331,9 @@ class TestCNET():
         assert np.abs(vv - self.v_eq - z_sum * g_syn_middle * checkfun(vv)) < 1e-3
         assert np.abs(v_loc_middle_0[1] - v_loc_middle_1[1]) > 10.
 
-    def testIntegration(self):
+    def test_integration(self):
         tmax = 1000.; dt = 0.025
-        self.createTree()
+        self.create_tree()
         # add synapse and check additional synapse functions
         self.cnet.add_synapse(1, "AMPA", g_max=dt*0.1)
         self.cnet.add_synapse(1, "AMPA+NMDA", g_max=1., nmda_ratio=5.)
@@ -437,12 +437,12 @@ class TestCNET():
         np.allclose(res1['v_node'][0][ss-1:][::ss], res2['v_node'][0])
         np.allclose(res1['g_syn'][0][0][ss-1:][::ss], res2['g_syn'][0])
 
-    def testInversion(self):
+    def test_inversion(self):
         dt = 0.1
 
         # tests without linear terms
         # test with two non-leafs that integrate soma
-        self.createTree2(add_lin=False)
+        self.create_tree2(add_lin=False)
         # add synapses
         self.cnet.add_synapse(0, "AMPA", g_max=dt*0.1)
         self.cnet.add_synapse(1, "AMPA", g_max=dt*0.1)
@@ -462,7 +462,7 @@ class TestCNET():
         # test
         assert np.allclose(v_sol, v_node)
         # test with two non-leafs that integrate soma
-        self.createTree3(add_lin=False)
+        self.create_tree3(add_lin=False)
         # add synapses
         self.cnet.add_synapse(0, "AMPA", g_max=dt*0.1)
         self.cnet.add_synapse(1, "AMPA", g_max=dt*0.1)
@@ -485,7 +485,7 @@ class TestCNET():
 
         # tests with linear terms
         # test with one non-leafs that integrate soma
-        self.createTree2(add_lin=True)
+        self.create_tree2(add_lin=True)
         # add synapses
         self.cnet.add_synapse(0, "AMPA", g_max=dt*0.1)
         self.cnet.add_synapse(1, "AMPA", g_max=dt*0.1)
@@ -505,7 +505,7 @@ class TestCNET():
         # test
         assert np.allclose(v_sol, v_node)
         # test with two non-leafs that integrate soma
-        self.createTree3(add_lin=True)
+        self.create_tree3(add_lin=True)
         # add synapses
         self.cnet.add_synapse(0, "AMPA", g_max=dt*0.1)
         self.cnet.add_synapse(1, "AMPA", g_max=dt*0.1)
@@ -526,8 +526,8 @@ class TestCNET():
         # test
         assert np.allclose(v_sol, v_node)
 
-    def testChannel(self):
-        self.createPointNeurons()
+    def test_channel(self):
+        self.create_point_neurons()
         # simulate neuron and NET model
         res_neuron = self.sim_tree.run(100)
         res_net = self.cnet.run_sim(100., self.dt)
@@ -537,9 +537,9 @@ class TestCNET():
 
 if __name__ == '__main__':
     tst = TestCNET()
-    # tst.testIOFunctions()
-    # tst.testSolver()
-    # tst.testIntegration()
-    # tst.testInversion()
-    tst.testChannel()
+    tst.test_io_functions()
+    tst.test_solver()
+    tst.test_integration()
+    tst.test_inversion()
+    tst.test_channel()
 

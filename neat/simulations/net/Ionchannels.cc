@@ -1,6 +1,6 @@
 #include "Ionchannels.h"
 
-void TestChannel::calcFunStatevar(double v){
+void test_channel::calcFunStatevar(double v){
     m_a01_inf = 1.0/(exp((30.0 - v)/100.0) + 1.0);
     m_tau_a01 = 2.0;
     m_a12_inf = -30.0;
@@ -14,13 +14,13 @@ void TestChannel::calcFunStatevar(double v){
     m_a00_inf = 1.0/(exp((v - 30.0)/100.0) + 1.0);
     m_tau_a00 = 1.0;
 }
-double TestChannel::calcPOpen(){
+double test_channel::calcPOpen(){
     return 5*pow(m_a00, 3)*pow(m_a01, 3)*m_a02 + pow(m_a10, 2)*pow(m_a11, 2)*m_a12;
 }
-void TestChannel::setPOpen(){
+void test_channel::setPOpen(){
     m_p_open = calcPOpen();
 }
-void TestChannel::setPOpenEQ(double v){
+void test_channel::setPOpenEQ(double v){
     calcFunStatevar(v);
 
     m_a01 = m_a01_inf;
@@ -31,7 +31,7 @@ void TestChannel::setPOpenEQ(double v){
     m_a00 = m_a00_inf;
     m_p_open_eq = 5*pow(m_a00_inf, 3)*pow(m_a01_inf, 3)*m_a02_inf + pow(m_a10_inf, 2)*pow(m_a11_inf, 2)*m_a12_inf;
 }
-void TestChannel::advance(double dt){
+void test_channel::advance(double dt){
     double p0_a01 = exp(-dt / m_tau_a01);
     m_a01 *= p0_a01 ;
     m_a01 += (1. - p0_a01) *  m_a01_inf;
@@ -51,19 +51,19 @@ void TestChannel::advance(double dt){
     m_a00 *= p0_a00 ;
     m_a00 += (1. - p0_a00) *  m_a00_inf;
 }
-double TestChannel::getCond(){
+double test_channel::getCond(){
     return m_g_bar * (m_p_open - m_p_open_eq);
 }
-double TestChannel::getCondNewton(){
+double test_channel::getCondNewton(){
     return m_g_bar;
 }
-double TestChannel::f(double v){
+double test_channel::f(double v){
     return (m_e_rev - v);
 }
-double TestChannel::DfDv(double v){
+double test_channel::DfDv(double v){
     return -1.;
 }
-void TestChannel::setfNewtonConstant(double* vs, int v_size){
+void test_channel::setfNewtonConstant(double* vs, int v_size){
     if(v_size != 6)
         cerr << "input arg [vs] has incorrect size, should have same size as number of channel state variables" << endl;
     m_v_a00 = vs[0];
@@ -73,7 +73,7 @@ void TestChannel::setfNewtonConstant(double* vs, int v_size){
     m_v_a11 = vs[4];
     m_v_a12 = vs[5];
 }
-double TestChannel::fNewton(double v){
+double test_channel::fNewton(double v){
     double v_a01;
     if(m_v_a01 > 1000.){
         v_a01 = v;
@@ -118,7 +118,7 @@ double TestChannel::fNewton(double v){
     double a00 = 1.0/(exp((v_a00 - 30.0)/100.0) + 1.0);
     return (m_e_rev - v) * (5*pow(a00, 3)*pow(a01, 3)*a02 + pow(a10, 2)*pow(a11, 2)*a12 - m_p_open_eq);
 }
-double TestChannel::DfDvNewton(double v){
+double test_channel::DfDvNewton(double v){
     double v_a01;
     double da01_dv;
     if(m_v_a01 > 1000.){
@@ -182,7 +182,7 @@ double TestChannel::DfDvNewton(double v){
     return -1. * (5*pow(a00, 3)*pow(a01, 3)*a02 + pow(a10, 2)*pow(a11, 2)*a12 - m_p_open_eq) + (15*pow(a00, 3)*pow(a01, 2)*a02 * da01_dv + pow(a10, 2)*pow(a11, 2) * da12_dv + 2*pow(a10, 2)*a11*a12 * da11_dv + 2*a10*pow(a11, 2)*a12 * da10_dv + 5*pow(a00, 3)*pow(a01, 3) * da02_dv + 15*pow(a00, 2)*pow(a01, 3)*a02 * da00_dv) * (m_e_rev - v);
 }
 
-void TestChannel2::calcFunStatevar(double v){
+void test_channel2::calcFunStatevar(double v){
     m_a11_inf = 0.59999999999999998;
     m_tau_a11 = 2.0;
     m_a10_inf = 0.40000000000000002;
@@ -192,13 +192,13 @@ void TestChannel2::calcFunStatevar(double v){
     m_a00_inf = 0.29999999999999999;
     m_tau_a00 = 1.0;
 }
-double TestChannel2::calcPOpen(){
+double test_channel2::calcPOpen(){
     return 0.90000000000000002*pow(m_a00, 3)*pow(m_a01, 2) + 0.10000000000000001*pow(m_a10, 2)*m_a11;
 }
-void TestChannel2::setPOpen(){
+void test_channel2::setPOpen(){
     m_p_open = calcPOpen();
 }
-void TestChannel2::setPOpenEQ(double v){
+void test_channel2::setPOpenEQ(double v){
     calcFunStatevar(v);
 
     m_a11 = m_a11_inf;
@@ -207,7 +207,7 @@ void TestChannel2::setPOpenEQ(double v){
     m_a00 = m_a00_inf;
     m_p_open_eq = 0.90000000000000002*pow(m_a00_inf, 3)*pow(m_a01_inf, 2) + 0.10000000000000001*pow(m_a10_inf, 2)*m_a11_inf;
 }
-void TestChannel2::advance(double dt){
+void test_channel2::advance(double dt){
     double p0_a11 = exp(-dt / m_tau_a11);
     m_a11 *= p0_a11 ;
     m_a11 += (1. - p0_a11) *  m_a11_inf;
@@ -221,19 +221,19 @@ void TestChannel2::advance(double dt){
     m_a00 *= p0_a00 ;
     m_a00 += (1. - p0_a00) *  m_a00_inf;
 }
-double TestChannel2::getCond(){
+double test_channel2::getCond(){
     return m_g_bar * (m_p_open - m_p_open_eq);
 }
-double TestChannel2::getCondNewton(){
+double test_channel2::getCondNewton(){
     return m_g_bar;
 }
-double TestChannel2::f(double v){
+double test_channel2::f(double v){
     return (m_e_rev - v);
 }
-double TestChannel2::DfDv(double v){
+double test_channel2::DfDv(double v){
     return -1.;
 }
-void TestChannel2::setfNewtonConstant(double* vs, int v_size){
+void test_channel2::setfNewtonConstant(double* vs, int v_size){
     if(v_size != 4)
         cerr << "input arg [vs] has incorrect size, should have same size as number of channel state variables" << endl;
     m_v_a00 = vs[0];
@@ -241,7 +241,7 @@ void TestChannel2::setfNewtonConstant(double* vs, int v_size){
     m_v_a10 = vs[2];
     m_v_a11 = vs[3];
 }
-double TestChannel2::fNewton(double v){
+double test_channel2::fNewton(double v){
     double v_a11;
     if(m_v_a11 > 1000.){
         v_a11 = v;
@@ -272,7 +272,7 @@ double TestChannel2::fNewton(double v){
     double a00 = 0.29999999999999999;
     return (m_e_rev - v) * (0.90000000000000002*pow(a00, 3)*pow(a01, 2) + 0.10000000000000001*pow(a10, 2)*a11 - m_p_open_eq);
 }
-double TestChannel2::DfDvNewton(double v){
+double test_channel2::DfDvNewton(double v){
     double v_a11;
     double da11_dv;
     if(m_v_a11 > 1000.){
