@@ -329,6 +329,15 @@ class TestReducedNeuron():
         if w_locinds:
             self.add_locinds()
 
+    def test_neuroncompartmentree_instantiation(self):
+        self.load_multi_dend_model()
+        # correct initialization
+        neuron_sim_tree = NeuronCompartmentTree(self.ctree)
+
+        # initialization from incorrect tree
+        with pytest.raises(ValueError):
+            neuron_sim_tree = NeuronCompartmentTree(GreensTree())
+
     def test_geometry1(self):
         fake_c_m = 1.
         fake_r_a = 100.*1e-6

@@ -8,6 +8,7 @@ import numpy as np
 
 from ...trees.morphtree import MorphLoc
 from ...trees.phystree import PhysTree, PhysNode
+from ...trees.compartmenttree import CompartmentTree
 
 try:
     import neuron
@@ -1058,6 +1059,13 @@ class NeuronCompartmentTree(NeuronSimTree):
         insert hoc point process at the compartments using the same functions
         definitions as for as for a morphological `neat.NeuronSimTree`
         """
+        try:
+            assert issubclass(ctree.__class__, CompartmentTree)
+        except AssertionError as e:
+            raise ValueError(
+                "`neat.NeuronCompartmentTree` can only be instantiated " \
+                "from a `neat.CompartmentTree` or derived class"
+            )
         super().__init__(ctree, types=[1,3,4])
         self._create_reduced_neuron_model(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=method,
