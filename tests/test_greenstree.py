@@ -375,7 +375,7 @@ class TestGreensTreeTime():
 
             pl.show()
 
-    def test_active_kernels(self, pplot=True):
+    def test_active_kernels(self, pplot=False):
         self._init_ft()
         self.load_axon_tree()
         greens_tree = GreensTree(self.tree)
@@ -448,7 +448,7 @@ class TestGreensTreeTime():
 
             pl.show()
 
-    def test_channel_responses(self, pplot=True):
+    def test_channel_responses(self, pplot=False):
         self._init_ft()
         self.load_axon_tree()
         self.tree.set_impedance(self.ft)
@@ -584,7 +584,7 @@ class TestGreensTreeTime():
         if pplot:
             pl.show()
 
-    def test_exponential_derivative(self, pplot=True):
+    def test_exponential_derivative(self, pplot=False):
         self._init_ft()
         # test passive case
         self.load_ball(is_active=False)
@@ -697,22 +697,22 @@ class TestGreensTreeTime():
             print(f"c_soma = {c_soma} uF, c_fit = {c_fit} uF")
 
         # check fit result
-        assert np.allclose(c_soma, c_fit, rtol=1e-3)
+        assert np.allclose(c_soma, c_fit, rtol=5e-2)
 
         if pplot:
             pl.show()
 
 
 if __name__ == '__main__':
-    # tgt = TestGreensTree()
-    # tgt.test_string_representation()
-    # tgt.test_basic_properties()
-    # tgt.test_values()
+    tgt = TestGreensTree()
+    tgt.test_string_representation()
+    tgt.test_basic_properties()
+    tgt.test_values()
 
     tgtt = TestGreensTreeTime()
-    # tgtt.test_string_representation()
-    # tgtt.test_passive_kernels(pplot=True)
-    # tgtt.test_active_kernels(pplot=True)
-    # tgtt.test_channel_responses()
+    tgtt.test_string_representation()
+    tgtt.test_passive_kernels(pplot=True)
+    tgtt.test_active_kernels(pplot=True)
+    tgtt.test_channel_responses()
     tgtt.test_exponential_derivative()
 

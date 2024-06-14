@@ -811,13 +811,14 @@ class GreensTreeTime(GreensTree):
         # `method` is "" but the criterion is not satisfied
 
         # we set a custom set of initial poles for the vector fit algorithm
-        initpoles = np.concatenate((
-            np.linspace(.5, 10**1.3, 40)[:-1],
-            np.logspace(
-                1.3, np.log10(self.freqs[self._slice_vfit][-1].imag),
-                num=40, base=10,
-            )
-        ))
+        # NOTE: not used at the moment, have to figure out why
+        # initpoles = np.concatenate((
+        #     np.linspace(.5, 10**1.3, 40)[:-1],
+        #     np.logspace(
+        #         1.3, np.log10(self.freqs[self._slice_vfit][-1].imag),
+        #         num=40, base=10,
+        #     )
+        # ))
 
         # compute kernel as superposition of exponentials in the frequency domain
         f_exp_fitter = ke.fExpFitter()
@@ -832,9 +833,10 @@ class GreensTreeTime(GreensTree):
             dzk_dt = zk.diff()
         # linear fit of c in the time domain to the quadrature-computed kernels
         # can improve accuracy
-        w = np.concatenate(
-            (self.ft.t[self.ft.t < 1.], np.ones_like(self.ft.t[self.ft.t >= 1.]))
-        )
+        # NOTE: not used at the moment, have to figure out why
+        # w = np.concatenate(
+        #     (self.ft.t[self.ft.t < 1.], np.ones_like(self.ft.t[self.ft.t >= 1.]))
+        # )
         # zk.fit_c(self.ft.t, func_vals_t, w=w)
 
         # evaluate kernel in the time domain
@@ -843,6 +845,7 @@ class GreensTreeTime(GreensTree):
         if compute_time_derivative:
             # linear fit of c in the time domain to the quadrature-computed kernels
             # can improve accuracy
+            # NOTE: not used at the moment, have to figure out why
             # dzk_dt.fit_c(self.ft.t, dfunc_vals_t_dt, w=w)
             # compute differentiated kernel
             dfunc_vals_t_dt = zk.diff(self.ft.t)
