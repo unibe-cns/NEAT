@@ -935,7 +935,6 @@ class NeuronSimTree(PhysTree):
                 res = self.run(t_dur)
                 self.delete_model()
                 # voltage deflections
-                # v_trans = res['v_m'][1][-int(1./self.dt)] - self[loc1['node']].v_ep
                 v_trans = res['v_m'][1][-int(1./self.dt)] - res['v_m'][1][0]
                 # compute impedances
                 z_mat[ii, jj] = v_trans / i_amp
@@ -947,7 +946,7 @@ class NeuronSimTree(PhysTree):
 
         return z_mat
 
-    def calc_impedance_kernel_matrix(self, loc_arg, 
+    def calc_impulse_response_matrix(self, loc_arg, 
             i_amp=0.001,
             dt_pulse=0.1, dstep=-2, t_max=100.,
             factor_lambda=1., t_calibrate=0., dt=0.025, v_init=-75.
@@ -959,7 +958,7 @@ class NeuronSimTree(PhysTree):
         locs = self.convert_loc_arg_to_locs(loc_arg)
         nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
-        if dstep < i0:
+        if dstep < -i0:
             dstep = -i0
         zk_mat = np.zeros((nt, len(locs), len(locs)))
         for ii, loc0 in enumerate(locs):

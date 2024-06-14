@@ -147,8 +147,8 @@ class TestNeuron():
         )
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=1.)
         # test the temporal matrix
-        tk, zk_mat_neuron = self.neurontree.calc_impedance_kernel_matrix(locs,
-            dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
+        tk, zk_mat_neuron = self.neurontree.calc_impulse_response_matrix(locs,
+            dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25., dstep=-2,
         )
         nt = min(zk_mat_gf.shape[0], zk_mat_neuron.shape[0])
         assert np.allclose(zk_mat_gf[int(2./self.dt):nt,:,:],
@@ -160,8 +160,8 @@ class TestNeuron():
             for ii in range(len(locs)):
                 jj = 0
                 while jj <= ii:
-                    pl.plot(tk, zk_mat_neuron[:,ii,jj], c=colours[cc%len(colours)])
-                    pl.plot(tk, zk_mat_gf[:,ii,jj], ls='--', lw=2, c=colours[cc%len(colours)])
+                    pl.plot(tk, zk_mat_neuron[:nt,ii,jj], c=colours[cc%len(colours)])
+                    pl.plot(tk, zk_mat_gf[:nt,ii,jj], ls='--', lw=2, c=colours[cc%len(colours)])
                     cc += 1
                     jj += 1
             pl.show()
@@ -183,8 +183,8 @@ class TestNeuron():
         )
         assert np.allclose(z_mat_gf, z_mat_neuron, atol=5.)
         # test the temporal matrix
-        tk, zk_mat_neuron = self.neurontree.calc_impedance_kernel_matrix(locs,
-            dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25.,
+        tk, zk_mat_neuron = self.neurontree.calc_impulse_response_matrix(locs,
+            dt=self.dt, t_calibrate=100., v_init=self.v_eq, factor_lambda=25., dstep=-2,
         )
         nt = min(zk_mat_gf.shape[0], zk_mat_neuron.shape[0])
         assert np.allclose(zk_mat_gf[int(2./self.dt):nt,:,:],
@@ -196,8 +196,8 @@ class TestNeuron():
             for ii in range(len(locs)):
                 jj = 0
                 while jj <= ii:
-                    pl.plot(tk, zk_mat_neuron[:,ii,jj], c=colours[cc%len(colours)])
-                    pl.plot(tk, zk_mat_gf[:,ii,jj], ls='--', lw=2, c=colours[cc%len(colours)])
+                    pl.plot(tk, zk_mat_neuron[:nt,ii,jj], c=colours[cc%len(colours)])
+                    pl.plot(tk, zk_mat_gf[:nt,ii,jj], ls='--', lw=2, c=colours[cc%len(colours)])
                     cc += 1
                     jj += 1
             pl.show()
@@ -621,7 +621,7 @@ class TestReducedNeuron():
 if __name__ == '__main__':
     tn = TestNeuron()
     tn.test_passive(pplot=True)
-    tn.test_active()
+    tn.test_active(pplot=True)
     tn.test_channel_recording()
     tn.test_recording_timestep()
 
