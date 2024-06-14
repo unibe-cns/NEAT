@@ -96,7 +96,7 @@ class TestCompartmentFitter():
 
     def test_tree_structure(self):
         self.load_T_tree()
-        cm = CompartmentFitter(self.tree, cach_path="neatcache/")
+        cm = CompartmentFitter(self.tree, cache_path="neatcache/")
         # set of locations
         fit_locs1 = [(1,.5), (4,.5), (5,.5)] # no bifurcations
         fit_locs2 = [(1,.5), (4,.5), (5,.5), (8,.5)] # w bifurcation, should be added
@@ -114,7 +114,7 @@ class TestCompartmentFitter():
 
     def test_create_tree_gf(self):
         self.load_ball()
-        cm = CompartmentFitter(self.tree, cach_path="neatcache/")
+        cm = CompartmentFitter(self.tree, cache_path="neatcache/")
 
         # create tree with only 'L'
         tree_pas = cm.create_tree_gf()
