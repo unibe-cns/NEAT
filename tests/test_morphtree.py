@@ -763,6 +763,24 @@ class TestMorphTree():
             with tree1.as_computational_tree:
                 assert repr(tree2) == repr(tree1)
 
+    def test_root_modification(self):
+        # test for a tricky bugfix with cachetrees, where the update
+        # of tree.__dict__ did not results in an updated tree because
+        # the original root was reapplied after the context manager closed
+        self.load_tree(reinitialize=True, segments=True)
+        # modify the tree by adding a node
+        tree = MorphTree(self.tree)
+        axon_node = tree._create_corresponding_node(13)
+        tree.add_node_with_parent(axon_node, tree[1])
+
+        assert len(tree) == len(self.tree) + 1
+
+        # copy the self.tree __dict__ into the new one, should remove the modification
+        with tree.as_original_tree:
+            tree.__dict__.update(self.tree.__dict__)
+
+        assert len(tree) == len(self.tree)
+
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
@@ -780,4 +798,4 @@ if __name__ == '__main__':
     tmt.test_three_point_soma()
     tmt.test_wrong_soma()
     tmt.test_copy_construct()
-
+    tmt.test_root_modification()

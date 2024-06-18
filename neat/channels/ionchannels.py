@@ -876,13 +876,11 @@ class IonChannel(object):
                 " "*indent + f"else:\n" + \
                     f"{cond_0_str}"
         else:
-            print("-----\n",code_str)
             try:
                 code_str = \
                 " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
             except TypeError as e:
                 print(e)
-                breakpoint()
         return code_str
 
     def write_nestml_blocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=-75., g=0., e=None):

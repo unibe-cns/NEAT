@@ -33,7 +33,7 @@ def consecutive(inds):
     return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
 
 
-class FitTree(PhysTree):
+class CachedTree(PhysTree):
     def __init__(self,
             *args,
             recompute_cache=False,
@@ -70,7 +70,7 @@ class FitTree(PhysTree):
     ):
         file_name = os.path.join(
             self.cache_path,
-            f"{self.cache_name}cache_{self.unique_hash()}.p",
+            f"{self.cache_name}_cache_{self.unique_hash()}.p",
         )
 
         if pprint:
@@ -113,7 +113,7 @@ class FitTree(PhysTree):
                     dill.dump(self, file)
 
 
-class EquilibriumTree(FitTree):
+class EquilibriumTree(CachedTree):
     """
     Subclass of `neat.PhysTree` that allows for the calculation of the
     equilibrium potential at each node.
@@ -151,6 +151,7 @@ class EquilibriumTree(FitTree):
 
         # create a biophysical simulation model
         sim_tree_biophys = neurm.NeuronSimTree(self)
+
         # compute equilibrium potentials
         sim_tree_biophys.init_model(dt=dt, factor_lambda=factor_lambda)
         sim_tree_biophys.store_locs(locs, 'rec locs', warn=False)
@@ -301,7 +302,7 @@ class EquilibriumTree(FitTree):
         )
 
 
-class CachedGreensTree(GreensTree, FitTree):
+class CachedGreensTree(GreensTree, CachedTree):
     """
     Derived class of `neat.GreensTree` that caches the impedance calculation at each
     node.
@@ -411,7 +412,7 @@ class CachedGreensTree(GreensTree, FitTree):
             self._subtract_parent_kernels(gammas, pnode.parent_node)
 
 
-class CachedGreensTreeTime(GreensTreeTime, FitTree):
+class CachedGreensTreeTime(GreensTreeTime, CachedTree):
     """
     Derived class of `neat.GreensTreeTime` that caches the separation of variables calculation
     """
@@ -458,7 +459,7 @@ class CachedGreensTreeTime(GreensTreeTime, FitTree):
         )
 
 
-class CachedSOVTree(SOVTree, FitTree):
+class CachedSOVTree(SOVTree, CachedTree):
     """
     Derived class of `neat.GreensTreeTime` that caches the impedance calculation at each
     node.

@@ -12,7 +12,7 @@ from matplotlib.lines import Line2D
 
 from ..trees.netree import  Kernel
 from ..channels.ionchannels import SPDict
-from ..factorydefaults import DefaultFitting, DefaultMechParams
+from ..factorydefaults import FitParams, MechParams
 from ..tools import kernelextraction as ke
 from .cachetrees import CachedGreensTree, CachedSOVTree, EquilibriumTree
 
@@ -106,15 +106,12 @@ class CompartmentFitter(EquilibriumTree):
 
     Attributes
     ----------
-    tree: `neat.PhysTree()`
+    tree: `neat.PhysTree`
         The full tree based on which reductions are made
-    e_hs: np.array of float
-        The holding potentials for which quasi active expansions are computed
-    conc_hs: dict ({str: np.array of float})
-        The holding concentrations for the concentration dependent channel
-        expansion
-    freqs: np.array of float or complex (default is ``np.array([0.])``)
-        The frequencies at which impedance matrices are evaluated
+    fit_cfg: `neat.FitParams`
+        The fit parameters
+    concmech_cfg: `neat.MechParams`
+        The concentration mechanisms parameters
     cache_name: str (default '')
         name of files in which intermediate trees required for the fit are
         cached.
@@ -129,31 +126,30 @@ class CompartmentFitter(EquilibriumTree):
         Forces recomputing the caches.
     """
 
-    def __init__(self, phys_tree,
+    def __init__(self, *args,
             fit_cfg=None, concmech_cfg=None,
             cache_name='', cache_path='',
             save_cache=True, recompute_cache=False,
+            **kwargs
         ):
         # original tree
         super().__init__(
-            phys_tree,
+            *args,
             cache_path=cache_path,
-            cache_name=cache_name + "_orig_",
+            cache_name=cache_name,
             save_cache=save_cache,
             recompute_cache=recompute_cache,
+            **kwargs,
         )
         with self.as_original_tree:
             # set the equilibrium potentials in the tree
             self.set_e_eq(pprint=True)
-            # get all channels in the tree
-            self.channel_names = self.get_channels_in_tree()
 
-            self.cfg = fit_cfg
-            if fit_cfg is None:
-                self.cfg = DefaultFitting()
-            if concmech_cfg is None:
-                self.concmech_cfg = DefaultMechParams()
-
+        self.fit_cfg = fit_cfg
+        if fit_cfg is None:
+            self.fit_cfg = FitParams()
+        if concmech_cfg is None:
+            self.concmech_cfg = MechParams()
 
         # boolean flag that is reset the first time `self.fit_passive` is called
         self.use_all_channels_for_passive = True
@@ -282,7 +278,7 @@ class CompartmentFitter(EquilibriumTree):
             channel_name: self.channel_storage[channel_name] \
             for channel_name in channel_names_newtree
         }
-        tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
+        tree.set_comp_tree(eps=self.fit_cfg.fit_comptree_eps)
 
         return tree
 
@@ -299,8 +295,6 @@ class CompartmentFitter(EquilibriumTree):
             whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
-        parallel:  bool (optional, defaults to ``True``)
-            whether the models are evaluated in parallel
 
         Return
         ------
@@ -309,7 +303,7 @@ class CompartmentFitter(EquilibriumTree):
         locs = self.get_locs('fit locs')
         # find the expansion point parameters for the channel
         channel = self.channel_storage[channel_name]
-        sv_h = get_expansion_points(self.cfg.e_hs, channel)
+        sv_h = get_expansion_points(self.fit_cfg.e_hs, channel)
 
         # create the trees with only a single channel and multiple expansion points
         fit_tree = self.create_tree_gf([channel_name],
@@ -317,7 +311,7 @@ class CompartmentFitter(EquilibriumTree):
         )
         # set the impedances in the tree
         fit_tree.set_impedances_in_tree(
-            freqs=self.cfg.freqs,
+            freqs=self.fit_cfg.freqs,
             sv_h={channel_name: sv_h},
             pprint=pprint
         )
@@ -334,9 +328,9 @@ class CompartmentFitter(EquilibriumTree):
 
             # compute the fit matrices
             m_f, v_t = self.ctree.compute_g_single_channel(
-                channel_name, z_mats[:,ii,:,:], e_h, np.array([self.cfg.freqs]),
+                channel_name, z_mats[:,ii,:,:], e_h, np.array([self.fit_cfg.freqs]),
                 sv=sv, other_channel_names=['L'],
-                all_channel_names=[channel_name],#self.channel_names,
+                all_channel_names=[channel_name],
                 action='return'
             )
 
@@ -375,10 +369,8 @@ class CompartmentFitter(EquilibriumTree):
             whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
-        parallel:  bool (optional, defaults to ``True``)
-            whether the models are evaluated in parallel
         """
-        for channel_name in self.channel_names:
+        for channel_name in self.get_channels_in_tree():
             self.eval_channel(channel_name, recompute=recompute, pprint=pprint)
 
         return self.ctree
@@ -503,7 +495,7 @@ class CompartmentFitter(EquilibriumTree):
                 save_cache=self.save_cache,
                 recompute_cache=self.recompute_cache,
             )
-            fit_tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
+            fit_tree.set_comp_tree(eps=self.fit_cfg.fit_comptree_eps)
         else:
             fit_tree = self.create_tree_gf(
                 [], # empty list of channel to include
@@ -550,11 +542,11 @@ class CompartmentFitter(EquilibriumTree):
             cache_name_suffix="_only_leak_",
         )
         # set the impedances in the tree
-        fit_tree.set_impedances_in_tree(self.cfg.freqs, pprint=pprint)
+        fit_tree.set_impedances_in_tree(self.fit_cfg.freqs, pprint=pprint)
         # compute the steady state impedance matrix
         z_mat = fit_tree.calc_impedance_matrix(locs)[None,:,:]
         # fit the conductances to steady state impedance matrix
-        self.ctree.compute_g_single_channel('L', z_mat, -75., np.array([self.cfg.freqs]),
+        self.ctree.compute_g_single_channel('L', z_mat, -75., np.array([self.fit_cfg.freqs]),
                                                    other_channel_names=[],
                                                    action='fit')
         # print passive impedance matrices
@@ -612,7 +604,7 @@ class CompartmentFitter(EquilibriumTree):
                 node._add_current('L', g_l, e_l)
 
         # set the computational tree
-        tree.set_comp_tree(eps=self.cfg.fit_comptree_eps)
+        tree.set_comp_tree(eps=self.fit_cfg.fit_comptree_eps)
 
         return tree
 
@@ -947,7 +939,7 @@ class CompartmentFitter(EquilibriumTree):
             channel_names=channel_names,
             cache_name_suffix="_for_NET_",
         )
-        greens_tree.set_impedances_in_tree(self.cfg.freqs, pprint=False)
+        greens_tree.set_impedances_in_tree(self.fit_cfg.freqs, pprint=False)
         # create the NET
         net, z_mat = greens_tree.calc_net_steadystate(c_loc)
         net.improve_input_resistance(z_mat)
@@ -982,10 +974,8 @@ class CompartmentFitter(EquilibriumTree):
 
         return self.ctree
 
-    def fit_model(self,
-        loc_arg,
-        alpha_inds=[0], use_all_channels_for_passive=True,
-        pprint=False, parallel=False,
+    def fit_model(self, loc_arg,
+        alpha_inds=[0], use_all_channels_for_passive=True, pprint=False, 
     ):
         """
         Runs the full fit for a set of locations (the location are automatically
@@ -1002,8 +992,6 @@ class CompartmentFitter(EquilibriumTree):
             Uses all channels in the tree to compute coupling conductances
         pprint:  bool
             whether to print information
-        parallel:  bool
-            whether the models are evaluated in parallel
 
         Returns
         -------
@@ -1052,7 +1040,7 @@ class CompartmentFitter(EquilibriumTree):
             channel_names=channel_names,
             cache_name_suffix=f"_{'_'.join(channel_names)}_",
         )
-        greens_tree.set_impedances_in_tree(self.cfg.freqs, pprint=False)
+        greens_tree.set_impedances_in_tree(self.fit_cfg.freqs, pprint=False)
         # compute the impedance matrix of the synapse locations
         z_mat = greens_tree.calc_impedance_matrix(locs, explicit_method=False)
 
@@ -1115,7 +1103,7 @@ class CompartmentFitter(EquilibriumTree):
             channel_names=channel_names,
             cache_name_suffix=f"_{'_'.join(channel_names)}_",
         )
-        greens_tree.set_impedances_in_tree(self.cfg.freqs, pprint=False)
+        greens_tree.set_impedances_in_tree(self.fit_cfg.freqs, pprint=False)
         # compute the impedance matrix of the synapse locations
         z_mat = greens_tree.calc_impedance_matrix(cs_locs, explicit_method=False)
         zc_mat = z_mat[:n_comp, :n_comp]
@@ -1195,7 +1183,7 @@ class CompartmentFitter(EquilibriumTree):
             channel_names=channel_names,
             cache_name_suffix=f"_{'_'.join(channel_names)}_at_rest_",
         )
-        greens_tree.set_impedances_in_tree(self.cfg.freqs, pprint=False)
+        greens_tree.set_impedances_in_tree(self.fit_cfg.freqs, pprint=False)
 
         # process input
         c_locs = self.convert_loc_arg_to_locs(c_loc_arg)

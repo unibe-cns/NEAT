@@ -20,7 +20,7 @@ class DefaultPhysiology:
 
 
 @dataclass
-class DefaultFitting:
+class FitParams:
     # holding potentials channel fit
     e_hs: np.array = field(
         default_factory=lambda: np.array([-75., -55., -35., -15.])
@@ -86,7 +86,7 @@ class DefaultFitting:
 
 
 @dataclass
-class DefaultMechParams:
+class MechParams:
     # concentration mechanism default parameters
     exp_conc_mech: Dict[str, float] = field(
         default_factory=lambda: {'gamma': 0., 'tau': 100.} # [tau] = ms

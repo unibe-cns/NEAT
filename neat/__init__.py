@@ -55,10 +55,12 @@ from .channels.ionchannels import IonChannel
 from .channels.concmechs import ExpConcMech
 
 from .modelreduction.compartmentfitter import CompartmentFitter
+from .modelreduction.cachetrees import CachedTree
 from .modelreduction.cachetrees import EquilibriumTree
 from .modelreduction.cachetrees import CachedGreensTree
 from .modelreduction.cachetrees import CachedGreensTreeTime
 from .modelreduction.cachetrees import CachedSOVTree
 
+from .factorydefaults import FitParams, MechParams
 
 from .__version__ import __version__

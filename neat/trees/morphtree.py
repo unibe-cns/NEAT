@@ -16,10 +16,11 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import warnings
 import copy
-from functools import reduce
+import pathlib
+import warnings
 from typing import Literal
+from functools import reduce
 from contextlib import contextmanager
 
 from .stree import SNode, STree
@@ -438,11 +439,12 @@ class MorphTree(STree):
         self.d2s = {}
         self.d2b = {}
         self.leafinds = {}
-
+        
         # instantiate the tree structure
-        if isinstance(arg, str):
-            self.read_swc_tree_from_file(arg, types=types)
-        else:
+        try:
+            swc_file_path = pathlib.Path(arg)
+            self.read_swc_tree_from_file(swc_file_path, types=types)
+        except TypeError:
             super().__init__(arg)
             # STree will always initialize `self._root`, independent of whether the
             # input argument is a node or a tree. 
@@ -531,11 +533,6 @@ class MorphTree(STree):
         """
         for ind, node in enumerate(self):
             node.index = ind+1
-
-    def set_root(self, node):
-        node.parent_node = None
-        self._original_root = node
-        self._root = node
 
     def get_nodes(self, skip_inds=(2,3)):
         """
@@ -648,29 +645,29 @@ class MorphTree(STree):
     @contextmanager
     def as_computational_tree(self):
         self._check_computational_root()
-        temp_root = self.root
+        treetype = 'computational' if self.check_computational_tree_active() else 'original'
         self.root = self._computational_root
         try:
             yield self
         except Exception as e:
             raise
         finally:
-            self.root = temp_root
+            self.root = self._computational_root if treetype == 'computational' else self._original_root
 
     @property
     @contextmanager
     def as_original_tree(self):
-        temp_root = self.root
+        treetype = 'computational' if self.check_computational_tree_active() else 'original'
         self.root = self._original_root
         try:
             yield self
         except Exception as e:
             raise
         finally:
-            self.root = temp_root
+            self.root = self._computational_root if treetype == 'computational' else self._original_root
 
     def check_computational_tree_active(self):
-        return self.root == self._computational_root
+        return self.root is self._computational_root
 
     def _create_corresponding_node(self, node_index, p3d=None):
         """
