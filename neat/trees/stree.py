@@ -149,6 +149,10 @@ class STree(object):
     ----------
     root: `neat.SNode`
         The root of the tree
+    nodes: list of `neat.SNode`
+        The nodes in the tree
+    leafs: list of `neat.SNode`
+        The leaf nodes in the tree
     """
 
     def __init__(self, arg=None):
@@ -323,7 +327,7 @@ class STree(object):
         """
         return list(range(len(self))) == [node.index for node in self]
 
-    def get_nodes(self, recompute_flag=1):
+    def get_nodes(self):
         """
         Build a list of all the nodes in the tree
 
@@ -336,10 +340,7 @@ class STree(object):
         -------
             list of :class:`Snode`
         """
-        if not hasattr(self, '_nodes') or recompute_flag:
-            self._nodes = []
-            self._gather_nodes(self.root, self._nodes)
-        return self._nodes
+        return self.gather_nodes(self.root)
 
     def set_nodes(self, illegal):
         raise AttributeError("`nodes` is a read-only attribute")
@@ -376,7 +377,7 @@ class STree(object):
         for cnode in node.child_nodes:
             self._gather_nodes(cnode, node_list=node_list)
 
-    def get_leafs(self, recompute_flag=1):
+    def get_leafs(self):
         """
         Get all leaf nodes in the tree.
 
@@ -385,9 +386,7 @@ class STree(object):
             recompute_flag: bool
                 Whether to force recomputing the leaf list. Defaults to 1.
         """
-        if not hasattr(self, '_leafs') or recompute_flag:
-            self._leafs = [node for node in self if self.is_leaf(node)]
-        return self._leafs
+        return [node for node in self if self.is_leaf(node)]
 
     def set_leafs(self, illegal):
         raise AttributeError("`leafs` is a read-only attribute")
