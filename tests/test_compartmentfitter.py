@@ -1,15 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as pl
-from matplotlib.gridspec import GridSpec
 import os
 
 import pytest
-import random
-import copy
 import pickle
 
-from neat import MorphLoc
-from neat import PhysTree, GreensTree, GreensTreeTime, SOVTree
+from neat import MorphTree, PhysTree, GreensTree, SOVTree
 from neat import CompartmentFitter
 import neat.modelreduction.compartmentfitter as compartmentfitter
 
@@ -266,6 +261,22 @@ class TestCompartmentFitter():
     def _check_e_leak(self, ctree, e_l):
         for n in ctree:
             assert np.allclose(n.currents['L'][1], e_l)
+
+    def test_construction(self):
+        swc_path = os.path.join(MORPHOLOGIES_PATH_PREFIX, 'Tsovtree.swc')
+        with pytest.warns(UserWarning, match="Initialization of a CompartmentFitter-instance as a tree"):
+            cfit = CompartmentFitter(save_cache=False)
+        with pytest.warns(UserWarning, match="Initialization of a CompartmentFitter-instance as a tree"):
+            cfit = CompartmentFitter(swc_path, save_cache=False)
+        with pytest.warns(UserWarning, match="Initialization of a CompartmentFitter-instance as a tree"):
+            cfit = CompartmentFitter(MorphTree(swc_path), save_cache=False)
+
+        cfit = CompartmentFitter(PhysTree(swc_path), cache_name="test_name", save_cache=False)
+        assert cfit.cache_name == "test_name"
+        cfit_ = CompartmentFitter(cfit, cache_name="test_name_new", save_cache=False)
+        assert cfit_.cache_name == "test_name_new"
+        cfit__ = CompartmentFitter(cfit_, save_cache=False)
+        assert cfit__.cache_name == "test_name_new"
 
     def test_passive_fit(self):
         self.load_T_tree()
@@ -596,10 +607,10 @@ class TestCompartmentFitter():
         ctree_cm_1a = cm1.fit_model(locs, use_all_channels_for_passive=False)
         ctree_cm_1b = cm1.fit_model(locs, use_all_channels_for_passive=True)
 
-        sv_h = compartmentfitter.get_expansion_points(cm1.cfg.e_hs, channelcollection.Na_Ta())
+        sv_h = compartmentfitter.get_expansion_points(cm1.fit_cfg.e_hs, channelcollection.Na_Ta())
         tree_na_1 = cm1.create_tree_gf(['Na_Ta'])
         tree_na_1.set_impedances_in_tree(
-            freqs=cm1.cfg.freqs,
+            freqs=cm1.fit_cfg.freqs,
             sv_h={'Na_Ta': sv_h}
         )
         del cm1
@@ -610,10 +621,10 @@ class TestCompartmentFitter():
         ctree_cm_2a = cm2.fit_model(locs, use_all_channels_for_passive=False)
         ctree_cm_2b = cm2.fit_model(locs, use_all_channels_for_passive=True)
 
-        sv_h = compartmentfitter.get_expansion_points(cm2.cfg.e_hs, channelcollection.Na_Ta())
+        sv_h = compartmentfitter.get_expansion_points(cm2.fit_cfg.e_hs, channelcollection.Na_Ta())
         tree_na_2 = cm2.create_tree_gf(['Na_Ta'])
         tree_na_2.set_impedances_in_tree(
-            freqs=cm2.cfg.freqs,
+            freqs=cm2.fit_cfg.freqs,
             sv_h={'Na_Ta': sv_h}
         )
         del cm2
@@ -655,6 +666,7 @@ def test_expansion_points():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
+    tcf.test_construction()
     tcf.test_tree_structure()
     tcf.test_create_tree_gf()
     tcf.test_channel_fit_mats()

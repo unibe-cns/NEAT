@@ -10,20 +10,16 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
-from ..trees.netree import  Kernel
+from ..trees.stree import STree
+from ..trees.phystree import PhysTree
+from ..trees.netree import Kernel
 from ..channels.ionchannels import SPDict
 from ..factorydefaults import FitParams, MechParams
-from ..tools import kernelextraction as ke
 from .cachetrees import CachedGreensTree, CachedSOVTree, EquilibriumTree
 
-import warnings
 import copy
-import pickle
-import concurrent.futures
-import contextlib
-import multiprocessing
-import os
-import ctypes
+import pathlib
+import warnings
 
 
 def _statevar_is_activating(f_statevar):
@@ -125,25 +121,31 @@ class CompartmentFitter(EquilibriumTree):
     recompute_cache: bool (default `False`)
         Forces recomputing the caches.
     """
-
     def __init__(self, *args,
             fit_cfg=None, concmech_cfg=None,
-            cache_name='', cache_path='',
-            save_cache=True, recompute_cache=False,
             **kwargs
         ):
+        if len(args) == 0 or isinstance(args[0], str) or isinstance(args[0], pathlib.Path) or (
+            issubclass(type(args[0]), STree) and not issubclass(type(args[0]), PhysTree)
+        ):
+            call_post_init_in_contructor = False
+            # if the initialization argument is not provided (empty tree), 
+            # or if it is a .swc-filename string,
+            # or if it is a tree class that is likely to require further build operations after 
+            # calling this constructor, we do not call `post_init()` in this constructor, but 
+            # raise a warning that it has to be called manually
+            warnings.warn(
+                f"Initialization of a {self.__class__.__name__}" \
+                f"-instance as a tree that still has to be built, " \
+                f"be sure to call `{self.__class__.__name__}.post_init()` after building the tree."
+            )
+        else:
+            call_post_init_in_contructor = True
+
         # original tree
-        super().__init__(
-            *args,
-            cache_path=cache_path,
-            cache_name=cache_name,
-            save_cache=save_cache,
-            recompute_cache=recompute_cache,
-            **kwargs,
-        )
-        with self.as_original_tree:
-            # set the equilibrium potentials in the tree
-            self.set_e_eq(pprint=True)
+        super().__init__(*args, **kwargs)
+        if call_post_init_in_contructor:
+            self.post_init()
 
         self.fit_cfg = fit_cfg
         if fit_cfg is None:
@@ -153,6 +155,11 @@ class CompartmentFitter(EquilibriumTree):
 
         # boolean flag that is reset the first time `self.fit_passive` is called
         self.use_all_channels_for_passive = True
+
+    def post_init(self):
+        with self.as_original_tree:
+            # set the equilibrium potentials in the tree
+            self.set_e_eq(pprint=True)
 
     def set_ctree(self, loc_arg, extend_w_bifurc=True, pprint=False):
         """

@@ -36,33 +36,78 @@ def consecutive(inds):
 class CachedTree(PhysTree):
     def __init__(self,
             *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
+            recompute_cache=None,
+            save_cache=None,
+            cache_name=None,
+            cache_path=None,
             **kwargs
         ):
+        # we want a behaviour where the cache parameters are initialized to certain defauls
+        # if they are not provided, but where the initialization operation based on copying
+        # the tree leaves the cache parameters intact if the input tree is a subclass
+        # of CachedTree. However, we also want the optionally provided arguments to be
+        # overwritten to their provided values. The constructor below achieve this
+        self.set_cache_params(
+            **self.get_cache_defaults(
+                recompute_cache=recompute_cache,
+                save_cache=save_cache,
+                cache_name=cache_name,
+                cache_path=cache_path,
+            )
+        )
+        super().__init__(*args, **kwargs)
         self.set_cache_params(
             recompute_cache=recompute_cache,
             save_cache=save_cache,
             cache_name=cache_name,
             cache_path=cache_path,
         )
-        super().__init__(*args, **kwargs)
+
+    def get_cache_defaults(self,
+            recompute_cache=None,
+            save_cache=None,
+            cache_name=None,
+            cache_path=None,
+        ):
+        cache_params = {}
+        cache_params["recompute_cache"] = False if recompute_cache is None else recompute_cache
+        cache_params["save_cache"] = True if save_cache is None else save_cache
+        cache_params["cache_name"] = '' if cache_name is None else cache_name 
+        cache_params["cache_path"] = '.' if cache_path is None else cache_path
+        return cache_params
 
     def set_cache_params(self,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
+            recompute_cache=None,
+            save_cache=None,
+            cache_name=None,
+            cache_path=None,
         ):
-        if len(cache_path) > 0 and not os.path.isdir(cache_path):
-            os.makedirs(cache_path)
-            
-        self.cache_name = cache_name
-        self.cache_path = cache_path
-        self.save_cache = save_cache
-        self.recompute_cache = recompute_cache
+        if cache_path is not None:
+            os.makedirs(cache_path, exist_ok=True)
+        
+        if cache_name is not None:
+            self.cache_name = cache_name
+        if cache_path is not None:
+            self.cache_path = cache_path
+        if save_cache is not None:
+            self.save_cache = save_cache
+        if recompute_cache is not None: 
+            self.recompute_cache = recompute_cache
+
+    def get_cache_params(self):
+        return {
+            "cache_name": self.cache_name,
+            "cache_path": self.cache_path,
+            "save_cache": self.save_cache,
+            "recompute_cache": self.recompute_cache,
+        }
+
+    def get_cache_params_in_dict(self, kwarg_dict):
+        return {
+            key: val for key, val in kwarg_dict.iteritems() if key in {
+                "cache_name", "cache_path", "save_cache", "recompute_cache"
+            }
+        }
 
     def maybe_execute_funcs(self,
         funcs_args_kwargs=[],
@@ -309,19 +354,32 @@ class CachedGreensTree(GreensTree, CachedTree):
     """
     def __init__(self,
             *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
+            recompute_cache=None,
+            save_cache=None,
+            cache_name=None,
+            cache_path=None,
             **kwargs
         ):
+        # we want a behaviour where the cache parameters are initialized to certain defauls
+        # if they are not provided, but where the initialization operation based on copying
+        # the tree leaves the cache parameters intact if the input tree is a subclass
+        # of CachedTree. However, we also want the optionally provided arguments to be
+        # overwritten to their provided values. The constructor below achieve this
+        self.set_cache_params(
+            **self.get_cache_defaults(
+                recompute_cache=recompute_cache,
+                save_cache=save_cache,
+                cache_name=cache_name,
+                cache_path=cache_path,
+            )
+        )
+        super().__init__(*args, **kwargs)
         self.set_cache_params(
             recompute_cache=recompute_cache,
             save_cache=save_cache,
             cache_name=cache_name,
             cache_path=cache_path,
         )
-        super().__init__(*args, **kwargs)
 
     def set_impedances_in_tree(self, freqs, sv_h=None, pprint=False, **kwargs):
         """
@@ -418,19 +476,32 @@ class CachedGreensTreeTime(GreensTreeTime, CachedTree):
     """
     def __init__(self,
             *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
+            recompute_cache=None,
+            save_cache=None,
+            cache_name=None,
+            cache_path=None,
             **kwargs
         ):
+        # we want a behaviour where the cache parameters are initialized to certain defauls
+        # if they are not provided, but where the initialization operation based on copying
+        # the tree leaves the cache parameters intact if the input tree is a subclass
+        # of CachedTree. However, we also want the optionally provided arguments to be
+        # overwritten to their provided values. The constructor below achieve this
+        self.set_cache_params(
+            **self.get_cache_defaults(
+                recompute_cache=recompute_cache,
+                save_cache=save_cache,
+                cache_name=cache_name,
+                cache_path=cache_path,
+            )
+        )
+        super().__init__(*args, **kwargs)
         self.set_cache_params(
             recompute_cache=recompute_cache,
             save_cache=save_cache,
             cache_name=cache_name,
             cache_path=cache_path,
         )
-        super().__init__(*args, **kwargs)
 
     def set_impedances_in_tree(self, t_arr, pprint=False):
         """
@@ -466,19 +537,32 @@ class CachedSOVTree(SOVTree, CachedTree):
     """
     def __init__(self,
             *args,
-            recompute_cache=False,
-            save_cache=True,
-            cache_name='',
-            cache_path='',
+            recompute_cache=None,
+            save_cache=None,
+            cache_name=None,
+            cache_path=None,
             **kwargs
         ):
+        # we want a behaviour where the cache parameters are initialized to certain defauls
+        # if they are not provided, but where the initialization operation based on copying
+        # the tree leaves the cache parameters intact if the input tree is a subclass
+        # of CachedTree. However, we also want the optionally provided arguments to be
+        # overwritten to their provided values. The constructor below achieve this
+        self.set_cache_params(
+            **self.get_cache_defaults(
+                recompute_cache=recompute_cache,
+                save_cache=save_cache,
+                cache_name=cache_name,
+                cache_path=cache_path,
+            )
+        )
+        super().__init__(*args, **kwargs)
         self.set_cache_params(
             recompute_cache=recompute_cache,
             save_cache=save_cache,
             cache_name=cache_name,
             cache_path=cache_path,
         )
-        super().__init__(*args, **kwargs)
 
     def set_sov_in_tree(self, maxspace_freq=100., pprint=False):
         if pprint:
