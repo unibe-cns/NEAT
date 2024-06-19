@@ -278,6 +278,8 @@ class TestCompartmentFitter():
         cfit__ = CompartmentFitter(cfit_, save_cache=False)
         assert cfit__.cache_name == "test_name_new"
 
+        # TODO: write similar test for fit_cfg and concmech_cfg
+
     def test_passive_fit(self):
         self.load_T_tree()
         fit_locs = [(1,.5), (4,1.), (5,.5), (8,.5)]

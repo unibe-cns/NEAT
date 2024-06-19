@@ -142,19 +142,35 @@ class CompartmentFitter(EquilibriumTree):
         else:
             call_post_init_in_contructor = True
 
-        # original tree
+        self.fit_cfg = None
+        self.concmech_cfg = None
+
         super().__init__(*args, **kwargs)
+
+        if self.fit_cfg is None:
+            self.fit_cfg = FitParams()
+        elif fit_cfg is not None:
+            self.fit_cfg = fit_cfg
+        if self.concmech_cfg is None:
+            self.concmech_cfg = MechParams()
+        elif concmech_cfg is not None:
+            self.concmech_cfg = concmech_cfg
+
         if call_post_init_in_contructor:
             self.post_init()
 
-        self.fit_cfg = fit_cfg
-        if fit_cfg is None:
-            self.fit_cfg = FitParams()
-        if concmech_cfg is None:
-            self.concmech_cfg = MechParams()
 
         # boolean flag that is reset the first time `self.fit_passive` is called
         self.use_all_channels_for_passive = True
+
+    def set_cfg(self, fit_cfg=None, concmech_cfg=None):
+        self.fit_cfg = fit_cfg
+        if fit_cfg is None:
+            self.fit_cfg = FitParams()
+
+        self.concmech_cfg = concmech_cfg
+        if concmech_cfg is None:
+            self.concmech_cfg = MechParams()
 
     def post_init(self):
         with self.as_original_tree:
