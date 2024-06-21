@@ -5,8 +5,7 @@ import os
 import pytest
 import copy
 
-from neat import PhysTree, PhysNode
-from neat import CompartmentFitter
+from neat import PhysTree, MorphTree, CompartmentFitter
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
@@ -61,7 +60,6 @@ class TestPhysTree():
         "{'channel_storage': ['test_channel2']}"
 
         assert repr(self.tree) == repr_str
-
 
     def test_leak_distr(self):
         self.load_tree(reinitialize=1)
@@ -291,6 +289,30 @@ class TestPhysTree():
         with self.tree.as_computational_tree:
             assert [n.index for n in self.tree] == [1,5,6,7,8,9,10,12]
 
+    def test_create_new_tree(self):
+        self.load_tree(reinitialize=1, segments=True)
+        # gmax as potential as float
+        e_rev = 100.
+        g_max = 100.
+        channel = channelcollection.test_channel2()
+        self.tree.add_channel_current(channel, 
+            {node.index: float(node.index) for node in self.tree}, 
+            e_rev
+        )
+
+        locs = [(n.index, .5) for n in self.tree]
+        with pytest.raises(ValueError):
+            self.tree.create_new_tree(locs, new_tree=MorphTree())
+        
+        new_tree = self.tree.create_new_tree(locs)
+        print(self.tree)
+        print(new_tree)
+        for new_node, orig_node in zip(new_tree, self.tree):
+            for channel_name in orig_node.currents:
+                g_new = new_node.currents[channel_name][0]
+                g_orig = orig_node.currents[channel_name][0]
+                assert g_new == pytest.approx(g_orig)
+
     def test_finite_diff_tree(self, rtol_param=5e-2, rtol_dx=1e-10, pprint=False):
         self.load_tree(reinitialize=1, segments=1)
         # set capacitance, axial resistance
@@ -413,4 +435,5 @@ if __name__ == '__main__':
     tphys.test_physiology_setting()
     tphys.test_membrane_functions()
     tphys.test_comp_tree()
+    tphys.test_create_new_tree()
     tphys.test_finite_diff_tree(pprint=False)

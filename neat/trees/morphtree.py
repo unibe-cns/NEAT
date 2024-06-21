@@ -2837,7 +2837,9 @@ class MorphTree(STree):
         rootind = np.argmax([self.order_of_node(node) for node in roots])
         return roots[rootind]
 
-    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_idxs=False):
+    def create_new_tree(self, loc_arg, 
+            fake_soma=False, store_loc_idxs=False, new_tree=None,
+        ):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -2856,11 +2858,18 @@ class MorphTree(STree):
             store_loc_idxs: bool (default `False`)
                 store the index of each location in the `content` attribute of the
                 new node (under the key 'loc ind')
+            new_tree: `None` or instance of subclass of `neat.MorphTree`
+                The new tree instance.
 
         Returns
         -------
             `neat.MorphTree`
                 The new tree.
+
+        Raises
+        ------
+            `ValueError`
+                If `new_tree` is not a subclass of `self.__class__`
         """
         if isinstance(loc_arg, str):
             name = loc_arg
@@ -2871,7 +2880,13 @@ class MorphTree(STree):
 
         nids = self.get_node_indices(name)
         # create new tree
-        new_tree = self.__class__()
+        if new_tree is None:
+            new_tree = self.__class__()
+        elif not issubclass(type(new_tree), self.__class__):
+            raise ValueError(
+                "`new_tree` should be at least a subclass of the current tree"
+            )
+
         if fake_soma:
             # find the common root of the set of locations
             snode = self.find_common_root(name)

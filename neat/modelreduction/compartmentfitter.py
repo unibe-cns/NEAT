@@ -159,7 +159,6 @@ class CompartmentFitter(EquilibriumTree):
         if call_post_init_in_contructor:
             self.post_init()
 
-
         # boolean flag that is reset the first time `self.fit_passive` is called
         self.use_all_channels_for_passive = True
 

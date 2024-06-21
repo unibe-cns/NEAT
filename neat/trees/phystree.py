@@ -685,7 +685,9 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    def create_new_tree(self, loc_arg, fake_soma=False, store_loc_idxs=False):
+    def create_new_tree(self, loc_arg, 
+            fake_soma=False, store_loc_idxs=True, new_tree=None
+        ):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -706,6 +708,8 @@ class PhysTree(MorphTree):
             store_loc_idxs: bool (default `False`)
                 store the index of each location in the `content` attribute of the
                 new node (under the key 'loc ind')
+            new_tree: `None` or instance of subclass of `neat.MorphTree`
+                The new tree instance.
 
         Returns
         -------
@@ -720,7 +724,7 @@ class PhysTree(MorphTree):
             self.store_locs(loc_arg, name)
 
         new_tree = super().create_new_tree(name,
-            fake_soma=fake_soma, store_loc_idxs=True
+            fake_soma=fake_soma, store_loc_idxs=store_loc_idxs, new_tree=new_tree
         )
         new_locs = self.get_locs(name)
 
@@ -799,7 +803,7 @@ class PhysTree(MorphTree):
                                        set_as_comploc=set_as_comploc)
                     locs.append(new_loc)
 
-        aux_tree = self.create_new_tree(locs)
+        aux_tree = self.create_new_tree(locs, new_tree=PhysTree())
         fd_tree = self.create_compartment_tree(locs)
 
         if name != 'dont store':
