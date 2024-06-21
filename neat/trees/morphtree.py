@@ -2882,9 +2882,10 @@ class MorphTree(STree):
         # create new tree
         if new_tree is None:
             new_tree = self.__class__()
-        elif not issubclass(type(new_tree), self.__class__):
+        elif not issubclass(type(new_tree), MorphTree):
             raise ValueError(
-                "`new_tree` should be at least a subclass of the current tree"
+                f"`new_tree` is an instance of {new_tree.__class__}, "\
+                f"but should be a subclass of <class 'neat.MorphTree'>."
             )
 
         if fake_soma:

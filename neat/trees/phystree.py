@@ -723,6 +723,12 @@ class PhysTree(MorphTree):
             name = 'new tree'
             self.store_locs(loc_arg, name)
 
+        if new_tree is not None and not issubclass(type(new_tree), PhysTree):
+            raise ValueError(
+                f"`new_tree` is an instance of {new_tree.__class__}, "\
+                f"but should be a subclass of <class 'neat.PhysTree'>."
+            )
+        
         new_tree = super().create_new_tree(name,
             fake_soma=fake_soma, store_loc_idxs=store_loc_idxs, new_tree=new_tree
         )
