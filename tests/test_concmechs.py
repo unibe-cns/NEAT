@@ -521,24 +521,24 @@ class TestConcMechs:
         tree = self.load_ball(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        cfit.set_ctree(locs)
+        cfit.set_ctree(locs, fit_name='conc test')
 
         # fit the passive steady state model
-        cfit.fit_passive(pprint=True, use_all_channels=False)
+        cfit.fit_passive('conc test', pprint=True, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fit_capacitance(pprint=True, pplot=False)
+        cfit.fit_capacitance('conc test', pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fit_channels(pprint=True)
+        cfit.fit_channels('conc test', pprint=True)
 
         # fit the concentration mechanism
-        cfit.fit_concentration('ca', fit_tau=fit_tau, pprint=True)
+        cfit.fit_concentration('conc test', 'ca')
 
         # fit the resting potentials
-        cfit.fit_e_eq(ions=['ca'], t_max=10000)
+        cfit.fit_e_eq('conc test')
 
-        ctree = cfit.ctree
+        ctree, _ = cfit.convert_fit_arg('conc test')
         clocs = ctree.get_equivalent_locs()
 
         # check whether parameters of original and fitted models match
@@ -602,28 +602,28 @@ class TestConcMechs:
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
 
         # test explicit fit
-        cfit.set_ctree(locs)
+        cfit.set_ctree(locs, fit_name='test conc')
 
         # fit the passive steady state model
-        cfit.fit_passive(pprint=False, use_all_channels=False)
+        cfit.fit_passive('test conc', pprint=False, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fit_capacitance(pprint=False, pplot=False)
+        cfit.fit_capacitance('test conc', pprint=False, pplot=False)
 
         # fit the ion channel
-        cfit.fit_channels(pprint=False)
+        cfit.fit_channels('test conc', pprint=False)
 
         # fit the concentration mechanism
-        cfit.fit_concentration('ca', pprint=False)
+        cfit.fit_concentration('test conc', 'ca')
 
         # fit the resting potentials
-        cfit.fit_e_eq(ions=['ca'], t_max=10000)
+        cfit.fit_e_eq('test conc')
 
-        ctree = cfit.ctree
+        ctree, _ = cfit.convert_fit_arg('test conc')
         clocs = ctree.get_equivalent_locs()
 
         # test fit with fit_model function
-        ctree_ = cfit.fit_model(locs, use_all_channels_for_passive=False)
+        ctree_, _ = cfit.fit_model(locs, use_all_channels_for_passive=False)
 
         # check whether both reductions are the same
         for ii in range(len(locs)):
@@ -677,7 +677,7 @@ class TestConcMechs:
         ctree_fd, locs_fd = tree.create_finite_difference_tree(dx_max=22.)
         # fitted ctree
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        ctree_fit = cfit.fit_model(locs_fd)
+        ctree_fit, _ = cfit.fit_model(locs_fd)
 
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
@@ -714,21 +714,21 @@ class TestConcMechs:
         locs = [(1,.5), (4.,0.5), (5,0.5)]
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        cfit.set_ctree(locs)
+        cfit.set_ctree(locs, fit_name='concentration test')
 
         # fit the passive steady state model
-        cfit.fit_passive(pprint=True, use_all_channels=False)
+        cfit.fit_passive('concentration test', pprint=True, use_all_channels=False)
 
         # fit the capacitances
-        cfit.fit_capacitance(pprint=True, pplot=False)
+        cfit.fit_capacitance('concentration test', pprint=True, pplot=False)
 
         # fit the ion channel
-        cfit.fit_channels(pprint=True)
+        cfit.fit_channels('concentration test', pprint=True)
 
         # fit the concentration mechanism
-        cfit.fit_concentration('ca', pprint=True)
+        cfit.fit_concentration('concentration test', 'ca')
 
-        ctree = cfit.ctree
+        ctree, _ = cfit.convert_fit_arg('concentration test')
 
         # check whether parameters of original and fitted models match
         node = tree[1]
@@ -805,7 +805,7 @@ class TestConcMechs:
         tree = self.load_ball(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        ctree = cfit.fit_model(locs)
+        ctree, _ = cfit.fit_model(locs)
 
         clocs = ctree.get_equivalent_locs()
         cidxs = [n.index for n in ctree]

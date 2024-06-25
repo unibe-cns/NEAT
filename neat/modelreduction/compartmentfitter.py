@@ -12,6 +12,7 @@ from matplotlib.lines import Line2D
 
 from ..trees.stree import STree
 from ..trees.phystree import PhysTree
+from ..trees.compartmenttree import CompartmentTree
 from ..trees.netree import Kernel
 from ..channels.ionchannels import SPDict
 from ..factorydefaults import FitParams, MechParams
@@ -108,6 +109,10 @@ class CompartmentFitter(EquilibriumTree):
         The fit parameters
     concmech_cfg: `neat.MechParams`
         The concentration mechanisms parameters
+    model_fits: dict of `{str: dict}`
+        Data structure with already performed model fits, where keys are the provided names. 
+        Each entry is a dict of the form 
+        `{'ctree': neat.CompartmentTree, 'locs': list of neat.MorphLoc}`
     cache_name: str (default '')
         name of files in which intermediate trees required for the fit are
         cached.
@@ -141,6 +146,8 @@ class CompartmentFitter(EquilibriumTree):
             )
         else:
             call_post_init_in_contructor = True
+
+        self.fitted_models = {}
 
         self.fit_cfg = None
         self.concmech_cfg = None
@@ -176,7 +183,67 @@ class CompartmentFitter(EquilibriumTree):
             # set the equilibrium potentials in the tree
             self.set_e_eq(pprint=True)
 
-    def set_ctree(self, loc_arg, extend_w_bifurc=True, pprint=False):
+    def convert_fit_arg(self, fit_arg):
+        """
+        Convert a fit argument, which can be a tuple, dict or tuple, to a tuple
+        consisting of a `neat.CompartmentTree` that is either fitted, or in the 
+        process of being fitted, and the corresponding list of locations.
+
+        Parameters
+        ----------
+        fit_arg : string, dict, or tuple
+            If string, the provided argument is interpreted as the fit name.
+            If dict, the provided argument is a dictionary of the form
+            `{'ctree': neat.CompartmentTree, 'locs': <list of locations>}`.
+            If tuple, the provided argument is a tuple of the form
+            `(neat.CompartmentTree, <list of locations>}`.
+
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is (in the process of being) fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
+
+        Raises
+        ------
+        TypeError
+            If `fit_arg` does not correspond to one of the above described arguments.
+        """
+        if isinstance(fit_arg, str):
+            return self.fitted_models[fit_arg]['ctree'], self.fitted_models[fit_arg]['locs']
+        elif isinstance(fit_arg, dict):
+            return fit_arg['ctree'], fit_arg['locs']
+        elif issubclass(type(fit_arg[0]), CompartmentTree):
+            return fit_arg[0], fit_arg[1]
+        else:
+            raise TypeError(
+                "Invalid type for `fit_arg`, should be string, " \
+                "dict with {'ctree': neat.CompartmentTree, 'locs': list of locations}, " \
+                "or a tuple of (neat.CompartmentTree, list of locations)"
+            )
+        
+    def _store_fit(self, ctree, locs, fit_name=''):
+        if len(fit_name) > 0:
+            self.store_locs(locs, name=fit_name)
+            self.fitted_models[fit_name] = {
+                'ctree': ctree, 
+                'locs': self.get_locs(name=fit_name),
+                'complete': False,
+            }
+         
+    def remove_fit(self, fit_name):
+        try:
+            del self.fitted_models[fit_name]
+        except KeyError:
+            warnings.warn(f"Fit with name '{fit_name}' not in stored fits.")
+        self.remove_locs(fit_name)
+
+    def set_ctree(self, loc_arg, 
+            fit_name='', 
+            extend_w_bifurc=True, 
+            pprint=False
+        ):
         """
         Store an initial `neat.CompartmentTree`, providing a tree
         structure scaffold for the fit for a given set of locations. The
@@ -187,12 +254,25 @@ class CompartmentFitter(EquilibriumTree):
         loc_arg: list of locations or string (see documentation of
                 :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The compartment locations
+        fit_name: str (optional, default: '')
+            The name of the fit. If provided, the resulting 
+            `neat.CompartmentTree` and list of fit locations will be 
+            stored. They can be accessed under the `fitted_models` attribute
+            of `neat.CompartmentFitter`. 
         extend_w_bifurc: bool (optional, default `True`)
             To extend the compartment locations with all intermediate
             bifurcations (see documentation of
             :func:`MorphTree.extend_with_bifurcation_locs`).
         pprint: bool
             whether to print additional info
+
+            
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
         locs = self.convert_loc_arg_to_locs(loc_arg)
         if extend_w_bifurc:
@@ -203,10 +283,10 @@ class CompartmentFitter(EquilibriumTree):
                 'lead to inaccurate fits. To add bifurcation, set' \
                 'kwarg `extend_w_bifurc` to ``True``'
             )
-        self.store_locs(locs, name='fit locs')
-
         # create the reduced compartment tree
-        self.ctree = self.create_compartment_tree(locs)
+        ctree = self.create_compartment_tree(locs)
+        # store the fit
+        self._store_fit(ctree, locs, fit_name=fit_name)
 
         # add currents to compartmental model
         for c_name, channel in self.channel_storage.items():
@@ -215,9 +295,9 @@ class CompartmentFitter(EquilibriumTree):
                 if c_name in node.currents:
                     e_revs.append(node.currents[c_name][1])
             # reversal potential is the same throughout the reduced model
-            self.ctree.add_channel_current(copy.deepcopy(channel), np.mean(e_revs))
+            ctree.add_channel_current(copy.deepcopy(channel), np.mean(e_revs))
 
-        for node in self.ctree:
+        for node in ctree:
             loc_idx = node.loc_idx
             concmechs = self[locs[loc_idx]['node']].concmechs
 
@@ -233,10 +313,7 @@ class CompartmentFitter(EquilibriumTree):
                 else:
                     node.add_conc_mech(ion, **self.concmech_cfg.exp_conc_mech)
 
-        # set the equilibirum potentials at fit locations
-        eq = self.calc_e_eq('fit locs', pprint=pprint)
-        self.v_eqs_fit = eq[0]
-        self.conc_eqs_fit = eq[1]
+        return ctree, locs
 
     def create_tree_gf(self,
             channel_names=[],
@@ -262,7 +339,6 @@ class CompartmentFitter(EquilibriumTree):
         Returns
         -------
         `CachedGreensTree()`
-
         """
         unmasked_node_indices = [
             node.index for node in self.convert_node_arg_to_nodes(unmasked_nodes)
@@ -304,25 +380,26 @@ class CompartmentFitter(EquilibriumTree):
 
         return tree
 
-    def eval_channel(self, channel_name, recompute=False, pprint=False):
+    def _eval_channel(self, fit_arg, channel_name, pprint=False):
         """
         Evaluate the impedance matrix for the model restricted to a single ion
         channel type.
 
         Parameters
         ----------
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
         channel_name: string
             The name of the ion channel under consideration
-        recompute: bool (optional, defaults to ``False``)
-            whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
 
         Return
         ------
         fit_mats
+            list of fit matrices
         """
-        locs = self.get_locs('fit locs')
+        ctree, locs = self.convert_fit_arg(fit_arg)
         # find the expansion point parameters for the channel
         channel = self.channel_storage[channel_name]
         sv_h = get_expansion_points(self.fit_cfg.e_hs, channel)
@@ -349,7 +426,7 @@ class CompartmentFitter(EquilibriumTree):
             })
 
             # compute the fit matrices
-            m_f, v_t = self.ctree.compute_g_single_channel(
+            m_f, v_t = ctree.compute_g_single_channel(
                 channel_name, z_mats[:,ii,:,:], e_h, np.array([self.fit_cfg.freqs]),
                 sv=sv, other_channel_names=['L'],
                 all_channel_names=[channel_name],
@@ -371,31 +448,38 @@ class CompartmentFitter(EquilibriumTree):
             if not (
                 np.isnan(m_f).any() or np.isnan(v_t).any() or np.isnan(w_f).any()
             ):
-                self.ctree._fit_res_action(
+                ctree._fit_res_action(
                     'store', m_f, v_t, w_f,
                     channel_names=[channel_name]
                 )
 
         # run the fit
-        self.ctree.run_fit()
+        ctree.run_fit()
 
         return fit_mats
 
-    def fit_channels(self, recompute=False, pprint=False):
+    def fit_channels(self, fit_arg, pprint=False):
         """
         Fit the active ion channel parameters
 
         Parameters
         ----------
-        recompute: bool (optional, defaults to ``False``)
-            whether to force recomputing the impedances
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
+
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
         for channel_name in self.get_channels_in_tree():
-            self.eval_channel(channel_name, recompute=recompute, pprint=pprint)
+            self._eval_channel(fit_arg, channel_name, pprint=pprint)
 
-        return self.ctree
+        return self.convert_fit_arg(fit_arg)
 
     def _calibrate_conc_mechs(self, ion, orig_node, comp_node):
         """
@@ -437,30 +521,27 @@ class CompartmentFitter(EquilibriumTree):
             comp_node.concmechs[ion].gamma = \
                 orig_node.concmechs[ion].gamma * g_l_orig / g_l_comp
 
-    def fit_concentration(self, ion, fit_tau=False, pprint=False):
+    def fit_concentration(self, fit_arg, ion):
         """
         Fits the concentration mechanisms parameters associate with the `ion`
         ion type.
 
         Parameters
         ----------
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
         ion: str
             The ion type that is to be fitted (e.g. 'ca').
-        fit_tau: bool (default ``False``)
-            If ``True``, fits the time-scale of the concentration mechansims. If
-            ``False``, tries to take the time-scale from the corresponding
-            location in the original tree. However, if no concentration
-            mechanism is present at the corresponding location, than the default
-            time-scale from `neat.factorydefaults` is taken.
-        pprint: bool (default ``False``)
-            Whether to print fit information.
 
         Returns
         -------
-        bool
-            `False` when no concentration mech for `ion` was found in the tree,
-            `True` otherwise
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
+        ctree, locs = self.convert_fit_arg(fit_arg)
+
         has_concmech = False
         for node in self:
             if ion in node.concmechs:
@@ -469,13 +550,15 @@ class CompartmentFitter(EquilibriumTree):
         if not has_concmech:
             return 0
 
-        orig_nodes = [self[loc["node"]] for loc in self.get_locs("fit locs")]
-        comp_nodes = self.ctree.get_nodes_from_loc_idxs(list(range(len(self.get_locs("fit locs")))))
+        orig_nodes = [self[loc["node"]] for loc in locs]
+        comp_nodes = ctree.get_nodes_from_loc_idxs(list(range(len(locs))))
 
         for orig_node, comp_node in zip(orig_nodes, comp_nodes):
             self._calibrate_conc_mechs(ion, orig_node, comp_node)
 
-    def fit_passive(self, use_all_channels=True, recompute=False, pprint=False):
+        return ctree, locs
+
+    def fit_passive(self, fit_arg, use_all_channels=True, pprint=False):
         """
         Fit the steady state passive model, consisting only of leak and coupling
         conductances, but ensure that the coupling conductances takes the passive
@@ -483,17 +566,23 @@ class CompartmentFitter(EquilibriumTree):
 
         Parameters
         ----------
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
         use_all_channels: bool (optional)
             use leak at rest of all channels combined in the passive fit (passive
             leak has to be refit after capacitance fit)
-        recompute: bool (optional, defaults to ``False``)
-            whether to force recomputing the impedances
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
 
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
+        ctree, locs = self.convert_fit_arg(fit_arg)
         self.use_all_channels_for_passive = use_all_channels
-        locs = self.get_locs('fit locs')
 
         suffix = "_pas_"
         if use_all_channels:
@@ -529,11 +618,11 @@ class CompartmentFitter(EquilibriumTree):
         # compute the steady state impedance matrix
         z_mat = fit_tree.calc_impedance_matrix(locs)
         # fit the coupling+leak conductances to steady state impedance matrix
-        self.ctree.compute_gmc(z_mat, channel_names=['L'])
+        ctree.compute_gmc(z_mat, channel_names=['L'])
 
         # print passive impedance matrices
         if pprint:
-            z_mat_fit = self.ctree.calc_impedance_matrix(channel_names=['L'])
+            z_mat_fit = ctree.calc_impedance_matrix(channel_names=['L'])
             np.set_printoptions(precision=2, edgeitems=10, linewidth=500, suppress=True)
             print('\n----- Impedance matrix comparison -----')
             print('> Zmat orig =')
@@ -546,18 +635,27 @@ class CompartmentFitter(EquilibriumTree):
             # restore defaults
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
-        return self.ctree
+        return ctree, locs
 
-    def fit_leak_only(self, pprint=True):
+    def fit_leak_only(self, fit_arg, pprint=True):
         """
         Fit leak only. Coupling conductances have to have been fit already.
 
         Parameters
         ----------
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
         pprint:  bool (optional, defaults to ``False``)
             whether to print information
+
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
-        locs = self.get_locs('fit locs')
+        ctree, locs = self.convert_fit_arg(fit_arg)
         # compute the steady state impedance matrix
         fit_tree = self.create_tree_gf(
             [],
@@ -568,12 +666,12 @@ class CompartmentFitter(EquilibriumTree):
         # compute the steady state impedance matrix
         z_mat = fit_tree.calc_impedance_matrix(locs)[None,:,:]
         # fit the conductances to steady state impedance matrix
-        self.ctree.compute_g_single_channel('L', z_mat, -75., np.array([self.fit_cfg.freqs]),
+        ctree.compute_g_single_channel('L', z_mat, -75., np.array([self.fit_cfg.freqs]),
                                                    other_channel_names=[],
                                                    action='fit')
         # print passive impedance matrices
         if pprint:
-            z_mat_fit = self.ctree.calc_impedance_matrix(channel_names=['L'])
+            z_mat_fit = ctree.calc_impedance_matrix(channel_names=['L'])
             np.set_printoptions(precision=2, edgeitems=10, linewidth=500, suppress=True)
             print('\n----- Impedance matrix comparison -----')
             print('> Zmat orig =')
@@ -586,7 +684,7 @@ class CompartmentFitter(EquilibriumTree):
             # restore defaults
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
-        return self.ctree
+        return ctree, locs
 
     def create_tree_sov(self):
         """
@@ -601,7 +699,6 @@ class CompartmentFitter(EquilibriumTree):
         Returns
         -------
         `neat.tools.fittools.compartmentfitter.CachedSOVTree`
-
         """
         if self.use_all_channels_for_passive:
             cache_name_suffix = '_SOV_allchans_'
@@ -648,13 +745,17 @@ class CompartmentFitter(EquilibriumTree):
 
         return alphas, phimat, importance, sov_tree
 
-    def fit_capacitance(self, inds=[0], check_fit=True, force_tau_m_fit=False,
-                             pprint=False, pplot=False):
+    def fit_capacitance(self, fit_arg,
+            inds=[0], check_fit=True, force_tau_m_fit=False,
+            pprint=False, pplot=False
+        ):
         """
         Fit the capacitances of the model to the largest SOV time scale
 
         Parameters
         ----------
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
         inds: list of int (optional, defaults to ``[0]``)
             indices of eigenmodes used in the fit. Default is [0], indicating
             the largest eigenmode
@@ -668,14 +769,21 @@ class CompartmentFitter(EquilibriumTree):
             whether to print information
         pplot: bool (optional, defaults to ``False``)
             whether to plot the eigenmode timescales
+
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
+        ctree, locs = self.convert_fit_arg(fit_arg)
         # compute SOV matrices for fit
-        locs = self.get_locs('fit locs')
         alphas, phimat, importance, sov_tree = \
                 self._calc_sov_mats(locs, pprint=pprint)
 
         # fit the capacitances from SOV time-scales
-        self.ctree.compute_c(-alphas[inds]*1e3, phimat[inds,:],
+        ctree.compute_c(-alphas[inds]*1e3, phimat[inds,:],
                             weights=importance[inds])
 
         def calcTau():
@@ -683,13 +791,13 @@ class CompartmentFitter(EquilibriumTree):
             # original timescales
             taus_orig = np.sort(np.abs(1./alphas))[::-1][:nm]
             # fitted timescales
-            lambdas, _, _ = self.ctree.calc_eigenvalues()
+            lambdas, _, _ = ctree.calc_eigenvalues()
             taus_fit = np.sort(np.abs(1./lambdas))[::-1]
 
             return taus_orig, taus_fit
 
         def calcTauM():
-            clocs = [locs[n.loc_idx] for n in self.ctree]
+            clocs = [locs[n.loc_idx] for n in ctree]
             # original membrane time scales
             taus_m = []
             for l in clocs:
@@ -698,7 +806,7 @@ class CompartmentFitter(EquilibriumTree):
             taus_m_orig = np.array(taus_m)
             # fitted membrance time scales
             taus_m_fit = np.array([node.ca / node.currents['L'][0]
-                                   for node in self.ctree]) *1e3
+                                   for node in ctree]) *1e3
 
             return taus_m_orig, taus_m_fit
 
@@ -708,7 +816,7 @@ class CompartmentFitter(EquilibriumTree):
 
             taus_m_orig, taus_m_fit = calcTauM()
             # if fit was not sane, revert to more basic membrane timescale match
-            for ii, node in enumerate(self.ctree):
+            for ii, node in enumerate(ctree):
                 node.ca = node.currents['L'][0] * taus_m_orig[ii] * 1e-3
 
             warnings.warn('No sane capacitance fit achieved for this configuragion,' + \
@@ -722,7 +830,7 @@ class CompartmentFitter(EquilibriumTree):
 
             np.set_printoptions(precision=2, edgeitems=10, linewidth=500, suppress=False)
             print('\n----- capacitances -----')
-            print(('Ca (uF) =\n' + str([nn.ca for nn in self.ctree])))
+            print(('Ca (uF) =\n' + str([nn.ca for nn in ctree])))
             print('\n----- Eigenmode time scales -----')
             print(('> Taus original (ms) =\n' + str(taus_orig)))
             print(('> Taus fitted (ms) =\n' + str(taus_fit)))
@@ -733,25 +841,21 @@ class CompartmentFitter(EquilibriumTree):
             # restore default print options
             np.set_printoptions(precision=8, edgeitems=3, linewidth=75, suppress=False)
 
-        else:
-            lambdas = None
-
         if pplot:
             self.plot_kernels(alphas, phimat)
 
-        return self.ctree
+        return ctree, locs
 
-    def plot_sov(self, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
-        fit_locs = self.get_locs('fit locs')
+    def plot_sov(self, fit_arg, alphas=None, phimat=None, importance=None, n_mode=8, alphas2=None):
+        ctree, fit_locs = self.convert_fit_arg(fit_arg)
 
         if alphas is None or phimat is None or importance is None:
             alphas, phimat, importance, _ = self._calc_sov_mats(
                 fit_locs, pprint=False
             )
         if alphas2 is None:
-            alphas2, _, _ = self.ctree.calc_eigenvalues()
+            alphas2, _, _ = ctree.calc_eigenvalues()
 
-        fit_locs = self.get_locs('fit locs')
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
         markers = Line2D.filled_markers
@@ -780,27 +884,31 @@ class CompartmentFitter(EquilibriumTree):
         ax3.set_ylabel(r'$\phi_k(x_i)$')
         ax3.legend(loc=0)
 
-    def _construct_kernels(self, a, c):
-        nn = len(self.get_locs('fit locs'))
+    def _construct_kernels(self, nn, a, c):
         return [[Kernel((a, c[:,ii,jj])) for ii in range(nn)] for jj in range(nn)]
 
-    def get_kernels(self, alphas=None, phimat=None,
-                          pprint=False):
+    def get_kernels(self, fit_arg,
+            alphas=None, phimat=None,
+            pprint=False,
+        ):
         """
         Returns the impedance kernels as a double nested list of "neat.Kernel".
         The element at the position i,j represents the transfer impedance kernel
         between compartments i and j.
 
-        If one of the arguments is not given, the SOV matrices are computed
+        If one of the `alphas` and or `phimat` are not provided, these SOV matrices 
+        are recomputed.
 
         Parameters
         ----------
-        alphas: np.array
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the compartmentree for which the kernels have to be computed.
+        alphas: `np.array`
             The exponential coefficients, as follows from the SOV expansion
-        phimat: np.ndarray (dim=2)
+        phimat: `np.ndarray` (dim=2)
             The matrix to compute the exponential prefactors, as follows from
             the SOV expansion
-        pprint: bool
+        pprint: `bool`
             Is verbose if ``True``
 
         Returns
@@ -808,26 +916,33 @@ class CompartmentFitter(EquilibriumTree):
         k_orig: list of list of `neat.Kernel`
             The kernels of the full model
         k_comp: list of list of `neat.Kernel`
-            The kernels of the reduced model
+            The kernels of the reduced model (i.e. of the compartment tree)
         """
-        fit_locs = self.get_locs('fit locs')
+        ctree, locs = self.convert_fit_arg(fit_arg)
         if alphas is None or phimat is None:
             alphas, phimat, _, _ = self._calc_sov_mats(
-                fit_locs, pprint=pprint
+                locs, pprint=pprint
             )
-
+        nn = len(locs)
         # compute eigenvalues
         alphas_comp, phimat_comp, phimat_inv_comp = \
-                                self.ctree.calc_eigenvalues(indexing='locs')
+                                ctree.calc_eigenvalues(indexing='locs')
 
         # get the kernels
-        k_orig = self._construct_kernels(alphas, np.einsum('ik,kj->kij', phimat.T, phimat))
-        k_comp = self._construct_kernels(-alphas_comp, np.einsum('ik,kj->kij', phimat_comp, phimat_inv_comp))
+        k_orig = self._construct_kernels(
+            nn, alphas, 
+            np.einsum('ik,kj->kij', phimat.T, phimat)
+        )
+        k_comp = self._construct_kernels(
+            nn, -alphas_comp, 
+            np.einsum('ik,kj->kij', phimat_comp, phimat_inv_comp)
+        )
 
         return k_orig, k_comp
 
-    def plot_kernels(self, alphas=None, phimat=None, t_arr=None,
-                          pprint=False):
+    def plot_kernels(self, fit_arg,
+            alphas=None, phimat=None, t_arr=None,
+        ):
         """
         Plots the impedance kernels.
         The kernel at the position i,j represents the transfer impedance kernel
@@ -835,25 +950,18 @@ class CompartmentFitter(EquilibriumTree):
 
         Parameters
         ----------
-        alphas: np.array
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the compartmentree for which the kernels have to be plotted.
+        alphas: `np.array`
             The exponential coefficients, as follows from the SOV expansion
-        phimat: np.ndarray (dim=2)
+        phimat: `np.ndarray` (dim=2)
             The matrix to compute the exponential prefactors, as follows from
             the SOV expansion
-        t_arr: np.array
+        t_arr: `np.array`
             The time-points at which the to be plotted kernels are evaluated.
             Default is ``np.linspace(0.,200.,int(1e3))``
-        pprint: bool
-            Is verbose if ``True``
-
-        Returns
-        -------
-        k_orig: list of list of `neat.Kernel`
-            The kernels of the full model
-        k_comp: list of list of `neat.Kernel`
-            The kernels of the reduced model
         """
-        fit_locs = self.get_locs('fit locs')
+        ctree, fit_locs = self.convert_fit_arg(fit_arg)
         nn = len(fit_locs)
 
         if alphas is None or phimat is None:
@@ -861,7 +969,7 @@ class CompartmentFitter(EquilibriumTree):
                 fit_locs, pprint=False
             )
 
-        k_orig, k_comp = self.get_kernels(alphas=alphas, phimat=phimat)
+        k_orig, k_comp = self.get_kernels(ctree, alphas=alphas, phimat=phimat)
 
         if t_arr is None:
             t_arr = np.linspace(0.,200.,int(1e3))
@@ -909,9 +1017,11 @@ class CompartmentFitter(EquilibriumTree):
 
         return res
 
-    def check_passive(self, loc_arg, alpha_inds=[0], n_modes=5,
-                           use_all_channels_for_passive=True, force_tau_m_fit=False,
-                           pprint=False):
+    def check_passive(self, loc_arg, 
+            alpha_inds=[0], 
+            use_all_channels_for_passive=True, force_tau_m_fit=False,
+            pprint=False,
+        ):
         """
         Checks the impedance kernels of the passive model.
 
@@ -930,21 +1040,24 @@ class CompartmentFitter(EquilibriumTree):
             Force using the local membrane time-scale for capacitance fit
         pprint: bool
             is verbose if ``True``
-
-        Returns
-        -------
-        ``None``
         """
-        self.set_ctree(loc_arg)
+        fit_arg = self.set_ctree(loc_arg)
         # fit the passive steady state model
-        self.fit_passive(use_all_channels=use_all_channels_for_passive,
-                        pprint=pprint)
+        fit_arg = self.fit_passive(
+            fit_arg, 
+            use_all_channels=use_all_channels_for_passive,
+            pprint=pprint
+        )
         # fit the capacitances
-        self.fit_capacitance(inds=alpha_inds,
-                            force_tau_m_fit=force_tau_m_fit,
-                            pprint=pprint, pplot=False)
+        fit_arg = self.fit_capacitance(
+            fit_arg, 
+            inds=alpha_inds,
+            force_tau_m_fit=force_tau_m_fit,
+            pprint=pprint, 
+            pplot=False,
+        )
 
-        fit_locs = self.get_locs('fit locs')
+        _, fit_locs = self.convert_fit_arg(fit_arg)
         colours = list(pl.rcParams['axes.prop_cycle'].by_key()['color'])
         loc_colours = np.array([colours[ii%len(colours)] for ii in range(len(fit_locs))])
 
@@ -972,31 +1085,43 @@ class CompartmentFitter(EquilibriumTree):
 
         return net_reduced
 
-    def fit_e_eq(self, **kwargs):
+    def fit_e_eq(self, fit_arg):
         """
         Fits the leak potentials of the reduced model to yield the same
         equilibrium potentials as the full model
 
         Parameters
         ----------
-        ions: List[str]
-            The ions that are included in the fit
-        kwargs:
-            arguments to the `CompartmentFitter.calc_e_eq()` function
+        fit_arg: see docstring of `CompartmentFitter.convert_fit_args()`
+            Specifying the fit that is being performed.
+        loc_arg: `list` of locations or string
+            if `list` of locations, specifies the locations at which to compute
+            the equilibrium potentials, if ``string``, specifies the
+            name under which a set of location is stored
+
+        Returns
+        -------
+        `neat.CompartmentTree`
+            The compartmenttree that is in the process of being fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
-        fit_locs = self.get_locs('fit locs')
+        ctree, locs = self.convert_fit_arg(fit_arg)
+
+        # compute the equilibirum potentials at fit locations
+        v_eqs_fit, conc_eqs_fit = self.calc_e_eq(locs)
 
         # set the equilibria
-        self.ctree.set_e_eq(self.v_eqs_fit)
+        ctree.set_e_eq(v_eqs_fit)
         for ion in self.ions:
-            self.ctree.set_conc_eq(ion, self.conc_eqs_fit[ion])
+            ctree.set_conc_eq(ion, conc_eqs_fit[ion])
 
         # fit the leak
-        self.ctree.fit_e_leak()
+        ctree.fit_e_leak()
 
-        return self.ctree
+        return ctree, locs
 
-    def fit_model(self, loc_arg,
+    def fit_model(self, loc_arg, fit_name='',
         alpha_inds=[0], use_all_channels_for_passive=True, pprint=False, 
     ):
         """
@@ -1008,6 +1133,9 @@ class CompartmentFitter(EquilibriumTree):
         loc_arg: list of locations or string (see documentation of
                 :func:`MorphTree.convert_loc_arg_to_locs` for details)
             The compartment locations
+        fit_name: string
+            The name under which the fit will be stored. By default, the fit
+            will not be stored.
         alpha_inds: list of ints
             Indices of all mode time-scales to be included in the fit
         use_all_channels_for_passive: bool (optional, default ``True``)
@@ -1018,32 +1146,45 @@ class CompartmentFitter(EquilibriumTree):
         Returns
         -------
         `neat.CompartmentTree`
-            The reduced tree containing the fitted parameters
+            The compartmenttree that is fitted.
+        list of <neat.MorphLoc>
+            The corresponding list of fit locations.
         """
-        self.set_ctree(loc_arg, pprint=pprint)
+        if fit_name == '':
+            fit_name = 'temp'
+
+        fit_arg = self.set_ctree(loc_arg, fit_name=fit_name, pprint=pprint)
 
         # fit the passive steady state model
-        self.fit_passive(
+        fit_arg = self.fit_passive(
+            fit_arg,
             pprint=pprint,
-            use_all_channels=use_all_channels_for_passive
+            use_all_channels=use_all_channels_for_passive,
         )
         # fit the capacitances
-        self.fit_capacitance(inds=alpha_inds, pprint=pprint, pplot=False)
+        fit_arg = self.fit_capacitance(fit_arg, inds=alpha_inds, pprint=pprint, pplot=False)
         # refit with only leak
         if use_all_channels_for_passive:
-            self.fit_leak_only(pprint=pprint)
+            fit_arg = self.fit_leak_only(fit_arg, pprint=pprint)
 
         # fit the ion channels
-        self.fit_channels(pprint=pprint)
+        fit_arg = self.fit_channels(fit_arg, pprint=pprint)
 
         # fit the concentration mechansims
         for ion in self.ions:
-            found = self.fit_concentration(ion, fit_tau=False, pprint=pprint)
+            fit_arg = self.fit_concentration(
+                fit_arg, ion
+            )
 
         # fit the resting potentials
-        self.fit_e_eq()
+        fit_arg = self.fit_e_eq(fit_arg)
 
-        return self.ctree
+        if fit_name == 'temp':
+            self.remove_fit(fit_name)
+        else:
+            self.fitted_models[fit_name]['complete'] = True
+
+        return fit_arg
 
     def recalc_impedance_matrix(self, loc_arg, g_syns,
                               channel_names=None):

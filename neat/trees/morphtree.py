@@ -454,7 +454,7 @@ class MorphTree(STree):
             # (when the comptree is already set, see `self.set_comp_tree()`) are initialized.
             # Therefor, the following code ensures that `self._original_root` is always set
             # to the correct value.
-            with self.as_original_tree:
+            if not self.check_computational_tree_active():
                 self._original_root = self._root
 
     def __getitem__(self, index, skip_inds=(2,3)):
@@ -667,7 +667,7 @@ class MorphTree(STree):
             self.root = self._computational_root if treetype == 'computational' else self._original_root
 
     def check_computational_tree_active(self):
-        return self.root is self._computational_root
+        return self.root is self._computational_root and self._computational_root is not None
 
     def _create_corresponding_node(self, node_index, p3d=None):
         """
@@ -2973,8 +2973,8 @@ class MorphTree(STree):
 
         Returns
         -------
-            `neat.MorphTree`
-                The new tree.
+            `neat.CompartmentTree`
+                The compartment tree.
         """
         # process input argument
         if isinstance(loc_arg, list):
