@@ -4,8 +4,8 @@ import os
 import pytest
 import pickle
 
-from neat import MorphTree, PhysTree, GreensTree, SOVTree
-from neat import CompartmentFitter
+from neat import MorphTree, PhysTree, GreensTree, SOVTree, NeuronCompartmentTree
+from neat import CompartmentFitter, CachedGreensTree
 import neat.modelreduction.compartmentfitter as compartmentfitter
 
 import channelcollection_for_tests as channelcollection
@@ -102,7 +102,7 @@ class TestCompartmentFitter():
         cm.set_ctree(fit_locs1, extend_w_bifurc=True)
 
     def _check_channels(self, tree, channel_names):
-        assert isinstance(tree, compartmentfitter.CachedGreensTree)
+        assert isinstance(tree, CachedGreensTree)
         assert set(tree.channel_storage.keys()) == set(channel_names)
         for node in tree:
             assert set(node.currents.keys()) == set(channel_names + ['L'])
@@ -669,6 +669,23 @@ class TestCompartmentFitter():
         with pytest.warns(UserWarning, match=f"Fit with name 'not defined' not in stored fits."):
             cm.remove_fit('not defined')
 
+    def test_e_eq_fit(self):
+        self.load_ball()
+        cm = CompartmentFitter(self.tree, save_cache=False)
+        v_eq_target = cm[1].v_ep
+        # create simplified model
+        ctree, locs = cm.fit_model([(1,.5)])
+        # simulate for effective equilibrium potential
+        nct = NeuronCompartmentTree(ctree)
+        nct.init_model(t_calibrate=1000.)
+        nct.store_locs([(0, .5)], name='rec locs')
+        res = nct.run(100.)
+        v_eq_sim = res['v_m'][0,-1]
+
+        assert ctree[0].currents['L'][1] == pytest.approx(self.tree[1].currents['L'][1])
+        assert v_eq_sim == pytest.approx(v_eq_target)
+
+
 def test_expansion_points():
     kv3_1 = channelcollection.Kv3_1()
     na_ta = channelcollection.Na_Ta()
@@ -694,16 +711,18 @@ def test_expansion_points():
 
 if __name__ == '__main__':
     tcf = TestCompartmentFitter()
-    tcf.test_construction()
-    tcf.test_tree_structure()
-    tcf.test_create_tree_gf()
-    tcf.test_channel_fit_mats()
-    tcf.test_passive_fit()
-    tcf.test_recalc_impedance_matrix()
-    tcf.test_syn_rescale()
-    tcf.test_fit_model()
-    tcf.test_pickling()
-    tcf.test_parallel(w_benchmark=True)
-    tcf.test_cacheing()
-    tcf.test_fit_storage()
-    test_expansion_points()
+    # tcf.test_construction()
+    # tcf.test_tree_structure()
+    # tcf.test_create_tree_gf()
+    # tcf.test_channel_fit_mats()
+    # tcf.test_passive_fit()
+    # tcf.test_recalc_impedance_matrix()
+    # tcf.test_syn_rescale()
+    # tcf.test_fit_model()
+    # tcf.test_pickling()
+    # tcf.test_parallel(w_benchmark=True)
+    # tcf.test_cacheing()
+    # tcf.test_fit_storage()
+    tcf.test_e_eq_fit()
+
+    # test_expansion_points()
