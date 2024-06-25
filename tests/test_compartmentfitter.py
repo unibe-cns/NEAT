@@ -65,7 +65,7 @@ class TestCompartmentFitter():
         # set computational tree
         self.tree.set_comp_tree()
 
-    def load_T_segment_tree(self):
+    def load_T_segment_tree(self, fit_e_l=True):
         '''
         Load T tree model
         '''
@@ -83,7 +83,12 @@ class TestCompartmentFitter():
         na_chan = channelcollection.Na_Ta()
         self.tree.add_channel_current(na_chan, 1.71*1e6, 50., node_arg=[self.tree[1]])
         # fit leak current
-        self.tree.fit_leak_current(-75., 10.)
+        if fit_e_l:
+            self.tree.fit_leak_current(-75., 10.)
+        else:
+            self.tree.set_leak_current(0.0001*1e6, lambda x: -60. - 0.05*x)
+        for node in self.tree:
+            print(node.currents)
         # set equilibirum potententials
         self.tree.set_v_ep(-75.)
         # set computational tree
@@ -674,7 +679,7 @@ class TestCompartmentFitter():
         cm = CompartmentFitter(self.tree, save_cache=False)
         v_eq_target = cm[1].v_ep
         # create simplified model
-        ctree, locs = cm.fit_model([(1,.5)])
+        ctree, _ = cm.fit_model([(1,.5)])
         # simulate for effective equilibrium potential
         nct = NeuronCompartmentTree(ctree)
         nct.init_model(t_calibrate=1000.)
@@ -683,6 +688,19 @@ class TestCompartmentFitter():
         v_eq_sim = res['v_m'][0,-1]
 
         assert ctree[0].currents['L'][1] == pytest.approx(self.tree[1].currents['L'][1])
+        assert v_eq_sim == pytest.approx(v_eq_target)
+
+        self.load_T_segment_tree(fit_e_l=False)
+        cm = CompartmentFitter(self.tree, save_cache=False)
+        v_eq_target = cm[1].v_ep
+        ctree, _ = cm.fit_model([(1, .5), (10, .5)])
+
+        nct = NeuronCompartmentTree(ctree)
+        nct.init_model(t_calibrate=1000.)
+        nct.store_locs([(0, .5)], name='rec locs')
+        res = nct.run(100.)
+        v_eq_sim = res['v_m'][0,-1]
+
         assert v_eq_sim == pytest.approx(v_eq_target)
 
 
