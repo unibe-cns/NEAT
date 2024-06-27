@@ -109,6 +109,17 @@ class CachedTree(PhysTree):
             }
         }
 
+    def get_attributes_excluded_from_cache_override(self):
+        """
+        Returns a list of attributes that should NOT be overwritten by the cashed tree
+
+        Returns
+        -------
+        list of str
+            Attribute names that should not be overwritten
+        """
+        return ["cache_name", "cache_path", "save_cache", "recompute_cache"]
+    
     def maybe_execute_funcs(self,
         funcs_args_kwargs=[],
         pprint=False,
@@ -129,16 +140,10 @@ class CachedTree(PhysTree):
             with open(file_name, 'rb') as file:
                 tree_ = dill.load(file)
 
-            cache_params_dict = {
-                "cache_name": self.cache_name,
-                "cache_path": self.cache_path,
-                "save_cache": self.save_cache,
-                "recompute_cache": self.recompute_cache,
-            }
+            for key in self.get_attributes_excluded_from_cache_override():
+                tree_.__dict__[key] = self.__dict__[key]
 
             self.__dict__.update(tree_.__dict__)
-            # set the original cache parameters
-            self.__dict__.update(cache_params_dict)
             del tree_
 
         except (Exception, IOError, EOFError, KeyError) as err:

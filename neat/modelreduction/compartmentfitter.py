@@ -181,7 +181,18 @@ class CompartmentFitter(EquilibriumTree):
     def post_init(self):
         with self.as_original_tree:
             # set the equilibrium potentials in the tree
-            self.set_e_eq(pprint=True)
+            self.set_e_eq(pprint=True)    
+    
+    def get_attributes_excluded_from_cache_override(self):
+        """
+        Returns a list of attributes that should NOT be overwritten by the cashed tree
+
+        Returns
+        -------
+        list of str
+            Attribute names that should not be overwritten
+        """
+        return super().get_attributes_excluded_from_cache_override() + ["fit_cfg", "concmech_cfg"]
 
     def convert_fit_arg(self, fit_arg):
         """
@@ -989,7 +1000,7 @@ class CompartmentFitter(EquilibriumTree):
                 # limits
                 ax.set_ylim((-0.5, 20.))
                 # kernel label
-                pstring = '%d $\leftrightarrow$ %d'%(ii,jj)
+                pstring = r'%d $\leftrightarrow$ %d'%(ii,jj)
                 ax.set_title(pstring, pad=-10)
 
     def _store_sov_mats(self):
