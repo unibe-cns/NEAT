@@ -362,7 +362,7 @@ class TestPhysTree():
         # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.)
         cfit = CompartmentFitter(self.tree, save_cache=False)
-        ctree_fit = cfit.fit_model(locs_fd)
+        ctree_fit, _ = cfit.fit_model(locs_fd)
 
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
@@ -408,7 +408,7 @@ class TestPhysTree():
         # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.)
         cfit = CompartmentFitter(self.tree, save_cache=False)
-        ctree_fit = cfit.fit_model(locs_fd)
+        ctree_fit, _ = cfit.fit_model(locs_fd)
         # check whether both trees have the same parameters
         for node_fd, node_fit in zip(ctree_fd, ctree_fit):
 

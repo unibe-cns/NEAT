@@ -73,7 +73,7 @@ class CachedTree(PhysTree):
         cache_params["recompute_cache"] = False if recompute_cache is None else recompute_cache
         cache_params["save_cache"] = True if save_cache is None else save_cache
         cache_params["cache_name"] = '' if cache_name is None else cache_name 
-        cache_params["cache_path"] = '.' if cache_path is None else cache_path
+        cache_params["cache_path"] = 'neatcache/' if cache_path is None else cache_path
         return cache_params
 
     def set_cache_params(self,

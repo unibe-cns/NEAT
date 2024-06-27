@@ -11,6 +11,7 @@ Author: W. Wybo
 import numpy as np
 
 import copy
+import warnings
 from typing import Literal
 
 from . import morphtree
@@ -246,7 +247,9 @@ class GreensNode(PhysNode):
                                               use_conc=use_conc)
 
         self.z_a = self.r_a / (np.pi * self.R_**2)
-        self.gamma = np.sqrt(self.z_a / self.z_m)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.gamma = np.sqrt(self.z_a / self.z_m)
         self.z_c = self.z_a / self.gamma
 
     def _set_impedance_distal(self):
