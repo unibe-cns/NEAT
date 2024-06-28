@@ -337,7 +337,7 @@ Simulate NEURON models
    NeuronSimTree.add_i_clamp
    NeuronSimTree.add_sin_clamp
    NeuronSimTree.add_ou_clamp
-   NeuronSimTree.addOUconductance
+   NeuronSimTree.add_ou_conductance
    NeuronSimTree.add_ou_reversal
    NeuronSimTree.add_v_clamp
    NeuronSimTree.set_spiketrain

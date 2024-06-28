@@ -563,7 +563,7 @@ class NeuronSimTree(PhysTree):
         # store the iclamp
         self.iclamps.append(iclamp)
 
-    def addOUconductance(self, loc, tau, mean, stdev, e_r, delay, dur, seed=None):
+    def add_ou_conductance(self, loc, tau, mean, stdev, e_r, delay, dur, seed=None):
         """
         Injects a Ornstein-Uhlenbeck conductance at a given location
 
@@ -1067,6 +1067,7 @@ class NeuronCompartmentTree(NeuronSimTree):
                 "from a `neat.CompartmentTree` or derived class"
             )
         super().__init__(ctree, types=[1,3,4])
+        self.equivalent_locs = ctree.get_equivalent_locs()
         self._create_reduced_neuron_model(ctree, 
             fake_c_m=fake_c_m, fake_r_a=fake_r_a, method=method,
         )
@@ -1159,5 +1160,236 @@ class NeuronCompartmentTree(NeuronSimTree):
             if shunt is not None:
                 self.shunts.append(shunt)
 
+    def _convert_loc(self, loc_idx):
+        if isinstance(loc_idx, int):
+            return self.equivalent_locs[loc_idx]
+        else:
+            return loc_idx
 
+    def add_shunt(self, loc_idx, *args, **kwargs):
+        """
+        Adds a static conductance at a given location
 
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the shunt.
+        g: float
+            The conductance of the shunt (uS)
+        e_r: float
+            The reversal potential of the shunt (mV)
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_shunt(loc, *args, **kwargs)
+
+    def add_double_exp_current(self, loc_idx, *args, **kwargs):
+        """
+        Adds a double exponential input current at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau1: float
+            Rise time of the current waveform (ms)
+        tau2: float
+            Decay time of the current waveform (ms)
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_double_exp_current(loc, *args, **kwargs)
+
+    def add_exp_synapse(self, loc_idx, *args, **kwargs):
+        """
+        Adds a single-exponential conductance-based synapse
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau: float
+            Decay time of the conductance window (ms)
+        e_r: float
+           Reversal potential of the synapse (mV)
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_exp_synapse(loc, *args, **kwargs)
+
+    def add_double_exp_synapse(self, loc_idx, *args, **kwargs):
+        """
+        Adds a double-exponential conductance-based synapse
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau1: float
+            Rise time of the conductance window (ms)
+        tau2: float
+            Decay time of the conductance window (ms)
+        e_r: float
+            Reversal potential of the synapse (mV)
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_double_exp_synapse(loc, *args, **kwargs)
+
+    def add_nmda_synapse(self, loc_idx, *args, **kwargs):
+        """
+        Adds a single-exponential conductance-based synapse with an AMPA and an
+        NMDA component
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau: float
+            Decay time of the AMPA conductance window (ms)
+        tau_nmda: float
+            Decay time of the NMDA conductance window (ms)
+        e_r: float (optional, default ``0.`` mV)
+           Reversal potential of the synapse (mV)
+        nmda_ratio: float (optional, default 1.7)
+            The ratio of the NMDA over AMPA component. Means that the maximum of
+            the NMDA conductance window is ``nmda_ratio`` times the maximum of
+            the AMPA conductance window.
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_nmda_synapse(loc, *args, **kwargs)
+
+    def add_double_exp_nmda_synapse(self, loc_idx, *args, **kwargs):
+        """
+        Adds a double-exponential conductance-based synapse with an AMPA and an
+        NMDA component
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau1: float
+            Rise time of the AMPA conductance window (ms)
+        tau2: float
+            Decay time of the AMPA conductance window (ms)
+        tau1_nmda: float
+            Rise time of the NMDA conductance window (ms)
+        tau2_nmda: float
+            Decay time of the NMDA conductance window (ms)
+        e_r: float (optional, default ``0.`` mV)
+           Reversal potential of the synapse (mV)
+        nmda_ratio: float (optional, default 1.7)
+            The ratio of the NMDA over AMPA component. Means that the maximum of
+            the NMDA conductance window is ``nmda_ratio`` times the maximum of
+            the AMPA conductance window.
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_double_exp_nmda_synapse(loc, *args, **kwargs)
+
+    def add_i_clamp(self, loc_idx, *args, **kwargs):
+        """
+        Injects a DC current step at a given lcoation
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        amp: float
+            The amplitude of the current (nA)
+        delay: float
+            The delay of the current step onset (ms)
+        dur: float
+            The duration of the current step (ms)
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_i_clamp(loc, *args, **kwargs)
+
+    def add_sin_clamp(self, loc_idx, *args, **kwargs):
+        """
+        Injects a sinusoidal current at a given lcoation
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        amp: float
+            The amplitude of the current (nA)
+        delay: float
+            The delay of the current onset (ms)
+        dur: float
+            The duration of the current (ms)
+        bias: float
+            Constant baseline added to the sinusoidal waveform (nA)
+        freq: float
+            Frequency of the sinusoid (Hz)
+        phase: float
+            Phase of the sinusoid (rad)
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_sin_clamp(loc, *args, **kwargs)
+
+    def add_ou_clamp(self, loc_idx, *args, **kwargs):
+        """
+        Injects a Ornstein-Uhlenbeck current at a given lcoation
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the current.
+        tau: float
+            Time-scale of the OU process (ms)
+        mean: float
+            Mean of the OU process (nA)
+        stdev: float
+            Standard deviation of the OU process (nA)
+        delay: float
+            The delay of current onset from the start of the simulation (ms)
+        dur: float
+            The duration of the current input (ms)
+        seed: int, optional
+            Seed for the random number generator
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_ou_clamp(loc, *args, **kwargs)
+
+    def add_ou_conductance(self, loc_idx, *args, **kwargs):
+        """
+        Injects a Ornstein-Uhlenbeck conductance at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the conductance.
+        tau: float
+            Time-scale of the OU process (ms)
+        mean: float
+            Mean of the OU process (uS)
+        stdev: float
+            Standard deviation of the OU process (uS)
+        e_r: float
+            Reversal of the current (mV)
+        delay: float
+            The delay of current onset from the start of the simulation (ms)
+        dur: float
+            The duration of the current input (ms)
+        seed: int, optional
+            Seed for the random number generator
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_ou_conductance(loc, *args, **kwargs)
+
+    def add_ou_reversal(self, loc_idx, *args, **kwargs):
+        loc = loc_idx if isinstance(loc_idx, tuple) else self.equivalent_locs[loc_idx]
+        return super().add_ou_reversal(loc, *args, **kwargs)
+
+    def add_v_clamp(self, loc_idx, *args, **kwargs):
+        """
+        Adds a voltage clamp at a given location
+
+        Parameters
+        ----------
+        loc: dict, tuple or :class:`neat.MorphLoc`
+            The location of the conductance.
+        e_c: float
+            The clamping voltage (mV)
+        dur: float, ms
+            The duration of the voltage clamp
+        """
+        loc = self._convert_loc(loc_idx)
+        return super().add_v_clamp(loc, *args, **kwargs)
