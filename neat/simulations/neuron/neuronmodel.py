@@ -314,6 +314,9 @@ class NeuronSimTree(PhysTree):
             if shunt is not None:
                 self.shunts.append(shunt)
 
+    def set_rec_locs(self, locs):
+        self.store_locs(rec_locs, 'rec locs')
+
     def add_shunt(self, loc, g, e_r):
         """
         Adds a static conductance at a given location
@@ -1165,6 +1168,10 @@ class NeuronCompartmentTree(NeuronSimTree):
             return self.equivalent_locs[loc_idx]
         else:
             return loc_idx
+
+    def set_rec_locs(self, loc_idxs):
+        rec_locs = [self._convert_loc(loc_idx )for loc_idx in loc_idxs]
+        self.store_locs(rec_locs, 'rec locs')
 
     def add_shunt(self, loc_idx, *args, **kwargs):
         """
