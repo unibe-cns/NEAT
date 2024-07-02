@@ -249,15 +249,15 @@ class TestSTree():
     def test_bifurcation_search_to_root(self):
         self.create_tree()
         # normal case
-        bnode, cnode = self.tree.get_two_variable_expansion_points_to_root(self.nodelist[2])
+        bnode, cnode = self.tree.find_bifurcation_node_to_root(self.nodelist[2])
         assert bnode == self.nodelist[1]
         assert cnode == self.nodelist[2]
         # node is bifurcation node case
-        bnode, cnode = self.tree.get_two_variable_expansion_points_to_root(self.nodelist[1])
+        bnode, cnode = self.tree.find_bifurcation_node_to_root(self.nodelist[1])
         assert bnode == self.nodelist[0]
         assert cnode == self.nodelist[1]
         # node is root node case
-        bnode, cnode = self.tree.get_two_variable_expansion_points_to_root(self.nodelist[0])
+        bnode, cnode = self.tree.find_bifurcation_node_to_root(self.nodelist[0])
         assert bnode == self.nodelist[0]
         assert cnode == None
 
@@ -275,19 +275,19 @@ class TestSTree():
     def test_bifurcation_nodes(self):
         self.create_tree()
         nodes = [self.tree[3]]
-        bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
+        bnodes = self.tree.find_in_between_bifurcation_nodes(nodes)
         assert bnodes == [self.tree[0]]
         nodes = [self.tree[2], self.tree[3]]
-        bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
+        bnodes = self.tree.find_in_between_bifurcation_nodes(nodes)
         assert bnodes == [self.tree[0], self.tree[1]]
         # more complex tree
         self.create_tree2()
         nodes = [self.tree[4], self.tree[5]]
-        bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
+        bnodes = self.tree.find_in_between_bifurcation_nodes(nodes)
         assert bnodes == [self.tree[0], self.tree[2]]
         self.create_tree2()
         nodes = [self.tree[4], self.tree[5], self.tree[6]]
-        bnodes = self.tree.get_get_two_variable_expansion_pointss(nodes)
+        bnodes = self.tree.find_in_between_bifurcation_nodes(nodes)
         assert bnodes == [self.tree[0], self.tree[1], self.tree[2]]
 
 

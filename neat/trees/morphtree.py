@@ -1999,7 +1999,7 @@ class MorphTree(STree):
                 if loc['node'] != 1:
                     if loc['node'] != locs[i-1]['node']:
                         node = self[loc['node']]
-                        bnode, _ = self.get_two_variable_expansion_points_to_root(node)
+                        bnode, _ = self.find_bifurcation_node_to_root(node)
                     self.d2b[name].append(self.path_length( \
                                           {'node': bnode.index, 'x': 1.}, loc))
                 else:
@@ -2206,7 +2206,7 @@ class MorphTree(STree):
         locs = self.convert_loc_arg_to_locs(loc_arg)
         # get the bifurcation locs
         nodes = [self[loc['node']] for loc in locs]
-        bnodes = self.get_get_two_variable_expansion_pointss(nodes)
+        bnodes = self.find_in_between_bifurcation_nodes(nodes)
         blocs = [MorphLoc((bnode.index, 1.), self) for bnode in bnodes]
         # retain unique locs
         all_locs = self.unique_locs(locs + blocs)

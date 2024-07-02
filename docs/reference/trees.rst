@@ -47,9 +47,9 @@ Basic tree
    STree.path_between_nodes_depth_first
    STree.get_nodes_in_subtree
    STree.sister_leafs
-   STree.get_two_variable_expansion_points_to_root
-   STree.get_two_variable_expansion_points_from_root
-   STree.get_get_two_variable_expansion_pointss
+   STree.find_bifurcation_node_to_root
+   STree.find_bifurcation_node_from_root
+   STree.find_in_between_bifurcation_nodes
    STree.get_nearest_neighbours
 
 
