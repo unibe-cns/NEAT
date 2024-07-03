@@ -1,4 +1,4 @@
-neuron default_syns:
+model default_syns:
     parameters:
         # synaptic parameters
         e_AMPA real = 0 mV            # Excitatory reversal Potential

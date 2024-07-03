@@ -246,7 +246,7 @@ def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=
         input_path=nestml_file_path,
         target_path=path_for_nestml_compilation,
         module_name=model_name + "_module",
-        logging_level="DEBUG"
+        logging_level="DEBUG",
     )
 
 def _install_models(

@@ -129,7 +129,7 @@ def write_nestml_blocks(blocks, path_name, neuron_name, v_comp=0.,
     fname = os.path.join(path_name, neuron_name + ".nestml")
 
     file = open(fname, 'w')
-    file.write('\nneuron %s:\n'%neuron_name)
+    file.write('\nmodel %s:\n'%neuron_name)
     for blockstr in blocks.values():
         file.write(blockstr)
     file.close()
