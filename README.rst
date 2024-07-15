@@ -70,10 +70,6 @@ This installs the default channels for NEURON. To install them for NEST, use:
 
     neatmodels install default -s nest
 
-.. code-block:: shell
-
-    pytest
-
 References
 ----------
 
