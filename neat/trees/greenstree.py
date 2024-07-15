@@ -257,18 +257,18 @@ class GreensNode(PhysNode):
         Set the boundary condition at the distal end of the segment
         """
         if len(self.child_nodes) == 0:
-            # note that instantiating z_aux as a float, multiplying with np.infty,
+            # note that instantiating z_aux as a float, multiplying with np.inf,
             # and then converting it as a complex results in entries
             # inf + 0.j -- which is desired
             # where instatiating z_aux as complex, and then multiplying with
-            # np.infty, would result in
+            # np.inf, would result in
             # inf + nanj -- which is not desired
             z_aux = np.ones(self.z_m.shape, dtype=float)
 
             if self.g_shunt > 1e-10:
                 z_aux /= self.g_shunt
             else:
-                z_aux *= np.infty
+                z_aux *= np.inf
 
             self.z_distal = z_aux.astype(self.z_m.dtype)
         else:

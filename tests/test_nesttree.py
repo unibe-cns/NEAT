@@ -19,7 +19,6 @@ from neat import NestCompartmentNode, NestCompartmentTree, load_nest_model
 import channelcollection_for_tests as channelcollection
 import channel_installer
 channel_installer.load_or_install_neuron_test_channels()
-channel_installer.load_or_install_nest_test_channels()
 
 
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
@@ -39,10 +38,7 @@ class TestNest:
         for ii, cn in enumerate(self.ctree):
             cn.loc_idx = ii
 
-    def testModelConstruction(self):
-        with pytest.raises(nestexceptions.NESTErrors.DynamicModuleManagementError):
-            load_nest_model("default")
-
+    def test_model_construction(self):
         self.load_two_compartment_model()
 
         nct = NestCompartmentTree(self.ctree)
@@ -76,11 +72,12 @@ class TestNest:
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
         )
-        self.ctree = cfit.fit_model([(1,0.5)])
+        self.ctree, _ = cfit.fit_model([(1,0.5)])
 
     def test_initialization(self):
         dt = .1
         nest.ResetKernel()
+        channel_installer.load_or_install_nest_test_channels()
         nest.SetKernelStatus(dict(resolution=dt))
 
         v_eq = -65.
@@ -92,8 +89,7 @@ class TestNest:
         cfit = CompartmentFitter(self.tree,
             save_cache=False, recompute_cache=True
         )
-        self.ctree = cfit.fit_model([(1,0.5)])
-
+        self.ctree, _ = cfit.fit_model([(1,0.5)])
         csimtree_nest = NestCompartmentTree(self.ctree)
         nestmodel = csimtree_nest.init_model("multichannel_test", 1)
         mm = nest.Create('multimeter', 1,
@@ -119,10 +115,10 @@ class TestNest:
     def test_single_comp_nest_neuron_comparison(self, pplot=False):
         dt = .001
         nest.ResetKernel()
+        channel_installer.load_or_install_nest_test_channels()
         nest.SetKernelStatus(dict(resolution=dt))
 
         self.load_ball()
-
         csimtree_neuron = NeuronCompartmentTree(self.ctree)
         csimtree_neuron.init_model(dt=dt, t_calibrate=200.)
         csimtree_neuron.store_locs([(0, .5)], name='rec locs')
@@ -202,11 +198,12 @@ class TestNest:
         # simplify
         locs = [(1,.5), (4.,0.5), (5,0.5)]
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        self.ctree = cfit.fit_model(locs)
+        self.ctree, _ = cfit.fit_model(locs)
 
     def test_axon_nest_neuron_comparison(self, pplot=False):
         dt = .001
         nest.ResetKernel()
+        channel_installer.load_or_install_nest_test_channels()
         nest.SetKernelStatus(dict(resolution=dt))
 
         self.load_axon_tree()
@@ -299,7 +296,7 @@ class TestNest:
         # simplify
         locs = [(n.index, .5) for n in tree]
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
-        self.ctree = cfit.fit_model(locs)
+        self.ctree, _ = cfit.fit_model(locs)
 
     def test_dend_nest_neuron_comparison(self, pplot=False):
         dt = .01
@@ -308,6 +305,7 @@ class TestNest:
         t1 = 200.
         idx0 = int(tcal/dt) -2
         nest.ResetKernel()
+        channel_installer.load_or_install_nest_test_channels()
         nest.SetKernelStatus(dict(resolution=dt))
 
         self.load_T_tree()
@@ -438,7 +436,7 @@ class TestNest:
 
 if __name__ == "__main__":
     tn = TestNest()
-    tn.testModelConstruction()
+    tn.test_model_construction()
     tn.test_initialization()
     tn.test_single_comp_nest_neuron_comparison(pplot=True)
     tn.test_axon_nest_neuron_comparison(pplot=True)

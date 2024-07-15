@@ -14,11 +14,8 @@ from neat.channels.channelcollection import channelcollection
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
 
 # load the default neuron model
-try:
-    load_neuron_model("default")
-except RuntimeError as e:
-    # the neuron model is already loaded in hoc
-    pass
+import channel_installer
+channel_installer.load_or_install_neuron_test_channels()
 
 
 class TestCNET():

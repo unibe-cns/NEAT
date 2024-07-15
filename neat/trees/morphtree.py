@@ -2996,14 +2996,14 @@ class MorphTree(STree):
         possible_loc_idxs = self.get_loc_idxs_on_node(name, snode)
         if len(possible_loc_idxs) > 0:
             # create the new root node
-            new_pnode = CompartmentNode(0, loc_idx=possible_loc_idxs[0])
+            new_pnode = CompartmentNode(0, loc_idx=int(possible_loc_idxs[0]))
             new_tree.set_root(new_pnode)
             new_nodes = [new_pnode]
             # create other nodes
             for loc_idx in possible_loc_idxs[1:]:
                 index = len(new_nodes)
                 # make new node
-                new_node = CompartmentNode(index, loc_idx=loc_idx)
+                new_node = CompartmentNode(index, loc_idx=int(loc_idx))
                 # add new node
                 new_tree.add_node_with_parent(new_node, new_pnode)
                 new_nodes.append(new_node)
@@ -3033,7 +3033,7 @@ class MorphTree(STree):
         for loc_idx in np.array(ninds)[order_inds]:
             index = len(new_nodes)
             # make new node
-            new_node = CompartmentNode(index, loc_idx=loc_idx)
+            new_node = CompartmentNode(index, loc_idx=int(loc_idx))
             # add new node
             new_tree.add_node_with_parent(new_node, new_pnode)
             new_nodes.append(new_node)

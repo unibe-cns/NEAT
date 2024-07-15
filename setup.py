@@ -6,19 +6,26 @@ NEAT (NEural Analysis Toolkit)
 Author: W. Wybo
 """
 
-import re
+import os
+import codecs
 from setuptools import setup
 from setuptools.extension import Extension
 from Cython.Build import cythonize
 
-import os, subprocess, shutil, sys
+
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
 
 
 def read_version():
-    with open("./neat/__version__.py") as f:
-        line = f.read()
-        match = re.findall(r"[0-9]+\.[0-9]+\.[0-9]+", line)
-        return match[0]
+    for line in read("neat/__version__.py").splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 
 def read_requirements():

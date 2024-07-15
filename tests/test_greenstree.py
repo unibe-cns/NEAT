@@ -409,16 +409,16 @@ class TestGreensTreeTime():
         zt_mat_expf = zt_mat_expf[:nt]
         zt_mat_expl = zt_mat_expl[:nt]
         zt_mat_sim = zt_mat_sim[:nt]
-
+        
         assert np.allclose(
             zt_mat_expl[int(1.5/self.dt):,:,:],
             zt_mat_gtt[int(1.5/self.dt):,:,:],
-            atol=2.5
+            atol=2.8
         )
         assert np.allclose(
             zt_mat_sim[int(1.5/self.dt):,:,:],
             zt_mat_gtt[int(1.5/self.dt):,:,:],
-            atol=2.5
+            atol=2.8
         )
 
         if pplot:

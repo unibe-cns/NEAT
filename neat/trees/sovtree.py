@@ -49,9 +49,9 @@ class SOVNode(PhysNode):
         self.z_a        = self.r_a / (np.pi * self.R_sov**2) # MOhm/cm
         self.g_inf_m    = 1. / (self.z_a * self.lambda_m) # uS
         # # segment amplitude information
-        self.kappa_m    = np.NaN
-        self.mu_vals_m  = np.NaN
-        self.q_vals_m   = np.NaN
+        self.kappa_m    = np.nan
+        self.mu_vals_m  = np.nan
+        self.q_vals_m   = np.nan
 
 
     def __str__(self, with_parent=True, with_morph_info=False):
