@@ -248,7 +248,7 @@ class TestIEPSolver(object):
         # pl.show()
 
 
-    def testSolver(self, eps=1.):
+    def test_solver(self, eps=1.):
 
         print('\nc_0 =', self.c_orig)
         p0 = self.ieps.evalPencil(self.c_orig)
@@ -290,7 +290,7 @@ if __name__ == '__main__':
     # ts.testResiduals()
     # ts.testJacobian()
 
-    ts.testSolver()
+    ts.test_solver()
 
     # ts.plotContinuity()
     # ts.plotJacobian()

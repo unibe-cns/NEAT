@@ -10,23 +10,26 @@ standard .swc format [Cannon1998]_, and implements high-level tools to interact
 with and analyze the morphologies.
 
 NEAT also allows for the convenient definition of morphological neuron models.
-These models can be simulated, through an interface with the NEURON simulator
-[Carnevale2004]_, or can be analyzed with two classical methods: *(i)* the
-separation of variables method [Major1993]_ to obtain impedance kernels as
-a superposition of exponentials and *(ii)* Koch's method to compute impedances
+These models can be simulated, through an interface with the NEURON [Carnevale2004]_ 
+and NEST [Gewaltig2007]_ simulators, or can be analyzed with two classical methods: 
+*(i)* the separation of variables method [Major1993]_ to obtain impedance kernels 
+as a superposition of exponentials and *(ii)* Koch's method to compute impedances
 with linearized ion channels analytically in the frequency domain [Koch1985]_.
 Furthermore, NEAT implements the neural evaluation tree framework [Wybo2019]_
 and an associated C++ simulator, to analyze subunit independence.
 
 Finally, NEAT implements a new and powerful method to simplify morphological
 neuron models into compartmental models with few compartments [Wybo2021]_. For
-these models, NEAT also provides a NEURON interface so that they can be
-simulated directly, and will soon also provide a NEST interface [Gewaltig2007]_.
+these models, NEAT provides NEURON and NEST interfaces so that they can be
+simulated directly.
 
 Documentation
 -------------
 
-Documentation is available `here <https://neatdend.readthedocs.io>`_
+Documentation for an older version of NEAT (0.9.2) available `here <https://neatdend.readthedocs.io>`_
+Note that a new documentation website for the current version (1.0-rc1) is currently
+under construction. Please see the changelog (`changelog/v.1.0.md`) for an overview of
+the changes.
 
 Installation
 ------------
@@ -35,15 +38,8 @@ Installation
 
 Note: The following instructions are for Linux and Max OSX systems and only use
 command line tools. Please follow the appropriate manuals for Windows systems or
-tools with graphical interfaces.
-
-You can install the latest release via pip:
-
-   .. code-block:: shell
-
-      pip install neatdend
-
-The adventurous can install the most recent development version directly from our master branch (don't use this in production unless there are good reasons!):
+tools with graphical interfaces. The most recent version, NEAT 1.0-rc1 can be 
+installed from the master branch.
 
 .. code-block:: shell
 
@@ -53,27 +49,26 @@ The adventurous can install the most recent development version directly from ou
 
 **Post-Install**
 
-To use NEAT with `NEURON <https://neuron.yale.edu/neuron/>`_, make sure NEURON
-is properly installed with its Python interface. The easiest way to install NEURON
-on Linux and macOS platform is via pip:
+Note that if you install NEAT with pip, as above, NEURON will automatically be installed as well.
+To use NEAT with `NEST <https://nest-simulator.readthedocs.io/en/stable/index.html>`_, 
+you need to manually install NEST on your system, by following the detailed
+`installation instructions <https://nest-simulator.readthedocs.io/en/stable/installation/index.html>`_.
+
+**Testing the installation**
+
+NEAT make the shell command `neatmodels` available to compile NEAT-defined ion channels
+into for NEURON or NEST, so that they can be simulated.
+You can test whether this command is available by installing the default ion channels of NEAT:
 
 .. code-block:: shell
 
-    pip install neuron
+    neatmodels install default
 
-See detailed `installation instructions <https://github.com/neuronsimulator/nrn/blob/master/INSTALL.md>`_.
-
-You can test it by compiling and installing the default NEURON mechanisms by running
+This installs the default channels for NEURON. To install them for NEST, use:
 
 .. code-block:: shell
 
-    compilechannels default
-
-Test the installation
-
-.. code-block:: shell
-
-    pytest
+    neatmodels install default -s nest
 
 References
 ----------

@@ -141,6 +141,8 @@ class H_distal(IonChannel):
         self.varinf = {'l': '1. / 1. + exp((v + 81.) / 8.)'}
         self.tauinf = {'l': '(exp(0.0378 * 2.2 * .4 * (v + 75.))) / (1.82 * 0.011 * (1. + (exp(0.0378 * 2.2 * (v + 75.)))))'}
 
+        self.e = -43.
+
 
 class Ca_T(IonChannel):
     '''
@@ -198,4 +200,6 @@ class h_u(IonChannel):
         # activation functions
         self.alpha = {'q': '0.001*6.43* (v+154.9) / (exp((v+154.9) / 11.9) - 1.)'}
         self.beta  = {'q': '0.001*193 * exp(v/33.1)'}
+
+        self.e = -43.
 

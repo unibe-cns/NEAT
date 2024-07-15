@@ -7,11 +7,14 @@ import pytest
 from neat import MorphTree, MorphNode, MorphLoc
 
 
-MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test_morphologies'))
+MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    'test_morphologies'
+))
 
 
 class TestMorphTree():
-    def loadTree(self, reinitialize=0, segments=False):
+    def load_tree(self, reinitialize=0, segments=False):
         """
         Load the T-tree morphology in memory
 
@@ -44,8 +47,30 @@ class TestMorphTree():
             fname = 'Ttree_segments.swc' if segments else 'Ttree.swc'
             self.tree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1,3,4])
 
-    def testLocEquality(self):
-        self.loadTree()
+    def test_string_representation(self):
+        self.load_tree()
+        tree_str = f">>> MorphTree\n" \
+            "    MorphNode 1, Parent: None --- xyz = [0.000, 0.000, 0.000] um, R = 10.00 um, swc_type = 1\n" \
+            "    MorphNode 4, Parent: 1 --- xyz = [100.000, 0.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
+            "    MorphNode 5, Parent: 4 --- xyz = [100.000, 50.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
+            "    MorphNode 6, Parent: 5 --- xyz = [100.000, 100.000, 0.000] um, R = 0.50 um, swc_type = 4\n" \
+            "    MorphNode 7, Parent: 4 --- xyz = [100.000, -50.000, 0.000] um, R = 1.00 um, swc_type = 4\n" \
+            "    MorphNode 8, Parent: 7 --- xyz = [100.000, -100.000, 0.000] um, R = 0.50 um, swc_type = 4"
+        assert str(self.tree) == tree_str
+
+        repr_str = "['MorphTree', " \
+            "\"{'node index': 1, 'parent index': -1, 'content': '{}', 'xyz': array([0., 0., 0.]), 'R': '10', 'swc_type': 1}\", " \
+            "\"{'node index': 4, 'parent index': 1, 'content': '{}', 'xyz': array([100.,   0.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 5, 'parent index': 4, 'content': '{}', 'xyz': array([100.,  50.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 6, 'parent index': 5, 'content': '{}', 'xyz': array([100., 100.,   0.]), 'R': '0.5', 'swc_type': 4}\", " \
+            "\"{'node index': 7, 'parent index': 4, 'content': '{}', 'xyz': array([100., -50.,   0.]), 'R': '1', 'swc_type': 4}\", " \
+            "\"{'node index': 8, 'parent index': 7, 'content': '{}', 'xyz': array([ 100., -100.,    0.]), 'R': '0.5', 'swc_type': 4}\""\
+        "]"
+        assert repr(self.tree) == repr_str
+
+
+    def test_loc_equality(self):
+        self.load_tree()
         loc1 = MorphLoc((4,.5), self.tree)
         loc2 = MorphLoc((4,.5), self.tree)
         loc3 = MorphLoc((4,.7), self.tree)
@@ -58,8 +83,8 @@ class TestMorphTree():
         loc4 = MorphLoc((1,.5), self.tree)
         assert loc4 == (1,.8) and loc4 != (4,.5)
 
-    def testIteration(self):
-        self.loadTree()
+    def test_iteration(self):
+        self.load_tree()
         indices = [node.index for node in self.tree]
         assert 2 not in indices and 3 not in indices
         assert set(indices) == set([1,4,5,6,7,8])
@@ -67,8 +92,8 @@ class TestMorphTree():
         assert 2 not in indices and 3 not in indices
         assert set(indices) == set([1,4,5,6,7,8])
 
-    def testStructure(self):
-        self.loadTree()
+    def test_structure(self):
+        self.load_tree()
         # check root
         root = self.tree[1]
         assert root.parent_node == None
@@ -94,8 +119,8 @@ class TestMorphTree():
         assert leaf2.parent_node == bn2
         assert len(leaf2.child_nodes) == 0
 
-    def testGeometry(self):
-        self.loadTree()
+    def test_geometry(self):
+        self.load_tree()
         # check root
         root = self.tree[1]
         assert np.allclose(root.xyz, np.array([0.,0.,0.]))
@@ -131,104 +156,103 @@ class TestMorphTree():
         assert np.allclose(leaf2.L, 50.)
         assert leaf2.swc_type == 4
 
-    def testCompTree0(self):
-        self.loadTree(reinitialize=1)
-        # check exception when treetype is invalid
-        with pytest.raises(ValueError):
-            self.tree.treetype = 'bla'
+    def test_comp_tree_0(self):
+        self.load_tree(reinitialize=1)
         # check exception when computational tree has not been set
-        with pytest.raises(ValueError):
-            self.tree.treetype = 'computational'
+        with pytest.raises(AttributeError):
+            with self.tree.as_computational_tree:
+                pass
         # initialize the comptree
-        self.tree.setCompTree(eps=1.)
+        self.tree.set_comp_tree(eps=1.)
         # set computational tree as primary tree
-        self.tree.treetype = 'computational'
-        # check root node
-        root = self.tree[1]
-        assert root.parent_node == None
-        assert len(root.child_nodes) == 1 \
-               and set([node.index for node in root.child_nodes]) == set([4])
-        assert np.allclose(root.xyz, np.array([0.,0.,0.]))
-        assert np.allclose(root.R, 10.)
-        assert np.allclose(root.L, 0.)
-        assert root.swc_type == 1
-        # check bifurcation node
-        bifur = self.tree[4]
-        assert bifur.parent_node == root
-        assert len(bifur.child_nodes) == 2 \
-               and set([node.index for node in bifur.child_nodes]) == set([6,8])
-        assert np.allclose(bifur.xyz, np.array([100.,0.,0.]))
-        assert np.allclose(bifur.R, 1.)
-        assert np.allclose(bifur.L, 100.)
-        assert bifur.swc_type == 4
-        # check leaf nodes
-        leaf1 = self.tree[6]
-        assert leaf1.parent_node == bifur
-        assert len(leaf1.child_nodes) == 0
-        assert np.allclose(leaf1.xyz, np.array([100.,100.,0.]))
-        assert np.allclose(leaf1.R, .75)
-        assert np.allclose(leaf1.L, 100.)
-        assert leaf1.swc_type == 4
-        leaf2 = self.tree[8]
-        assert leaf2.parent_node == bifur
-        assert len(leaf2.child_nodes) == 0
-        assert np.allclose(leaf2.xyz, np.array([100.,-100.,0.]))
-        assert np.allclose(leaf2.R, .75)
-        assert np.allclose(leaf2.L, 100.)
-        # test nodes getter
-        assert len(self.tree.nodes) == 4
-        leafs = self.tree.leafs
-        assert np.allclose([leafs[0].L, leafs[1].L], [100., 100.])
-        self.tree.treetype = 'original'
+        with self.tree.as_computational_tree:
+            # check root node
+            root = self.tree[1]
+            assert root.parent_node == None
+            assert len(root.child_nodes) == 1 \
+                and set([node.index for node in root.child_nodes]) == set([4])
+            assert np.allclose(root.xyz, np.array([0.,0.,0.]))
+            assert np.allclose(root.R, 10.)
+            assert np.allclose(root.L, 0.)
+            assert root.swc_type == 1
+            # check bifurcation node
+            bifur = self.tree[4]
+            assert bifur.parent_node == root
+            assert len(bifur.child_nodes) == 2 \
+                and set([node.index for node in bifur.child_nodes]) == set([6,8])
+            assert np.allclose(bifur.xyz, np.array([100.,0.,0.]))
+            assert np.allclose(bifur.R, 1.)
+            assert np.allclose(bifur.L, 100.)
+            assert bifur.swc_type == 4
+            # check leaf nodes
+            leaf1 = self.tree[6]
+            assert leaf1.parent_node == bifur
+            assert len(leaf1.child_nodes) == 0
+            assert np.allclose(leaf1.xyz, np.array([100.,100.,0.]))
+            assert np.allclose(leaf1.R, .75)
+            assert np.allclose(leaf1.L, 100.)
+            assert leaf1.swc_type == 4
+            leaf2 = self.tree[8]
+            assert leaf2.parent_node == bifur
+            assert len(leaf2.child_nodes) == 0
+            assert np.allclose(leaf2.xyz, np.array([100.,-100.,0.]))
+            assert np.allclose(leaf2.R, .75)
+            assert np.allclose(leaf2.L, 100.)
+            # test nodes getter
+            assert len(self.tree.nodes) == 4
+            leafs = self.tree.leafs
+            assert np.allclose([leafs[0].L, leafs[1].L], [100., 100.])
+        # work in the original tree
         assert len(self.tree.nodes) == 6
         leafs = self.tree.leafs
         assert np.allclose([leafs[0].L, leafs[1].L], [50., 50.])
         # remove the computational tree
-        self.tree.removeCompTree()
-        with pytest.raises(ValueError):
-            self.tree.treetype = 'computational'
+        self.tree.remove_comp_tree()
+        with pytest.raises(AttributeError):
+            with self.tree.as_computational_tree:
+                pass
         for node in self.tree:
             assert not node.used_in_comp_tree
 
-    def testInputArgConversion(self):
-        self.loadTree()
-        nodes = self.tree._convertNodeArgToNodes(None)
+    def test_input_arg_conversion(self):
+        self.load_tree()
+        nodes = self.tree.convert_node_arg_to_nodes(None)
         assert self.tree.nodes == nodes
-        nodes = self.tree._convertNodeArgToNodes(self.tree[4])
-        assert self.tree.gatherNodes(self.tree[4]) == nodes
-        nodes = self.tree._convertNodeArgToNodes('apical')
-        assert self.tree.getNodesInApicalSubtree() == nodes
-        nodes = self.tree._convertNodeArgToNodes('basal')
-        assert self.tree.getNodesInBasalSubtree() == nodes
-        nodes = self.tree._convertNodeArgToNodes('axonal')
-        assert self.tree.getNodesInAxonalSubtree() == nodes
+        nodes = self.tree.convert_node_arg_to_nodes(self.tree[4])
+        assert self.tree.gather_nodes(self.tree[4]) == nodes
+        nodes = self.tree.convert_node_arg_to_nodes('apical')
+        assert self.tree.get_nodes_in_apical_subtree() == nodes
+        nodes = self.tree.convert_node_arg_to_nodes('basal')
+        assert self.tree.get_nodes_in_basal_subtree() == nodes
+        nodes = self.tree.convert_node_arg_to_nodes('axonal')
+        assert self.tree.get_nodes_in_axonal_subtree() == nodes
         nodes_ = [self.tree[5], self.tree[7]]
-        nodes = self.tree._convertNodeArgToNodes(nodes_)
+        nodes = self.tree.convert_node_arg_to_nodes(nodes_)
         assert nodes_ == nodes
-        with pytest.raises(ValueError):
-            self.tree._convertNodeArgToNodes('wrong arg')
-            self.tree._convertNodeArgToNodes(5)
+        with pytest.raises(IOError):
+            self.tree.convert_node_arg_to_nodes('wrong arg')
+        with pytest.raises(IOError):
+            self.tree.convert_node_arg_to_nodes(5)
         # with the computational tree
-        self.tree.setCompTree(set_as_primary_tree=1, eps=1.)
-        nodes = self.tree._convertNodeArgToNodes(None)
-        assert self.tree.nodes == nodes
-        nodes = self.tree._convertNodeArgToNodes(self.tree[4])
-        assert self.tree.gatherNodes(self.tree[4]) == nodes
-        nodes = self.tree._convertNodeArgToNodes('apical')
-        assert self.tree.getNodesInApicalSubtree() == nodes
-        nodes = self.tree._convertNodeArgToNodes('basal')
-        assert self.tree.getNodesInBasalSubtree() == nodes
-        nodes = self.tree._convertNodeArgToNodes('axonal')
-        assert self.tree.getNodesInAxonalSubtree() == nodes
-        nodes__ = [self.tree[6], self.tree[8]]
-        nodes = self.tree._convertNodeArgToNodes(nodes_)
-        assert nodes_ != nodes
-        assert nodes__ == nodes
+        self.tree.set_comp_tree(eps=1.)
+        with self.tree.as_computational_tree:
+            nodes = self.tree.convert_node_arg_to_nodes(None)
+            assert self.tree.nodes == nodes
+            nodes = self.tree.convert_node_arg_to_nodes(self.tree[4])
+            assert self.tree.gather_nodes(self.tree[4]) == nodes
+            nodes = self.tree.convert_node_arg_to_nodes('apical')
+            assert self.tree.get_nodes_in_apical_subtree() == nodes
+            nodes = self.tree.convert_node_arg_to_nodes('basal')
+            assert self.tree.get_nodes_in_basal_subtree() == nodes
+            nodes = self.tree.convert_node_arg_to_nodes('axonal')
+            assert self.tree.get_nodes_in_axonal_subtree() == nodes
+            nodes__ = [self.tree[6], self.tree[8]]
+            nodes = self.tree.convert_node_arg_to_nodes(nodes_)
+            assert nodes_ != nodes
+            assert nodes__ == nodes
 
-    def testLocFunctionality(self):
-        self.loadTree()
-        # locs in the original tree
-        self.tree.treetype = 'original'
+    def test_loc_functionality(self):
+        self.load_tree()
         locs = [MorphLoc({'node': 1, 'x': .5}, self.tree),
                 MorphLoc({'node': 4, 'x': .5}, self.tree),
                 MorphLoc({'node': 5, 'x': .5}, self.tree),
@@ -236,275 +260,292 @@ class TestMorphTree():
                 MorphLoc({'node': 6, 'x': .5}, self.tree),
                 MorphLoc({'node': 8, 'x': .5}, self.tree)]
         # set the computational tree
-        self.tree.setCompTree(eps=1.)
-        self.tree.treetype = 'computational'
-        for loc in locs: loc._setComputationalLoc()
-        assert locs[0].comp_loc == locs[0].loc
-        assert locs[1].comp_loc == locs[1].loc
-        assert locs[2].comp_loc == {'node': 6, 'x': .25}
-        assert locs[3].comp_loc == {'node': 8, 'x': .25}
-        assert locs[4].comp_loc == {'node': 6, 'x': .75}
-        assert locs[5].comp_loc == {'node': 8, 'x': .75}
+        self.tree.set_comp_tree(eps=1.)
+        with self.tree.as_computational_tree:
+            for loc in locs: loc._set_computational_loc()
+            assert locs[0].comp_loc == locs[0].loc
+            assert locs[1].comp_loc == locs[1].loc
+            assert locs[2].comp_loc == {'node': 6, 'x': .25}
+            assert locs[3].comp_loc == {'node': 8, 'x': .25}
+            assert locs[4].comp_loc == {'node': 6, 'x': .75}
+            assert locs[5].comp_loc == {'node': 8, 'x': .75}
 
-    def testPathLength(self):
-        self.loadTree()
-        # lengths in the original tree
-        self.tree.treetype = 'original'
+    def test_unique_locs(self):
+        self.load_tree()
+        locs = [
+            (1.,.5),
+            (4, 0.), (4, .1), (4, 1.),
+                              (5, 0.), (5,.9), (5, 1.),
+                                               (6, 0.), (6, 1.),
+                              (7, 0.), (7, .5), (8, .5),
+        ]
+        unique_locs_groundtruth = [
+            (1,.5),
+                    (4, .1), (4, 1.),
+                                      (5,.9), (5, 1.), (6, 1.),
+                                      (7, .5), (8, .5)
+        ]
+        unique_locs_tested = self.tree.unique_locs(locs)
+
+        for loc_tested, loc_groundtruth in zip(unique_locs_tested, unique_locs_groundtruth):
+            assert loc_tested == loc_groundtruth
+
+    def test_path_length(self):
+        self.load_tree()
         # test lengths
-        L = self.tree.pathLength({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
+        L = self.tree.path_length({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
         assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .4})
+        L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 1, 'x': .4})
         assert np.allclose(L, 100.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .6})
+        L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 1, 'x': .6})
         assert np.allclose(L, 100.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 4, 'x': 1.})
+        L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 4, 'x': 1.})
         assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 5, 'x': 0.})
+        L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 5, 'x': 0.})
         assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': .5}, {'node': 5, 'x': .2})
+        L = self.tree.path_length({'node': 4, 'x': .5}, {'node': 5, 'x': .2})
         assert np.allclose(L, 60.)
-        L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 4, 'x': .5})
+        L = self.tree.path_length({'node': 5, 'x': .2}, {'node': 4, 'x': .5})
         assert np.allclose(L, 60.)
-        L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 7, 'x': .2})
+        L = self.tree.path_length({'node': 5, 'x': .2}, {'node': 7, 'x': .2})
         assert np.allclose(L, 20.)
-        L = self.tree.pathLength({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
+        L = self.tree.path_length({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
         assert np.allclose(L, 110.)
         # lengths in the original tree
-        self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        # test lengths
-        L = self.tree.pathLength({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
-        assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .4})
-        assert np.allclose(L, 100.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 1, 'x': .6})
-        assert np.allclose(L, 100.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 4, 'x': 1.})
-        assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': 1.}, {'node': 5, 'x': 0.})
-        assert np.allclose(L, 0.)
-        L = self.tree.pathLength({'node': 4, 'x': .5}, {'node': 5, 'x': .2})
-        assert np.allclose(L, 60.)
-        L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 4, 'x': .5})
-        assert np.allclose(L, 60.)
-        L = self.tree.pathLength({'node': 5, 'x': .2}, {'node': 7, 'x': .2})
-        assert np.allclose(L, 20.)
-        L = self.tree.pathLength({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
-        assert np.allclose(L, 110.)
+        self.tree.set_comp_tree()
+        with self.tree.as_computational_tree:
+            # test lengths
+            L = self.tree.path_length({'node': 1, 'x': 1.}, {'node': 1, 'x': .4})
+            assert np.allclose(L, 0.)
+            L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 1, 'x': .4})
+            assert np.allclose(L, 100.)
+            L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 1, 'x': .6})
+            assert np.allclose(L, 100.)
+            L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 4, 'x': 1.})
+            assert np.allclose(L, 0.)
+            L = self.tree.path_length({'node': 4, 'x': 1.}, {'node': 5, 'x': 0.})
+            assert np.allclose(L, 0.)
+            L = self.tree.path_length({'node': 4, 'x': .5}, {'node': 5, 'x': .2})
+            assert np.allclose(L, 60.)
+            L = self.tree.path_length({'node': 5, 'x': .2}, {'node': 4, 'x': .5})
+            assert np.allclose(L, 60.)
+            L = self.tree.path_length({'node': 5, 'x': .2}, {'node': 7, 'x': .2})
+            assert np.allclose(L, 20.)
+            L = self.tree.path_length({'node': 8, 'x': .2}, {'node': 4, 'x': .5})
+            assert np.allclose(L, 110.)
 
-    def testLocStorageRetrievalLookup(self):
-        self.loadTree()
+    def test_loc_storage_retrieval_lookup(self):
+        self.load_tree()
         locs = [(1,.5), (1, 1.), (4, 1.), (4, .5), (5, .5),
                (5, 1.), (6, .5), (6, 1.), (8, .5), (8, 1.)]
         with pytest.warns(UserWarning):
-            self.tree.storeLocs(locs, 'testlocs')
+            self.tree.store_locs(locs, 'testlocs')
         # with pytest.raises(ValueError):
-        #     self.tree.storeLocs(locs, 'testlocs')
+        #     self.tree.store_locs(locs, 'testlocs')
         locs = [(1,.5), (4, 1.), (4, .5), (5, .5),
                (5, 1.), (6, .5), (6, 1.), (8, .5), (8, 1.)]
-        self.tree.storeLocs(locs, 'testlocs')
+        self.tree.store_locs(locs, 'testlocs')
         # test retrieval
         with pytest.raises(KeyError):
-            self.tree.getLocs('wronglocs')
+            self.tree.get_locs('wronglocs')
         locs_ = [(loc['node'], loc['x'])
-                    for loc in self.tree.getLocs('testlocs')]
+                    for loc in self.tree.get_locs('testlocs')]
         assert locs_ == locs
         # test getting node indices
         with pytest.raises(KeyError):
-            self.tree.getNodeIndices('wronglocs')
-        assert [1,4,4,5,5,6,6,8,8] == self.tree.getNodeIndices('testlocs').tolist()
+            self.tree.get_node_indices('wronglocs')
+        assert [1,4,4,5,5,6,6,8,8] == self.tree.get_node_indices('testlocs').tolist()
         # test get x-coords
         with pytest.raises(KeyError):
-            self.tree.getXCoords('wronglocs')
+            self.tree.get_x_coords('wronglocs')
         assert np.allclose([.5,1.,.5,.5,1.,.5,1.,.5,1.],
-                           self.tree.getXCoords('testlocs'))
+                           self.tree.get_x_coords('testlocs'))
         # test get locinds on non-empty node
-        locinds = self.tree.getLocindsOnNode('testlocs', self.tree[4])
+        locinds = self.tree.get_loc_idxs_on_node('testlocs', self.tree[4])
         assert locinds == [2,1]
         # test get locinds on empty node
-        locinds = self.tree.getLocindsOnNode('testlocs', self.tree[7])
+        locinds = self.tree.get_loc_idxs_on_node('testlocs', self.tree[7])
         assert locinds == []
         with pytest.raises(KeyError):
-            self.tree.getLocindsOnNode('wronglocs', self.tree[7])
+            self.tree.get_loc_idxs_on_node('wronglocs', self.tree[7])
         # test locinds on path
-        path = self.tree.pathBetweenNodes(self.tree[6], self.tree[8])
-        locinds = self.tree.getLocindsOnPath('testlocs',
+        path = self.tree.path_between_nodes(self.tree[6], self.tree[8])
+        locinds = self.tree.get_loc_idxs_on_path('testlocs',
                             self.tree[6], self.tree[8], xstart=.5, xstop=1.)
         assert locinds == [5,4,3,1,7,8]
-        path = self.tree.pathBetweenNodes(self.tree[7], self.tree[7])
-        locinds = self.tree.getLocindsOnPath('testlocs',
+        path = self.tree.path_between_nodes(self.tree[7], self.tree[7])
+        locinds = self.tree.get_loc_idxs_on_path('testlocs',
                             self.tree[7], self.tree[7], xstart=0., xstop=1.)
         assert locinds == []
-        path = self.tree.pathBetweenNodes(self.tree[4], self.tree[4])
-        locinds = self.tree.getLocindsOnPath('testlocs',
+        path = self.tree.path_between_nodes(self.tree[4], self.tree[4])
+        locinds = self.tree.get_loc_idxs_on_path('testlocs',
                             self.tree[4], self.tree[4], xstart=0., xstop=.9)
         assert locinds == [2]
-        path = self.tree.pathBetweenNodes(self.tree[1], self.tree[1])
-        locinds = self.tree.getLocindsOnPath('testlocs',
+        path = self.tree.path_between_nodes(self.tree[1], self.tree[1])
+        locinds = self.tree.get_loc_idxs_on_path('testlocs',
                             self.tree[1], self.tree[1], xstart=0., xstop=.9)
         assert locinds == [0]
-        path = self.tree.pathBetweenNodes(self.tree[4], self.tree[1])
-        locinds = self.tree.getLocindsOnPath('testlocs',
+        path = self.tree.path_between_nodes(self.tree[4], self.tree[1])
+        locinds = self.tree.get_loc_idxs_on_path('testlocs',
                             self.tree[4], self.tree[1], xstart=.9, xstop=.9)
         assert locinds == [2,0]
-        locinds = self.tree.getLocindsOnPath('testlocs',
+        locinds = self.tree.get_loc_idxs_on_path('testlocs',
                             self.tree[7], self.tree[7], xstart=.1, xstop=.9)
         assert locinds == []
         # test locinds on branch
-        branch = self.tree.pathBetweenNodes(self.tree[4], self.tree[5])
-        locinds = self.tree.getLocindsOnNodes('testlocs', branch)
+        branch = self.tree.path_between_nodes(self.tree[4], self.tree[5])
+        locinds = self.tree.get_loc_idxs_on_nodes('testlocs', branch)
         assert locinds == [2,1,3,4]
         # test locinds on basal/apical/axonal subtrees
-        locinds = self.tree.getLocindsOnNodes('testlocs', 'basal')
+        locinds = self.tree.get_loc_idxs_on_nodes('testlocs', 'basal')
         assert locinds == []
-        locinds = self.tree.getLocindsOnNodes('testlocs', 'axonal')
+        locinds = self.tree.get_loc_idxs_on_nodes('testlocs', 'axonal')
         assert locinds == []
-        locinds = self.tree.getLocindsOnNodes('testlocs', 'apical')
+        locinds = self.tree.get_loc_idxs_on_nodes('testlocs', 'apical')
         assert locinds == [2,1,3,4,5,6,7,8]
         # test locinds on subtree
-        nodes = self.tree.getNodesInSubtree(self.tree[5], self.tree[4])
-        locinds = self.tree.getLocindsOnNodes('testlocs', nodes)
+        nodes = self.tree.get_nodes_in_subtree(self.tree[5], self.tree[4])
+        locinds = self.tree.get_loc_idxs_on_nodes('testlocs', nodes)
         assert locinds == [2,1,3,4,5,6]
         # find the nearest locs
         locs = [(1,.5), (4, .5), (5, .4), (5, 1.),
                 (6, .5), (6, 1.), (8, .5), (8, 1.)]
-        self.tree.storeLocs(locs, 'testlocs2')
-        locinds = self.tree.getNearestLocinds([(7, .5), (1,.6), (6, .1), (6, .7)],
+        self.tree.store_locs(locs, 'testlocs2')
+        locinds = self.tree.get_nearest_loc_idxs([(7, .5), (1,.6), (6, .1), (6, .7)],
                             'testlocs2', direction=0)
-        res = self.tree.getNearestLocinds([(6, .1)],
+        res = self.tree.get_nearest_loc_idxs([(6, .1)],
                             'testlocs2', direction=0)
         assert locinds == [2, 0, 3, 4]
-        locinds = self.tree.getNearestLocinds([(7, .5), (1,.6), (6, .1), (6, .7)],
+        locinds = self.tree.get_nearest_loc_idxs([(7, .5), (1,.6), (6, .1), (6, .7)],
                             'testlocs2', direction=1)
         assert locinds == [2, 0, 3, 4]
-        locinds = self.tree.getNearestLocinds([(7, .5), (1,.6), (6, .1), (6, .7)],
+        locinds = self.tree.get_nearest_loc_idxs([(7, .5), (1,.6), (6, .1), (6, .7)],
                             'testlocs2', direction=2)
         assert locinds == [6, 0, 4, 5]
         # find the leaf locs
-        locinds = self.tree.getLeafLocinds('testlocs2')
+        locinds = self.tree.get_leaf_loc_idxs('testlocs2')
         assert locinds == [5,7]
         # find the neartest locs
         locs = [(4, .1), (4, .4), (4, .7)]
-        self.tree.storeLocs(locs, 'testlocs3')
-        locinds0 = self.tree.getNearestLocinds([(4, .4)],
+        self.tree.store_locs(locs, 'testlocs3')
+        locinds0 = self.tree.get_nearest_loc_idxs([(4, .4)],
                             'testlocs3', direction=0)
-        locinds1 = self.tree.getNearestLocinds([(4, .4)],
+        locinds1 = self.tree.get_nearest_loc_idxs([(4, .4)],
                             'testlocs3', direction=1)
-        locinds2 = self.tree.getNearestLocinds([(4, .4)],
+        locinds2 = self.tree.get_nearest_loc_idxs([(4, .4)],
                             'testlocs3', direction=2)
         assert locinds0[0] == 1
         assert locinds1[0] == 1
         assert locinds2[0] == 1
 
-    def testNearestNeighbours(self):
-        self.loadTree()
+    def test_nearest_neighbours(self):
+        self.load_tree()
 
         locs1 = [(4,1.), (5,.5), (7,.5)]
-        inds = self.tree.getNearestNeighbourLocinds((5,.7), locs1)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((5,.7), locs1)
         assert set(inds) == {1}
-        inds = self.tree.getNearestNeighbourLocinds((6,.7), locs1)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((6,.7), locs1)
         assert set(inds) == {1}
-        inds = self.tree.getNearestNeighbourLocinds((5,.5), locs1)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((5,.5), locs1)
         assert set(inds) == {1}
-        inds = self.tree.getNearestNeighbourLocinds((5,.4), locs1)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((5,.4), locs1)
         assert set(inds) == {0,1}
 
         locs2 = [(4,.9), (5,.5), (7,.5)]
-        inds = self.tree.getNearestNeighbourLocinds((5,.4), locs2)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((5,.4), locs2)
         assert set(inds) == {0,1,2}
 
         locs3 = [(1,.5), (4,.9), (7,.5)]
-        inds = self.tree.getNearestNeighbourLocinds((4,.8), locs3)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((4,.8), locs3)
         assert set(inds) == {0,1}
 
         locs4 = [(5,.9), (6,.9), (7,.5), (8,.9)]
-        inds = self.tree.getNearestNeighbourLocinds((1,.5), locs4)
+        inds = self.tree.get_nearest_neighbour_loc_idxs((1,.5), locs4)
         assert set(inds) == {0,2}
 
-    def testDistances(self):
-        self.loadTree()
+    def test_distances(self):
+        self.load_tree()
         locs = [(1,.5), (4, 1.), (5, .5), (6, .5), (6, 1.)]
-        self.tree.storeLocs(locs, 'testlocs')
+        self.tree.store_locs(locs, 'testlocs')
         # compute the distances to soma
-        d2s = self.tree.distancesToSoma('testlocs')
+        d2s = self.tree.distances_to_soma('testlocs')
         assert np.allclose(d2s, np.array([0.,100.,125.,175.,200.]))
-        d2b = self.tree.distancesToBifurcation('testlocs')
+        d2b = self.tree.distances_to_bifurcation('testlocs')
         assert np.allclose(d2b, np.array([0.,100.,25.,75.,100.]))
 
-    def testLocDistribution(self):
-        self.loadTree()
+    def test_loc_distribution(self):
+        self.load_tree()
         # check comptree resetting
-        self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]), [])
-        assert self.tree.treetype == 'computational'
-        self.tree.treetype = 'original'
+        self.tree.set_comp_tree()
+        with self.tree.as_computational_tree:
+            with pytest.raises(IOError):
+                self.tree.distribute_locs_on_nodes(np.array([90.,140.,190.]), [])
         # test loc distribution on nodes
-        locs = self.tree.distributeLocsOnNodes(np.array([90.,140.,190.]),
+        locs = self.tree.distribute_locs_on_nodes(np.array([90.,140.,190.]),
                                                   [self.tree[6], self.tree[8]])
         assert locs[0] == {'node': 6, 'x': 4./5.} \
                 and locs[1] == {'node': 8, 'x': 4./5.} \
                 and len(locs) == 2
-        locs = self.tree.distributeLocsOnNodes(np.array([190.,190.]),
+        locs = self.tree.distribute_locs_on_nodes(np.array([190.,190.]),
                                                   [self.tree[6]])
         assert locs[0] == locs[1] and locs[0] == {'node': 6, 'x': 4./5.}
-        locs = self.tree.distributeLocsOnNodes(np.array([]),
+        locs = self.tree.distribute_locs_on_nodes(np.array([]),
                                                   [self.tree[6]])
         assert len(locs) == 0
-        locs = self.tree.distributeLocsOnNodes(np.array([100.]),
+        locs = self.tree.distribute_locs_on_nodes(np.array([100.]),
                                                   [self.tree[4], self.tree[5]])
         assert locs[0] == {'node': 4, 'x': 1.}
         # derived loc distribution functions
-        locs = self.tree.distributeLocsOnNodes(np.array([150.,100.]))
+        locs = self.tree.distribute_locs_on_nodes(np.array([150.,100.]))
         assert locs[0] == {'node': 4, 'x': 1.} \
                 and locs[1] == {'node': 5, 'x': 1.} \
                 and locs[2] == {'node': 7, 'x': 1.}
-        nodes = self.tree.pathBetweenNodes(self.tree[5], self.tree[6])
-        locs = self.tree.distributeLocsOnNodes(np.array([50.,120.,170.]),
+        nodes = self.tree.path_between_nodes(self.tree[5], self.tree[6])
+        locs = self.tree.distribute_locs_on_nodes(np.array([50.,120.,170.]),
                                                   node_arg=nodes)
         assert locs[0] == {'node': 5, 'x': 2./5.} \
                 and locs[1] == {'node': 6, 'x': 2./5.}
-        locs = self.tree.distributeLocsOnNodes(np.array([70.,120.]),
+        locs = self.tree.distribute_locs_on_nodes(np.array([70.,120.]),
                                                   node_arg='basal')
         assert len(locs) == 0
-        locs = self.tree.distributeLocsOnNodes(np.array([70.,120.]),
+        locs = self.tree.distribute_locs_on_nodes(np.array([70.,120.]),
                                                   node_arg='apical')
         assert locs[0] == {'node': 4, 'x': 7./10.} \
                 and locs[1] == {'node': 5, 'x': 2./5.} \
                 and locs[2] == {'node': 7, 'x': 2./5.}
-        nodes = self.tree.getNodesInSubtree(self.tree[6], self.tree[4])
-        locs = self.tree.distributeLocsOnNodes(np.array([70.,120]),
+        nodes = self.tree.get_nodes_in_subtree(self.tree[6], self.tree[4])
+        locs = self.tree.distribute_locs_on_nodes(np.array([70.,120]),
                                                   node_arg=nodes)
         assert locs[0] == {'node': 4, 'x': 7./10.} \
                 and locs[1] == {'node': 5, 'x': 2./5.}
         # test uniform loc distribution
-        locs = self.tree.distributeLocsUniform(50.)
+        locs = self.tree.distribute_locs_uniform(50.)
         checklocs = [{'node': 1, 'x': .8},
                      {'node': 4, 'x': 1./2.}, {'node': 4, 'x': 1.},
                      {'node': 5, 'x': 1.}, {'node': 6, 'x': 1.},
                      {'node': 7, 'x': 1.}, {'node': 8, 'x': 1.}]
         for (loc, checkloc) in zip(locs, checklocs):
             assert loc == checkloc
-        locs = self.tree.distributeLocsUniform(50., node_arg=self.tree[5])
+        locs = self.tree.distribute_locs_uniform(50., node_arg=self.tree[5])
         checklocs = [{'node': 5, 'x': 1.}, {'node': 6, 'x': 1.}]
         for (loc, checkloc) in zip(locs, checklocs):
             assert loc == checkloc
         # test random loc distribution
-        locs = self.tree.distributeLocsRandom(10)
+        locs = self.tree.distribute_locs_random(10)
         assert len(locs) > 0
         for node in self.tree:
             assert 'tag' not in node.content
-        locs = self.tree.distributeLocsRandom(10, node_arg='basal', add_soma=0)
+        locs = self.tree.distribute_locs_random(10, node_arg='basal', add_soma=0)
         assert len(locs) == 0
-        with pytest.raises(ValueError):
-            self.tree.distributeLocsRandom(10, node_arg='bad type')
+        with pytest.raises(IOError):
+            self.tree.distribute_locs_random(10, node_arg='bad type')
 
-    def testTreeCreation(self):
-        self.loadTree(self)
+    def test_tree_creation(self):
+        self.load_tree(self)
         locs = [(1,.5),(4,.5),(4,1.),(5,1.),(6,1.),(7,1.),(8,1.)]
-        self.tree.storeLocs(locs, 'newtree_test')
+        self.tree.store_locs(locs, 'newtree_test')
         # create the new tree
-        new_tree = self.tree.createNewTree('newtree_test')
+        new_tree = self.tree.create_new_tree('newtree_test')
         new_xyzs = [(0.,0.,0.),
                     (50.,0.,0.),
                     (100.,0.,0.),
@@ -517,26 +558,26 @@ class TestMorphTree():
             assert np.allclose(new_xyzs[ii], new_node.xyz)
             assert new_inds[ii] == new_node.index
 
-    def testPlotting(self, pshow=0):
-        self.loadTree()
-        self.tree.setCompTree()
+    def test_plotting(self, pshow=0):
+        self.load_tree()
+        self.tree.set_comp_tree()
         # create the x-axis
-        self.tree.makeXAxis(50.)
+        self.tree.make_x_axis(50.)
         assert np.allclose(self.tree.xaxis,
                             np.array([0.,50.,100.,150.,200.,200.,250.]))
         # find x-values
         locs = [(4.,.7),(5,.9), (7,.8)]
-        xvals = self.tree.getXValues(locs)
+        xvals = self.tree.get_x_values(locs)
         assert np.allclose([50.,150.,200.], xvals)
-        xvals = self.tree.getXValues([])
+        xvals = self.tree.get_x_values([])
         assert len(xvals) == 0
         # plot on x-axis
         parr = np.array([1.,2.,3.,4.,5.,4.,3.])
         pl.figure('plot 1d test orig')
         # original tree
-        lines = self.tree.plot1D(pl.gca(), parr, c='r')
+        lines = self.tree.plot_1d(pl.gca(), parr, c='r')
         assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
-        assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
+        assert len(lines) == len(self.tree.get_leaf_loc_idxs('xaxis'))
         assert np.allclose(lines[0].get_data()[1], parr[0:5])
         assert np.allclose(lines[1].get_data()[1], parr[5:])
         xarr = np.array([0.,50.,100.,150.,200.,200.,250.])
@@ -545,111 +586,125 @@ class TestMorphTree():
         assert lines[0].get_color() == 'r'
         # update the lines
         parr_ = np.array([5.,4.,3.,2.,1.,2.,3.])
-        self.tree.setLineData(lines, parr_)
+        self.tree.set_line_data(lines, parr_)
         assert np.allclose(lines[0].get_data()[1], parr_[0:5])
         assert np.allclose(lines[1].get_data()[1], parr_[5:])
         # test x-axis coloring (just sees if function runs)
-        self.tree.colorXAxis(pl.gca(), pl.get_cmap('jet'))
+        self.tree.color_x_axis(pl.gca(), pl.get_cmap('jet'))
         # computational tree
-        self.tree.treetype = 'computational'
-        pl.figure('plot 1d test comp')
-        lines = self.tree.plot1D(pl.gca(), parr, c='r')
-        assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
-        assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
-        assert np.allclose(lines[0].get_data()[1], parr[0:5])
-        assert np.allclose(lines[1].get_data()[1], parr[5:])
-        xarr = np.array([0.,50.,100.,150.,200.,200.,250.])
-        assert np.allclose(lines[0].get_data()[0], xarr[0:5])
-        assert np.allclose(lines[1].get_data()[0], xarr[5:])
-        assert lines[0].get_color() == 'r'
-        # test x-axis coloring (just sees if function runs)
-        self.tree.colorXAxis(pl.gca(), pl.get_cmap('jet'))
-        # a true distance from soma plot
-        parr = np.array([1.,2.,3.,4.,5.,4.,3.])
-        pl.figure('plot d2s test')
-        lines = self.tree.plotTrueD2S(pl.gca(),parr)
-        assert len(lines) == len(self.tree.getLeafLocinds('xaxis'))
-        assert np.allclose(lines[0].get_data()[1], parr[0:5])
-        assert np.allclose(lines[1].get_data()[1], parr[5:])
-        assert np.allclose(lines[0].get_data()[0], self.tree.d2s['xaxis'][0:5])
-        assert np.allclose(lines[1].get_data()[0], self.tree.d2s['xaxis'][5:])
-        # test 2D plotting (just sees if function runs)
-        pl.figure('plot morphology test')
-        cs = {node.index: node.index for node in self.tree}
-        marklocs = [(1,.5), (4,.8), (6,.2)]
-        locargs = {'marker': 'o', 'mfc': 'r', 'ms': 6}
-        marklabels = {0: r'soma', 1: r'$\mu$'}
-        labelargs = {'fontsize': 8}
-        self.tree.plot2DMorphology(pl.gca(), cs=cs, cmap=pl.get_cmap('summer'),
-                                     plotargs={'lw':2},
-                                     marklocs=marklocs, locargs=locargs,
-                                     marklabels=marklabels, labelargs=labelargs,
-                                     textargs={'fontsize': 24},
-                                     cb_draw=True)
-        if pshow: pl.show()
+        with self.tree.as_computational_tree:
+            pl.figure('plot 1d test comp')
+            lines = self.tree.plot_1d(pl.gca(), parr, c='r')
+            assert np.abs(self.tree.xaxis[-1] - 250.) < 1e-5
+            assert len(lines) == len(self.tree.get_leaf_loc_idxs('xaxis'))
+            assert np.allclose(lines[0].get_data()[1], parr[0:5])
+            assert np.allclose(lines[1].get_data()[1], parr[5:])
+            xarr = np.array([0.,50.,100.,150.,200.,200.,250.])
+            assert np.allclose(lines[0].get_data()[0], xarr[0:5])
+            assert np.allclose(lines[1].get_data()[0], xarr[5:])
+            assert lines[0].get_color() == 'r'
+            # test x-axis coloring (just sees if function runs)
+            self.tree.color_x_axis(pl.gca(), pl.get_cmap('jet'))
+            # a true distance from soma plot
+            parr = np.array([1.,2.,3.,4.,5.,4.,3.])
+            pl.figure('plot d2s test')
+            lines = self.tree.plot_true_d2s(pl.gca(),parr)
+            assert len(lines) == len(self.tree.get_leaf_loc_idxs('xaxis'))
+            assert np.allclose(lines[0].get_data()[1], parr[0:5])
+            assert np.allclose(lines[1].get_data()[1], parr[5:])
+            assert np.allclose(lines[0].get_data()[0], self.tree.d2s['xaxis'][0:5])
+            assert np.allclose(lines[1].get_data()[0], self.tree.d2s['xaxis'][5:])
+            # test 2D plotting (just sees if function runs)
+            pl.figure('plot morphology test')
+            cs = {node.index: node.index for node in self.tree}
+            marklocs = [(1,.5), (4,.8), (6,.2)]
+            loc_args = {'marker': 'o', 'mfc': 'r', 'ms': 6}
+            marklabels = {0: r'soma', 1: r'$\mu$'}
+            labelargs = {'fontsize': 8}
+            self.tree.plot_2d_morphology(pl.gca(), cs=cs, cmap=pl.get_cmap('summer'),
+                                        plotargs={'lw':2},
+                                        marklocs=marklocs, loc_args=loc_args,
+                                        marklabels=marklabels, labelargs=labelargs,
+                                        textargs={'fontsize': 24},
+                                        cb_draw=True)
+            if pshow: pl.show()
 
-    def testCompTree(self):
-        self.loadTree(reinitialize=1, segments=True)
-        self.tree.setCompTree()
+    def test_comp_tree(self):
+        self.load_tree(reinitialize=1, segments=True)
+        self.tree.set_comp_tree()
         # check whether amount of nodes is correct
-        self.tree.treetype = 'original'
         assert len(self.tree.nodes) == 10
         assert len([node for node in self.tree]) == 10
-        self.tree.treetype = 'computational'
-        assert len(self.tree.nodes) == 4
-        assert len([node for node in self.tree]) == 4
-        # check whether computational nodes are correct
-        for node in self.tree: assert node.index in [1,8,10,12]
-
-        # check whether returned nodes from `MorphTree._convertNodeArgToNodes`
-        # are correct
-        ns_orig = self.tree._nodes_orig
-        ns_comp = self.tree._convertNodeArgToNodes(ns_orig)
-        assert [n.index for n in ns_comp] == [1,8,10,12]
-        ns_comp = self.tree._convertNodeArgToNodes('apical')
-        assert [n.index for n in ns_comp] == [8,10,12]
-        ns_comp = self.tree._convertNodeArgToNodes('basal')
-        assert [n.index for n in ns_comp] == []
-        ns_comp = [self.tree._convertNodeArgToNodes(n)[0] for n in ns_orig]
-        assert [n.index for n in ns_comp] == [1,8,8,8,8,8,10,10,12,12]
-        # assert whether returned nodes have correct structure
-        assert self.tree[5] == None
-        assert self.tree[6] == None
-        assert self.tree[7] == None
-        assert self.tree[9] == None
-        assert self.tree[11] == None
-        assert self.tree[1].parent_node == None
-        assert self.tree[8].parent_node.index == 1
-        assert self.tree[10].parent_node.index == 8
-        assert self.tree[12].parent_node.index == 8
-        assert self.tree[1].child_nodes[0].index == 8
-        assert [cn.index for cn in self.tree[8].child_nodes] == [10,12]
-        assert self.tree[10].child_nodes == []
-        assert self.tree[12].child_nodes == []
+        # get nodes in original tree
+        ns_orig = self.tree.nodes
+        with self.tree.as_computational_tree:
+            assert len(self.tree.nodes) == 4
+            assert len([node for node in self.tree]) == 4
+            # check whether computational nodes are correct
+            for node in self.tree: assert node.index in [1,8,10,12]
+            # check whether returned nodes from `MorphTree.convert_node_arg_to_nodes`
+            # are correct
+            ns_comp = self.tree.convert_node_arg_to_nodes(ns_orig)
+            assert [n.index for n in ns_comp] == [1,8,10,12]
+            ns_comp = self.tree.convert_node_arg_to_nodes('apical')
+            assert [n.index for n in ns_comp] == [8,10,12]
+            ns_comp = self.tree.convert_node_arg_to_nodes('basal')
+            assert [n.index for n in ns_comp] == []
+            ns_comp = [self.tree.convert_node_arg_to_nodes(n)[0] for n in ns_orig]
+            assert [n.index for n in ns_comp] == [1,8,8,8,8,8,10,10,12,12]
+            # assert whether returned nodes have correct structure
+            assert self.tree[5] == None
+            assert self.tree[6] == None
+            assert self.tree[7] == None
+            assert self.tree[9] == None
+            assert self.tree[11] == None
+            assert self.tree[1].parent_node == None
+            assert self.tree[8].parent_node.index == 1
+            assert self.tree[10].parent_node.index == 8
+            assert self.tree[12].parent_node.index == 8
+            assert self.tree[1].child_nodes[0].index == 8
+            assert [cn.index for cn in self.tree[8].child_nodes] == [10,12]
+            assert self.tree[10].child_nodes == []
+            assert self.tree[12].child_nodes == []
 
         # change radius of a node and check whether computational tree is correct
         # (i) below threshold
-        self.tree.treetype = 'original'
         self.tree[5].R += 1e-12
-        self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        for node in self.tree: assert node.index in [1,8,10,12]
+        self.tree.set_comp_tree()
+        with self.tree.as_computational_tree:
+            for node in self.tree: assert node.index in [1,8,10,12]
 
         # (i1) above threshold, one node
-        self.tree.treetype = 'original'
         self.tree[5].R += 1e-2
-        self.tree.setCompTree(eps=1e-9)
-        self.tree.treetype = 'computational'
-        for node in self.tree: assert node.index in [1,4,5,8,10,12]
+        self.tree.set_comp_tree(eps=1e-9)
+        with self.tree.as_computational_tree:
+            for node in self.tree: assert node.index in [1,4,5,8,10,12]
 
         # (i2) above threshold, two consecutive nodes
-        self.tree.treetype = 'original'
         self.tree[4].R += 1e-2
-        self.tree.setCompTree()
-        self.tree.treetype = 'computational'
-        for node in self.tree: assert node.index in [1,5,8,10,12]
+        self.tree.set_comp_tree()
+        with self.tree.as_computational_tree:
+            for node in self.tree: assert node.index in [1,5,8,10,12]
 
-    def testThreePointSoma(self):
+
+    def test_one_point_soma(self):
+        mtree1 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'onepoint_soma.swc'))
+        mtree3 = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
+
+        # one point soma is internally converted to three-point soma, so we test
+        # equivalence of both representations
+        for ii in range(1,6):
+            n1 = mtree1.__getitem__(ii, skip_inds=[])
+            n3 = mtree3.__getitem__(ii, skip_inds=[])
+            xyz1, R1, swc_type1 = n1.xyz, n1.R, n1.swc_type
+            xyz3, R3, swc_type3 = n3.xyz, n3.R, n3.swc_type
+
+            assert np.allclose(xyz1, xyz3)
+            assert np.allclose(R1, R3)
+            assert swc_type1 == swc_type3
+
+
+    def test_three_point_soma(self):
         mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'threepoint_soma.swc'))
 
         for n, idx in zip(mtree, [1,4,5]):
@@ -665,7 +720,7 @@ class TestMorphTree():
 
         assert mtree[1].R == s_radius
 
-    def testMultiCylinderSoma(self):
+    def test_multi_cylinder_soma(self):
         mtree = MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'multicylinder_soma.swc'))
 
         for n, idx in zip(mtree, [1,7,8,9,10]):
@@ -681,22 +736,66 @@ class TestMorphTree():
 
         assert np.allclose(mtree[1].xyz, np.array([0.,2.5,0.]))
 
-    def testWrongSoma(self):
+    def test_wrong_soma(self):
         with pytest.raises(ValueError):
             MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, 'wrong_soma.swc'))
+
+    def test_copy_construct(self):
+        self.load_tree(reinitialize=True, segments=True)
+        tree1 = MorphTree(self.tree)
+
+        self.tree.set_comp_tree()
+        tree2 = MorphTree(self.tree)
+
+        assert tree1._computational_root is None
+        assert tree2._computational_root is not None
+        
+        assert repr(tree2) == repr(self.tree)
+        assert repr(tree2) == repr(tree1)
+        with tree2.as_computational_tree:
+            with self.tree.as_computational_tree:
+                assert repr(tree2) == repr(self.tree)
+                assert repr(tree2) != repr(tree1)
+
+        tree1.set_comp_tree()
+        assert repr(tree1) == repr(tree2)
+        with tree2.as_computational_tree:
+            with tree1.as_computational_tree:
+                assert repr(tree2) == repr(tree1)
+
+    def test_root_modification(self):
+        # test for a tricky bugfix with cachetrees, where the update
+        # of tree.__dict__ did not results in an updated tree because
+        # the original root was reapplied after the context manager closed
+        self.load_tree(reinitialize=True, segments=True)
+        # modify the tree by adding a node
+        tree = MorphTree(self.tree)
+        axon_node = tree._create_corresponding_node(13)
+        tree.add_node_with_parent(axon_node, tree[1])
+
+        assert len(tree) == len(self.tree) + 1
+
+        # copy the self.tree __dict__ into the new one, should remove the modification
+        with tree.as_original_tree:
+            tree.__dict__.update(self.tree.__dict__)
+
+        assert len(tree) == len(self.tree)
 
 
 if __name__ == '__main__':
     tmt = TestMorphTree()
-    tmt.testPlotting(pshow=True)
-    tmt.testCompTree0()
-    tmt.testInputArgConversion()
-    tmt.testLocFunctionality()
-    tmt.testLocStorageRetrievalLookup()
-    tmt.testNearestNeighbours()
-    tmt.testCompTree()
-
-    tmt.testMultiCylinderSoma()
-    tmt.testThreePointSoma()
-    tmt.testWrongSoma()
-
+    tmt.test_string_representation()
+    tmt.test_plotting(pshow=True)
+    tmt.test_comp_tree_0()
+    tmt.test_input_arg_conversion()
+    tmt.test_loc_functionality()
+    tmt.test_unique_locs()
+    tmt.test_loc_storage_retrieval_lookup()
+    tmt.test_nearest_neighbours()
+    tmt.test_comp_tree()
+    tmt.test_multi_cylinder_soma()
+    tmt.test_one_point_soma()
+    tmt.test_three_point_soma()
+    tmt.test_wrong_soma()
+    tmt.test_copy_construct()
+    tmt.test_root_modification()

@@ -18,7 +18,8 @@ import pickle
 SIM_FLAG = 1
 try:
     import neuron
-    from neat import NeuronSimTree, NeuronCompartmentTree, createReducedNeuronModel
+    from neat import load_neuron_model, NeuronSimTree, NeuronCompartmentTree
+    load_neuron_model("channels")
 except ImportError:
     warnings.warn('NEURON not available, plotting stored image', UserWarning)
     SIM_FLAG = 0
@@ -64,10 +65,10 @@ def getCTree(cfit, locs, f_name, recompute_ctree=False, recompute_biophys=False)
         clocs = pickle.load(file)
     except (IOError, EOFError) as err:
         print('\n>>>> (re-)deriving model %s'%f_name)
-        ctree = cfit.fitModel(locs, alpha_inds=[0], parallel=True,
+        ctree = cfit.fit_model(locs, alpha_inds=[0], parallel=True,
                                      use_all_channels_for_passive=False,
                                      recompute=recompute_biophys)
-        clocs = ctree.getEquivalentLocs()
+        clocs = ctree.get_equivalent_locs()
         print('>>>> writing file %s'%f_name)
         file = open(f_name + '.p', 'wb')
         pickle.dump(ctree, file)
@@ -93,19 +94,19 @@ def calcAmpDelayWidth(res):
     res['width'] = dt*np.sum(res['v_m'] > v_half[:,None], axis=1)
 
 
-def runSim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur':1.}):
+def run_sim(simtree, locs, soma_loc, stim_params={'amp':.5, 't_onset':5., 't_dur':1.}):
     """
     Runs simulation to inject somatic current in order to elicit AP
     """
     global DT, T_MAX, TC
     global T_DUR, G_SYN, N_INP
 
-    simtree.initModel(dt=DT, t_calibrate=TC, factor_lambda=1.)
-    simtree.addIClamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
-    simtree.storeLocs([soma_loc] + locs, 'rec locs')
+    simtree.init_model(dt=DT, t_calibrate=TC, factor_lambda=1.)
+    simtree.add_i_clamp(soma_loc, stim_params['amp'], stim_params['t_onset'], stim_params['t_dur'])
+    simtree.store_locs([soma_loc] + locs, 'rec locs')
 
     res = simtree.run(40., record_from_iclamps=True)
-    simtree.deleteModel()
+    simtree.delete_model()
 
     return res
 
@@ -133,12 +134,12 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
 
     # create the full model
     phys_tree = getL23PyramidNaK()
-    sim_tree = phys_tree.__copy__(new_tree=NeuronSimTree())
+    sim_tree = NeuronSimTree(phys_tree)
 
     # distribute locations to measure backAPs on branches
     leafs_basal = [node for node in sim_tree.leafs if node.swc_type == 3]
-    branches    = [sim_tree.pathToRoot(leaf)[::-1] for leaf in leafs_basal]
-    locslist    = [sim_tree.distributeLocsOnNodes(D2S_BASAL, node_arg=branch) for branch in branches]
+    branches    = [sim_tree.path_to_root(leaf)[::-1] for leaf in leafs_basal]
+    locslist    = [sim_tree.distribute_locs_on_nodes(D2S_BASAL, node_arg=branch) for branch in branches]
     branchlist  = [b for ii, b in enumerate(branches) if len(locslist[ii]) == 3]
     locs    = [locs for locs in locslist if len(locs) == 3][1]
     # do back prop sims
@@ -152,18 +153,18 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     # create reduced tree
     ctree, clocs = getCTree(cfit, [SLOCS[0]] + locs, 'data/ctree_basal_bAP_3loc',
                             recompute_ctree=rc, recompute_biophys=rb)
-    csimtree = createReducedNeuronModel(ctree)
+    csimtree = NeuronCompartmentTree(ctree)
     print(ctree)
 
     # run the simulation of he full tree
-    res = runSim(sim_tree, locs, SLOCS[0], stim_params=STIM_PARAMS)
+    res = run_sim(sim_tree, locs, SLOCS[0], stim_params=STIM_PARAMS)
     calcAmpDelayWidth(res)
 
     amp_diffs_biop[:] = res['amp'][1:]
     delay_diffs_biop[:] = res['delay'][1:]
 
     # run the simulation of the reduced tree
-    cres = runSim(csimtree, clocs[1:], clocs[0], stim_params=STIM_PARAMS)
+    cres = run_sim(csimtree, clocs[1:], clocs[0], stim_params=STIM_PARAMS)
     calcAmpDelayWidth(cres)
 
     amp_diffs_3loc[:] = cres['amp'][1:]
@@ -175,11 +176,11 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
         # create reduced tree with all 1 single dendritic site locs
         ctree, clocs = getCTree(cfit, [SLOCS[0]] + [loc], 'data/ctree_basal_bAP_1loc%d'%jj,
                                 recompute_ctree=rc, recompute_biophys=False)
-        csimtree = createReducedNeuronModel(ctree)
+        csimtree = NeuronCompartmentTree(ctree)
         print(ctree)
 
         # run the simulation of the reduced tree
-        cres_ss = runSim(csimtree, [clocs[1]], clocs[0], stim_params=STIM_PARAMS)
+        cres_ss = run_sim(csimtree, [clocs[1]], clocs[0], stim_params=STIM_PARAMS)
         calcAmpDelayWidth(cres_ss)
         creslist.append(cres_ss)
 
@@ -265,23 +266,23 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     markers = [{'marker': 's', 'c': cfl[0], 'mec': 'k', 'ms': markersize}] + \
               [{'marker': 's', 'c': cfl[1], 'mec': 'k', 'ms': markersize} for _ in plocs[1:]]
     # plot morphology
-    sim_tree.plot2DMorphology(ax_morph, use_radius=False, plotargs=plotargs,
+    sim_tree.plot_2d_morphology(ax_morph, use_radius=False, plotargs=plotargs,
                                 cs=cs, cmap=CMAP_MORPH,
-                                marklocs=plocs, locargs=markers, lims_margin=0.01)
+                                marklocs=plocs, loc_args=markers, lims_margin=0.01)
 
     # plot compartment tree schematic
-    ctree_3l = cfit.setCTree([SLOCS[0]] + locs)
+    ctree_3l = cfit.set_ctree([SLOCS[0]] + locs)
     ctree_3l = cfit.ctree
-    ctree_1l = cfit.setCTree([SLOCS[0]] + locs[0:1])
+    ctree_1l = cfit.set_ctree([SLOCS[0]] + locs[0:1])
     ctree_1l = cfit.ctree
 
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2}}
     labelargs.update({ii: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2} for ii in range(1,len(plocs))})
-    ctree_3l.plotDendrogram(ax_red1, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
+    ctree_3l.plot_dendrogram(ax_red1, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
 
     labelargs = {0: {'marker': 's', 'mfc': cfl[0], 'mec': 'k', 'ms': markersize*1.2},
                  1: {'marker': 's', 'mfc': cfl[1], 'mec': 'k', 'ms': markersize*1.2}}
-    ctree_1l.plotDendrogram(ax_red2, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
+    ctree_1l.plot_dendrogram(ax_red2, plotargs={'c':'k', 'lw': lwidth}, labelargs=labelargs)
 
     ax_red1.set_xticks([]); ax_red1.set_yticks([])
     ax_red1.set_xlabel(r'$\Delta x = 50$ $\mu$m', fontsize=ticksize,rotation=60)

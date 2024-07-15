@@ -2,7 +2,9 @@
 .pytest_cache/
 __version__.pyc
 build/
-neat/tools/simtools/netsim.cpp
+neat/simulations/netsim.cpp
 tests/__pycache__/
 .DS_Store
 *__pycache__
+*cache/
+.vscode

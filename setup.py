@@ -6,19 +6,26 @@ NEAT (NEural Analysis Toolkit)
 Author: W. Wybo
 """
 
-import re
+import os
+import codecs
 from setuptools import setup
 from setuptools.extension import Extension
 from Cython.Build import cythonize
 
-import os, subprocess, shutil, sys
+
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
 
 
 def read_version():
-    with open("./neat/__version__.py") as f:
-        line = f.read()
-        match = re.findall(r"[0-9]+\.[0-9]+\.[0-9]+", line)
-        return match[0]
+    for line in read("neat/__version__.py").splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 
 def read_requirements():
@@ -40,16 +47,16 @@ class DelayedIncludeDirs(list):
 
     def __iter__(self):
         import numpy
-        return iter([numpy.get_include(), "neat/tools/simtools/net/*.h"])
+        return iter([numpy.get_include(), "neat/simulations/net/*.h"])
 
 
 ext = Extension(name="netsim",
-                sources=["neat/tools/simtools/net/netsim.pyx",
-                         "neat/tools/simtools/net/Ionchannels.cc",
-                         "neat/tools/simtools/net/netsim.pyx",
-                         "neat/tools/simtools/net/NETC.cc",
-                         "neat/tools/simtools/net/Synapses.cc",
-                         "neat/tools/simtools/net/Tools.cc"
+                sources=["neat/simulations/net/netsim.pyx",
+                         "neat/simulations/net/Ionchannels.cc",
+                         "neat/simulations/net/netsim.pyx",
+                         "neat/simulations/net/NETC.cc",
+                         "neat/simulations/net/Synapses.cc",
+                         "neat/simulations/net/Tools.cc"
                          ],
                 language="c++",
                 extra_compile_args=["-w", "-O3", "-std=gnu++11"],
@@ -59,17 +66,21 @@ ext = Extension(name="netsim",
 s_ = setup(
     name='neatdend',
     version=read_version(),
-    scripts=['neat/channels/compilechannels'],
+    scripts=['neat/actions/neatmodels'],
     packages=['neat',
               'neat.trees',
+              'neat.actions',
               'neat.tools',
               'neat.tools.fittools',
               'neat.tools.plottools',
-              'neat.tools.simtools.neuron',
+              'neat.simulations.neuron',
+              'neat.simulations.nest',
+              'neat.modelreduction',
               'neat.channels',
               'neat.channels.channelcollection'],
     package_data={
-        "neat.tools.simtools.neuron": ["mech_storage/*.mod"],
+        "neat.simulations.neuron": ["mech_storage/*.mod"],
+        "neat.simulations.nest": ["default_syns.nestml"]
     },
     ext_package='neat',
     ext_modules=cythonize([ext], language_level=3),

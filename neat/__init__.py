@@ -24,7 +24,7 @@ from .trees.phystree import PhysNode
 from .trees.sovtree import SOVTree
 from .trees.sovtree import SOVNode, SomaSOVNode
 
-from .trees.greenstree import GreensTree
+from .trees.greenstree import GreensTree, GreensTreeTime
 from .trees.greenstree import GreensNode, SomaGreensNode
 
 from .trees.netree import NET
@@ -35,17 +35,32 @@ from .trees.compartmenttree import CompartmentTree
 from .trees.compartmenttree import CompartmentNode
 
 try:
-    from .tools.simtools.neuron.neuronmodel import NeuronSimTree
-    from .tools.simtools.neuron.neuronmodel import NeuronSimNode
-    from .tools.simtools.neuron.neuronmodel import NeuronCompartmentTree
-    from .tools.simtools.neuron.neuronmodel import createReducedNeuronModel
+    from .simulations.neuron.neuronmodel import load_neuron_model
+    from .simulations.neuron.neuronmodel import NeuronSimTree
+    from .simulations.neuron.neuronmodel import NeuronSimNode
+    from .simulations.neuron.neuronmodel import NeuronCompartmentTree
 except ModuleNotFoundError:
     warnings.warn('NEURON not available', UserWarning)
+
+try:
+    from .simulations.nest.nestmodel import NestCompartmentTree
+    from .simulations.nest.nestmodel import NestCompartmentNode
+    from .simulations.nest.nestmodel import load_nest_model
+except ModuleNotFoundError:
+    warnings.warn('NEST not available', UserWarning)
 
 from .tools.kernelextraction import FourrierTools
 
 from .channels.ionchannels import IonChannel
+from .channels.concmechs import ExpConcMech
 
-from .tools.fittools.compartmentfitter import CompartmentFitter
+from .modelreduction.compartmentfitter import CompartmentFitter
+from .modelreduction.cachetrees import CachedTree
+from .modelreduction.cachetrees import EquilibriumTree
+from .modelreduction.cachetrees import CachedGreensTree
+from .modelreduction.cachetrees import CachedGreensTreeTime
+from .modelreduction.cachetrees import CachedSOVTree
+
+from .factorydefaults import FitParams, MechParams
 
 from .__version__ import __version__
