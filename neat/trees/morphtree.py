@@ -86,20 +86,29 @@ class MorphLoc(object):
 
     Parameters
     ----------
-        loc: tuple or dict or `neat.MorphLoc`
-            if tuple: (node index, x-value)
-            if dict: {'node': node index, 'x': x-value}
-        reftree: `neat.MorphTree`
-        set_as_comploc: bool
-            if True, assumes the paremeters provided in `loc` are coordinates
-            on the computational tree. Doing this while no computational tree
-            has been initialized in `reftree` will result in an error.
-            Defaults to False
+    loc: `tuple` or `dict` or `neat.MorphLoc`
+        if tuple: (node index, x-value)
+        if dict: {'node': node index, 'x': x-value}
+    reftree: `neat.MorphTree`
+    set_as_comploc: `bool`
+        if True, assumes the paremeters provided in `loc` are coordinates
+        on the computational tree. Doing this while no computational tree
+        has been initialized in `reftree` will result in an error.
+        Defaults to False
 
     Raises
     ------
-        ValueError
-            If x-coordinate of location is not in ``[0,1]``
+    ValueError
+        If x-coordinate of location is not in ``[0,1]``
+
+    Attributes
+    ----------
+    loc: dict {'node': int, 'x': `float` $\in [0,1]$}
+        The location, in original tree coordinates
+    comp_loc: dict {'node': int, 'x': `float` $\in [0,1]$}
+        The location, in computational tree coordinates w.r.t. `self.reftree`
+    reftree: `neat.MorphTree` or subclass
+        The tree on which the location is defined
     """
 
     def __init__(self, loc, reftree, set_as_comploc=False):
@@ -402,9 +411,14 @@ class MorphTree(STree):
 
     Parameters
     ----------
-    file_n: str (optional)
-        the file name of the morphology file. Assumed to follow the '.swc' format.
-        Default is ``None``, which initialized an empty tree
+    arg: `str` (optional), `neat.MorphNode` or subclass, or `neat.MorphTree` or subclass, or ``None``
+        - If `str`, represents the file path of the morphology file. 
+        Assumed to follow the '.swc' format.
+        - If `neat.MorphNode` or derived class, initializes a the tree with the
+        provided node as root.
+        - If `neat.MorphTree` or derived class, initialized a copy of the provided
+        tree.
+        - Default is ``None``, which initialized an empty tree
     types: list of int (optional)
         The list of node types to be included. As per the '.swc' convention,
         ``1`` is soma, ``2`` is axon, ``3`` is basal dendrite and ``4`` apical
@@ -474,7 +488,7 @@ class MorphTree(STree):
 
     def _find_node(self, node, index, skip_inds=(2,3)):
         """
-        Sweet breadth-first/stack iteration to replace the recursive call.
+        Breadth-first/stack iteration to replace the recursive call.
         Traverses the tree until it finds the node you are looking for.
         Returns SNode when found and None when not found
 
@@ -633,6 +647,22 @@ class MorphTree(STree):
             )
 
     def set_default_tree(self, default: Literal['original', 'computational'] = 'original'):
+        """
+        Set either the 'original' or 'computatianal' tree as the default one.
+        Note that this function should be used outside
+        `as_computational_tree()` and `as_original_tree()` context managers, 
+        otherwise the default will not be stored.
+
+        Parameters
+        ----------
+        default : Literal[&#39;original&#39;, &#39;computational&#39;], optional
+            The tree to set as default, by default 'original'.
+
+        Raises
+        ------
+        ValueError
+            For incorrect argument
+        """
         if default == 'original':
             self.root = self._original_root
         elif default == 'computational':
@@ -644,6 +674,9 @@ class MorphTree(STree):
     @property
     @contextmanager
     def as_computational_tree(self):
+        """
+        Context manager that ensures the computational tree is active
+        """
         self._check_computational_root()
         treetype = 'computational' if self.check_computational_tree_active() else 'original'
         self.root = self._computational_root
@@ -657,6 +690,9 @@ class MorphTree(STree):
     @property
     @contextmanager
     def as_original_tree(self):
+        """
+        Context manager that ensures the original tree is active
+        """
         treetype = 'computational' if self.check_computational_tree_active() else 'original'
         self.root = self._original_root
         try:
@@ -667,9 +703,17 @@ class MorphTree(STree):
             self.root = self._computational_root if treetype == 'computational' else self._original_root
 
     def check_computational_tree_active(self):
+        """
+        check whether the computational tree is active
+
+        Returns
+        -------
+        `bool`:
+            ``True`` if the computational tree is active
+        """
         return self.root is self._computational_root and self._computational_root is not None
 
-    def _create_corresponding_node(self, node_index, p3d=None):
+    def create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -771,7 +815,7 @@ class MorphTree(STree):
                 # create the nodes
                 if swc_type in types:
                     p3d = (np.array([x,y,z]), radius, swc_type)
-                    node = self._create_corresponding_node(index, p3d)
+                    node = self.create_corresponding_node(index, p3d)
                     all_nodes[index] = (swc_type, node, parent_index)
 
         # check if node with index 1 is soma node (swc_type == 1)
@@ -802,8 +846,8 @@ class MorphTree(STree):
                 else:
                     node.index += 2
             # add extra soma nodes to the tree
-            snode_2 = self._create_corresponding_node(2, p3d_2)
-            snode_3 = self._create_corresponding_node(3, p3d_3)
+            snode_2 = self.create_corresponding_node(2, p3d_2)
+            snode_3 = self.create_corresponding_node(3, p3d_3)
             self.add_node_with_parent(snode_2, self[1])
             self.add_node_with_parent(snode_3, self[1])
 
@@ -910,8 +954,8 @@ class MorphTree(STree):
 
         self.root.xyz = rp
         # create the soma nodes
-        s_node_2 = self._create_corresponding_node(2, (rp2, radius, 1))
-        s_node_3 = self._create_corresponding_node(3, (rp3, radius, 1))
+        s_node_2 = self.create_corresponding_node(2, (rp2, radius, 1))
+        s_node_3 = self.create_corresponding_node(3, (rp3, radius, 1))
 
         return s_node_2, s_node_3
 
@@ -1901,13 +1945,13 @@ class MorphTree(STree):
                     self.leafinds[name].append(ind)
         return self.leafinds[name]
 
-    def _has_loc_from_root(self, loc, name):
+    def _has_loc_from_root(self, loc, name, tol=1e-8):
         look_further = False
         # look if there are locs on the same node
         if loc['node'] != 1:
             n_inds = np.where(loc['node'] == self.nids[name] )[0]
             if len(n_inds) > 0:
-                x_inds = np.where(loc['x'] < self.xs[name][n_inds])[0]
+                x_inds = np.where(loc['x'] + tol < self.xs[name][n_inds])[0]
                 if len(x_inds) > 0:
                     returnbool = True
                 else:
@@ -1922,8 +1966,7 @@ class MorphTree(STree):
             cnodes = node.child_nodes
             returnbool = False
             for cnode in cnodes:
-                if self._has_loc_from_root({'node': cnode.index, 'x': 0.}, name):
-                    returnbool = True
+                returnbool = self._has_loc_from_root({'node': cnode.index, 'x': 0.}, name)
         return returnbool
 
     def distances_to_soma(self, loc_arg, recompute=False):
@@ -2895,7 +2938,7 @@ class MorphTree(STree):
             # use the soma as root
             snode = self[1]
         p3d = (snode.xyz, snode.R, snode.swc_type)
-        new_snode = new_tree._create_corresponding_node(1, p3d)
+        new_snode = new_tree.create_corresponding_node(1, p3d)
         new_snode.L = snode.L
         new_tree.set_root(new_snode)
         new_nodes = [new_snode]
@@ -2905,14 +2948,14 @@ class MorphTree(STree):
         # make two other soma nodes
         if fake_soma:
             for index in [2,3]:
-                new_cnode = new_tree._create_corresponding_node(index, p3d)
+                new_cnode = new_tree.create_corresponding_node(index, p3d)
                 new_tree.add_node_with_parent(new_cnode, new_snode)
                 new_nodes.append(new_cnode)
         else:
             for cnode in snode.get_child_nodes(skip_inds=[]):
                 if cnode.index in [2,3]:
                     p3d = (cnode.xyz, cnode.R, cnode.swc_type)
-                    new_cnode = new_tree._create_corresponding_node(cnode.index, p3d)
+                    new_cnode = new_tree.create_corresponding_node(cnode.index, p3d)
                     new_tree.add_node_with_parent(new_cnode, new_snode)
                     new_nodes.append(new_cnode)
         # make rest of tree
@@ -2946,7 +2989,7 @@ class MorphTree(STree):
                 new_radius = node.parent_node.R * (1.-xs[ind]) + node.R * xs[ind]
             # make new node
             p3d = (new_xyz, new_radius, node.swc_type)
-            new_node = new_tree._create_corresponding_node(index, p3d)
+            new_node = new_tree.create_corresponding_node(index, p3d)
             if store_loc_idxs:
                 new_node.content['loc ind'] = ind
             # add new node
@@ -3068,7 +3111,7 @@ class MorphTree(STree):
         try:
             with self.as_computational_tree:
                 # set the computational tree
-                new_node = new_tree._create_corresponding_node(self.root.index)
+                new_node = new_tree.create_corresponding_node(self.root.index)
                 self.root.__copy__(new_node=new_node)
                 new_tree._computational_root = new_node
                 with new_tree.as_computational_tree:

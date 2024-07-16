@@ -91,9 +91,31 @@ class SNode(object):
         self._child_nodes.remove(child_node)
 
     def __getitem__(self, key):
+        """
+        Get an item from `self.content`
+
+        Parameters
+        ----------
+        key : hashable
+            dictonary key for the `self.content` dictionary
+
+        Returns
+        -------
+        value store in `self.content`
+        """
         return self._content[key]
 
     def __setitem__(self, key, value):
+        """
+        Store an item in the `self.content` dictinary
+
+        Parameters
+        ----------
+        key : hashable
+            dictionary key for the `self.content` dictionary
+        value : any
+            value to be stored in the dictionary
+        """
         self._content[key] = value
 
     def __str__(self, with_parent=True):
@@ -190,7 +212,7 @@ class STree(object):
 
     def _find_node(self, node, index):
         """
-        Sweet breadth-first/stack iteration to replace the recursive call.
+        Breadth-first/stack iteration to replace the recursive call.
         Traverses the tree until it finds the node you are looking for.
         Returns SNode when found and None when not found
 
@@ -432,7 +454,7 @@ class STree(object):
         """
         return len(node.get_child_nodes()) == 0
 
-    def _create_corresponding_node(self, node_index):
+    def create_corresponding_node(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -461,7 +483,7 @@ class STree(object):
                 if ``node_index`` is already in the tree
         """
         if self[node_index] == None:
-            node = self._create_corresponding_node(node_index, *args, **kwargs)
+            node = self.create_corresponding_node(node_index, *args, **kwargs)
             self.add_node_with_parent(node, pnode)
         else:
             raise ValueError('Index %d is already exists in the tree.')
@@ -599,7 +621,7 @@ class STree(object):
         if new_tree is None:
             new_tree = self.__class__()
 
-        new_node = new_tree._create_corresponding_node(node.index)
+        new_node = new_tree.create_corresponding_node(node.index)
         node.__copy__(new_node=new_node)
         new_node.set_parent_node(None)
         new_tree.set_root(new_node)
@@ -966,7 +988,7 @@ class STree(object):
 
         # copy the tree structure
         if self.root is not None:
-            new_node = new_tree._create_corresponding_node(self.root.index)
+            new_node = new_tree.create_corresponding_node(self.root.index)
             self.root.__copy__(new_node=new_node)
             new_tree.set_root(new_node)
             self._recurse_copy(self.root, new_tree)
@@ -975,7 +997,7 @@ class STree(object):
 
     def _recurse_copy(self, pnode, new_tree):
         for node in pnode.get_child_nodes(skip_inds=[]):
-            new_node = new_tree._create_corresponding_node(node.index)
+            new_node = new_tree.create_corresponding_node(node.index)
             new_node = node.__copy__(new_node=new_node)
             new_tree.add_node_with_parent(new_node, new_tree.__getitem__(pnode.index,
                                                                       skip_inds=[]))

@@ -210,11 +210,11 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
+            channel_storage: dict {``channel_name``: `channel_instance`}
+                dict where all ion channel objects present on the node are stored
             channel_names: List[str]
                 the names of the channels to be included included in the
                 conductance calculation
-            channel_storage: dict {``channel_name``: `channel_instance`}
-                dict where all ion channel objects present on the node are stored
             v: float (optional, defaults to `self.v_ep`)
                 the potential (in mV) at which to compute the membrane conductance
 
@@ -247,11 +247,11 @@ class PhysNode(MorphNode):
 
         Parameters
         ----------
+            channel_storage: dict {``channel_name``: `channel_instance`}
+                dict where all ion channel objects present on the node are stored
             channel_names: List[str]
                 the names of the channels to be included included in the
                 conductance calculation
-            channel_storage: dict {``channel_name``: `channel_instance`}
-                dict where all ion channel objects present on the node are stored
             v: float (optional, defaults to `self.v_ep`)
                 the potential (in mV) at which to compute the membrane conductance
 
@@ -279,6 +279,21 @@ class PhysNode(MorphNode):
         return i_tot
 
     def as_passive_membrane(self, channel_storage, channel_names=None, v=None):
+        """
+        Makes the membrane act as a passive membrane for this node, channels 
+        are assumed to add a conductance of g_max * p_open to the membrane 
+        conductance, where p_open is evaluated at the expansion point potential 
+        stored under `self.v_ep`
+
+        Parameters
+        ----------
+        channel_storage: dict {``channel_name``: `channel_instance`}
+            dict where all ion channel objects present on the node are stored
+        channel_names: List[str] or None
+            The channels to passify. If not provided, all channels are passified.
+        v: float (optional, defaults to `self.v_ep`)
+            the potential (in mV) at which to compute the membrane conductance
+        """
         if channel_names is None:
             channel_names = list(self.currents.keys())
         # append leak current to channel names
@@ -392,7 +407,7 @@ class PhysTree(MorphTree):
 
         self.channel_storage = new_channel_storage
 
-    def _create_corresponding_node(self, node_index, p3d=None,
+    def create_corresponding_node(self, node_index, p3d=None,
                                       c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
         """
         Creates a node with the given index corresponding to the tree class.

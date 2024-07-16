@@ -580,7 +580,7 @@ class CompartmentTree(STree):
         repr_str = super().__repr__()
         return repr_str + repr(self._get_repr_dict())
 
-    def _create_corresponding_node(self, index, ca=1., g_c=0., g_l=1e-2):
+    def create_corresponding_node(self, index, ca=1., g_c=0., g_l=1e-2):
         """
         Creates a node with the given index corresponding to the tree class.
 

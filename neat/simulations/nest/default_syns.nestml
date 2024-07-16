@@ -21,6 +21,7 @@ model default_syns:
         tau_d_AN_NMDA real = 43.0 ms     # Synaptic Time Constant NMDA Synapse
         NMDA_ratio real = 2.0      # NMDA_ratio
 
+        e_in real = 0 mV     # reversal of OU conductance
 
     state:
         v_comp real = 0.00000000
@@ -40,6 +41,8 @@ model default_syns:
         inline i_AMPA_NMDA real = convolve(g_AN_AMPA, spikes_AN) * (e_AN_AMPA - v_comp) + NMDA_ratio * \
                                 convolve(g_AN_NMDA, spikes_AN) * (e_AN_NMDA - v_comp) / (1. + 0.3 * exp( -.1 * v_comp )) @mechanism::receptor
 
+        inline cond_in real = g_in * (e_in - v_comp) @mechanism::continuous_input
+        inline curr_in real = i_in @mechanism::continuous_input
 
     internals:
         tp_AMPA real = (tau_r_AMPA * tau_d_AMPA) / (tau_d_AMPA - tau_r_AMPA) * ln( tau_d_AMPA / tau_r_AMPA )
@@ -66,6 +69,8 @@ model default_syns:
         spikes_GABA <- spike
         spikes_NMDA <- spike
         spikes_AN <- spike
+        g_in real <- continuous
+        i_in real <- continuous
 
 #    function YY(ca_real real) real:
 #        return ca_real + 2.

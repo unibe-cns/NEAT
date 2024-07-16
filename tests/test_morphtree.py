@@ -770,7 +770,7 @@ class TestMorphTree():
         self.load_tree(reinitialize=True, segments=True)
         # modify the tree by adding a node
         tree = MorphTree(self.tree)
-        axon_node = tree._create_corresponding_node(13)
+        axon_node = tree.create_corresponding_node(13)
         tree.add_node_with_parent(axon_node, tree[1])
 
         assert len(tree) == len(self.tree) + 1

@@ -311,7 +311,7 @@ class NET(STree):
     def __init__(self, root=None):
         super().__init__(root)
 
-    def _create_corresponding_node(self, node_index):
+    def create_corresponding_node(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 

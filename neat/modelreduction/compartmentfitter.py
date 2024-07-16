@@ -980,7 +980,7 @@ class CompartmentFitter(EquilibriumTree):
                 fit_locs, pprint=False
             )
 
-        k_orig, k_comp = self.get_kernels(ctree, alphas=alphas, phimat=phimat)
+        k_orig, k_comp = self.get_kernels((ctree, fit_locs), alphas=alphas, phimat=phimat)
 
         if t_arr is None:
             t_arr = np.linspace(0.,200.,int(1e3))

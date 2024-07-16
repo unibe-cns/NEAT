@@ -95,6 +95,11 @@ mechname = MechName()
 
 
 class NeuronSimNode(PhysNode):
+    """
+    Subclass of `neat.PhysNode` that implements functionality to instantiate a 
+    cylindrical `neuron.h.Section` based on its physiological and geometrical 
+    parameters.
+    """
     def __init__(self, index, p3d=None):
         super().__init__(index, p3d)
 
@@ -233,7 +238,7 @@ class NeuronSimTree(PhysTree):
         # initialize the tree structure
         super().__init__(arg=arg, types=types)
 
-    def _create_corresponding_node(self, node_index, p3d=None):
+    def create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -323,7 +328,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the shunt.
         g: float
             The conductance of the shunt (uS)
@@ -344,7 +349,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau1: float
             Rise time of the current waveform (ms)
@@ -365,7 +370,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau: float
             Decay time of the conductance window (ms)
@@ -386,7 +391,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau1: float
             Rise time of the conductance window (ms)
@@ -411,7 +416,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau: float
             Decay time of the AMPA conductance window (ms)
@@ -442,7 +447,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau1: float
             Rise time of the AMPA conductance window (ms)
@@ -477,7 +482,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         amp: float
             The amplitude of the current (nA)
@@ -501,7 +506,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         amp: float
             The amplitude of the current (nA)
@@ -534,7 +539,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau: float
             Time-scale of the OU process (ms)
@@ -572,7 +577,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the conductance.
         tau: float
             Time-scale of the OU process (ms)
@@ -626,7 +631,7 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: dict, tuple or `neat.MorphLoc`
             The location of the conductance.
         e_c: float
             The clamping voltage (mV)
@@ -985,6 +990,10 @@ class NeuronSimTree(PhysTree):
 
 
 class NeuronCompartmentNode(NeuronSimNode):
+    """
+    Subclass of `NeuronSimNode` that defines a cylinder with fake geometry in
+    NEURON to result in the effective simulation as a single compartment.
+    """
     def __init__(self, index):
         super().__init__(index)
 
@@ -1036,32 +1045,46 @@ class NeuronCompartmentNode(NeuronSimNode):
 
 class NeuronCompartmentTree(NeuronSimTree):
     """
-    Subclass of `NeuronSimTree` where sections are defined so that they are
-    effectively single compartments. Should be created from a
-    `neat.CompartmentTree` using `neat.createReducedCompartmentModel()`
+    Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
+    models from a `neat.CompartmentTree`.
+
+    Parameters
+    ----------
+    ctree: `neat.CompartmentTree`
+        The tree containing the parameters of the reduced compartmental model
+        to be simulated
+    fake_c_m: float
+        Fake value for the membrance capacitance density, rescales cylinder 
+        surface
+    fake_r_a: float
+        Fake value for the axial resistance, rescales cylinder length
+
+    Attributes
+    ----------
+    equivalent_locs: list of tuples
+        'Fake' locations corresponding to each compartment, which are 
+        used to insert hoc point process at the compartments using 
+        the same functions definitions as for as for a morphological 
+        `neat.NeuronSimTree`.
+
+    Notes
+    -----
+    - Note that this class inherits from `neat.NeuronSimTree` and *not* from 
+    `neat.CompartmentTree`. This is because NEAT defines a fake morphology to
+    implement the compartment model in NEURON, and also to reuse the functionality
+    implemented by `neat.NeuronSimTree`. Any function that is not explicitly 
+    redefined from `neat.NeuronSimTree` can be called in the same way for this
+    compartment model.
+    - Locations to this class can be provided either as fake morphology locations
+    -- i.e. a tuple `(node.index, x-location in [0,1])` -- where the value of the
+    x-location is ignored since the nodes here are single compartments, as in
+    the `neat.CompartmentTree`, and not cylinders, as in `neat.MorphTree` or 
+    subclasses, or as location indices, where the index corresponds to the location
+    in the original list of locations from which the `neat.CompartmentTree` was 
+    derived.
     """
     def __init__(self, ctree, fake_c_m=1., fake_r_a=100.*1e-6, method=2):        
-        """
-        Creates a `neat.NeuronCompartmentTree` to simulate reduced compartmentment
-        models from a `neat.CompartmentTree`.
 
-        Parameters
-        ----------
-        ctree: `neat.CompartmentTree`
-            The tree containing the parameters of the reduced compartmental model
-            to be simulated
-
-        Returns
-        -------
-        `neat.NeuronCompartmentTree`
-
-        Notes
-        -----
-        The function `ctree.get_equivalent_locs()` can be used to obtain 'fake'
-        locations corresponding to each compartment, which in turn can be used to
-        insert hoc point process at the compartments using the same functions
-        definitions as for as for a morphological `neat.NeuronSimTree`
-        """
         try:
             assert issubclass(ctree.__class__, CompartmentTree)
         except AssertionError as e:
@@ -1138,7 +1161,7 @@ class NeuronCompartmentTree(NeuronSimTree):
     def _gather_nodes(self, node, node_list=[], skip_inds=[]):
         return super()._gather_nodes(node, node_list=node_list, skip_inds=skip_inds)
 
-    def _create_corresponding_node(self, node_index):
+    def create_corresponding_node(self, node_index):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -1170,6 +1193,14 @@ class NeuronCompartmentTree(NeuronSimTree):
             return loc_idx
 
     def set_rec_locs(self, loc_idxs):
+        """
+        Set the recording locations
+
+        Parameters
+        ----------
+        loc_idxs : int, dict, tuple, or `neat.MorphLoc`
+            the recording locations
+        """
         rec_locs = [self._convert_loc(loc_idx )for loc_idx in loc_idxs]
         self.store_locs(rec_locs, 'rec locs')
 
@@ -1179,7 +1210,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the shunt.
         g: float
             The conductance of the shunt (uS)
@@ -1195,7 +1226,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau1: float
             Rise time of the current waveform (ms)
@@ -1211,7 +1242,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau: float
             Decay time of the conductance window (ms)
@@ -1227,7 +1258,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau1: float
             Rise time of the conductance window (ms)
@@ -1246,7 +1277,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau: float
             Decay time of the AMPA conductance window (ms)
@@ -1269,7 +1300,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau1: float
             Rise time of the AMPA conductance window (ms)
@@ -1295,7 +1326,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         amp: float
             The amplitude of the current (nA)
@@ -1313,7 +1344,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         amp: float
             The amplitude of the current (nA)
@@ -1337,7 +1368,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the current.
         tau: float
             Time-scale of the OU process (ms)
@@ -1361,7 +1392,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the conductance.
         tau: float
             Time-scale of the OU process (ms)
@@ -1391,7 +1422,7 @@ class NeuronCompartmentTree(NeuronSimTree):
 
         Parameters
         ----------
-        loc: dict, tuple or :class:`neat.MorphLoc`
+        loc: int, dict, tuple or `neat.MorphLoc`
             The location of the conductance.
         e_c: float
             The clamping voltage (mV)
