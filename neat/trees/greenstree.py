@@ -394,9 +394,9 @@ class GreensTree(PhysTree):
     freqs: np.array of complex
         Frequencies at which impedances are evaluated ``[Hz]``
     """
-    def __init__(self, arg=None, types=[1,3,4]):
+    def __init__(self, *args, **kwargs):
         self.freqs = None
-        super().__init__(arg=arg, types=types)
+        super().__init__(*args, **kwargs)
 
     def _get_repr_dict(self):
         repr_dict = super()._get_repr_dict()
@@ -409,7 +409,7 @@ class GreensTree(PhysTree):
         repr_str = STree.__repr__(self)
         return repr_str + repr(self._get_repr_dict())
 
-    def _create_corresponding_node(self, node_index, p3d=None):
+    def create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -715,12 +715,24 @@ class GreensTree(PhysTree):
 
 
 class GreensTreeTime(GreensTree):
-    def __init__(self, arg=None, types=[1,3,4]):
+    """
+    Computes the Greens function in the time domain
+
+    Attributes
+    ----------
+    freqs_vfit : `np.array` (`ndim=1`, `dtype=complex`)
+        Frequencies for the vector fitting algorithm, used
+        to transform input impedance kernels back to the time domain
+    ft: `neat.FourrierTools`
+        Helper class instance to transform transfer impedance kernels
+        back to the time domain through quadrature
+    """
+    def __init__(self, *args, **kwargs):
         self.freqs_vfit = None
         self.ft = None
         self._slice_vfit = None
         self._slice_quad = None
-        super().__init__(arg=arg, types=types)
+        super().__init__(*args, **kwargs)
 
     def _get_repr_dict(self):
         t = self.ft.t if self.ft is not None else None
@@ -764,6 +776,14 @@ class GreensTreeTime(GreensTree):
         self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
 
     def set_impedance(self, t_inp):
+        """
+        Set the boundary impedances for each node in the tree. 
+
+        Parameters
+        ----------
+        t_inp : `np.array` (`ndim=1`, `dtype=real`)
+            The time array at which the Green's function has to be evaluated
+        """
         self._set_freq_and_time_arrays(t_inp)
         super().set_impedance(self.freqs)
 

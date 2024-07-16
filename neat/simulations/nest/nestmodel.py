@@ -71,6 +71,10 @@ def load_nest_model(name):
 
 
 class NestCompartmentNode(CompartmentNode):
+    """
+    Node class that summarizes the parameters of `neat.CompartmentNode` into
+    a parameter dictionary suitable for the NEST model.
+    """
     def __init__(self, index, **kwargs):
         super().__init__(index, **kwargs)
 
@@ -133,7 +137,7 @@ class NestCompartmentTree(CompartmentTree):
     def __init__(self, arg=None):
         super().__init__(arg)
 
-    def _create_corresponding_node(self, index, **kwargs):
+    def create_corresponding_node(self, index, **kwargs):
         """
         Creates a node with the given index corresponding to the tree class.
 

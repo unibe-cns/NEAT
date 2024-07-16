@@ -570,6 +570,22 @@ class CachedSOVTree(SOVTree, CachedTree):
         )
 
     def set_sov_in_tree(self, maxspace_freq=100., pprint=False):
+        """
+        Calculate the timescales and spatial functions of the separation of
+        variables approach, using the algorithm by (Major, 1993).
+
+        The (reciprocals) of the timescales (i.e. the roots of the transcendental
+        equation) are stored in the somanode.
+        The spatial factors are stored in each (computational) node.
+
+        Parameters
+        ----------
+        maxspace_freq: float (default is 500)
+            roughly corresponds to the maximal spatial frequency of the
+            smallest time-scale mode
+        pprint: `bool`
+            Verbose if ``True``.
+        """
         if pprint:
             print(f'>>> evaluating SOV expansion')
 

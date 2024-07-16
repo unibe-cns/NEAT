@@ -274,9 +274,9 @@ class SOVTree(PhysTree):
     original tree.
     """
 
-    def __init__(self, arg=None, types=[1,3,4]):
+    def __init__(self, *args, **kwargs):
         self.maxspace_freq = None
-        super().__init__(arg=arg, types=types)
+        super().__init__(*args, **kwargs)
         
 
     def _get_repr_dict(self):
@@ -290,7 +290,7 @@ class SOVTree(PhysTree):
         repr_str = STree.__repr__(self)
         return repr_str + repr(self._get_repr_dict())
 
-    def _create_corresponding_node(self, node_index, p3d=None):
+    def create_corresponding_node(self, node_index, p3d=None):
         """
         Creates a node with the given index corresponding to the tree class.
 
