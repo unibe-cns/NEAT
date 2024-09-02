@@ -45,9 +45,9 @@ jobs:
           echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
           python setup.py install
 
-      # - name: Compile channels
-      #   run: |
-      #     neatmodels install default -s neuron
+      - name: Compile channels
+        run: |
+          neatmodels install default -s neuron
 
       # Unit tests
       - name: Run unit tests
