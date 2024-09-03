@@ -41,10 +41,13 @@ jobs:
   
     steps:
       - name: Setup environment
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
+
+      # Checkout the repository contents
+      - name: Checkout NEAT code
+        uses: actions/checkout@v4
 
       - name: Copyright header check
         run: |
