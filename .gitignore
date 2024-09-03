@@ -9,3 +9,18 @@ tests/__pycache__/
 *cache/
 .vscode
 *.egg-info
+*.pyc
+*mech/
+*tmp/
+report/
+
+src/neat/tools/simtools/nest/tmp/
+
+# c++
+*.bin
+*.cpp
+*.so
+
+# neuron extensions
+*x86_64/
+*arm64/
