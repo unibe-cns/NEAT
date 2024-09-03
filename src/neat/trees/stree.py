@@ -136,8 +136,7 @@ class SNode(object):
         parent_idx = self.parent_node.index if self.parent_node is not None else -1
         node_str = f"{self.__class__.__name__} {self.index}"
         if with_parent:
-            pstr = "None" if self.parent_node is None else str(
-                self.parent_node.index)
+            pstr = "None" if self.parent_node is None else str(self.parent_node.index)
             node_str += f", Parent: {pstr}"
         return node_str
 
@@ -161,8 +160,7 @@ class SNode(object):
         """
         if new_node is None:
             new_node = self.__class__(self.index)
-        orig_keys = set(self.__dict__.keys()) - \
-            {"_parent_node", "_child_nodes"}
+        orig_keys = set(self.__dict__.keys()) - {"_parent_node", "_child_nodes"}
         copy_keys = orig_keys.intersection(set(new_node.__dict__.keys()))
         for key in copy_keys:
             new_node.__dict__[key] = copy.deepcopy(self.__dict__[key])
@@ -732,9 +730,8 @@ class STree(object):
         path1 = self.path_to_root(from_node)[::-1]
         path2 = self.path_to_root(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in range(len(path))
-                   if path1[ii] != path2[ii]), len(path))
-        return path1[ind:][::-1] + path2[ind - 1:]
+        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]), len(path))
+        return path1[ind:][::-1] + path2[ind - 1 :]
 
     def path_between_nodes_depth_first(self, from_node, to_node):
         """
@@ -756,9 +753,8 @@ class STree(object):
         path1 = self.path_to_root(from_node)[::-1]
         path2 = self.path_to_root(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in range(len(path))
-                   if path1[ii] != path2[ii]), len(path))
-        return path1[ind - 1:] + path2[ind:]
+        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]), len(path))
+        return path1[ind - 1 :] + path2[ind:]
 
     def get_nodes_in_subtree(self, ref_node, subtree_root=None):
         """
@@ -786,8 +782,7 @@ class STree(object):
         ref_path = self.path_between_nodes(ref_node, subtree_root)
         if subtree_root in ref_path:
             if len(ref_path) > 1:
-                subtree_nodes = [subtree_root] + \
-                    self.gather_nodes(ref_path[-2])
+                subtree_nodes = [subtree_root] + self.gather_nodes(ref_path[-2])
             else:
                 subtree_nodes = [ref_node]  # both input nodes are the same
         else:
@@ -869,8 +864,7 @@ class STree(object):
         if cnode == None or len(node.get_child_nodes()) <= 1:
             pnode = node.get_parent_node()
             if pnode != None:
-                node, cnode = self.find_bifurcation_node_to_root(
-                    pnode, cnode=node)
+                node, cnode = self.find_bifurcation_node_to_root(pnode, cnode=node)
         return node, cnode
 
     def find_bifurcation_node_from_root(self, node):
@@ -909,8 +903,7 @@ class STree(object):
             the bifurcation nodes
         """
         # unique nodes
-        nodes = reduce(lambda l, x: l.append(
-            x) or l if x not in l else l, nodes, [])
+        nodes = reduce(lambda l, x: l.append(x) or l if x not in l else l, nodes, [])
         # tag all nodes
         for node in self:
             node["tag"] = 0

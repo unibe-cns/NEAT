@@ -145,8 +145,7 @@ class Kernel(object):
         if as_timescale:
             return (
                 "t = "
-                + np.array2string(1.0 / self.a, precision=4,
-                                  max_line_width=1000)
+                + np.array2string(1.0 / self.a, precision=4, max_line_width=1000)
                 + "\n"
                 + "c = "
                 + np.array2string(self.c, precision=4, max_line_width=1000)
@@ -448,8 +447,7 @@ class NET(STree):
             {loc_idx for loc_idx in loc_idxs if loc_idx in self.root}
         )
         if loc_idxs_newtree:
-            new_root = NETNode(0, loc_idxs_newtree,
-                               z_kernel=self.root.z_kernel)
+            new_root = NETNode(0, loc_idxs_newtree, z_kernel=self.root.z_kernel)
             new_tree = NET(new_root)
             for cnode in self.root.child_nodes:
                 if cnode is not None:
@@ -476,8 +474,7 @@ class NET(STree):
             return None
 
     def _construct_reduced_tree(self, node, loc_idxs, node_newtree, new_tree):
-        loc_idxs_subtree = list(
-            {loc_idx for loc_idx in loc_idxs if loc_idx in node})
+        loc_idxs_subtree = list({loc_idx for loc_idx in loc_idxs if loc_idx in node})
         if len(loc_idxs_subtree) > 0:
             if loc_idxs_subtree == loc_idxs:
                 node_newtree.z_kernel += node.z_kernel
@@ -611,8 +608,7 @@ class NET(STree):
 
     def _add_node_to_imp_mat(self, node, z_mat, loc_map):
         inds = np.array([loc_map[loc_idx] for loc_idx in node.loc_idxs])
-        z_mat[np.tile(inds, len(inds)), np.repeat(
-            inds, len(inds))] += node.z_bar
+        z_mat[np.tile(inds, len(inds)), np.repeat(inds, len(inds))] += node.z_bar
         for cnode in node.child_nodes:
             self._add_node_to_imp_mat(cnode, z_mat, loc_map)
 
@@ -682,8 +678,7 @@ class NET(STree):
         del leafs[0]
         leafs = leafs + [leaf]
         # leaf is not highest order
-        common_root, sister_leafs, corresponding_children = net.sister_leafs(
-            leaf)
+        common_root, sister_leafs, corresponding_children = net.sister_leafs(leaf)
         if common_root.index == 0:
             pass
         if len(sister_leafs) == len(corresponding_children):
@@ -720,8 +715,7 @@ class NET(STree):
             if n_leaf != len(leafs) and len(leafs) > 0:
                 self._remove_non_compartments(leafs, net=net, n_count=0)
             elif n_count < len(leafs):
-                self._remove_non_compartments(
-                    leafs, net=net, n_count=n_count + 1)
+                self._remove_non_compartments(leafs, net=net, n_count=n_count + 1)
         elif n_count < len(leafs) and len(leafs) > 0:
             self._remove_non_compartments(leafs, net=net, n_count=n_count + 1)
 
@@ -747,8 +741,7 @@ class NET(STree):
             # list or nodes
             node_list.append(node.parent_node)
             # store the compartment information
-            node._set_compartment_data(
-                node_list, z_root_list, z_comp_list, Iz=Iz)
+            node._set_compartment_data(node_list, z_root_list, z_comp_list, Iz=Iz)
         else:
             node = self.root
             # compute node impedance
@@ -810,8 +803,7 @@ class NET(STree):
                 if node.parent_node is not None:
                     p_k = self.calc_total_kernel(node.parent_node)
                 else:
-                    p_k = Kernel(
-                        (node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
+                    p_k = Kernel((node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
                 f_z = (z_mat[ind, ind] - p_k.k_bar) / node.z_bar
                 node.z_kernel.c *= f_z
             elif len(node.newloc_idxs) > 0:
@@ -1003,7 +995,7 @@ class NET(STree):
                 cnode,
                 xnew,
                 ynew,
-                l_spacing[l0: l1 + 1],
+                l_spacing[l0 : l1 + 1],
                 z_max,
                 ax,
                 plotargs=plotargs,
@@ -1055,12 +1047,10 @@ class NET(STree):
                         )
             else:
                 ax.annotate(
-                    r"$N=" + "".join([str(ind)
-                                     for ind in node.loc_idxs]) + "$",
+                    r"$N=" + "".join([str(ind) for ind in node.loc_idxs]) + "$",
                     xy=(x0, ynew),
                     xytext=(x0 + 0.04, ynew + z_max * 0.04),
-                    bbox=dict(boxstyle="round", ec=(
-                        1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8)),
+                    bbox=dict(boxstyle="round", ec=(1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8)),
                     **textargs,
                 )
             # add input label

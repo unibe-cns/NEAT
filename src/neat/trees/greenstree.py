@@ -505,12 +505,10 @@ class GreensTree(PhysTree):
         # set the node specific impedances
         for node in self:
             node._rescale_length_radius()
-            node._set_impedance(
-                self.freqs, self.channel_storage, use_conc=use_conc)
+            node._set_impedance(self.freqs, self.channel_storage, use_conc=use_conc)
         # recursion
         if len(self) > 1:
-            self._impedance_from_leaf(
-                self.leafs[0], self.leafs[1:], pprint=pprint)
+            self._impedance_from_leaf(self.leafs[0], self.leafs[1:], pprint=pprint)
             self._impedance_from_root(self.root)
         # clean
         for node in self:
@@ -656,15 +654,13 @@ class GreensTree(PhysTree):
         # move down
         for c_node in node.child_nodes:
             z_new = node._calc_zf(locs[ii]["x"], 1.0)
-            self._calc_impedance_matrix_from_root(
-                ii, z_new, c_node, locs, z_mat)
+            self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
 
         if node.parent_node is not None:
             z_new = node._calc_zf(locs[ii]["x"], 0.0)
             # move to sister nodes
             for c_node in set(node.parent_node.child_nodes) - {node}:
-                self._calc_impedance_matrix_from_root(
-                    ii, z_new, c_node, locs, z_mat)
+                self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
             # move up
             self._calc_impedance_matrix_to_root(
                 ii, z_new, node.parent_node, locs, z_mat
@@ -683,8 +679,7 @@ class GreensTree(PhysTree):
             z_new = z_0 / z_in * node._calc_zf(0.0, 1.0)
             # move to sister nodes
             for c_node in set(node.parent_node.child_nodes) - {node}:
-                self._calc_impedance_matrix_from_root(
-                    ii, z_new, c_node, locs, z_mat)
+                self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
             # move to parent node
             z_new = z_0 / z_in * node._calc_zf(0.0, 1.0)
             self._calc_impedance_matrix_to_root(
@@ -703,8 +698,7 @@ class GreensTree(PhysTree):
         # recurse to child nodes
         z_new = z_0 / z_in * node._calc_zf(0.0, 1.0)
         for c_node in node.child_nodes:
-            self._calc_impedance_matrix_from_root(
-                ii, z_new, c_node, locs, z_mat)
+            self._calc_impedance_matrix_from_root(ii, z_new, c_node, locs, z_mat)
 
     @morphtree.computational_tree_decorator
     def calc_channel_response_f(self, loc1, loc2):
@@ -832,7 +826,7 @@ class GreensTreeTime(GreensTree):
         self._set_default_freq_array_quadrature(t_inp)
 
         self._slice_vfit = np.s_[: len(self.freqs_vfit)]
-        self._slice_quad = np.s_[len(self.freqs_vfit):]
+        self._slice_quad = np.s_[len(self.freqs_vfit) :]
         self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
 
     def set_impedance(self, t_inp):
@@ -854,8 +848,7 @@ class GreensTreeTime(GreensTree):
         compute_time_derivative=True,
     ):
         if method not in ["", "exp fit", "quadrature"]:
-            raise IOError(
-                "Method should be empty string, 'exp fit' or 'quadrature'")
+            raise IOError("Method should be empty string, 'exp fit' or 'quadrature'")
 
         # compute in time domain, method depends on ratio between spectral
         # power in zero frequency vs max frequency component
@@ -869,15 +862,13 @@ class GreensTreeTime(GreensTree):
             # if there is substantial spectral power in the max frequency
             # components, we smooth the function with a squared cosine window
             # to reduce oscillations
-            window = np.cos(np.pi * self.ft.s.imag /
-                            (2.0 * np.abs(self.ft.s[-1]))) ** 2
+            window = np.cos(np.pi * self.ft.s.imag / (2.0 * np.abs(self.ft.s[-1]))) ** 2
         else:
             window = np.ones_like(self.ft.s)
 
         # compute kernel through quadrature method
         func_vals_t = (
-            self.ft.ftInv(
-                window * func_vals_f[self._slice_quad])[1].real * 1e-3
+            self.ft.ftInv(window * func_vals_f[self._slice_quad])[1].real * 1e-3
         )  # MOhm/s -> MOhm/ms
         if compute_time_derivative:
             # compute differentiated kernel
@@ -1113,8 +1104,7 @@ class GreensTreeTime(GreensTree):
         loc2 = MorphLoc(loc2, self)
 
         # compute impedances in the frequency domain
-        crf = self.calc_channel_response_f(
-            loc1, loc2) if _crf is None else _crf
+        crf = self.calc_channel_response_f(loc1, loc2) if _crf is None else _crf
 
         crt, dcrt_dt = {}, {}
         for channel_name in crf:
@@ -1214,8 +1204,7 @@ class GreensTreeTime(GreensTree):
                     for channel_name in crt_loc1:
                         crt_mat[ii][channel_name] = {}
                         for svar_name in crt_loc1[channel_name]:
-                            crt_mat[ii][channel_name][svar_name] = np.zeros(
-                                (nt, nl))
+                            crt_mat[ii][channel_name][svar_name] = np.zeros((nt, nl))
 
                     if compute_time_derivative:
                         for channel_name in dcrt_dt_loc1:

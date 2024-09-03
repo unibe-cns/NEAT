@@ -147,8 +147,7 @@ class PhysNode(MorphNode):
         ions = [
             str(ion) for ion in channel.conc
         ]  # convert potential sympy symbols to str
-        conc = {ion: self.conc_eps.copy().pop(
-            ion, CFG.conc[ion]) for ion in ions}
+        conc = {ion: self.conc_eps.copy().pop(ion, CFG.conc[ion]) for ion in ions}
 
         return conc
 
@@ -259,8 +258,7 @@ class PhysNode(MorphNode):
                 g_tot += g
             else:
                 conc = self._construct_conc_args(channel_storage[channel_name])
-                g_tot += g * \
-                    channel_storage[channel_name].compute_p_open(v, **conc)
+                g_tot += g * channel_storage[channel_name].compute_p_open(v, **conc)
 
         return g_tot
 
@@ -297,8 +295,7 @@ class PhysNode(MorphNode):
                 i_tot += g * (v - e)
             else:
                 conc = self._construct_conc_args(channel_storage[channel_name])
-                p_open = channel_storage[channel_name].compute_p_open(
-                    v, **conc)
+                p_open = channel_storage[channel_name].compute_p_open(v, **conc)
                 i_tot += g * p_open * (v - e)
 
         return i_tot
@@ -328,14 +325,12 @@ class PhysNode(MorphNode):
         v = self.v_ep if v is None else v
 
         # compute the total conductance of the to be passified channels
-        g_l = self.calc_g_tot(
-            channel_storage, channel_names=channel_names, v=v)
+        g_l = self.calc_g_tot(channel_storage, channel_names=channel_names, v=v)
 
         # compute the total current of the not to be passified channels
         i_tot = self.calc_i_tot(
             channel_storage,
-            channel_names=[
-                key for key in channel_storage if key not in channel_names],
+            channel_names=[key for key in channel_storage if key not in channel_names],
             v=v,
         )
 
@@ -478,8 +473,7 @@ class PhysTree(MorphTree):
             passive
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            node.as_passive_membrane(
-                self.channel_storage, channel_names=channel_names)
+            node.as_passive_membrane(self.channel_storage, channel_names=channel_names)
 
         self._reset_channel_storage()
 
@@ -530,8 +524,7 @@ class PhysTree(MorphTree):
             The expansion point concentrations [mM]
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            conc = self._distr2Float(
-                conc_eq_distr, node, argname="`conc_eq_distr`")
+            conc = self._distr2Float(conc_eq_distr, node, argname="`conc_eq_distr`")
             node.set_conc_ep(ion, conc)
 
     @comptree_removal_decorator
@@ -627,8 +620,7 @@ class PhysTree(MorphTree):
             Defaults to None
         """
         if not isinstance(channel, ionchannels.IonChannel):
-            raise IOError(
-                "`channel` argmument needs to be of class `neat.IonChannel`")
+            raise IOError("`channel` argmument needs to be of class `neat.IonChannel`")
         channel_name = channel.__class__.__name__
 
         nodes_with_channel = self.convert_node_arg_to_nodes(node_arg)
@@ -637,10 +629,8 @@ class PhysTree(MorphTree):
 
         # add the ion channel to the nodes
         for node in self.convert_node_arg_to_nodes(node_arg):
-            g_max = self._distr2Float(
-                g_max_distr, node, argname="`g_max_distr`")
-            e_rev = self._distr2Float(
-                e_rev_distr, node, argname="`e_rev_distr`")
+            g_max = self._distr2Float(g_max_distr, node, argname="`g_max_distr`")
+            e_rev = self._distr2Float(e_rev_distr, node, argname="`e_rev_distr`")
             node._add_current(channel_name, g_max, e_rev)
 
     def get_channels_in_tree(self):
@@ -736,11 +726,9 @@ class PhysTree(MorphTree):
 
         if not rbool:
             cnode = node.child_nodes[0]
-            rbool = np.abs(node.r_a - cnode.r_a) > eps * \
-                np.max([node.r_a, cnode.r_a])
+            rbool = np.abs(node.r_a - cnode.r_a) > eps * np.max([node.r_a, cnode.r_a])
         if not rbool:
-            rbool = np.abs(node.c_m - cnode.c_m) > eps * \
-                np.max([node.c_m, cnode.c_m])
+            rbool = np.abs(node.c_m - cnode.c_m) > eps * np.max([node.c_m, cnode.c_m])
         if not rbool:
             rbool = set(node.currents.keys()) != set(cnode.currents.keys())
         if not rbool:
@@ -749,15 +737,13 @@ class PhysTree(MorphTree):
                     rbool = np.abs(
                         channel[0] - cnode.currents[chan_name][0]
                     ) > eps * np.max(
-                        [np.abs(channel[0]), np.abs(
-                            cnode.currents[chan_name][0])]
+                        [np.abs(channel[0]), np.abs(cnode.currents[chan_name][0])]
                     )
                 if not rbool:
                     rbool = np.abs(
                         channel[1] - cnode.currents[chan_name][1]
                     ) > eps * np.max(
-                        [np.abs(channel[1]), np.abs(
-                            cnode.currents[chan_name][1])]
+                        [np.abs(channel[1]), np.abs(cnode.currents[chan_name][1])]
                     )
         if not rbool:
             rbool = node.g_shunt > 0.001 * eps
@@ -879,8 +865,7 @@ class PhysTree(MorphTree):
         for node in self:
             if self.is_root(node):
                 locs.append(
-                    MorphLoc((node.index, 0.5), self,
-                             set_as_comploc=set_as_comploc)
+                    MorphLoc((node.index, 0.5), self, set_as_comploc=set_as_comploc)
                 )
             else:
                 n_comp = np.ceil(node.L / dx_max).astype(int)
@@ -966,7 +951,6 @@ class PhysTree(MorphTree):
                         ion_factors_fd += fd_node.currents[cname][0]
 
                 fd_node.concmechs[ion] = copy.deepcopy(aux_node.concmechs[ion])
-                fd_node.concmechs[ion].gamma *= ion_factors_aux / \
-                    ion_factors_fd
+                fd_node.concmechs[ion].gamma *= ion_factors_aux / ion_factors_fd
 
         return fd_tree, locs
