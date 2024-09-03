@@ -25,12 +25,12 @@ jobs:
         with:
           python-version: 3.8
 
-      # Install dependencies
-      - name: Install apt dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install libltdl7-dev libgsl0-dev libncurses5-dev libreadline6-dev pkg-config
-          sudo apt-get install python3-all-dev python3-matplotlib python3-numpy python3-scipy ipython3
+      # # Install dependencies
+      # - name: Install apt dependencies
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install libltdl7-dev libgsl0-dev libncurses5-dev libreadline6-dev pkg-config
+      #     sudo apt-get install python3-all-dev python3-matplotlib python3-numpy python3-scipy ipython3
 
       # # Install Python dependencies
       # - name: Python dependencies
@@ -40,12 +40,12 @@ jobs:
       # Install NEAT (repeated)
       - name: Install NEAT
         run: |
-          export PYTHONPATH=${{ env.PYTHONPATH }}:${{ env.NEST_INSTALL }}/lib/python3.8/site-packages
-          #echo PYTHONPATH=`pwd` >> $GITHUB_ENV
-          echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
+          # export PYTHONPATH=${{ env.PYTHONPATH }}:${{ env.NEST_INSTALL }}/lib/python3.8/site-packages
+          # #echo PYTHONPATH=`pwd` >> $GITHUB_ENV
+          # echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
           pip install .
 
       # Unit tests
-      - name: Run unit tests
+      - name: Run tests
         run: |
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests
