@@ -1,3 +1,64 @@
-# https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#basic-setup-py
 [build-system]
-requires = ["setuptools", "wheel", "Cython", "numpy"]
+requires = [
+    "setuptools",
+    "wheel",
+    "Cython",
+    "numpy",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'neat'
+version = '1.0-rc1'
+authors = [
+    {name = 'Willem Wybo'}, 
+    {name = 'Jakob Jordan'}, 
+    {name = 'Benjamin Ellenberger'}, 
+    {name = 'Benjamin Torben-Nielsen'},
+]
+maintainers = [
+    {name = "Willem Wybo", email = "willem.a.m.wybo@gmail.com"}
+]
+license = {file = "LICENSE.txt"}
+readme = 'README.rst'
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Programming Language :: Python :: 3',
+]
+requires-python = ">= 3.8"
+dependencies = [
+    "numpy >= 2.1.0",
+    "matplotlib >= 3.5.2",
+    "Cython >= 3.0",
+    "scipy >= 1.9.0",
+    "sympy >= 1.10.1",
+    "pytest >= 7.1.2",
+    "scikit_learn >= 1.1.1",
+    "neuron >= 8.2.0",
+    "dill >= 0.3.8",
+]
+
+[project.optional-dependencies]
+doc = [
+    "sphinx >= 2.4.3",
+    "nbsphinx >= 0.5.1",
+    "sphinx-gallery >= 0.6.1",
+    "sphinx_rtd_theme >= 0.4.3",
+    "nb2plots >= 0.6",
+    "pillow >= 7.1.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"neat.simulations.neuron.mech_storage" = ["*.mod"]
+"neat.simulations.nest" = ["*.nestml"]
+
+[project.scripts]
+neatmodels = "neat.actions.neatmodels:main"
+
+[project.urls]
+Documentation = "https://neatdend.readthedocs.io/"
+Repository = "https://github.com/unibe-cns/NEAT"
+Changelog = "https://github.com/unibe-cns/NEAT/blob/master/changelog/v1.0.0.md"

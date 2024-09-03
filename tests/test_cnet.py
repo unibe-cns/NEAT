@@ -6,7 +6,6 @@ import pytest
 from neat import netsim
 from neat import NETNode, NET, Kernel
 from neat import GreensTree, NeuronSimTree, SOVTree
-from neat import load_neuron_model
 
 from neat.channels.channelcollection import channelcollection
 

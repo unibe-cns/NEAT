@@ -43,11 +43,7 @@ jobs:
           export PYTHONPATH=${{ env.PYTHONPATH }}:${{ env.NEST_INSTALL }}/lib/python3.8/site-packages
           #echo PYTHONPATH=`pwd` >> $GITHUB_ENV
           echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
-          python setup.py install
-
-      - name: Compile channels
-        run: |
-          neatmodels install default -s neuron
+          pip install .
 
       # Unit tests
       - name: Run unit tests

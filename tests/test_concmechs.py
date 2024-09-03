@@ -26,8 +26,11 @@ from neat.factorydefaults import DefaultPhysiology
 from channelcollection_for_tests import *
 import channel_installer
 channel_installer.load_or_install_neuron_test_channels()
-channel_installer.load_or_install_nest_test_channels()
+if WITH_NEST:
+    channel_installer.load_or_install_nest_test_channels()
 
+
+print("\n\n\n!!! with NEST? {WITH_NEST} !!!\n\n\n")
 
 CFG = DefaultPhysiology()
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
