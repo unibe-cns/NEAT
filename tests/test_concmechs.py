@@ -29,9 +29,6 @@ channel_installer.load_or_install_neuron_test_channels()
 if WITH_NEST:
     channel_installer.load_or_install_nest_test_channels()
 
-
-print("\n\n\n!!! with NEST? {WITH_NEST} !!!\n\n\n")
-
 CFG = DefaultPhysiology()
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
     os.path.dirname(__file__),
@@ -805,6 +802,8 @@ class TestConcMechs:
     def test_nest_neuron_sim_ball(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
         locs = [(1,.5)]
 
+
+        print(f"\n\n\n!!! with NEST? {WITH_NEST} !!!\n\n\n")
         tree = self.load_ball(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)

@@ -32,10 +32,10 @@ jobs:
           sudo apt-get install libltdl7-dev libgsl0-dev libncurses5-dev libreadline6-dev pkg-config
           sudo apt-get install python3-all-dev python3-matplotlib python3-numpy python3-scipy ipython3
 
-      # Install Python dependencies
-      - name: Python dependencies
-        run: |
-          python -m pip install -r requirements/requirements.txt
+      # # Install Python dependencies
+      # - name: Python dependencies
+      #   run: |
+      #     python -m pip install -r requirements/requirements.txt
 
       # Install NEAT (repeated)
       - name: Install NEAT
