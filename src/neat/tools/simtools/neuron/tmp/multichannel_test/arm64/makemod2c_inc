@@ -1,0 +1,280 @@
+./CaDyn.c: ../mech//CaDyn.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "CaDyn.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./CaDyn.o: ./CaDyn.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./CaPump.c: ../mech//CaPump.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "CaPump.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./CaPump.o: ./CaPump.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ICa_HVA.c: ../mech//ICa_HVA.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ICa_HVA.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ICa_HVA.o: ./ICa_HVA.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ICa_LVAst.c: ../mech//ICa_LVAst.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ICa_LVAst.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ICa_LVAst.o: ./ICa_LVAst.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./IKv3_1.c: ../mech//IKv3_1.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "IKv3_1.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./IKv3_1.o: ./IKv3_1.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./INaTa_t.c: ../mech//INaTa_t.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "INaTa_t.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./INaTa_t.o: ./INaTa_t.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./INa_Ta.c: ../mech//INa_Ta.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "INa_Ta.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./INa_Ta.o: ./INa_Ta.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./IPiecewiseChannel.c: ../mech//IPiecewiseChannel.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "IPiecewiseChannel.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./IPiecewiseChannel.o: ./IPiecewiseChannel.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ISK.c: ../mech//ISK.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ISK.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ISK.o: ./ISK.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ISK_E2.c: ../mech//ISK_E2.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ISK_E2.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ISK_E2.o: ./ISK_E2.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ISKv3_1.c: ../mech//ISKv3_1.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ISKv3_1.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ISKv3_1.o: ./ISKv3_1.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ITestChannel.c: ../mech//ITestChannel.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ITestChannel.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ITestChannel.o: ./ITestChannel.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./ITestChannel2.c: ../mech//ITestChannel2.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "ITestChannel2.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./ITestChannel2.o: ./ITestChannel2.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./Ih.c: ../mech//Ih.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "Ih.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./Ih.o: ./Ih.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./NMDA_Mg_T.c: ../mech//NMDA_Mg_T.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "NMDA_Mg_T.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./NMDA_Mg_T.o: ./NMDA_Mg_T.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./OUClamp.c: ../mech//OUClamp.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "OUClamp.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./OUClamp.o: ./OUClamp.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./OUClamp2.c: ../mech//OUClamp2.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "OUClamp2.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./OUClamp2.o: ./OUClamp2.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./OUConductance.c: ../mech//OUConductance.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "OUConductance.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./OUConductance.o: ./OUConductance.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./OUReversal.c: ../mech//OUReversal.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "OUReversal.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./OUReversal.o: ./OUReversal.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./Shunt.c: ../mech//Shunt.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "Shunt.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./Shunt.o: ./Shunt.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./SinClamp.c: ../mech//SinClamp.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "SinClamp.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./SinClamp.o: ./SinClamp.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./VecStim.c: ../mech//VecStim.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "VecStim.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./VecStim.o: ./VecStim.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./WNClamp.c: ../mech//WNClamp.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "WNClamp.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./WNClamp.o: ./WNClamp.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./conc_ca.c: ../mech//conc_ca.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "conc_ca.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./conc_ca.o: ./conc_ca.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./double_exp_AMPA_NMDA.c: ../mech//double_exp_AMPA_NMDA.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "double_exp_AMPA_NMDA.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./double_exp_AMPA_NMDA.o: ./double_exp_AMPA_NMDA.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./double_exp_AMPA_NMDA_modified.c: ../mech//double_exp_AMPA_NMDA_modified.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "double_exp_AMPA_NMDA_modified.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./double_exp_AMPA_NMDA_modified.o: ./double_exp_AMPA_NMDA_modified.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./double_exp_AMPA_NMDA_modified2.c: ../mech//double_exp_AMPA_NMDA_modified2.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "double_exp_AMPA_NMDA_modified2.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./double_exp_AMPA_NMDA_modified2.o: ./double_exp_AMPA_NMDA_modified2.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./double_exp_AMPA_NMDA_rescaled.c: ../mech//double_exp_AMPA_NMDA_rescaled.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "double_exp_AMPA_NMDA_rescaled.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./double_exp_AMPA_NMDA_rescaled.o: ./double_exp_AMPA_NMDA_rescaled.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./double_exp_AMPA_NMDA_rescaled_prox.c: ../mech//double_exp_AMPA_NMDA_rescaled_prox.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "double_exp_AMPA_NMDA_rescaled_prox.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./double_exp_AMPA_NMDA_rescaled_prox.o: ./double_exp_AMPA_NMDA_rescaled_prox.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./double_exp_AMPA_NMDA_v_from_vector.c: ../mech//double_exp_AMPA_NMDA_v_from_vector.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "double_exp_AMPA_NMDA_v_from_vector.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./double_exp_AMPA_NMDA_v_from_vector.o: ./double_exp_AMPA_NMDA_v_from_vector.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./epsc_double_exp.c: ../mech//epsc_double_exp.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "epsc_double_exp.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./epsc_double_exp.o: ./epsc_double_exp.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./exp_AMPA_NMDA.c: ../mech//exp_AMPA_NMDA.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "exp_AMPA_NMDA.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./exp_AMPA_NMDA.o: ./exp_AMPA_NMDA.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./gap.c: ../mech//gap.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "gap.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./gap.o: ./gap.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./rel.c: ../mech//rel.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "rel.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./rel.o: ./rel.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+
+./release_BMK.c: ../mech//release_BMK.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd "../mech";  MODLUNIT=$(NRNUNITS) $(NOCMODL) "release_BMK.mod" -o "/Users/wybo/Code/NEAT_public/neat/tools/simtools/neuron/tmp/multichannel_test/arm64")
+
+./release_BMK.o: ./release_BMK.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I"../mech" $(INCLUDES) -fPIC -c $< -o $@
+

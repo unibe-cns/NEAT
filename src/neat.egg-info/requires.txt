@@ -1,0 +1,17 @@
+numpy>=2.1.0
+matplotlib>=3.5.2
+Cython>=3.0
+scipy>=1.9.0
+sympy>=1.10.1
+pytest>=7.1.2
+scikit_learn>=1.1.1
+neuron>=8.2.0
+dill>=0.3.8
+
+[doc]
+sphinx>=2.4.3
+nbsphinx>=0.5.1
+sphinx-gallery>=0.6.1
+sphinx_rtd_theme>=0.4.3
+nb2plots>=0.6
+pillow>=7.1.2
