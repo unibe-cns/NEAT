@@ -40,14 +40,13 @@ jobs:
     runs-on: ubuntu-latest
   
     steps:
-      # Setup Python version
-      - name: Setup Python 3.8
+      - name: Setup environment
+        uses: actions/checkout@v4
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
 
       - name: Copyright header check
-        uses: actions/checkout@v4
         run: |
           python extras/check_copyright_headers.py
 
