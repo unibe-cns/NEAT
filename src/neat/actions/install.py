@@ -35,14 +35,16 @@ class ChannelPathExtractor:
         will be loaded as modules and scanned for ion channels
         """
         # extract the channel path from arguments
-        if self.model_name == 'default':
-            path_with_channels = os.path.join(self.path_neat, 'channels/channelcollection/')
+        if self.model_name == "default":
+            path_with_channels = os.path.join(
+                self.path_neat, "channels/channelcollection/"
+            )
         else:
             path_with_channels = channel_path_arg
 
         # parse the channel path
-        if path_with_channels[-3:] == '.py':
-            path_with_channels = path_with_channels.replace('.py', '')
+        if path_with_channels[-3:] == ".py":
+            path_with_channels = path_with_channels.replace(".py", "")
             # path points to a single .py file, we load this file as a module
             path_with_channels, channel_module = os.path.split(path_with_channels)
             channel_modules = [channel_module]
@@ -50,11 +52,11 @@ class ChannelPathExtractor:
             # path points to a directory, we search all files in the directory for
             # ion channels
             channel_modules = []
-            for channel_module in glob.glob(os.path.join(path_with_channels, '*.py')):
+            for channel_module in glob.glob(os.path.join(path_with_channels, "*.py")):
                 # import channel modules
                 # convert names from glob to something susceptible to python import
                 channel_module = os.path.split(channel_module)[1]
-                channel_module = channel_module.replace('.py', '')
+                channel_module = channel_module.replace(".py", "")
                 channel_modules.append(channel_module)
 
         return path_with_channels, channel_modules
@@ -68,8 +70,8 @@ class ChannelPathExtractor:
         channels = []
         for channel_module in channel_modules:
             print(
-                f'Reading channels from: '
-                f'{os.path.join(path_with_channels, channel_module)}'
+                f"Reading channels from: "
+                f"{os.path.join(path_with_channels, channel_module)}"
             )
             chans = importlib.import_module(channel_module)
 
@@ -87,11 +89,8 @@ class ChannelPathExtractor:
         """
         channels = []
         for arg in channel_path_arg:
-            channel_path, channel_modules = \
-                self._extract_channel_path_and_modules(arg)
-            channels.extend(
-                self._collect_channels(channel_path, channel_modules)
-            )
+            channel_path, channel_modules = self._extract_channel_path_and_modules(arg)
+            channels.extend(self._collect_channels(channel_path, channel_modules))
 
         return channels
 
@@ -114,7 +113,7 @@ def _check_model_name(model_name):
 def _resolve_model_name(model_name, channel_path_arg):
     if len(channel_path_arg) == 1:
 
-        if model_name == 'default':
+        if model_name == "default":
             if len(channel_path_arg[0]) > 0:
                 raise IOError(
                     "Model name [name] 'default' is reserved for the default "
@@ -126,7 +125,7 @@ def _resolve_model_name(model_name, channel_path_arg):
             # the model name is not provided, but only a single path argument is
             # given. The model name is resolved as the last element in the
             # provided path
-            path_aux = channel_path_arg[0].replace('.py', '')
+            path_aux = channel_path_arg[0].replace(".py", "")
             model_name = os.path.basename(os.path.normpath(path_aux))
 
         else:
@@ -142,19 +141,11 @@ def _compile_neuron(model_name, path_neat, channels, path_neuronresource=None):
 
     # combine `model_name` with the neuron compilation path
     path_for_neuron_compilation = os.path.join(
-        path_neat,
-        'simulations/neuron/tmp/',
-        model_name
+        path_neat, "simulations/neuron/tmp/", model_name
     )
-    path_for_mod_files = os.path.join(
-        path_for_neuron_compilation,
-        "mech/"
-    )
+    path_for_mod_files = os.path.join(path_for_neuron_compilation, "mech/")
 
-    print(
-        f'--- writing channels to \n'
-        f' > {path_for_mod_files}'
-    )
+    print(f"--- writing channels to \n" f" > {path_for_mod_files}")
 
     # Create the "mech/" directory in a clean state
     if os.path.exists(path_for_mod_files):
@@ -165,11 +156,11 @@ def _compile_neuron(model_name, path_neat, channels, path_neuronresource=None):
     # if path_neuronresource is not None:
     #     shutil.copytree(path_neuronresource, path_for_mod_files)
     if path_neuronresource is not None:
-        for mod_file in glob.glob(os.path.join(path_neuronresource, '*.mod')):
+        for mod_file in glob.glob(os.path.join(path_neuronresource, "*.mod")):
             shutil.copy2(mod_file, path_for_mod_files)
 
     for chan in channels:
-        print(' - writing .mod file for:', chan.__class__.__name__)
+        print(" - writing .mod file for:", chan.__class__.__name__)
         chan.write_mod_file(path_for_mod_files)
 
     # # copy possible mod-files within the source directory to the compile directory
@@ -183,14 +174,14 @@ def _compile_neuron(model_name, path_neat, channels, path_neuronresource=None):
     subprocess.call(["nrnivmodl", "mech/"])  # compile all mod files
 
     print(
-        f'\n------------------------------\n'
-        f'The compiled .mod-files can be loaded into neuron using:\n'
-        f'    neat.load_neuron_model(\"{model_name}\")\n'
-        f'------------------------------\n'
+        f"\n------------------------------\n"
+        f"The compiled .mod-files can be loaded into neuron using:\n"
+        f'    neat.load_neuron_model("{model_name}")\n'
+        f"------------------------------\n"
     )
 
 
-def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=['ca']):
+def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=["ca"]):
     from pynestml.frontend.pynestml_frontend import generate_nest_compartmental_target
 
     # assert that `model_name` is a pure name
@@ -199,9 +190,7 @@ def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=
 
     # combine `model_name` with the nestml compilation path
     path_for_nestml_compilation = os.path.join(
-        path_neat,
-        'simulations/nest/tmp/',
-        model_name
+        path_neat, "simulations/nest/tmp/", model_name
     )
 
     # Create the model directory in a clean state
@@ -209,17 +198,14 @@ def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=
         shutil.rmtree(path_for_nestml_compilation)
     os.makedirs(path_for_nestml_compilation)
 
-    print(
-        f'--- writing nestml model to \n'
-        f'    > {path_for_nestml_compilation}'
-    )
+    print(f"--- writing nestml model to \n" f"    > {path_for_nestml_compilation}")
 
     if path_nestresource is not None:
         blocks = nestml_tools.parse_nestml_file(path_nestresource)
 
     for chan in channels:
-        print(' - writing .nestml blocks for:', chan.__class__.__name__)
-        blocks_ = chan.write_nestml_blocks(v_comp=-75.)
+        print(" - writing .nestml blocks for:", chan.__class__.__name__)
+        blocks_ = chan.write_nestml_blocks(v_comp=-75.0)
 
         for block, blockstr in blocks_.items():
             blocks[block] = blockstr + blocks[block]
@@ -236,10 +222,7 @@ def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=
         os.makedirs(path_for_nestml_compilation)
     # write the nestml file
     nestml_file_path = nestml_tools.write_nestml_blocks(
-        blocks,
-        path_for_nestml_compilation,
-        model_name + "_model",
-        v_comp=-75.
+        blocks, path_for_nestml_compilation, model_name + "_model", v_comp=-75.0
     )
 
     generate_nest_compartmental_target(
@@ -249,13 +232,15 @@ def _compile_nest(model_name, path_neat, channels, path_nestresource=None, ions=
         logging_level="DEBUG",
     )
 
+
 def _install_models(
-        model_name,
-        path_neat,
-        channel_path_arg,
-        simulators=['neuron', 'nest'],
-        path_nestresource=None, path_neuronresource=None
-    ):
+    model_name,
+    path_neat,
+    channel_path_arg,
+    simulators=["neuron", "nest"],
+    path_nestresource=None,
+    path_neuronresource=None,
+):
     """
     Compile a set of ion channels models specified by [channel_path_arg]
 
@@ -284,16 +269,11 @@ def _install_models(
     cpex = ChannelPathExtractor(path_neat, model_name)
     channels = cpex.collect_channels(*channel_path_arg)
 
-    if 'neuron' in simulators:
+    if "neuron" in simulators:
         _compile_neuron(
-            model_name, path_neat, channels,
-            path_neuronresource=path_neuronresource
+            model_name, path_neat, channels, path_neuronresource=path_neuronresource
         )
-    if 'nest' in simulators:
+    if "nest" in simulators:
         _compile_nest(
-            model_name, path_neat, channels,
-            path_nestresource=path_nestresource
+            model_name, path_neat, channels, path_nestresource=path_nestresource
         )
-
-
-

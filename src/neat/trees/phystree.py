@@ -26,12 +26,14 @@ def comptree_removal_decorator(fun):
     Decorator that provides the safety that the computational tree is removed
     when a function changes the physiological parameters of a tree
     """
+
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
         with self.as_original_tree:
             res = fun(self, *args, **kwargs)
         self._computational_root = None
         return res
+
     wrapped.__doc__ = fun.__doc__
     return wrapped
 
@@ -60,20 +62,22 @@ class PhysNode(MorphNode):
     e_eq: float
         Segment's equilibrium potential
     """
-    def __init__(self, index, p3d=None,
-                       c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
+
+    def __init__(
+        self, index, p3d=None, c_m=1.0, r_a=100 * 1e-6, g_shunt=0.0, v_ep=-75.0
+    ):
         super().__init__(index, p3d)
         # biophysical parameters
-        self.currents = {} #{name: (g_max (uS/cm^2), e_rev (mV))}
+        self.currents = {}  # {name: (g_max (uS/cm^2), e_rev (mV))}
         self.concmechs = {}
-        self.c_m = c_m # uF/cm^2
-        self.r_a = r_a # MOhm*cm
-        self.g_shunt = g_shunt # uS
+        self.c_m = c_m  # uF/cm^2
+        self.r_a = r_a  # MOhm*cm
+        self.g_shunt = g_shunt  # uS
         # expansion points
-        self.v_ep = v_ep # mV
-        self.conc_eps = {} # equilibrium concentration values (mM)
+        self.v_ep = v_ep  # mV
+        self.conc_eps = {}  # equilibrium concentration values (mM)
 
-    def set_physiology(self, c_m, r_a, g_shunt=0.):
+    def set_physiology(self, c_m, r_a, g_shunt=0.0):
         """
         Set the physiological parameters of the current
 
@@ -86,8 +90,8 @@ class PhysNode(MorphNode):
         g_shunt: float
             A point-like shunt, located at x=1 on the node. Defaults to 0.
         """
-        self.c_m = c_m # uF/cm^2
-        self.r_a = r_a # MOhm*cm
+        self.c_m = c_m  # uF/cm^2
+        self.r_a = r_a  # MOhm*cm
         self.g_shunt = g_shunt
 
     def _add_current(self, channel_name, g_max, e_rev):
@@ -128,8 +132,11 @@ class PhysNode(MorphNode):
         # if concencentration is in expansion point, use it. Otherwise use
         # concentration in equilibrium concentrations (self.conc_eps), if
         # it is there. If not, use default concentration.
-        ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
-        conc = {ion: self.conc_eps.copy().pop(ion, CFG.conc[ion]) for ion in ions}
+        ions = [
+            str(ion) for ion in channel.conc
+        ]  # convert potential sympy symbols to str
+        conc = {ion: self.conc_eps.copy().pop(
+            ion, CFG.conc[ion]) for ion in ions}
 
         return conc
 
@@ -144,12 +151,16 @@ class PhysNode(MorphNode):
         params: dict
             parameters for the concentration mechanism (only used for NEURON model)
         """
-        if set(params.keys()) == {'gamma', 'tau'}:
-            self.concmechs[ion] = concmechs.ExpConcMech(ion,
-                                        params['tau'], params['gamma'])
+        if set(params.keys()) == {"gamma", "tau"}:
+            self.concmechs[ion] = concmechs.ExpConcMech(
+                ion, params["tau"], params["gamma"]
+            )
         else:
-            warnings.warn('These parameters do not match any NEAT concentration ' + \
-                          'mechanism, no concentration mechanism has been added', UserWarning)
+            warnings.warn(
+                "These parameters do not match any NEAT concentration "
+                + "mechanism, no concentration mechanism has been added",
+                UserWarning,
+            )
 
     def set_v_ep(self, v_ep):
         """
@@ -175,13 +186,12 @@ class PhysNode(MorphNode):
         """
         self.conc_eps[ion] = conc
 
-    def fit_leak_current(self, channel_storage, e_eq_target=-75., tau_m_target=10.):
-        """
-        """
-        gsum = 0.
-        i_eq = 0.
+    def fit_leak_current(self, channel_storage, e_eq_target=-75.0, tau_m_target=10.0):
+        """ """
+        gsum = 0.0
+        i_eq = 0.0
 
-        for channel_name in set(self.currents.keys()) - set('L'):
+        for channel_name in set(self.currents.keys()) - set("L"):
             g, e = self.currents[channel_name]
 
             # compute channel conductance and current
@@ -191,15 +201,17 @@ class PhysNode(MorphNode):
             gsum += g_chan
             i_eq += g_chan * (e - e_eq_target)
 
-        if self.c_m / (tau_m_target*1e-3) < gsum:
-            warnings.warn('Membrane time scale is chosen larger than ' + \
-                          'possible, adding small leak conductance')
-            tau_m_target = self.c_m / (gsum + 20.)
+        if self.c_m / (tau_m_target * 1e-3) < gsum:
+            warnings.warn(
+                "Membrane time scale is chosen larger than "
+                + "possible, adding small leak conductance"
+            )
+            tau_m_target = self.c_m / (gsum + 20.0)
         else:
             tau_m_target *= 1e-3
         g_l = self.c_m / tau_m_target - gsum
         e_l = e_eq_target - i_eq / g_l
-        self.currents['L'] = [g_l, e_l]
+        self.currents["L"] = [g_l, e_l]
         self.v_ep = e_eq_target
 
     def calc_g_tot(self, channel_storage, channel_names=None, v=None):
@@ -226,16 +238,17 @@ class PhysNode(MorphNode):
         if channel_names is None:
             channel_names = channel_names = list(self.currents.keys())
 
-        g_tot = 0.
+        g_tot = 0.0
         for channel_name in set(self.currents.keys()) & set(channel_names):
             g, e = self.currents[channel_name]
             v = self.v_ep if v is None else v
 
-            if channel_name == 'L':
+            if channel_name == "L":
                 g_tot += g
             else:
                 conc = self._construct_conc_args(channel_storage[channel_name])
-                g_tot += g * channel_storage[channel_name].compute_p_open(v, **conc)
+                g_tot += g * \
+                    channel_storage[channel_name].compute_p_open(v, **conc)
 
         return g_tot
 
@@ -263,26 +276,26 @@ class PhysNode(MorphNode):
         if channel_names is None:
             channel_names = channel_names = list(self.currents.keys())
 
-        i_tot = 0.
+        i_tot = 0.0
         for channel_name in set(self.currents.keys()) & set(channel_names):
             g, e = self.currents[channel_name]
             v = self.v_ep if v is None else v
 
-            if channel_name == 'L':
+            if channel_name == "L":
                 i_tot += g * (v - e)
             else:
                 conc = self._construct_conc_args(channel_storage[channel_name])
-                p_open = channel_storage[channel_name].compute_p_open(v, **conc)
+                p_open = channel_storage[channel_name].compute_p_open(
+                    v, **conc)
                 i_tot += g * p_open * (v - e)
-
 
         return i_tot
 
     def as_passive_membrane(self, channel_storage, channel_names=None, v=None):
         """
-        Makes the membrane act as a passive membrane for this node, channels 
-        are assumed to add a conductance of g_max * p_open to the membrane 
-        conductance, where p_open is evaluated at the expansion point potential 
+        Makes the membrane act as a passive membrane for this node, channels
+        are assumed to add a conductance of g_max * p_open to the membrane
+        conductance, where p_open is evaluated at the expansion point potential
         stored under `self.v_ep`
 
         Parameters
@@ -303,19 +316,20 @@ class PhysNode(MorphNode):
         v = self.v_ep if v is None else v
 
         # compute the total conductance of the to be passified channels
-        g_l = self.calc_g_tot(channel_storage, channel_names=channel_names, v=v)
+        g_l = self.calc_g_tot(
+            channel_storage, channel_names=channel_names, v=v)
 
         # compute the total current of the not to be passified channels
-        i_tot = self.calc_i_tot(channel_storage,
+        i_tot = self.calc_i_tot(
+            channel_storage,
             channel_names=[
-                key for key in channel_storage if key not in channel_names
-            ],
+                key for key in channel_storage if key not in channel_names],
             v=v,
         )
 
         # remove the passified channels
         for channel_name in channel_names:
-            if channel_name == 'L':
+            if channel_name == "L":
                 continue
 
             try:
@@ -324,7 +338,7 @@ class PhysNode(MorphNode):
                 # the channel was not present at this node anyway
                 pass
 
-        self.currents['L'] = [g_l, v + i_tot / g_l]
+        self.currents["L"] = [g_l, v + i_tot / g_l]
 
     def __str__(self, with_parent=True, with_morph_info=False):
         if with_morph_info:
@@ -332,28 +346,39 @@ class PhysNode(MorphNode):
         else:
             node_str = super(MorphNode, self).__str__(with_parent=with_parent)
 
-        node_str += f" --- " \
-            f"r_a = {self.r_a:1.6g} MOhm*cm, " \
-            f"c_m = {self.c_m:1.6g} uF/cm^2, " \
+        node_str += (
+            f" --- "
+            f"r_a = {self.r_a:1.6g} MOhm*cm, "
+            f"c_m = {self.c_m:1.6g} uF/cm^2, "
             f"v_ep = {self.v_ep:1.6g} mV, "
+        )
         if self.g_shunt > 1e-10:
             f"g_shunt = {self.g_shunt:1.6g} uS,"
-        node_str += ', '.join([
-            f'(g_{c} = {g:1.6g} uS/cm^2, e_{c} = {e:1.6g} mV)' for c, (g, e) in self.currents.items()
-        ])
+        node_str += ", ".join(
+            [
+                f"(g_{c} = {g:1.6g} uS/cm^2, e_{c} = {e:1.6g} mV)"
+                for c, (g, e) in self.currents.items()
+            ]
+        )
         return node_str
 
     def _get_repr_dict(self):
         repr_dict = super()._get_repr_dict()
-        repr_dict.update({
-            "currents": {c: (f"({g:1.6g}, {e:1.6g})") for c, (g, e) in self.currents.items()},
-            "concmechs": self.concmechs,
-            "c_m": f"{self.c_m:1.6g}",
-            "r_a": f"{self.r_a:1.6g}",
-            "g_shunt": f"{self.g_shunt:1.6g}",
-            "v_ep": f"{self.v_ep:1.6g}",
-            "conc_eps": {ion: f"{conc:1.6g}" for ion, conc in self.conc_eps.items()},
-        })
+        repr_dict.update(
+            {
+                "currents": {
+                    c: (f"({g:1.6g}, {e:1.6g})") for c, (g, e) in self.currents.items()
+                },
+                "concmechs": self.concmechs,
+                "c_m": f"{self.c_m:1.6g}",
+                "r_a": f"{self.r_a:1.6g}",
+                "g_shunt": f"{self.g_shunt:1.6g}",
+                "v_ep": f"{self.v_ep:1.6g}",
+                "conc_eps": {
+                    ion: f"{conc:1.6g}" for ion, conc in self.conc_eps.items()
+                },
+            }
+        )
         return repr_dict
 
     def __repr__(self):
@@ -378,7 +403,8 @@ class PhysTree(MorphTree):
     ions: set {str}
         The ions for which a concentration mechanism is present in the tree
     """
-    def __init__(self, arg=None, types=[1,3,4]):
+
+    def __init__(self, arg=None, types=[1, 3, 4]):
         self.channel_storage = {}
         self.ions = set()
         super().__init__(arg=arg, types=types)
@@ -386,7 +412,7 @@ class PhysTree(MorphTree):
         # but only when `arg` is a `neat.PhysNode`
         if issubclass(type(arg), PhysNode):
             for node in self:
-                node.set_physiology(1.0, 100./1e6)
+                node.set_physiology(1.0, 100.0 / 1e6)
 
     def _get_repr_dict(self):
         ckeys = list(self.channel_storage.keys())
@@ -401,14 +427,16 @@ class PhysTree(MorphTree):
         new_channel_storage = {}
         for node in self:
             for channel_name in node.currents:
-                if channel_name not in new_channel_storage and \
-                   channel_name != "L":
-                    new_channel_storage[channel_name] = self.channel_storage[channel_name]
+                if channel_name not in new_channel_storage and channel_name != "L":
+                    new_channel_storage[channel_name] = self.channel_storage[
+                        channel_name
+                    ]
 
         self.channel_storage = new_channel_storage
 
-    def create_corresponding_node(self, node_index, p3d=None,
-                                      c_m=1., r_a=100*1e-6, g_shunt=0., v_ep=-75.):
+    def create_corresponding_node(
+        self, node_index, p3d=None, c_m=1.0, r_a=100 * 1e-6, g_shunt=0.0, v_ep=-75.0
+    ):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -439,22 +467,22 @@ class PhysTree(MorphTree):
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
             node.as_passive_membrane(
-                self.channel_storage, channel_names=channel_names
-            )
+                self.channel_storage, channel_names=channel_names)
 
         self._reset_channel_storage()
 
-    def _distr2Float(self, distr, node, argname=''):
+    def _distr2Float(self, distr, node, argname=""):
         if isinstance(distr, float):
             val = distr
         elif isinstance(distr, dict):
             val = distr[node.index]
-        elif hasattr(distr, '__call__'):
-            d2s = self.path_length({'node': node.index, 'x': .5}, (1., 0.5))
+        elif hasattr(distr, "__call__"):
+            d2s = self.path_length({"node": node.index, "x": 0.5}, (1.0, 0.5))
             val = distr(d2s)
         else:
-            raise TypeError(argname + ' argument should be a float, dict ' + \
-                            'or a callable')
+            raise TypeError(
+                argname + " argument should be a float, dict " + "or a callable"
+            )
         return val
 
     @comptree_removal_decorator
@@ -472,7 +500,7 @@ class PhysTree(MorphTree):
             The expansion point potentials [mV]
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            e = self._distr2Float(v_ep_distr, node, argname='`v_ep_distr`')
+            e = self._distr2Float(v_ep_distr, node, argname="`v_ep_distr`")
             node.set_v_ep(e)
 
     @comptree_removal_decorator
@@ -490,7 +518,8 @@ class PhysTree(MorphTree):
             The expansion point concentrations [mM]
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            conc = self._distr2Float(conc_eq_distr, node, argname='`conc_eq_distr`')
+            conc = self._distr2Float(
+                conc_eq_distr, node, argname="`conc_eq_distr`")
             node.set_conc_ep(ion, conc)
 
     @comptree_removal_decorator
@@ -516,10 +545,13 @@ class PhysTree(MorphTree):
             Defaults to None
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            c_m = self._distr2Float(c_m_distr, node, argname='`c_m_distr`')
-            r_a = self._distr2Float(r_a_distr, node, argname='`r_a_distr`')
-            g_s = self._distr2Float(g_s_distr, node, argname='`g_s_distr`') if \
-                  g_s_distr is not None else 0.
+            c_m = self._distr2Float(c_m_distr, node, argname="`c_m_distr`")
+            r_a = self._distr2Float(r_a_distr, node, argname="`r_a_distr`")
+            g_s = (
+                self._distr2Float(g_s_distr, node, argname="`g_s_distr`")
+                if g_s_distr is not None
+                else 0.0
+            )
             node.set_physiology(c_m, r_a, g_s)
 
     @comptree_removal_decorator
@@ -549,9 +581,9 @@ class PhysTree(MorphTree):
             Defaults to None
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            g_l = self._distr2Float(g_l_distr, node, argname='`g_l_distr`')
-            e_l = self._distr2Float(e_l_distr, node, argname='`e_l_distr`')
-            node._add_current('L', g_l, e_l)
+            g_l = self._distr2Float(g_l_distr, node, argname="`g_l_distr`")
+            e_l = self._distr2Float(e_l_distr, node, argname="`e_l_distr`")
+            node._add_current("L", g_l, e_l)
 
     @comptree_removal_decorator
     def add_channel_current(self, channel, g_max_distr, e_rev_distr, node_arg=None):
@@ -583,7 +615,8 @@ class PhysTree(MorphTree):
             Defaults to None
         """
         if not isinstance(channel, ionchannels.IonChannel):
-            raise IOError('`channel` argmument needs to be of class `neat.IonChannel`')
+            raise IOError(
+                "`channel` argmument needs to be of class `neat.IonChannel`")
         channel_name = channel.__class__.__name__
 
         nodes_with_channel = self.convert_node_arg_to_nodes(node_arg)
@@ -592,8 +625,10 @@ class PhysTree(MorphTree):
 
         # add the ion channel to the nodes
         for node in self.convert_node_arg_to_nodes(node_arg):
-            g_max = self._distr2Float(g_max_distr, node, argname='`g_max_distr`')
-            e_rev = self._distr2Float(e_rev_distr, node, argname='`e_rev_distr`')
+            g_max = self._distr2Float(
+                g_max_distr, node, argname="`g_max_distr`")
+            e_rev = self._distr2Float(
+                e_rev_distr, node, argname="`e_rev_distr`")
             node._add_current(channel_name, g_max, e_rev)
 
     def get_channels_in_tree(self):
@@ -653,11 +688,18 @@ class PhysTree(MorphTree):
             Defaults to None
         """
         for node in self.convert_node_arg_to_nodes(node_arg):
-            e_eq_target = self._distr2Float(e_eq_target_distr, node, argname='`g_max_distr`')
-            tau_m_target = self._distr2Float(tau_m_target_distr, node, argname='`e_rev_distr`')
-            assert tau_m_target > 0.
-            node.fit_leak_current(e_eq_target=e_eq_target, tau_m_target=tau_m_target,
-                                channel_storage=self.channel_storage)
+            e_eq_target = self._distr2Float(
+                e_eq_target_distr, node, argname="`g_max_distr`"
+            )
+            tau_m_target = self._distr2Float(
+                tau_m_target_distr, node, argname="`e_rev_distr`"
+            )
+            assert tau_m_target > 0.0
+            node.fit_leak_current(
+                e_eq_target=e_eq_target,
+                tau_m_target=tau_m_target,
+                channel_storage=self.channel_storage,
+            )
 
     def _evaluate_comp_criteria(self, node, eps=1e-8, rbool=False):
         """
@@ -682,27 +724,37 @@ class PhysTree(MorphTree):
 
         if not rbool:
             cnode = node.child_nodes[0]
-            rbool = np.abs(node.r_a - cnode.r_a) > eps * np.max([node.r_a, cnode.r_a])
+            rbool = np.abs(node.r_a - cnode.r_a) > eps * \
+                np.max([node.r_a, cnode.r_a])
         if not rbool:
-            rbool = np.abs(node.c_m - cnode.c_m) > eps * np.max([node.c_m, cnode.c_m])
+            rbool = np.abs(node.c_m - cnode.c_m) > eps * \
+                np.max([node.c_m, cnode.c_m])
         if not rbool:
             rbool = set(node.currents.keys()) != set(cnode.currents.keys())
         if not rbool:
             for chan_name, channel in node.currents.items():
                 if not rbool:
-                    rbool = np.abs(channel[0] - cnode.currents[chan_name][0]) > eps * \
-                             np.max([np.abs(channel[0]), np.abs(cnode.currents[chan_name][0])])
+                    rbool = np.abs(
+                        channel[0] - cnode.currents[chan_name][0]
+                    ) > eps * np.max(
+                        [np.abs(channel[0]), np.abs(
+                            cnode.currents[chan_name][0])]
+                    )
                 if not rbool:
-                    rbool = np.abs(channel[1] - cnode.currents[chan_name][1]) > eps * \
-                             np.max([np.abs(channel[1]), np.abs(cnode.currents[chan_name][1])])
+                    rbool = np.abs(
+                        channel[1] - cnode.currents[chan_name][1]
+                    ) > eps * np.max(
+                        [np.abs(channel[1]), np.abs(
+                            cnode.currents[chan_name][1])]
+                    )
         if not rbool:
-            rbool = node.g_shunt > 0.001*eps
+            rbool = node.g_shunt > 0.001 * eps
 
         return rbool
 
-    def create_new_tree(self, loc_arg, 
-            fake_soma=False, store_loc_idxs=True, new_tree=None
-        ):
+    def create_new_tree(
+        self, loc_arg, fake_soma=False, store_loc_idxs=True, new_tree=None
+    ):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -735,17 +787,17 @@ class PhysTree(MorphTree):
             name = loc_arg
             self._try_name(name)
         else:
-            name = 'new tree'
+            name = "new tree"
             self.store_locs(loc_arg, name)
 
         if new_tree is not None and not issubclass(type(new_tree), PhysTree):
             raise ValueError(
-                f"`new_tree` is an instance of {new_tree.__class__}, "\
+                f"`new_tree` is an instance of {new_tree.__class__}, "
                 f"but should be a subclass of <class 'neat.PhysTree'>."
             )
-        
-        new_tree = super().create_new_tree(name,
-            fake_soma=fake_soma, store_loc_idxs=store_loc_idxs, new_tree=new_tree
+
+        new_tree = super().create_new_tree(
+            name, fake_soma=fake_soma, store_loc_idxs=store_loc_idxs, new_tree=new_tree
         )
         new_locs = self.get_locs(name)
 
@@ -754,7 +806,7 @@ class PhysTree(MorphTree):
         for new_node in new_tree:
 
             loc = new_locs[new_node.content["loc ind"]]
-            orig_node = self[loc['node']]
+            orig_node = self[loc["node"]]
 
             # copy over physiological parameters
             new_node.c_m = orig_node.c_m
@@ -771,7 +823,8 @@ class PhysTree(MorphTree):
             new_ions.update(set(new_node.concmechs.keys()))
 
         new_tree.channel_storage = {
-            cname: channel for cname, channel in self.channel_storage.items() \
+            cname: channel
+            for cname, channel in self.channel_storage.items()
             if cname in new_channels
         }
         new_tree.ions = new_ions
@@ -779,8 +832,7 @@ class PhysTree(MorphTree):
         return new_tree
 
     @computational_tree_decorator
-    def create_finite_difference_tree(self,
-                    dx_max=15., name='dont store'):
+    def create_finite_difference_tree(self, dx_max=15.0, name="dont store"):
         """
         Create a ::class::`neat.CompartmentTree` whose parameters implement the
         second order finite difference approximation for the morphology.
@@ -814,24 +866,27 @@ class PhysTree(MorphTree):
         locs = []
         for node in self:
             if self.is_root(node):
-                locs.append(MorphLoc((node.index, .5), self,
-                                     set_as_comploc=set_as_comploc))
+                locs.append(
+                    MorphLoc((node.index, 0.5), self,
+                             set_as_comploc=set_as_comploc)
+                )
             else:
                 n_comp = np.ceil(node.L / dx_max).astype(int)
 
-                for cc in range(1,n_comp+1):
-                    new_loc = MorphLoc((node.index, cc/n_comp), self,
-                                       set_as_comploc=set_as_comploc)
+                for cc in range(1, n_comp + 1):
+                    new_loc = MorphLoc(
+                        (node.index, cc / n_comp), self, set_as_comploc=set_as_comploc
+                    )
                     locs.append(new_loc)
 
         aux_tree = self.create_new_tree(locs, new_tree=PhysTree())
         fd_tree = self.create_compartment_tree(locs)
 
-        if name != 'dont store':
+        if name != "dont store":
             self.store_locs(locs, name)
 
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
-            assert aux_node.content['loc ind'] == fd_node.loc_idx
+            assert aux_node.content["loc ind"] == fd_node.loc_idx
 
             # unit conversion [um] -> [cm]
             R_ = aux_node.R * 1e-4
@@ -839,12 +894,12 @@ class PhysTree(MorphTree):
 
             if fd_tree.is_root(fd_node):
                 # for the soma we apply the spherical approximation
-                surf = 4. * np.pi * R_**2
+                surf = 4.0 * np.pi * R_**2
             else:
                 # for other nodes we apply the cylindrical approximation
                 # but take only half of it (half for the current node, half
                 # for the parent
-                surf = 2. * np.pi * R_ * L_ / 2.
+                surf = 2.0 * np.pi * R_ * L_ / 2.0
 
             # set finite difference values for current node
             fd_node.ca = surf * aux_node.c_m
@@ -854,7 +909,9 @@ class PhysTree(MorphTree):
 
             for chan in aux_node.currents:
                 if chan not in fd_tree.channel_storage and chan in self.channel_storage:
-                    fd_tree.channel_storage[chan] = copy.deepcopy(self.channel_storage[chan])
+                    fd_tree.channel_storage[chan] = copy.deepcopy(
+                        self.channel_storage[chan]
+                    )
 
             if not fd_tree.is_root(fd_node):
                 fd_node.g_c = np.pi * R_**2 / (aux_node.r_a * L_)
@@ -862,7 +919,7 @@ class PhysTree(MorphTree):
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
                 if not fd_tree.is_root(fd_parent):
-                # if True:
+                    # if True:
                     fd_parent.ca += surf * aux_node.c_m
 
                     for chan in aux_node.currents:
@@ -873,30 +930,31 @@ class PhysTree(MorphTree):
                             g_parent = fd_parent.currents[chan][0]
                             e_parent = fd_parent.currents[chan][1]
                         else:
-                            g_parent = 0.
+                            g_parent = 0.0
                             e_parent = aux_node.currents[chan][1]
 
                         if g_parent + g_node > 1e-10:
                             fd_parent.currents[chan] = (
                                 g_parent + g_node,
-                                (g_parent * e_parent + g_node * e_node) / (g_parent + g_node)
+                                (g_parent * e_parent + g_node * e_node)
+                                / (g_parent + g_node),
                             )
                         else:
-                            fd_parent.currents[chan] = (0., e_parent)
+                            fd_parent.currents[chan] = (0.0, e_parent)
 
         # set concentration mechanisms in separate pass
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
             for ion in aux_node.concmechs:
-                ion_factors_aux = 0.
-                ion_factors_fd = 0.
+                ion_factors_aux = 0.0
+                ion_factors_fd = 0.0
 
                 for cname in aux_node.currents:
-                    if cname != 'L' and self.channel_storage[cname].ion == ion:
+                    if cname != "L" and self.channel_storage[cname].ion == ion:
                         ion_factors_aux += aux_node.currents[cname][0]
                         ion_factors_fd += fd_node.currents[cname][0]
 
                 fd_node.concmechs[ion] = copy.deepcopy(aux_node.concmechs[ion])
-                fd_node.concmechs[ion].gamma *= ion_factors_aux / ion_factors_fd
+                fd_node.concmechs[ion].gamma *= ion_factors_aux / \
+                    ion_factors_fd
 
         return fd_tree, locs
-

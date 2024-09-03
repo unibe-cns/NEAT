@@ -2,10 +2,7 @@ import os
 import glob
 
 
-def _list_models(path_neat,
-        simulators=['nest', 'neuron'],
-        pprint=True
-    ):
+def _list_models(path_neat, simulators=["nest", "neuron"], pprint=True):
     """
     Get (and print) a dictionary containing all installed model
 
@@ -18,24 +15,24 @@ def _list_models(path_neat,
     """
     models = {sim: [] for sim in simulators}
 
-    if 'nest' in simulators:
-        path_nest = os.path.join(path_neat, 'simulations/', 'nest/tmp/*/')
+    if "nest" in simulators:
+        path_nest = os.path.join(path_neat, "simulations/", "nest/tmp/*/")
 
         for file_path in glob.glob(path_nest):
             file_name = os.path.basename(os.path.normpath(file_path))
             # only append name if directory contains .nestml files
             path_test = os.path.join(file_path, "*.nestml")
             if not len([f for f in glob.glob(path_test)]) == 0:
-                models['nest'].append(file_name)
+                models["nest"].append(file_name)
 
-    if 'neuron' in simulators:
-        path_neuron = os.path.join(path_neat, 'simulations/', 'neuron/tmp/*/')
+    if "neuron" in simulators:
+        path_neuron = os.path.join(path_neat, "simulations/", "neuron/tmp/*/")
 
         print(path_neuron)
 
         for file_path in glob.glob(path_neuron):
             file_name = os.path.basename(os.path.normpath(file_path))
-            models['neuron'].append(file_name)
+            models["neuron"].append(file_name)
 
     if pprint:
         print("\n------- installed models --------")

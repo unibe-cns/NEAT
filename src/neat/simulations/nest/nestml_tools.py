@@ -4,13 +4,13 @@ import warnings
 
 
 PERMITTED_BLOCK_NAMES = [
-    'parameters',
-    'state',
-    'equations',
-    'function',
-    'internals',
-    'input',
-    'output',
+    "parameters",
+    "state",
+    "equations",
+    "function",
+    "internals",
+    "input",
+    "output",
 ]
 
 
@@ -28,8 +28,8 @@ def strip_v_comp(contents):
 def strip_comments(contents):
     for ll, line in enumerate(contents):
         try:
-            s0 = line.index('#')
-            contents[ll] = line[:s0] + '\n'
+            s0 = line.index("#")
+            contents[ll] = line[:s0] + "\n"
         except ValueError as e:
             # do nothing if there is no comment
             pass
@@ -48,19 +48,19 @@ def _get_index_of_block(contents, block_name):
 
 def get_block_string(contents, block_name):
     try:
-        c0 = _get_index_of_block(contents, block_name+":")
-        s0 = contents[c0].index(block_name) + len(block_name+":")
+        c0 = _get_index_of_block(contents, block_name + ":")
+        s0 = contents[c0].index(block_name) + len(block_name + ":")
 
-        c1 = min([
-            _get_index_of_block(contents[c0+1:], block_name+":") + c0 \
-            for block_name in PERMITTED_BLOCK_NAMES
-        ])
+        c1 = min(
+            [
+                _get_index_of_block(contents[c0 + 1 :], block_name + ":") + c0
+                for block_name in PERMITTED_BLOCK_NAMES
+            ]
+        )
 
-        block_str = contents[c0][s0:] + \
-                    ''.join(contents[c0+1:c1]) + \
-                    '\n'
+        block_str = contents[c0][s0:] + "".join(contents[c0 + 1 : c1]) + "\n"
     except IndexError as e:
-        warnings.warn("\'%s\' block not found in .nestml file")
+        warnings.warn("'%s' block not found in .nestml file")
         block_str = ""
 
     return block_str
@@ -75,16 +75,17 @@ def get_functions_string(contents):
             c0 = _get_index_of_block(contents[kk:], "function") + kk
             s0 = contents[c0].index("function")
 
-            c1 = min([
-                    _get_index_of_block(contents[c0+1:], block_name) + c0 \
+            c1 = min(
+                [
+                    _get_index_of_block(contents[c0 + 1 :], block_name) + c0
                     for block_name in PERMITTED_BLOCK_NAMES
-                ] + [_get_index_of_block(contents[c0+1:], "function") + c0]
+                ]
+                + [_get_index_of_block(contents[c0 + 1 :], "function") + c0]
             )
 
-            function_str += "\n    " + \
-                    contents[c0][s0:] + \
-                    ''.join(contents[c0+1:c1]) + \
-                    '\n'
+            function_str += (
+                "\n    " + contents[c0][s0:] + "".join(contents[c0 + 1 : c1]) + "\n"
+            )
 
             # move further, functions are assumed to at least occupy one line each
             kk = c1 + 1
@@ -98,12 +99,12 @@ def get_functions_string(contents):
 
 
 def parse_nestml_file(f_name):
-    with open(f_name, 'r') as file:
+    with open(f_name, "r") as file:
         contents = file.readlines()
 
     strip_comments(contents)
 
-    blocks = dict(zip(PERMITTED_BLOCK_NAMES, [""]*len(PERMITTED_BLOCK_NAMES)))
+    blocks = dict(zip(PERMITTED_BLOCK_NAMES, [""] * len(PERMITTED_BLOCK_NAMES)))
     for block_name in blocks:
         if block_name != "output" and block_name != "function":
             blocks[block_name] += get_block_string(contents, block_name)
@@ -113,26 +114,29 @@ def parse_nestml_file(f_name):
     return blocks
 
 
-def write_nestml_blocks(blocks, path_name, neuron_name, v_comp=0.,
-                      write_blocks=['parameters', 'state', 'equations',
-                                    'input', 'output', 'functions']):
+def write_nestml_blocks(
+    blocks,
+    path_name,
+    neuron_name,
+    v_comp=0.0,
+    write_blocks=["parameters", "state", "equations", "input", "output", "functions"],
+):
     for block, blockstr in blocks.items():
-        if block != 'function' and block != 'output':
+        if block != "function" and block != "output":
             blocks[block] = f"\n    {block}:\n{blockstr}"
-            if block == 'state' and not 'v_comp' in blockstr:
-                blocks[block] += f'\n        v_comp real = {v_comp}'
+            if block == "state" and not "v_comp" in blockstr:
+                blocks[block] += f"\n        v_comp real = {v_comp}"
             blocks[block] += "\n\n"
 
-        elif block == 'output':
+        elif block == "output":
             blocks[block] = "\n    output:\n        spike\n\n"
 
     fname = os.path.join(path_name, neuron_name + ".nestml")
 
-    file = open(fname, 'w')
-    file.write('\nmodel %s:\n'%neuron_name)
+    file = open(fname, "w")
+    file.write("\nmodel %s:\n" % neuron_name)
     for blockstr in blocks.values():
         file.write(blockstr)
     file.close()
 
     return fname
-

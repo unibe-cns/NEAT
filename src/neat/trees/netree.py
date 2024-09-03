@@ -8,7 +8,6 @@ File contains:
 Author: W. Wybo
 """
 
-
 import numpy as np
 import matplotlib.pyplot as pl
 
@@ -49,13 +48,14 @@ class Kernel(object):
     k_bar: float
         The total surface area under the kernel
     """
+
     def __init__(self, kernel):
         # set kernel time scales and exponential prefactors
         if isinstance(kernel, dict):
-            self.a = copy.deepcopy(kernel['a'])
-            self.c = copy.deepcopy(kernel['c'])
+            self.a = copy.deepcopy(kernel["a"])
+            self.c = copy.deepcopy(kernel["c"])
         elif isinstance(kernel, float) or isinstance(kernel, int):
-            self.a = np.array([1.])
+            self.a = np.array([1.0])
             self.c = np.array([kernel]).astype(float)
         elif isinstance(kernel, Kernel):
             self.a = copy.deepcopy(kernel.a)
@@ -73,21 +73,33 @@ class Kernel(object):
             self.c = np.array(self.c)
 
     def __getitem__(self, ind):
-        if ind == 0: return self.a
-        elif ind == 1: return self.c
-        elif ind == 'a': return self.a
-        elif ind == 'c': return self.c
-        elif ind == 'alphas': return self.a
-        elif ind == 'gammas': return self.c
-        else: raise IndexError('Index should be \'0\' or \'1\'')
+        if ind == 0:
+            return self.a
+        elif ind == 1:
+            return self.c
+        elif ind == "a":
+            return self.a
+        elif ind == "c":
+            return self.c
+        elif ind == "alphas":
+            return self.a
+        elif ind == "gammas":
+            return self.c
+        else:
+            raise IndexError("Index should be '0' or '1'")
 
     def __call__(self, t_arr):
-        return np.dot(np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
-                      self.c[:,np.newaxis]).flatten().real
+        return (
+            np.dot(
+                np.exp(-t_arr[:, np.newaxis] * self.a[np.newaxis, :]),
+                self.c[:, np.newaxis],
+            )
+            .flatten()
+            .real
+        )
 
     def __add__(self, kernel):
-        if kernel.a.shape[0] == self.a.shape[0] and \
-           np.allclose(kernel.a, self.a):
+        if kernel.a.shape[0] == self.a.shape[0] and np.allclose(kernel.a, self.a):
             a = copy.copy(self.a)
             c = kernel.c + self.c
         else:
@@ -96,8 +108,7 @@ class Kernel(object):
         return Kernel((a, c))
 
     def __sub__(self, kernel):
-        if kernel.a.shape[0] == self.a.shape[0] and \
-           np.allclose(kernel.a, self.a):
+        if kernel.a.shape[0] == self.a.shape[0] and np.allclose(kernel.a, self.a):
             a = copy.copy(self.a)
             c = self.c - kernel.c
         else:
@@ -112,20 +123,34 @@ class Kernel(object):
         return np.sum(self.c / self.a).real
 
     def set_k_bar(self, kk):
-        raise AttributeError('`k_bar` is a read-only attribute, adjust attribute `c` ' + \
-                             'by multiplying with a factor to change `k_bar`')
+        raise AttributeError(
+            "`k_bar` is a read-only attribute, adjust attribute `c` "
+            + "by multiplying with a factor to change `k_bar`"
+        )
+
     k_bar = property(get_k_bar, set_k_bar)
 
     def __str__(self, as_timescale=False):
         if as_timescale:
-            return 't = ' + np.array2string(1./self.a, precision=4, max_line_width=1000) + '\n' + \
-                   'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
+            return (
+                "t = "
+                + np.array2string(1.0 / self.a, precision=4,
+                                  max_line_width=1000)
+                + "\n"
+                + "c = "
+                + np.array2string(self.c, precision=4, max_line_width=1000)
+            )
         else:
-            return 'a = ' + np.array2string(self.a, precision=4, max_line_width=1000) + '\n' + \
-                   'c = ' + np.array2string(self.c, precision=4, max_line_width=1000)
+            return (
+                "a = "
+                + np.array2string(self.a, precision=4, max_line_width=1000)
+                + "\n"
+                + "c = "
+                + np.array2string(self.c, precision=4, max_line_width=1000)
+            )
 
     def __repr__(self):
-        return repr({'a': self.a, 'c': self.c})
+        return repr({"a": self.a, "c": self.c})
 
     def t(self, t_arr):
         """
@@ -160,15 +185,22 @@ class Kernel(object):
             the differentiated kernel
         """
         if t_arr is None:
-            return Kernel({
-                'a': self.a,
-                'c': -self.a * self.c,
-            })
+            return Kernel(
+                {
+                    "a": self.a,
+                    "c": -self.a * self.c,
+                }
+            )
         else:
-            return np.dot(
-                -self.a[np.newaxis,:] * np.exp(-t_arr[:,np.newaxis] * self.a[np.newaxis,:]), \
-                self.c[:,np.newaxis]
-            ).flatten().real
+            return (
+                np.dot(
+                    -self.a[np.newaxis, :]
+                    * np.exp(-t_arr[:, np.newaxis] * self.a[np.newaxis, :]),
+                    self.c[:, np.newaxis],
+                )
+                .flatten()
+                .real
+            )
 
     def ft(self, s_arr):
         """
@@ -185,7 +217,9 @@ class Kernel(object):
             The Fourrier transform of the kernel
 
         """
-        return np.sum(self.c[:,None]*1e3 / (self.a[:,None]*1e3 + s_arr[None,:]), 0)
+        return np.sum(
+            self.c[:, None] * 1e3 / (self.a[:, None] * 1e3 + s_arr[None, :]), 0
+        )
 
     def fit_c(self, t_arr, func_arr, w=None):
         """
@@ -206,9 +240,10 @@ class Kernel(object):
         """
         if w is None:
             w = np.ones_like(t_arr)
-        A = np.exp(-t_arr[:,None] * self.a[None,:])
+        A = np.exp(-t_arr[:, None] * self.a[None, :])
 
-        self.c = np.linalg.lstsq(w[:,None]*A, w*func_arr, rcond=None)[0]
+        self.c = np.linalg.lstsq(w[:, None] * A, w * func_arr, rcond=None)[0]
+
 
 class NETNode(SNode):
     """
@@ -226,6 +261,7 @@ class NETNode(SNode):
     z_bar: float
         The steady state impedance associated with the impedance kernel
     """
+
     def __init__(self, index, loc_idxs, newloc_idxs=[], z_kernel=None):
         super().__init__(index)
         # location indices that node integrates
@@ -236,17 +272,26 @@ class NETNode(SNode):
 
     def __str__(self):
         if self.parent_node is not None:
-            return 'NETNode ' + str(self.index) + \
-                    ', loc inds: ' + str(self.loc_idxs) + \
-                    ', newloc inds: ' + str(self.newloc_idxs) + \
-                    ', parent: ' + str(self.parent_node.index) + \
-                    ', z_bar (MOhm) = ' + str(self.z_bar)
+            return (
+                "NETNode "
+                + str(self.index)
+                + ", loc inds: "
+                + str(self.loc_idxs)
+                + ", newloc inds: "
+                + str(self.newloc_idxs)
+                + ", parent: "
+                + str(self.parent_node.index)
+                + ", z_bar (MOhm) = "
+                + str(self.z_bar)
+            )
         else:
-            return 'NETNode ' + str(self.index) + \
-                    ', loc inds: ' + str(self.loc_idxs) + \
-                    ', newloc inds: ' + str(self.newloc_idxs) + \
-                    ', parent: None' \
-                    ', z_bar (MOhm) = ' + str(self.z_bar)
+            return "NETNode " + str(self.index) + ", loc inds: " + str(
+                self.loc_idxs
+            ) + ", newloc inds: " + str(
+                self.newloc_idxs
+            ) + ", parent: None" ", z_bar (MOhm) = " + str(
+                self.z_bar
+            )
 
     def set_z_kernel(self, z_kernel):
         self._z_kernel = Kernel(z_kernel)
@@ -263,8 +308,8 @@ class NETNode(SNode):
     def __contains__(self, loc_idx):
         return loc_idx in self.loc_idxs
 
-    def _set_compartment_data(self, node_list, z_root_list, z_comp_list, Iz=5.):
-        node_inds  = [node.index for node in node_list if node != None]
+    def _set_compartment_data(self, node_list, z_root_list, z_comp_list, Iz=5.0):
+        node_inds = [node.index for node in node_list if node != None]
         z_root = np.array(z_root_list)
         z_comp = np.array(z_comp_list)
         comp_inds = np.where(z_comp / z_root > Iz)[0]
@@ -282,20 +327,24 @@ class NETNode(SNode):
     def __str__(self, with_parent=True, with_morph_info=False):
         node_str = super().__str__(with_parent=with_parent)
 
-        node_str += f' --- ' \
-            f' loc inds: {str(self.loc_idxs)}' \
-            f', newloc inds: {str(self.newloc_idxs)}' \
-            f', z_bar = {self.z_bar} MOhm'
+        node_str += (
+            f" --- "
+            f" loc inds: {str(self.loc_idxs)}"
+            f", newloc inds: {str(self.newloc_idxs)}"
+            f", z_bar = {self.z_bar} MOhm"
+        )
 
         return node_str
 
     def _get_repr_dict(self):
         repr_dict = super()._get_repr_dict()
-        repr_dict.update({
-            "loc_idxs": self.loc_idxs,
-            "newloc_idxs": self.newloc_idxs,
-            "z_kernel": repr(self.z_kernel)
-        })
+        repr_dict.update(
+            {
+                "loc_idxs": self.loc_idxs,
+                "newloc_idxs": self.newloc_idxs,
+                "z_kernel": repr(self.z_kernel),
+            }
+        )
         return repr_dict
 
     def __repr__(self):
@@ -308,6 +357,7 @@ class NET(STree):
     (Wybo et al., 2019), representing the spatial voltage as a number of voltage
     components present at different spatial scales.
     """
+
     def __init__(self, root=None):
         super().__init__(root)
 
@@ -369,7 +419,7 @@ class NET(STree):
                 cloc_idxs = cloc_idxs.union(set(cnode.loc_idxs))
             node.newloc_idxs = list(set(node.loc_idxs) - cloc_idxs)
 
-    def get_reduced_tree(self, loc_idxs, indexing='NET eval'):
+    def get_reduced_tree(self, loc_idxs, indexing="NET eval"):
         """
         Construct a reduced tree where only the locations index by ``loc_idxs''
         are retained
@@ -383,44 +433,54 @@ class NET(STree):
             indices of locations for which the full NET is evaluated. Otherwise
             will be indices of the input ``loc_idxs``
         """
-        loc_idxs_newtree = list({loc_idx for loc_idx in loc_idxs \
-                                         if loc_idx in self.root})
+        loc_idxs_newtree = list(
+            {loc_idx for loc_idx in loc_idxs if loc_idx in self.root}
+        )
         if loc_idxs_newtree:
             new_root = NETNode(0, loc_idxs_newtree,
-                                z_kernel=self.root.z_kernel)
+                               z_kernel=self.root.z_kernel)
             new_tree = NET(new_root)
             for cnode in self.root.child_nodes:
                 if cnode is not None:
-                    self._construct_reduced_tree(cnode, loc_idxs_newtree,
-                                                new_root, new_tree)
+                    self._construct_reduced_tree(
+                        cnode, loc_idxs_newtree, new_root, new_tree
+                    )
             new_tree.set_new_loc_idxs()
-            if indexing == 'NET eval':
+            if indexing == "NET eval":
                 return new_tree
             else:
                 for node in new_tree:
                     # node.loc_idxs = [np.where(loc_idxs == ind)[0][0] for ind in node.loc_idxs]
                     # node.loc_idxs = sum([np.where(loc_idxs == ind)[0].tolist() for ind in set(node.loc_idxs)], [])
-                    node.loc_idxs = sum([np.where(loc_idxs == ind)[0].tolist() for ind in node.loc_idxs], [])
+                    node.loc_idxs = sum(
+                        [
+                            np.where(loc_idxs == ind)[0].tolist()
+                            for ind in node.loc_idxs
+                        ],
+                        [],
+                    )
                 new_tree.set_new_loc_idxs()
                 return new_tree
         else:
             return None
 
     def _construct_reduced_tree(self, node, loc_idxs, node_newtree, new_tree):
-        loc_idxs_subtree = list({loc_idx for loc_idx in loc_idxs \
-                                         if loc_idx in node})
+        loc_idxs_subtree = list(
+            {loc_idx for loc_idx in loc_idxs if loc_idx in node})
         if len(loc_idxs_subtree) > 0:
             if loc_idxs_subtree == loc_idxs:
                 node_newtree.z_kernel += node.z_kernel
             else:
-                newnode_newtree = NETNode(len(new_tree), loc_idxs_subtree,
-                                            z_kernel=node.z_kernel)
+                newnode_newtree = NETNode(
+                    len(new_tree), loc_idxs_subtree, z_kernel=node.z_kernel
+                )
                 new_tree.add_node_with_parent(newnode_newtree, node_newtree)
                 node_newtree = newnode_newtree
             for cnode in node.child_nodes:
                 if cnode is not None:
-                    self._construct_reduced_tree(cnode, loc_idxs_subtree,
-                                                node_newtree, new_tree)
+                    self._construct_reduced_tree(
+                        cnode, loc_idxs_subtree, node_newtree, new_tree
+                    )
 
     # def matchInputImpedance(self, z_input):
     #     assert imp_mat.shape[0] == imp_mat.shape[1]
@@ -491,13 +551,16 @@ class NET(STree):
             for jj, loc_idx1 in enumerate(loc_idxs):
                 if jj < ii:
                     net_red = self.get_reduced_tree([loc_idx0, loc_idx1])
-                    key = (loc_idx0, loc_idx1) if loc_idx0 < loc_idx1 \
-                                               else (loc_idx1, loc_idx0)
+                    key = (
+                        (loc_idx0, loc_idx1)
+                        if loc_idx0 < loc_idx1
+                        else (loc_idx1, loc_idx0)
+                    )
                     n0 = net_red.get_leaf_loc_node(loc_idx0)
-                    z0 = n0.z_bar if n0 != net_red.root else 0.
+                    z0 = n0.z_bar if n0 != net_red.root else 0.0
                     n1 = net_red.get_leaf_loc_node(loc_idx1)
-                    z1 = n1.z_bar if n1 != net_red.root else 0.
-                    Iz_dict[key] = (z0 + z1) / (2. * net_red.root.z_bar)
+                    z1 = n1.z_bar if n1 != net_red.root else 0.0
+                    Iz_dict[key] = (z0 + z1) / (2.0 * net_red.root.z_bar)
                 else:
                     break
         if len(loc_idxs) == 2:
@@ -516,7 +579,7 @@ class NET(STree):
         """
         z_mat = self.calc_impedance_matrix()
         z_in = np.diag(z_mat)
-        return (z_in[:,np.newaxis] + z_in[np.newaxis,:]) / (2. * z_mat) - 1.
+        return (z_in[:, np.newaxis] + z_in[np.newaxis, :]) / (2.0 * z_mat) - 1.0
 
     def calc_impedance_matrix(self):
         """
@@ -528,18 +591,21 @@ class NET(STree):
             the impedance matrix approximation
         """
         n_loc = len(self.root.loc_idxs)
-        loc_map = {loc_idx: map_ind for map_ind, loc_idx in enumerate(self.root.loc_idxs)}
+        loc_map = {
+            loc_idx: map_ind for map_ind, loc_idx in enumerate(self.root.loc_idxs)
+        }
         z_mat = np.zeros((n_loc, n_loc))
         self._add_node_to_imp_mat(self.root, z_mat, loc_map)
         return z_mat
 
     def _add_node_to_imp_mat(self, node, z_mat, loc_map):
         inds = np.array([loc_map[loc_idx] for loc_idx in node.loc_idxs])
-        z_mat[np.tile(inds, len(inds)), np.repeat(inds, len(inds))] += node.z_bar
+        z_mat[np.tile(inds, len(inds)), np.repeat(
+            inds, len(inds))] += node.z_bar
         for cnode in node.child_nodes:
             self._add_node_to_imp_mat(cnode, z_mat, loc_map)
 
-    def calc_compartmentalization(self, Iz, returntype='node index'):
+    def calc_compartmentalization(self, Iz, returntype="node index"):
         """
         Returns a compartmentalization for the NET tree where each pair of
         compartments is separated by an Iz of at least ``Iz``. The
@@ -565,13 +631,13 @@ class NET(STree):
         self._remove_non_compartments(net.leafs, net=net)
         # get the compartment nodes
         comp_nodes = self._set_compartments_leafbased(net.leafs, net)
-        if returntype == 'node index':
-            comp_inds  = []
+        if returntype == "node index":
+            comp_inds = []
             for node in comp_nodes:
                 inds = node._comps[node._root_ind]
                 comp_inds.append(inds)
             return comp_inds
-        elif returntype == 'node':
+        elif returntype == "node":
             comp_nodes_ = []
             for node in comp_nodes:
                 inds = node._comps[node.rootind]
@@ -596,7 +662,7 @@ class NET(STree):
 
     def _remove_non_compartments(self, leafs, net=None, n_count=0):
         if net is None:
-            warnings.warn('Modifying original tree')
+            warnings.warn("Modifying original tree")
             net = self
         # count number of leafs
         n_leaf = len(leafs)
@@ -605,7 +671,8 @@ class NET(STree):
         del leafs[0]
         leafs = leafs + [leaf]
         # leaf is not highest order
-        common_root, sister_leafs, corresponding_children = net.sister_leafs(leaf)
+        common_root, sister_leafs, corresponding_children = net.sister_leafs(
+            leaf)
         if common_root.index == 0:
             pass
         if len(sister_leafs) == len(corresponding_children):
@@ -625,8 +692,9 @@ class NET(STree):
             # delete the leafs that are not in compartments
             if len(sleafs_comp) <= 1 and not net.is_root(common_root):
                 # if at most one is compartment, we retain only the largest one
-                ind = np.argmax([self.calc_total_impedance(node) \
-                                 for node in sister_leafs])
+                ind = np.argmax(
+                    [self.calc_total_impedance(node) for node in sister_leafs]
+                )
                 newleaf = sister_leafs[ind]
                 for ii, cnode in enumerate(corresponding_children):
                     if ii != ind:
@@ -641,42 +709,49 @@ class NET(STree):
             if n_leaf != len(leafs) and len(leafs) > 0:
                 self._remove_non_compartments(leafs, net=net, n_count=0)
             elif n_count < len(leafs):
-                self._remove_non_compartments(leafs, net=net, n_count=n_count+1)
+                self._remove_non_compartments(
+                    leafs, net=net, n_count=n_count + 1)
         elif n_count < len(leafs) and len(leafs) > 0:
-            self._remove_non_compartments(leafs, net=net, n_count=n_count+1)
+            self._remove_non_compartments(leafs, net=net, n_count=n_count + 1)
 
-    def _compute_tentative_compartments(self, Iz=5.):
+    def _compute_tentative_compartments(self, Iz=5.0):
         # set the prerequisite impedances
         self._set_compartment_info(Iz=Iz)
         # set the tentative compartments
         for node in self:
             self._set_compartments_relative(node)
 
-    def _set_compartment_info(self, Iz=5., node=None, z_p=0.,
-                        node_list=[], z_root_list=[], z_comp_list=[]):
+    def _set_compartment_info(
+        self, Iz=5.0, node=None, z_p=0.0, node_list=[], z_root_list=[], z_comp_list=[]
+    ):
         if node != None:
             # list of dependent impedances
             try:
-                z_root_list.append(z_root_list[-1] + z_p )
+                z_root_list.append(z_root_list[-1] + z_p)
             except IndexError:
                 z_root_list.append(z_p)
             # list of independent impedances
-            z_comp_list.append(0.)
+            z_comp_list.append(0.0)
             z_comp_list = [node.z_bar + z_c for z_c in z_comp_list]
             # list or nodes
             node_list.append(node.parent_node)
             # store the compartment information
-            node._set_compartment_data(node_list, z_root_list, z_comp_list, Iz=Iz)
+            node._set_compartment_data(
+                node_list, z_root_list, z_comp_list, Iz=Iz)
         else:
             node = self.root
             # compute node impedance
-            self.root._set_compartment_data([], [], [], Iz=0.)
+            self.root._set_compartment_data([], [], [], Iz=0.0)
         # recurse to child nodes
         for cnode in node.child_nodes:
-            self._set_compartment_info(Iz=Iz, node=cnode, z_p=node.z_bar,
-                                node_list=copy.copy(node_list),
-                                z_root_list=copy.copy(z_root_list),
-                                z_comp_list=copy.copy(z_comp_list))
+            self._set_compartment_info(
+                Iz=Iz,
+                node=cnode,
+                z_p=node.z_bar,
+                node_list=copy.copy(node_list),
+                z_root_list=copy.copy(z_root_list),
+                z_comp_list=copy.copy(z_comp_list),
+            )
 
     def _set_compartments_relative(self, node):
         z_target = node._z_comp
@@ -706,7 +781,9 @@ class NET(STree):
         if node.counter >= len(node.child_nodes):
             if not self.is_root(node):
                 # compute the rescaled shunt factors
-                denom = 1. + node.z_bar * np.sum(sfs[node.loc_idxs] * gs[node.loc_idxs])
+                denom = 1.0 + node.z_bar * np.sum(
+                    sfs[node.loc_idxs] * gs[node.loc_idxs]
+                )
                 sfs[node.loc_idxs] = sfs[node.loc_idxs] / denom
                 # further recursion
                 self._sweep(node.parent_node, leafs, sfs, gs)
@@ -722,8 +799,9 @@ class NET(STree):
                 if node.parent_node is not None:
                     p_k = self.calc_total_kernel(node.parent_node)
                 else:
-                    p_k = Kernel((node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
-                f_z = (z_mat[ind,ind] - p_k.k_bar) / node.z_bar
+                    p_k = Kernel(
+                        (node.z_kernel.a, np.zeros_like(node.z_kernel.a)))
+                f_z = (z_mat[ind, ind] - p_k.k_bar) / node.z_bar
                 node.z_kernel.c *= f_z
             elif len(node.newloc_idxs) > 0:
                 z_k_approx = self.calc_total_kernel(node)
@@ -731,27 +809,38 @@ class NET(STree):
                 tbr_inds = []
                 for ind in node.newloc_idxs:
                     nmaxind += 1
-                    f_z = (z_mat[ind,ind] - z_k_approx.k_bar)
+                    f_z = z_mat[ind, ind] - z_k_approx.k_bar
                     if np.abs(f_z) > 1e-7:
                         f_z /= node.z_bar
-                        z_k_real = Kernel(dict(a=node.z_kernel.a, c=node.z_kernel.c*f_z))
+                        z_k_real = Kernel(
+                            dict(a=node.z_kernel.a, c=node.z_kernel.c * f_z)
+                        )
                         # add node
                         newnode = NETNode(nmaxind, [ind], z_kernel=z_k_real)
                         newnode.newloc_idxs = [ind]
                         self.add_node_with_parent(newnode, node)
                         tbr_inds.append(ind)
-                for ind in tbr_inds: node.newloc_idxs.remove(ind)
+                for ind in tbr_inds:
+                    node.newloc_idxs.remove(ind)
                 # empty the new indices
                 node.newloc_idxs = []
 
         self.set_new_loc_idxs()
 
-    def plot_dendrogram(self, ax,
-                        plotargs={}, labelargs={}, textargs={},
-                        incolors={},
-                        inlabels={}, nodelabels={},
-                        cs_comp={}, cmap=None,
-                        z_max=None, add_scalebar=True):
+    def plot_dendrogram(
+        self,
+        ax,
+        plotargs={},
+        labelargs={},
+        textargs={},
+        incolors={},
+        inlabels={},
+        nodelabels={},
+        cs_comp={},
+        cmap=None,
+        z_max=None,
+        add_scalebar=True,
+    ):
         """
         Generate a dendrogram of the NET
 
@@ -792,18 +881,19 @@ class NET(STree):
             arr = np.array([list(cs_comp.values())])
             max_cs = np.max(arr)
             min_cs = np.min(arr)
-            norm_cs = (max_cs - min_cs) * (1. + 1./100.)
+            norm_cs = (max_cs - min_cs) * (1.0 + 1.0 / 100.0)
             for key, val in cs_comp.items():
                 cs_comp[key] = (cs_comp[key] - min_cs) / norm_cs
-            if cmap is None: cmap = pl.get_cmap('jet')
-            cs_comp['cm'] = cmap
-            Z = [[0,0],[0,0]]
+            if cmap is None:
+                cmap = pl.get_cmap("jet")
+            cs_comp["cm"] = cmap
+            Z = [[0, 0], [0, 0]]
             levels = np.linspace(min_cs, max_cs, 100)
             CS3 = pl.contourf(Z, levels, cmap=cmap)
         # get the number of leafs to determine the dendrogram spacing
-        rnode    = self.root
-        n_branch  = self.degree_of_node(rnode)
-        l_spacing = np.linspace(0., 1., n_branch+1)
+        rnode = self.root
+        n_branch = self.degree_of_node(rnode)
+        l_spacing = np.linspace(0.0, 1.0, n_branch + 1)
         # determine input inpedances to fix the y scale
         if z_max == None:
             z_dict = {}
@@ -815,26 +905,43 @@ class NET(STree):
                         z_dict[ind] = node.z_bar
             z_max = max(z_dict.values())
         # plot the dendrogram
-        self._expand_dendrogram(rnode, 0.5, 0.,
-                    l_spacing, z_max, ax,
-                    plotargs=plotargs, labelargs=labelargs, textargs=textargs,
-                    incolors=incolors,
-                    inlabels=inlabels, nodelabels=nodelabels,
-                    cs_comp=cs_comp)
+        self._expand_dendrogram(
+            rnode,
+            0.5,
+            0.0,
+            l_spacing,
+            z_max,
+            ax,
+            plotargs=plotargs,
+            labelargs=labelargs,
+            textargs=textargs,
+            incolors=incolors,
+            inlabels=inlabels,
+            nodelabels=nodelabels,
+            cs_comp=cs_comp,
+        )
         # limits
-        ax.set_ylim((0.0, 1.2*z_max))
-        ax.set_xlim((0.,1.))
+        ax.set_ylim((0.0, 1.2 * z_max))
+        ax.set_xlim((0.0, 1.0))
         # scalebar
         if add_scalebar:
             sblength = np.around(z_max // 5, -2)
-            if sblength < .1: sblength += np.around(z_max % 5, -1)
-            if sblength < .1: sblength += np.around(z_max // 5, 0)
-            sbwidth = plotargs['lw']*3 if 'lw' in plotargs else 3.
-            sbtsize = textargs['size'] if 'size' in textargs else 'small'
-            ax.plot([0.,0.], [0., sblength], 'k-', lw=sbwidth)
-            ax.annotate(r'%.0f M$\Omega$'%sblength,
-                            xy=(0., sblength/2.), xytext=(-0.04, sblength/2.),
-                            size=sbtsize, rotation=90, ha='center', va='center')
+            if sblength < 0.1:
+                sblength += np.around(z_max % 5, -1)
+            if sblength < 0.1:
+                sblength += np.around(z_max // 5, 0)
+            sbwidth = plotargs["lw"] * 3 if "lw" in plotargs else 3.0
+            sbtsize = textargs["size"] if "size" in textargs else "small"
+            ax.plot([0.0, 0.0], [0.0, sblength], "k-", lw=sbwidth)
+            ax.annotate(
+                r"%.0f M$\Omega$" % sblength,
+                xy=(0.0, sblength / 2.0),
+                xytext=(-0.04, sblength / 2.0),
+                size=sbtsize,
+                rotation=90,
+                ha="center",
+                va="center",
+            )
 
         ax.axes.get_xaxis().set_visible(False)
         ax.axes.get_yaxis().set_visible(False)
@@ -842,17 +949,27 @@ class NET(STree):
 
         return z_max
 
-    def _expand_dendrogram(self, node, x0, y0,
-                                        l_spacing, z_max, ax,
-                                        plotargs={}, labelargs={}, textargs={},
-                                        incolors={},
-                                        inlabels={}, nodelabels={},
-                                        cs_comp={}):
+    def _expand_dendrogram(
+        self,
+        node,
+        x0,
+        y0,
+        l_spacing,
+        z_max,
+        ax,
+        plotargs={},
+        labelargs={},
+        textargs={},
+        incolors={},
+        inlabels={},
+        nodelabels={},
+        cs_comp={},
+    ):
         # check if part of compartment
         if cs_comp:
             if node.index in list(cs_comp.keys()):
                 plotargs = copy.deepcopy(plotargs)
-                plotargs['color'] = cs_comp['cm'](cs_comp[node.index])
+                plotargs["color"] = cs_comp["cm"](cs_comp[node.index])
         # impedance of layer
         ynew = y0 + node.z_bar
         # plot vertical connection line
@@ -864,19 +981,28 @@ class NET(STree):
             deg = self.degree_of_node(cnode)
             l1 = l0 + deg
             # new quantities
-            xnew = (l_spacing[l0] + l_spacing[l1]) / 2.
+            xnew = (l_spacing[l0] + l_spacing[l1]) / 2.0
             # horizontal connection line limits
             if i == 0:
                 xnew0 = xnew
-            if i == len(node.child_nodes)-1:
+            if i == len(node.child_nodes) - 1:
                 xnew1 = xnew
             # recursion
-            self._expand_dendrogram(cnode, xnew, ynew,
-                    l_spacing[l0:l1+1], z_max, ax,
-                    plotargs=plotargs, labelargs=labelargs, textargs=textargs,
-                    incolors=incolors,
-                    inlabels=inlabels, nodelabels=nodelabels,
-                    cs_comp=cs_comp)
+            self._expand_dendrogram(
+                cnode,
+                xnew,
+                ynew,
+                l_spacing[l0: l1 + 1],
+                z_max,
+                ax,
+                plotargs=plotargs,
+                labelargs=labelargs,
+                textargs=textargs,
+                incolors=incolors,
+                inlabels=inlabels,
+                nodelabels=nodelabels,
+                cs_comp=cs_comp,
+            )
             # next index
             l0 = l1
         # plot horizontal connection line
@@ -897,34 +1023,67 @@ class NET(STree):
                 if node.index in nodelabels:
                     if labelargs == {}:
                         ax.plot([x0], [ynew], **nodelabels[node.index][1])
-                        ax.annotate(nodelabels[node.index][0],
-                                    xy=(x0, ynew), xytext=(x0+0.04, ynew+z_max*0.04),
-                                    bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
-                                    **textargs)
+                        ax.annotate(
+                            nodelabels[node.index][0],
+                            xy=(x0, ynew),
+                            xytext=(x0 + 0.04, ynew + z_max * 0.04),
+                            bbox=dict(
+                                boxstyle="round", ec=(1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8)
+                            ),
+                            **textargs,
+                        )
                     else:
-                        ax.annotate(nodelabels[node.index],
-                                    xy=(x0, ynew), xytext=(x0+0.04, ynew+z_max*0.04),
-                                    bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
-                                    **textargs)
+                        ax.annotate(
+                            nodelabels[node.index],
+                            xy=(x0, ynew),
+                            xytext=(x0 + 0.04, ynew + z_max * 0.04),
+                            bbox=dict(
+                                boxstyle="round", ec=(1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8)
+                            ),
+                            **textargs,
+                        )
             else:
-                ax.annotate(r'$N='+''.join([str(ind) for ind in node.loc_idxs])+'$',
-                                 xy=(x0, ynew), xytext=(x0+0.04, ynew+z_max*0.04),
-                                 bbox=dict(boxstyle='round', ec=(1., 0.5, 0.5), fc=(1., 0.8, 0.8)),
-                                 **textargs)
+                ax.annotate(
+                    r"$N=" + "".join([str(ind)
+                                     for ind in node.loc_idxs]) + "$",
+                    xy=(x0, ynew),
+                    xytext=(x0 + 0.04, ynew + z_max * 0.04),
+                    bbox=dict(boxstyle="round", ec=(
+                        1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8)),
+                    **textargs,
+                )
             # add input label
             if self.is_leaf(node):
                 if inlabels != None:
-                    lwidth = plotargs['lw'] if 'lw' in plotargs else 1.
-                    ax.vlines(x0, ynew+z_max*0.04, z_max*1.1, lw=lwidth, linestyle=':', color='k')
+                    lwidth = plotargs["lw"] if "lw" in plotargs else 1.0
+                    ax.vlines(
+                        x0,
+                        ynew + z_max * 0.04,
+                        z_max * 1.1,
+                        lw=lwidth,
+                        linestyle=":",
+                        color="k",
+                    )
                     if node.loc_idxs[0] in incolors:
-                        bboxdict = dict(boxstyle='round', ec=incolors[node.loc_idxs[0]], fc=incolors[node.loc_idxs[0]], alpha=0.5)
+                        bboxdict = dict(
+                            boxstyle="round",
+                            ec=incolors[node.loc_idxs[0]],
+                            fc=incolors[node.loc_idxs[0]],
+                            alpha=0.5,
+                        )
                     else:
-                        bboxdict = dict(boxstyle='round', ec=(0.5, 0.5, 1.), fc=(0.8, 0.8, 1.))
+                        bboxdict = dict(
+                            boxstyle="round", ec=(0.5, 0.5, 1.0), fc=(0.8, 0.8, 1.0)
+                        )
                     if node.loc_idxs[0] in inlabels:
                         textstr = inlabels[node.loc_idxs[0]]
                     else:
-                        textstr = r'$'+str(node.loc_idxs[0])+'$'
-                    ax.annotate(textstr,
-                                        xy=(x0, z_max*1.1), xytext=(x0, z_max*1.14), ha='center',
-                                        bbox=bboxdict,
-                                        **textargs)
+                        textstr = r"$" + str(node.loc_idxs[0]) + "$"
+                    ax.annotate(
+                        textstr,
+                        xy=(x0, z_max * 1.1),
+                        xytext=(x0, z_max * 1.14),
+                        ha="center",
+                        bbox=bboxdict,
+                        **textargs,
+                    )

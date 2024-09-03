@@ -55,16 +55,19 @@ class CompartmentNode(SNode):
         dictionary with as keys the channel names and as elements the state
         variables of the ion channel around which to compute the linearizations
     """
-    def __init__(self, index, loc_idx=None, ca=1., g_c=0., g_l=1e-2, e_eq=-75.):
+
+    def __init__(self, index, loc_idx=None, ca=1.0, g_c=0.0, g_l=1e-2, e_eq=-75.0):
         super().__init__(index)
         # location index this node corresponds to
         self._loc_idx = loc_idx
         # compartment params
-        self.ca = ca   # capacitance (uF)
-        self.g_c = g_c # coupling conductance (uS)
-        self.e_eq = e_eq # equilibrium potential (mV)
-        self.conc_eqs = {} # equilibrium concentration values (mM)
-        self.currents = {'L': [g_l, e_eq]} # ion channel conductance (uS) and reversals (mV)
+        self.ca = ca  # capacitance (uF)
+        self.g_c = g_c  # coupling conductance (uS)
+        self.e_eq = e_eq  # equilibrium potential (mV)
+        self.conc_eqs = {}  # equilibrium concentration values (mM)
+        self.currents = {
+            "L": [g_l, e_eq]
+        }  # ion channel conductance (uS) and reversals (mV)
         self.concmechs = {}
         self.expansion_points = {}
 
@@ -73,8 +76,10 @@ class CompartmentNode(SNode):
 
     def get_loc_idx(self):
         if self._loc_idx is None:
-            raise AttributeError("`self.loc_idx` is undefined, this node has " + \
-                                 "not been associated with a location")
+            raise AttributeError(
+                "`self.loc_idx` is undefined, this node has "
+                + "not been associated with a location"
+            )
         else:
             return self._loc_idx
 
@@ -83,11 +88,19 @@ class CompartmentNode(SNode):
     def __str__(self, with_parent=False, with_children=False):
         node_string = super(CompartmentNode, self).__str__()
         if self.parent_node is not None:
-            node_string += ', Parent: ' + super(CompartmentNode, self.parent_node).__str__()
-        node_string += ' --- (g_c = %.12f uS, '%self.g_c + \
-                       ', '.join(['g_' + cname + ' = %.12f uS'%cpar[0] \
-                            for cname, cpar in self.currents.items()]) + \
-                       ', c = %.12f uF)'%self.ca
+            node_string += (
+                ", Parent: " + super(CompartmentNode, self.parent_node).__str__()
+            )
+        node_string += (
+            " --- (g_c = %.12f uS, " % self.g_c
+            + ", ".join(
+                [
+                    "g_" + cname + " = %.12f uS" % cpar[0]
+                    for cname, cpar in self.currents.items()
+                ]
+            )
+            + ", c = %.12f uF)" % self.ca
+        )
         return node_string
 
     def set_conc_eq(self, ion, conc):
@@ -115,7 +128,7 @@ class CompartmentNode(SNode):
         e_rev: float
             the reversal potential of the current (mV)
         """
-        self.currents[channel_name] = [0., e_rev]
+        self.currents[channel_name] = [0.0, e_rev]
 
     def add_conc_mech(self, ion, **kwargs):
         """
@@ -129,13 +142,14 @@ class CompartmentNode(SNode):
             parameters for the concentration mechanism that are not used in the
             fits (only used for NEURON model)
         """
-        if 'tau' in kwargs:
-            self.concmechs[ion] = concmechs.ExpConcMech(
-                ion, kwargs['tau'], 0.
-            )
+        if "tau" in kwargs:
+            self.concmechs[ion] = concmechs.ExpConcMech(ion, kwargs["tau"], 0.0)
         else:
-            warnings.warn('These parameters do not match any NEAT concentration ' + \
-                          'mechanism, no concentration mechanism has been added', UserWarning)
+            warnings.warn(
+                "These parameters do not match any NEAT concentration "
+                + "mechanism, no concentration mechanism has been added",
+                UserWarning,
+            )
 
     def set_expansion_point(self, channel_name, statevar):
         """
@@ -193,24 +207,25 @@ class CompartmentNode(SNode):
         sv = self.get_expansion_point(channel.__class__.__name__).copy()
 
         # if voltage is not in expansion point, use equilibrium potential
-        v = sv.pop('v', self.e_eq)
+        v = sv.pop("v", self.e_eq)
 
         # if concencentration is in expansion point, use it. Otherwise use
         # concentration in equilibrium concentrations (self.conc_eqs), if
         # it is there. If not, use default concentration.
-        ions = [str(ion) for ion in channel.conc] # convert potential sympy symbols to str
+        ions = [
+            str(ion) for ion in channel.conc
+        ]  # convert potential sympy symbols to str
         conc = {
-            ion: sv.pop(
-                    ion, self.conc_eqs.copy().pop(ion, CFG.conc[ion])
-                ) \
+            ion: sv.pop(ion, self.conc_eqs.copy().pop(ion, CFG.conc[ion]))
             for ion in ions
         }
         sv.update(conc)
 
         return v, sv
 
-    def calc_membrane_conductance_terms(self, channel_storage,
-                freqs=0., v=None, channel_names=None):
+    def calc_membrane_conductance_terms(
+        self, channel_storage, freqs=0.0, v=None, channel_names=None
+    ):
         """
         Contribution of linearized ion channel to conductance matrix
 
@@ -233,25 +248,33 @@ class CompartmentNode(SNode):
             Each entry in the dict is of the same type as ``freqs`` and is the
             conductance term of a channel
         """
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
 
         cond_terms = {}
-        if 'L' in channel_names:
-            cond_terms['L'] = 1. # leak conductance has 1 as prefactor
+        if "L" in channel_names:
+            cond_terms["L"] = 1.0  # leak conductance has 1 as prefactor
 
-        for channel_name in set(channel_names) - set('L'):
+        for channel_name in set(channel_names) - set("L"):
             e = self.currents[channel_name][1]
             # get the ionchannel object
             channel = channel_storage[channel_name]
 
             v, sv = self._construct_channel_args(channel)
             # add linearized channel contribution to membrane conductance
-            cond_terms[channel_name] = - channel.compute_lin_sum(v, freqs, e, **sv)
+            cond_terms[channel_name] = -channel.compute_lin_sum(v, freqs, e, **sv)
 
         return cond_terms
 
-    def calc_membrane_concentration_terms(self, ion, channel_storage,
-                freqs=0., v=None, channel_names=None, fit_type="gamma"):
+    def calc_membrane_concentration_terms(
+        self,
+        ion,
+        channel_storage,
+        freqs=0.0,
+        v=None,
+        channel_names=None,
+        fit_type="gamma",
+    ):
         """
         Contribution of linearized concentration dependence to conductance matrix
 
@@ -276,13 +299,14 @@ class CompartmentNode(SNode):
             Each entry in the dict is of the same type as ``freqs`` and is the
             conductance term of a channel
         """
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
 
         conc_write_channels = np.zeros_like(freqs)
-        conc_read_channels  = np.zeros_like(freqs)
+        conc_read_channels = np.zeros_like(freqs)
 
         for channel_name in channel_names:
-            if channel_name == 'L':
+            if channel_name == "L":
                 continue
 
             g, e = self.currents[channel_name]
@@ -292,30 +316,33 @@ class CompartmentNode(SNode):
 
             # if the channel adds to ion channel current, add it here
             if channel.ion == ion:
-                conc_write_channels = conc_write_channels - \
-                    g * channel.compute_lin_sum(v, freqs, e, **sv)
+                conc_write_channels = conc_write_channels - g * channel.compute_lin_sum(
+                    v, freqs, e, **sv
+                )
 
             # if channel reads the ion channel current, add it here
             if ion in channel.conc:
-                conc_read_channels = conc_read_channels - \
-                    g * channel.compute_lin_conc(v, freqs, ion, e, **sv)
+                conc_read_channels = conc_read_channels - g * channel.compute_lin_conc(
+                    v, freqs, ion, e, **sv
+                )
 
-        if fit_type == 'gamma':
-            return conc_write_channels * \
-                   conc_read_channels * \
-                   self.concmechs[ion].compute_lin(freqs)
+        if fit_type == "gamma":
+            return (
+                conc_write_channels
+                * conc_read_channels
+                * self.concmechs[ion].compute_lin(freqs)
+            )
 
         elif fit_type == "tau":
             c0, c1 = self.concmechs[ion].compute_lin_tau_fit(freqs)
             return conc_write_channels * conc_read_channels * c0, c1
 
         else:
-            raise NotImplementedError(
-                "Unkown fit type, choose \'gamma\' or \'tau\'"
-            )
+            raise NotImplementedError("Unkown fit type, choose 'gamma' or 'tau'")
 
-    def calc_g_tot(self, channel_storage,
-                      v=None, channel_names=None, p_open_channels=None):
+    def calc_g_tot(
+        self, channel_storage, v=None, channel_names=None, p_open_channels=None
+    ):
         """
         Compute the total conductance of a set of channels evaluated at a given
         voltage
@@ -337,13 +364,14 @@ class CompartmentNode(SNode):
         -------
         float: the total conductance
         """
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
 
         # compute total conductance around `self.e_eq`
-        g_tot = self.currents['L'][0] if 'L' in channel_names else 0.
+        g_tot = self.currents["L"][0] if "L" in channel_names else 0.0
 
         for channel_name in channel_names:
-            if channel_name == 'L':
+            if channel_name == "L":
                 continue
 
             g, e = self.currents[channel_name]
@@ -362,8 +390,9 @@ class CompartmentNode(SNode):
 
         return g_tot
 
-    def calc_i_tot(self, channel_storage,
-                      v=None, channel_names=None, p_open_channels={}):
+    def calc_i_tot(
+        self, channel_storage, v=None, channel_names=None, p_open_channels={}
+    ):
         """
         Compute the total current of a set of channels evaluated at a given
         voltage
@@ -386,13 +415,14 @@ class CompartmentNode(SNode):
         float: the total conductance
         """
 
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
 
-        i_tot = 0.
+        i_tot = 0.0
         for channel_name in channel_names:
             g, e = self.currents[channel_name]
 
-            if channel_name == 'L':
+            if channel_name == "L":
                 v = self.e_eq
                 i_tot = i_tot + g * (v - e)
 
@@ -409,8 +439,7 @@ class CompartmentNode(SNode):
 
         return i_tot
 
-    def calc_linear_statevar_terms(self, channel_storage,
-                v=None, channel_names=None):
+    def calc_linear_statevar_terms(self, channel_storage, v=None, channel_names=None):
         """
         Contribution of linearized ion channel to conductance matrix
 
@@ -433,10 +462,11 @@ class CompartmentNode(SNode):
             Each entry in the dict is of the same type as ``freqs`` and is the
             conductance term of a channel
         """
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
 
         svar_terms = {}
-        for channel_name in set(channel_names) - set('L'):
+        for channel_name in set(channel_names) - set("L"):
             g, e = self.currents[channel_name]
 
             # get the ionchannel object
@@ -452,12 +482,9 @@ class CompartmentNode(SNode):
 
         return svar_terms
 
-    def _add_linear_system_terms(self,
-            cc,
-            V2V, Y2V, V2Y, Y2Y,
-            channel_storage,
-            channel_names=None
-        ):
+    def _add_linear_system_terms(
+        self, cc, V2V, Y2V, V2Y, Y2Y, channel_storage, channel_names=None
+    ):
         """
         Contribution of linearized ion channel to conductance matrix
 
@@ -480,24 +507,25 @@ class CompartmentNode(SNode):
             Each entry in the dict is of the same type as ``freqs`` and is the
             conductance term of a channel
         """
-        if channel_names is None: channel_names = list(self.currents.keys())
+        if channel_names is None:
+            channel_names = list(self.currents.keys())
 
         ii = self.index
         if self.parent_node != None:
             pp = self.parent_node.index
-            V2V[pp,pp] -= self.g_c
-            V2V[ii,pp] += self.g_c
-            V2V[pp,ii] += self.g_c
-        V2V[ii,ii] -= self.currents['L'][0] + self.g_c
+            V2V[pp, pp] -= self.g_c
+            V2V[ii, pp] += self.g_c
+            V2V[pp, ii] += self.g_c
+        V2V[ii, ii] -= self.currents["L"][0] + self.g_c
 
-        for channel_name in set(channel_names) - set('L'):
+        for channel_name in set(channel_names) - set("L"):
             g, e = self.currents[channel_name]
 
             # get the ionchannel object
             channel = channel_storage[channel_name]
             v, sv = self._construct_channel_args(channel)
             n_sv = len(channel.statevars)
-            sv_idxs = list(range(cc, cc+n_sv))
+            sv_idxs = list(range(cc, cc + n_sv))
 
             # add linearized channel contribution to membrane conductance
             p_o = channel.compute_p_open(v, **sv)
@@ -507,46 +535,49 @@ class CompartmentNode(SNode):
             df_dv = np.array([df_dv[sv] for sv in channel.ordered_statevars])
             df_dx = np.array([df_dx[sv] for sv in channel.ordered_statevars])
 
-            V2V[ii,ii] -= g * p_o
-            Y2V[ii,cc:cc+n_sv] += g * dp_dx * (e - v)
-            V2Y[cc:cc+n_sv,ii] += df_dv * 1e3 # convert to 1 / s
-            Y2Y[sv_idxs, sv_idxs] += df_dx * 1e3 # convert to 1 / s
+            V2V[ii, ii] -= g * p_o
+            Y2V[ii, cc : cc + n_sv] += g * dp_dx * (e - v)
+            V2Y[cc : cc + n_sv, ii] += df_dv * 1e3  # convert to 1 / s
+            Y2Y[sv_idxs, sv_idxs] += df_dx * 1e3  # convert to 1 / s
 
             cc += n_sv
 
         for child in self.child_nodes:
-            child._add_linear_system_terms(cc,
-                V2V, Y2V, V2Y, Y2Y,
-                channel_storage
-            )
+            child._add_linear_system_terms(cc, V2V, Y2V, V2Y, Y2Y, channel_storage)
 
     def __str__(self, with_parent=True, with_morph_info=False):
         node_str = super().__str__(with_parent=with_parent)
 
-        node_str += f" --- " \
-            f"loc_idx = {self._loc_idx}, " \
-            f"g_c = {self.g_c} uS, " \
-            f"ca = {self.ca} uF, " \
+        node_str += (
+            f" --- "
+            f"loc_idx = {self._loc_idx}, "
+            f"g_c = {self.g_c} uS, "
+            f"ca = {self.ca} uF, "
             f"e_eq = {self.e_eq} mV, "
+        )
 
-        node_str += ', '.join([
-            f'(g_{c} = {g} uS, e_{c} = {e} mV)' for c, (g, e) in self.currents.items()
-        ])
+        node_str += ", ".join(
+            [f"(g_{c} = {g} uS, e_{c} = {e} mV)" for c, (g, e) in self.currents.items()]
+        )
 
         return node_str
 
     def _get_repr_dict(self):
         repr_dict = super()._get_repr_dict()
-        repr_dict.update({
-            "loc_idx": self._loc_idx,
-            "ca": f"{self.ca:1.6g}",
-            "g_c": f"{self.g_c:1.6g}",
-            "e_eq": f"{self.e_eq:1.6g}",
-            "conc_eqs": self.conc_eqs,
-            "currents": {c: (f"{g:1.6g}, {e:1.6g}") for c, (g, e) in self.currents.items()},
-            "concmechs": self.concmechs,
-            "expansion_points": self.expansion_points,
-        })
+        repr_dict.update(
+            {
+                "loc_idx": self._loc_idx,
+                "ca": f"{self.ca:1.6g}",
+                "g_c": f"{self.g_c:1.6g}",
+                "e_eq": f"{self.e_eq:1.6g}",
+                "conc_eqs": self.conc_eqs,
+                "currents": {
+                    c: (f"{g:1.6g}, {e:1.6g}") for c, (g, e) in self.currents.items()
+                },
+                "concmechs": self.concmechs,
+                "expansion_points": self.expansion_points,
+            }
+        )
         return repr_dict
 
     def __repr__(self):
@@ -580,7 +611,7 @@ class CompartmentTree(STree):
         repr_str = super().__repr__()
         return repr_str + repr(self._get_repr_dict())
 
-    def create_corresponding_node(self, index, ca=1., g_c=0., g_l=1e-2):
+    def create_corresponding_node(self, index, ca=1.0, g_c=0.0, g_l=1e-2):
         """
         Creates a node with the given index corresponding to the tree class.
 
@@ -634,13 +665,14 @@ class CompartmentTree(STree):
         new_channel_storage = {}
         for node in self:
             for channel_name in node.currents:
-                if channel_name not in new_channel_storage and \
-                   channel_name != "L":
-                    new_channel_storage[channel_name] = self.channel_storage[channel_name]
+                if channel_name not in new_channel_storage and channel_name != "L":
+                    new_channel_storage[channel_name] = self.channel_storage[
+                        channel_name
+                    ]
 
         self.channel_storage = new_channel_storage
 
-    def set_e_eq(self, e_eq, indexing='locs'):
+    def set_e_eq(self, e_eq, indexing="locs"):
         """
         Set the equilibrium potential at all nodes on the compartment tree
 
@@ -657,12 +689,13 @@ class CompartmentTree(STree):
         """
         if isinstance(e_eq, float) or isinstance(e_eq, int):
             e_eq = e_eq * np.ones(len(self), dtype=float)
-        elif indexing == 'locs':
+        elif indexing == "locs":
             e_eq = self._permute_to_tree(np.array(e_eq))
 
-        for ii, node in enumerate(self): node.e_eq = e_eq[ii]
+        for ii, node in enumerate(self):
+            node.e_eq = e_eq[ii]
 
-    def get_e_eq(self, indexing='locs'):
+    def get_e_eq(self, indexing="locs"):
         """
         Get the equilibrium potentials at each node.
 
@@ -680,11 +713,11 @@ class CompartmentTree(STree):
             The equilibrium potentials
         """
         e_eq = np.array([node.e_eq for node in self])
-        if indexing == 'locs':
+        if indexing == "locs":
             e_eq = self._permuteToLocs(e_eq)
         return e_eq
 
-    def set_conc_eq(self, ion, conc_eq, indexing='locs'):
+    def set_conc_eq(self, ion, conc_eq, indexing="locs"):
         """
         Set the equilibrium concentrations at all nodes in the compartment tree
 
@@ -695,13 +728,13 @@ class CompartmentTree(STree):
         """
         if isinstance(conc_eq, float) or isinstance(conc_eq, int):
             conc_eq = conc_eq * np.ones(len(self), dtype=float)
-        elif indexing == 'locs':
+        elif indexing == "locs":
             conc_eq = self._permute_to_tree(np.array(conc_eq))
 
         for ii, node in enumerate(self):
             node.set_conc_eq(ion, conc_eq[ii])
 
-    def get_conc_eq(self, ion, indexing='locs'):
+    def get_conc_eq(self, ion, indexing="locs"):
         """
         Get the equilibrium concentrations of 'ion' at each node.
 
@@ -721,7 +754,7 @@ class CompartmentTree(STree):
             The equilibrium concentrations
         """
         conc_eq = np.array([node.conc_eqs[ion] for node in self])
-        if indexing == 'locs':
+        if indexing == "locs":
             conc_eq = self._permuteToLocs(conc_eq)
         return conc_eq
 
@@ -769,19 +802,19 @@ class CompartmentTree(STree):
         Fit the leak reversal potential to obtain the stored equilibirum potentials
         as resting membrane potential
         """
-        e_l_0 = self.get_e_eq(indexing='tree')
+        e_l_0 = self.get_e_eq(indexing="tree")
         # compute the solutions
         fun = self._fun_e_leak_fit(e_l_0)
         jac = self._jac_e_leak_fit(e_l_0)
         e_l = np.linalg.solve(jac, -fun + np.dot(jac, e_l_0))
         # set the leak reversals
         for ii, node in enumerate(self):
-            node.currents['L'] = [node.currents['L'][0], e_l[ii]]
+            node.currents["L"] = [node.currents["L"][0], e_l[ii]]
 
     def _fun_e_leak_fit(self, e_l):
         # set the leak reversal potentials
         for ii, node in enumerate(self):
-            node.currents['L'] = [node.currents['L'][0], e_l[ii]]
+            node.currents["L"] = [node.currents["L"][0], e_l[ii]]
         # compute the function values (currents)
         fun_vals = np.zeros(len(self))
         for ii, node in enumerate(self):
@@ -796,8 +829,8 @@ class CompartmentTree(STree):
 
     def _jac_e_leak_fit(self, e_l):
         for ii, node in enumerate(self):
-            node.currents['L'][1] = e_l[ii]
-        jac_vals = np.array([-node.currents['L'][0] for node in self])
+            node.currents["L"][1] = e_l[ii]
+        jac_vals = np.array([-node.currents["L"][0] for node in self])
         return np.diag(jac_vals)
 
     def add_channel_current(self, channel, e_rev):
@@ -828,7 +861,8 @@ class CompartmentTree(STree):
         params: dict
             parameters for the concentration mechanism
         """
-        for node in self: node.add_conc_mech(ion, params=params)
+        for node in self:
+            node.add_conc_mech(ion, params=params)
 
     def permute_to_tree_idxs(self):
         """
@@ -838,14 +872,14 @@ class CompartmentTree(STree):
 
     def _permute_to_tree(self, mat):
         """
-        Permutes the input array, which is assumed to be ordered according to the 
+        Permutes the input array, which is assumed to be ordered according to the
         location list, to the tree order
         """
         index_arr = self.permute_to_tree_idxs()
         if mat.ndim == 1:
             return mat[index_arr]
         else:
-            return mat[...,index_arr,:][...,:,index_arr]
+            return mat[..., index_arr, :][..., :, index_arr]
 
     def permute_to_locs_idxs(self):
         """
@@ -860,7 +894,7 @@ class CompartmentTree(STree):
         if mat.ndim == 1:
             return mat[index_arr]
         else:
-            return mat[...,index_arr,:][...,:,index_arr]
+            return mat[..., index_arr, :][..., :, index_arr]
 
     def get_equivalent_locs(self):
         """
@@ -874,11 +908,12 @@ class CompartmentTree(STree):
         """
         loc_idxs = [node.loc_idx for node in self]
         index_arr = np.argsort(loc_idxs)
-        locs_unordered = [(node.index, .5) for node in self]
+        locs_unordered = [(node.index, 0.5) for node in self]
         return [locs_unordered[ind] for ind in index_arr]
 
-    def calc_impedance_matrix(self, freqs=0., channel_names=None, indexing='locs',
-                                use_conc=False):
+    def calc_impedance_matrix(
+        self, freqs=0.0, channel_names=None, indexing="locs", use_conc=False
+    ):
         """
         Constructs the impedance matrix of the model for each frequency provided
         in `freqs`. This matrix is evaluated at the equilibrium potentials
@@ -905,13 +940,16 @@ class CompartmentTree(STree):
                 frequency, the second and third dimension contain the impedance
                 matrix for that frequency
         """
-        return np.linalg.inv(self.calc_system_matrix(
+        return np.linalg.inv(
+            self.calc_system_matrix(
                 freqs=freqs,
-                channel_names=channel_names, indexing=indexing,
-                use_conc=use_conc
-        ))
+                channel_names=channel_names,
+                indexing=indexing,
+                use_conc=use_conc,
+            )
+        )
 
-    def calc_conductance_matrix(self, indexing='locs'):
+    def calc_conductance_matrix(self, indexing="locs"):
         """
         Constructs the conductance matrix of the model
 
@@ -926,20 +964,27 @@ class CompartmentTree(STree):
             g_mat[ii, ii] += node.calc_g_tot(self.channel_storage) + node.g_c
             if node.parent_node is not None:
                 jj = node.parent_node.index
-                g_mat[jj,jj] += node.g_c
-                g_mat[ii,jj] -= node.g_c
-                g_mat[jj,ii] -= node.g_c
-        if indexing == 'locs':
+                g_mat[jj, jj] += node.g_c
+                g_mat[ii, jj] -= node.g_c
+                g_mat[jj, ii] -= node.g_c
+        if indexing == "locs":
             return self._permuteToLocs(g_mat)
-        elif indexing == 'tree':
+        elif indexing == "tree":
             return g_mat
         else:
-            raise ValueError('invalid argument for `indexing`, ' + \
-                             'has to be \'tree\' or \'locs\'')
+            raise ValueError(
+                "invalid argument for `indexing`, " + "has to be 'tree' or 'locs'"
+            )
 
-    def calc_system_matrix(self, freqs=0., channel_names=None,
-                               with_ca=True, use_conc=False, ep_shape=None,
-                               indexing='locs'):
+    def calc_system_matrix(
+        self,
+        freqs=0.0,
+        channel_names=None,
+        with_ca=True,
+        use_conc=False,
+        ep_shape=None,
+        indexing="locs",
+    ):
         """
         Constructs the matrix of conductance and capacitance terms of the model
         for each frequency provided in ``freqs``. this matrix is evaluated at
@@ -969,7 +1014,7 @@ class CompartmentTree(STree):
                 matrix for that frequency
         """
         if channel_names is None:
-            channel_names = ['L'] + list(self.channel_storage.keys())
+            channel_names = ["L"] + list(self.channel_storage.keys())
 
         # ensure that shapes are compatible
         freqs = np.array(freqs)
@@ -983,44 +1028,48 @@ class CompartmentTree(STree):
 
             # set the capacitance contribution
             if with_ca:
-                s_mat[...,ii,ii] += freqs * node.ca
+                s_mat[..., ii, ii] += freqs * node.ca
 
             # set the coupling conductances
-            s_mat[...,ii,ii] += node.g_c
+            s_mat[..., ii, ii] += node.g_c
             if node.parent_node is not None:
                 jj = node.parent_node.index
-                s_mat[...,jj,jj] += node.g_c
-                s_mat[...,ii,jj] -= node.g_c
-                s_mat[...,jj,ii] -= node.g_c
+                s_mat[..., jj, jj] += node.g_c
+                s_mat[..., ii, jj] -= node.g_c
+                s_mat[..., jj, ii] -= node.g_c
 
             # set the ion channel contributions
             g_terms = node.calc_membrane_conductance_terms(
-                self.channel_storage,
-                freqs=freqs, channel_names=channel_names
+                self.channel_storage, freqs=freqs, channel_names=channel_names
             )
-            s_mat[...,ii,ii] += sum([
-                node.currents[c_name][0] * g_term \
-                for c_name, g_term in g_terms.items()
-            ])
+            s_mat[..., ii, ii] += sum(
+                [
+                    node.currents[c_name][0] * g_term
+                    for c_name, g_term in g_terms.items()
+                ]
+            )
 
             # set the concentration contributions
             if use_conc:
                 for ion, concmech in node.concmechs.items():
                     c_term = node.calc_membrane_concentration_terms(
-                        ion, self.channel_storage,
-                        freqs=freqs, channel_names=channel_names
+                        ion,
+                        self.channel_storage,
+                        freqs=freqs,
+                        channel_names=channel_names,
                     )
-                    s_mat[...,ii,ii] += concmech.gamma * c_term
+                    s_mat[..., ii, ii] += concmech.gamma * c_term
 
-        if indexing == 'locs':
+        if indexing == "locs":
             s_mat = self._permuteToLocs(s_mat)
-        elif not indexing == 'tree':
-            raise ValueError('invalid argument for `indexing`, ' + \
-                             'has to be \'tree\' or \'locs\'')
+        elif not indexing == "tree":
+            raise ValueError(
+                "invalid argument for `indexing`, " + "has to be 'tree' or 'locs'"
+            )
 
         return s_mat
 
-    def calc_eigenvalues(self, indexing='tree'):
+    def calc_eigenvalues(self, indexing="tree"):
         """
         Calculates the eigenvalues and eigenvectors of the passive system
 
@@ -1036,12 +1085,13 @@ class CompartmentTree(STree):
             locations on which the reduced model is based
         """
         # get the system matrix
-        mat = self.calc_system_matrix(freqs=0., channel_names=['L'],
-                                    with_ca=False, indexing=indexing)
+        mat = self.calc_system_matrix(
+            freqs=0.0, channel_names=["L"], with_ca=False, indexing=indexing
+        )
         ca_vec = np.array([node.ca for node in self])
-        if indexing == 'locs':
+        if indexing == "locs":
             ca_vec = self._permuteToLocs(ca_vec)
-        mat /= ca_vec[:,None]
+        mat /= ca_vec[:, None]
         print(mat)
         # compute the eigenvalues
         alphas, phimat = la.eig(mat)
@@ -1051,7 +1101,7 @@ class CompartmentTree(STree):
         phimat_inv = la.inv(phimat)
 
         alphas /= -1e3
-        phimat_inv /= ca_vec[None,:] * 1e3
+        phimat_inv /= ca_vec[None, :] * 1e3
         return alphas, phimat, phimat_inv
 
     def _calc_linear_system_matrix(self, channel_names=None):
@@ -1062,13 +1112,17 @@ class CompartmentTree(STree):
         assert self.check_ordered()
 
         N_ = len(self)
-        C_ = sum([
-            len(self.channel_storage[cname].statevars) \
-            for node in self for cname in node.currents.keys() if cname != 'L'
-        ])
+        C_ = sum(
+            [
+                len(self.channel_storage[cname].statevars)
+                for node in self
+                for cname in node.currents.keys()
+                if cname != "L"
+            ]
+        )
 
         if channel_names is None:
-            channel_names = ['L'] + list(self.channel_storage.keys())
+            channel_names = ["L"] + list(self.channel_storage.keys())
 
         V2V = np.zeros((N_, N_))
         Y2V = np.zeros((N_, C_))
@@ -1076,16 +1130,10 @@ class CompartmentTree(STree):
         Y2Y = np.zeros((C_, C_))
 
         self.root._add_linear_system_terms(
-            0,
-            V2V, Y2V, V2Y, Y2Y,
-            self.channel_storage,
-            channel_names=channel_names
+            0, V2V, Y2V, V2Y, Y2Y, self.channel_storage, channel_names=channel_names
         )
 
-        return np.block([
-            [V2V, Y2V],
-            [V2Y, Y2Y]
-        ])
+        return np.block([[V2V, Y2V], [V2Y, Y2Y]])
 
     def _preprocess_z_mat_arg(self, z_mat_arg):
         if isinstance(z_mat_arg, np.ndarray):
@@ -1093,13 +1141,14 @@ class CompartmentTree(STree):
         elif isinstance(z_mat_arg, list):
             return [self._permute_to_tree(z_mat) for z_mat in z_mat_arg]
         else:
-            raise ValueError('`z_mat_arg` has to be ``np.ndarray`` or list of ' + \
-                             '`np.ndarray`')
+            raise ValueError(
+                "`z_mat_arg` has to be ``np.ndarray`` or list of " + "`np.ndarray`"
+            )
 
     def _preprocess_e_eqs(self, e_eqs, w_e_eqs=None):
         # preprocess e_eqs argument
         if e_eqs is None:
-            e_eqs = np.array([self.get_e_eq(indexing='tree')])
+            e_eqs = np.array([self.get_e_eq(indexing="tree")])
         if isinstance(e_eqs, float):
             e_eqs = np.array([e_eqs])
         elif isinstance(e_eqs, list) or isinstance(e_eqs, tuple):
@@ -1107,8 +1156,10 @@ class CompartmentTree(STree):
         elif isinstance(e_eqs, np.ndarray):
             pass
         else:
-            raise TypeError('`e_eqs` has to be ``float`` or list or ' + \
-                             '``np.ndarray`` of ``floats`` or ``np.ndarray``')
+            raise TypeError(
+                "`e_eqs` has to be ``float`` or list or "
+                + "``np.ndarray`` of ``floats`` or ``np.ndarray``"
+            )
         # preprocess the w_e_eqs argument
         if w_e_eqs is None:
             w_e_eqs = np.ones_like(e_eqs)
@@ -1132,7 +1183,7 @@ class CompartmentTree(STree):
         z_mat_arg_ = []
         for z_mat in z_mat_arg:
             if z_mat.ndim == 2:
-                z_mat_arg_.append(z_mat[np.newaxis,:,:])
+                z_mat_arg_.append(z_mat[np.newaxis, :, :])
             else:
                 z_mat_arg_.append(z_mat)
             assert z_mat_arg_[-1].shape[0] == freqs.shape[0]
@@ -1142,11 +1193,12 @@ class CompartmentTree(STree):
     def _to_structure_tensor_gmc(self, channel_names):
         g_vec = self._to_vec_gmc(channel_names)
         g_struct = np.zeros((len(self), len(self), len(g_vec)))
-        kk = 0 # counter
+        kk = 0  # counter
         for node in self:
             ii = node.index
-            g_terms = node.calc_membrane_conductance_terms(self.channel_storage,
-                                freqs=0., channel_names=['L']+channel_names)
+            g_terms = node.calc_membrane_conductance_terms(
+                self.channel_storage, freqs=0.0, channel_names=["L"] + channel_names
+            )
             if node.parent_node == None:
                 # membrance conductance elements
                 for channel_name in channel_names:
@@ -1155,10 +1207,10 @@ class CompartmentTree(STree):
             else:
                 jj = node.parent_node.index
                 # coupling conductance element
-                g_struct[ii, jj, kk] -= 1.
-                g_struct[jj, ii, kk] -= 1.
-                g_struct[jj, jj, kk] += 1.
-                g_struct[ii, ii, kk] += 1.
+                g_struct[ii, jj, kk] -= 1.0
+                g_struct[jj, ii, kk] -= 1.0
+                g_struct[jj, jj, kk] += 1.0
+                g_struct[ii, ii, kk] += 1.0
                 kk += 1
                 # membrance conductance elements
                 for channel_name in channel_names:
@@ -1175,12 +1227,13 @@ class CompartmentTree(STree):
             if node.parent_node is None:
                 g_list.extend([node.currents[c_name][0] for c_name in channel_names])
             else:
-                g_list.extend([node.g_c] + \
-                              [node.currents[c_name][0] for c_name in channel_names])
+                g_list.extend(
+                    [node.g_c] + [node.currents[c_name][0] for c_name in channel_names]
+                )
         return np.array(g_list)
 
     def _to_tree_gmc(self, g_vec, channel_names):
-        kk = 0 # counter
+        kk = 0  # counter
         for ii, node in enumerate(self):
             if node.parent_node is None:
                 for channel_name in channel_names:
@@ -1201,17 +1254,20 @@ class CompartmentTree(STree):
         else:
             assert set(channel_names).issubset(all_channel_names)
         g_vec = self._to_vec_gm(all_channel_names)
-        g_struct = np.zeros((len(freqs), len(self), len(self), len(g_vec)), dtype=freqs.dtype)
+        g_struct = np.zeros(
+            (len(freqs), len(self), len(self), len(g_vec)), dtype=freqs.dtype
+        )
         # fill the fit structure
-        kk = 0 # counter
+        kk = 0  # counter
         for node in self:
             ii = node.index
-            g_terms = node.calc_membrane_conductance_terms(self.channel_storage,
-                                    freqs=freqs, channel_names=channel_names)
+            g_terms = node.calc_membrane_conductance_terms(
+                self.channel_storage, freqs=freqs, channel_names=channel_names
+            )
             # membrance conductance elements
             for channel_name in all_channel_names:
                 if channel_name in channel_names:
-                    g_struct[:,ii,ii,kk] += g_terms[channel_name]
+                    g_struct[:, ii, ii, kk] += g_terms[channel_name]
                 kk += 1
         return g_struct
 
@@ -1226,7 +1282,7 @@ class CompartmentTree(STree):
 
     def _to_tree_gm(self, g_vec, channel_names):
 
-        kk = 0 # counter
+        kk = 0  # counter
         for ii, node in enumerate(self):
             for channel_name in channel_names:
                 # leack conductance is not allowed to be zero
@@ -1246,16 +1302,14 @@ class CompartmentTree(STree):
             ii = node.index
 
             c_term = node.calc_membrane_concentration_terms(
-                ion, self.channel_storage,
-                freqs=freqs, channel_names=channel_names
+                ion, self.channel_storage, freqs=freqs, channel_names=channel_names
             )
-            c_struct[...,ii,ii,ii] += c_term
+            c_struct[..., ii, ii, ii] += c_term
 
         return c_struct
 
-    def _to_structure_tensor_conc(self,
-        ion, freqs, channel_names, ep_shape,
-        fit_type="gamma"
+    def _to_structure_tensor_conc(
+        self, ion, freqs, channel_names, ep_shape, fit_type="gamma"
     ):
         if fit_type == "gamma":
             # to construct appropriate channel vector
@@ -1264,11 +1318,13 @@ class CompartmentTree(STree):
                 ii = node.index
 
                 c_term = node.calc_membrane_concentration_terms(
-                    ion, self.channel_storage,
-                    freqs=freqs, channel_names=channel_names,
+                    ion,
+                    self.channel_storage,
+                    freqs=freqs,
+                    channel_names=channel_names,
                     fit_type=fit_type,
                 )
-                c_terms[...,ii] = c_term
+                c_terms[..., ii] = c_term
 
             return c_terms
 
@@ -1280,11 +1336,13 @@ class CompartmentTree(STree):
                 ii = node.index
 
                 c0, c1 = node.calc_membrane_concentration_terms(
-                    ion, self.channel_storage,
-                    freqs=freqs, channel_names=channel_names,
+                    ion,
+                    self.channel_storage,
+                    freqs=freqs,
+                    channel_names=channel_names,
                     fit_type=fit_type,
                 )
-                c_terms0[...,ii], c_terms1[...,ii] = c0, c1
+                c_terms0[..., ii], c_terms1[..., ii] = c0, c1
 
             return c_terms0, c_terms1
 
@@ -1298,13 +1356,13 @@ class CompartmentTree(STree):
             return np.array([node.concmechs[ion].tau for node in self])
 
     def _to_tree_conc(self, c_vec, ion, param_type):
-        if param_type == 'tau':
+        if param_type == "tau":
 
             for ii, node in enumerate(self):
                 node.concmechs[ion].gamma *= node.concmechs[ion].tau / c_vec[ii]
                 node.concmechs[ion].tau = c_vec[ii]
 
-        elif param_type == 'gamma':
+        elif param_type == "gamma":
 
             for ii, node in enumerate(self):
                 node.concmechs[ion].gamma = c_vec[ii]
@@ -1315,7 +1373,9 @@ class CompartmentTree(STree):
     def _to_structure_tensor_c(self, freqs):
         freqs = np.array(freqs)
         c_vec = self._to_vec_c()
-        c_struct = np.zeros((len(freqs), len(self), len(self), len(c_vec)), dtype=complex)
+        c_struct = np.zeros(
+            (len(freqs), len(self), len(self), len(c_vec)), dtype=complex
+        )
         for node in self:
             ii = node.index
             # capacitance elements
@@ -1329,7 +1389,7 @@ class CompartmentTree(STree):
         for ii, node in enumerate(self):
             node.ca = c_vec[ii]
 
-    def compute_gmc(self, z_mat_arg, e_eqs=None, channel_names=['L']):
+    def compute_gmc(self, z_mat_arg, e_eqs=None, channel_names=["L"]):
         """
         Fit the models' membrane and coupling conductances to a given steady
         state impedance matrix.
@@ -1360,11 +1420,12 @@ class CompartmentTree(STree):
             self.set_e_eq(e_eq)
             # create the matrices for linear fit
             g_struct = self._to_structure_tensor_gmc(channel_names)
-            tensor_feature = np.einsum('ij,jkl->ikl', z_mat, g_struct)
+            tensor_feature = np.einsum("ij,jkl->ikl", z_mat, g_struct)
             tshape = tensor_feature.shape
-            mat_feature_aux = np.reshape(tensor_feature,
-                                         (tshape[0]*tshape[1], tshape[2]))
-            vec_target_aux = np.reshape(np.eye(len(self)), (len(self)*len(self),))
+            mat_feature_aux = np.reshape(
+                tensor_feature, (tshape[0] * tshape[1], tshape[2])
+            )
+            vec_target_aux = np.reshape(np.eye(len(self)), (len(self) * len(self),))
             mats_feature.append(mat_feature_aux)
             vecs_target.append(vec_target_aux)
         mat_feature = np.concatenate(mats_feature, 0)
@@ -1373,14 +1434,22 @@ class CompartmentTree(STree):
         res = la.lstsq(mat_feature, vec_target)
         res = res[0].real
         # coupling and leak conductances are not allowed to be below zero
-        g_vec = np.maximum(res, 0.)
+        g_vec = np.maximum(res, 0.0)
         # set the conductances
         self._to_tree_gmc(g_vec, channel_names)
 
-    def compute_g_channels(self, channel_names, z_mat, e_eq, freqs,
-                                sv=None, weight=1.,
-                                all_channel_names=None, other_channel_names=None,
-                                action='store'):
+    def compute_g_channels(
+        self,
+        channel_names,
+        z_mat,
+        e_eq,
+        freqs,
+        sv=None,
+        weight=1.0,
+        all_channel_names=None,
+        other_channel_names=None,
+        action="store",
+    ):
         """
         Fit the conductances of multiple channels from the given impedance
         matrices, or store the feature matrix and target vector for later use
@@ -1425,8 +1494,8 @@ class CompartmentTree(STree):
             all_channel_names = channel_names
         else:
             assert set(channel_names).issubset(all_channel_names)
-        if other_channel_names is None and 'L' not in all_channel_names:
-            other_channel_names = ['L']
+        if other_channel_names is None and "L" not in all_channel_names:
+            other_channel_names = ["L"]
         if sv is None:
             sv = {}
 
@@ -1438,26 +1507,40 @@ class CompartmentTree(STree):
         # set channel expansion point
         self.set_expansion_points(sv)
         # feature matrix
-        g_struct = self._to_structure_tensor_gm(freqs=freqs, channel_names=channel_names,
-                                             all_channel_names=all_channel_names)
-        tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+        g_struct = self._to_structure_tensor_gm(
+            freqs=freqs,
+            channel_names=channel_names,
+            all_channel_names=all_channel_names,
+        )
+        tensor_feature = np.einsum("oij,ojkl->oikl", z_mat, g_struct)
         tshape = tensor_feature.shape
-        mat_feature = np.reshape(tensor_feature,
-                                     (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+        mat_feature = np.reshape(
+            tensor_feature, (tshape[0] * tshape[1] * tshape[2], tshape[3])
+        )
         # target vector
-        g_mat = self.calc_system_matrix(freqs,
-                            channel_names=other_channel_names, indexing='tree')
-        zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
-        mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
-        vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
+        g_mat = self.calc_system_matrix(
+            freqs, channel_names=other_channel_names, indexing="tree"
+        )
+        zg_prod = np.einsum("oij,ojk->oik", z_mat, g_mat)
+        mat_target = np.eye(len(self))[np.newaxis, :, :] - zg_prod
+        vec_target = np.reshape(mat_target, (tshape[0] * tshape[1] * tshape[2],))
 
-        return self._fit_res_action(action, mat_feature, vec_target, weight,
-                                  channel_names=all_channel_names)
+        return self._fit_res_action(
+            action, mat_feature, vec_target, weight, channel_names=all_channel_names
+        )
 
-    def compute_g_single_channel(self, channel_name, z_mat, e_eq, freqs,
-                                sv=None, weight=1.,
-                                all_channel_names=None, other_channel_names=None,
-                                action='store'):
+    def compute_g_single_channel(
+        self,
+        channel_name,
+        z_mat,
+        e_eq,
+        freqs,
+        sv=None,
+        weight=1.0,
+        all_channel_names=None,
+        other_channel_names=None,
+        action="store",
+    ):
         """
         Fit the conductances of a single channel from the given impedance
         matrices, or store the feature matrix and target vector for later use
@@ -1502,8 +1585,8 @@ class CompartmentTree(STree):
             all_channel_names = [channel_name]
         else:
             assert channel_name in all_channel_names
-        if other_channel_names is None and 'L' not in all_channel_names:
-            other_channel_names = ['L']
+        if other_channel_names is None and "L" not in all_channel_names:
+            other_channel_names = ["L"]
 
         z_mat = self._permute_to_tree(z_mat)
         if isinstance(freqs, float):
@@ -1516,23 +1599,29 @@ class CompartmentTree(STree):
         # set channel expansion point
         self.set_expansion_points(sv)
         # feature matrix
-        g_struct = self._to_structure_tensor_gm(freqs=freqs, channel_names=[channel_name],
-                                             all_channel_names=all_channel_names)
-        tensor_feature = np.einsum('oij,ojkl->oikl', z_mat, g_struct)
+        g_struct = self._to_structure_tensor_gm(
+            freqs=freqs,
+            channel_names=[channel_name],
+            all_channel_names=all_channel_names,
+        )
+        tensor_feature = np.einsum("oij,ojkl->oikl", z_mat, g_struct)
         tshape = tensor_feature.shape
-        mat_feature = np.reshape(tensor_feature,
-                                     (tshape[0]*tshape[1]*tshape[2], tshape[3]))
+        mat_feature = np.reshape(
+            tensor_feature, (tshape[0] * tshape[1] * tshape[2], tshape[3])
+        )
         # target vector
-        g_mat = self.calc_system_matrix(freqs,
-                            channel_names=other_channel_names, indexing='tree')
-        zg_prod = np.einsum('oij,ojk->oik', z_mat, g_mat)
-        mat_target = np.eye(len(self))[np.newaxis,:,:] - zg_prod
-        vec_target = np.reshape(mat_target, (tshape[0]*tshape[1]*tshape[2],))
+        g_mat = self.calc_system_matrix(
+            freqs, channel_names=other_channel_names, indexing="tree"
+        )
+        zg_prod = np.einsum("oij,ojk->oik", z_mat, g_mat)
+        mat_target = np.eye(len(self))[np.newaxis, :, :] - zg_prod
+        vec_target = np.reshape(mat_target, (tshape[0] * tshape[1] * tshape[2],))
 
         self.remove_expansion_points()
 
-        return self._fit_res_action(action, mat_feature, vec_target, weight,
-                                  channel_names=all_channel_names)
+        return self._fit_res_action(
+            action, mat_feature, vec_target, weight, channel_names=all_channel_names
+        )
 
     def _set_expansion_points(self, expansion_points):
         """
@@ -1557,7 +1646,7 @@ class CompartmentTree(STree):
             for node in self:
                 node.set_expansion_point(channel_name, expansion_point)
 
-    def compute_c(self, alphas, phimat, weights=None, tau_eps=5.):
+    def compute_c(self, alphas, phimat, weights=None, tau_eps=5.0):
         """
         Fit the capacitances to the eigenmode expansion
 
@@ -1579,21 +1668,34 @@ class CompartmentTree(STree):
         else:
             weights = weights.real
         # construct the passive conductance matrix
-        g_mat = - self.calc_system_matrix(freqs=0., channel_names=['L'],
-                                        with_ca=False, indexing='tree')
+        g_mat = -self.calc_system_matrix(
+            freqs=0.0, channel_names=["L"], with_ca=False, indexing="tree"
+        )
 
         # set lower limit for capacitance, fit not always well conditioned
-        g_tot = np.array([node.calc_g_tot(self.channel_storage, channel_names=['L']) \
-                          for node in self])
-        c_lim =  g_tot / (-alphas[0] * tau_eps)
-        gamma_mat = alphas[:,None] * phimat * c_lim[None,:]
+        g_tot = np.array(
+            [
+                node.calc_g_tot(self.channel_storage, channel_names=["L"])
+                for node in self
+            ]
+        )
+        c_lim = g_tot / (-alphas[0] * tau_eps)
+        gamma_mat = alphas[:, None] * phimat * c_lim[None, :]
 
         # construct feature matrix and target vector
-        mat_feature = np.zeros((n_a*n_c, n_c))
-        vec_target = np.zeros(n_a*n_c)
+        mat_feature = np.zeros((n_a * n_c, n_c))
+        vec_target = np.zeros(n_a * n_c)
         for ii, node in enumerate(self):
-            mat_feature[ii*n_a:(ii+1)*n_a,ii] = alphas * phimat[:,ii] * weights
-            vec_target[ii*n_a:(ii+1)*n_a] = np.reshape(np.dot(phimat, g_mat[ii:ii+1,:].T) - gamma_mat[:,ii:ii+1], n_a) * weights
+            mat_feature[ii * n_a : (ii + 1) * n_a, ii] = (
+                alphas * phimat[:, ii] * weights
+            )
+            vec_target[ii * n_a : (ii + 1) * n_a] = (
+                np.reshape(
+                    np.dot(phimat, g_mat[ii : ii + 1, :].T) - gamma_mat[:, ii : ii + 1],
+                    n_a,
+                )
+                * weights
+            )
 
         # least squares fit
         res = so.nnls(mat_feature, vec_target)[0]
@@ -1601,70 +1703,83 @@ class CompartmentTree(STree):
 
         self._to_tree_c(c_vec)
 
-    def _fit_res_action(self, action, mat_feature, vec_target, weight,
-                            ca_lim=[], **kwargs):
-        if action == 'fit':
+    def _fit_res_action(
+        self, action, mat_feature, vec_target, weight, ca_lim=[], **kwargs
+    ):
+        if action == "fit":
             res = np.linalg.lstsq(mat_feature, vec_target, rcond=None)
             vec_res = res[0].real
-            vec_res = np.maximum(vec_res, 0.)
+            vec_res = np.maximum(vec_res, 0.0)
             # set the conductances
-            if 'channel_names' in kwargs:
-                self._to_tree_gm(vec_res, channel_names=kwargs['channel_names'])
-            elif 'ion' in kwargs:
-                self._to_tree_conc(vec_res, kwargs['ion'], param_type=kwargs['param_type'])
+            if "channel_names" in kwargs:
+                self._to_tree_gm(vec_res, channel_names=kwargs["channel_names"])
+            elif "ion" in kwargs:
+                self._to_tree_conc(
+                    vec_res, kwargs["ion"], param_type=kwargs["param_type"]
+                )
             else:
-                raise IOError('Provide \'channel_names\' or \'ion\' as keyword argument')
-        elif action == 'return':
+                raise IOError("Provide 'channel_names' or 'ion' as keyword argument")
+        elif action == "return":
             return mat_feature, vec_target
-        elif action == 'store':
-            if 'channel_names' in kwargs:
+        elif action == "store":
+            if "channel_names" in kwargs:
                 try:
-                    assert self.fit_data['ion'] == ''
+                    assert self.fit_data["ion"] == ""
                 except AssertionError:
-                    raise IOError('Stored fit matrices are concentration mech fits, ' + \
-                                  'do not try to store channel conductance fit matrices')
-                if len(self.fit_data['channel_names']) == 0:
-                    self.fit_data['channel_names'] = kwargs['channel_names']
+                    raise IOError(
+                        "Stored fit matrices are concentration mech fits, "
+                        + "do not try to store channel conductance fit matrices"
+                    )
+                if len(self.fit_data["channel_names"]) == 0:
+                    self.fit_data["channel_names"] = kwargs["channel_names"]
                 else:
                     try:
-                        assert self.fit_data['channel_names'] == kwargs['channel_names']
+                        assert self.fit_data["channel_names"] == kwargs["channel_names"]
                     except AssertionError:
-                        raise IOError('`channel_names` does not agree with stored ' + \
-                                      'channel names for other fits\n' + \
-                                      '`channel_names`:      ' + str(kwargs['channel_names']) + \
-                                      '\nstored channel names: ' + str(self.fit_data['channel_names']))
-            elif 'ion' in kwargs:
+                        raise IOError(
+                            "`channel_names` does not agree with stored "
+                            + "channel names for other fits\n"
+                            + "`channel_names`:      "
+                            + str(kwargs["channel_names"])
+                            + "\nstored channel names: "
+                            + str(self.fit_data["channel_names"])
+                        )
+            elif "ion" in kwargs:
                 try:
-                    assert len(self.fit_data['channel_names']) == 0
+                    assert len(self.fit_data["channel_names"]) == 0
                 except AssertionError:
-                    raise IOError('Stored fit matrices are channel conductance fits, ' + \
-                                  'do not try to store concentration fit matrices')
-                if self.fit_data['ion'] == '':
-                    self.fit_data['ion'] = kwargs['ion']
+                    raise IOError(
+                        "Stored fit matrices are channel conductance fits, "
+                        + "do not try to store concentration fit matrices"
+                    )
+                if self.fit_data["ion"] == "":
+                    self.fit_data["ion"] = kwargs["ion"]
                 else:
                     try:
-                        assert self.fit_data['ion'] == kwargs['ion']
+                        assert self.fit_data["ion"] == kwargs["ion"]
                     except AssertionError:
-                        raise IOError('`ion` does not agree with stored ion for ' + \
-                                      'other fits:\n' + \
-                                      '`ion`: ' + kwargs['ion'] + \
-                                      '\nstored ion: ' + self.fit_data['ion'])
+                        raise IOError(
+                            "`ion` does not agree with stored ion for "
+                            + "other fits:\n"
+                            + "`ion`: "
+                            + kwargs["ion"]
+                            + "\nstored ion: "
+                            + self.fit_data["ion"]
+                        )
 
-            self.fit_data['mats_feature'].append(mat_feature)
-            self.fit_data['vecs_target'].append(vec_target)
-            self.fit_data['weights_fit'].append(weight)
+            self.fit_data["mats_feature"].append(mat_feature)
+            self.fit_data["vecs_target"].append(vec_target)
+            self.fit_data["weights_fit"].append(weight)
         else:
-            raise IOError('Undefined action, choose \'fit\', \'return\' or \'store\'.')
+            raise IOError("Undefined action, choose 'fit', 'return' or 'store'.")
 
     def reset_fit_data(self):
         """
         Delete all stored feature matrices and and target vectors.
         """
-        self.fit_data = dict(mats_feature=[],
-                             vecs_target=[],
-                             weights_fit=[],
-                             channel_names=[],
-                             ion='')
+        self.fit_data = dict(
+            mats_feature=[], vecs_target=[], weights_fit=[], channel_names=[], ion=""
+        )
 
     def run_fit(self):
         """
@@ -1673,30 +1788,47 @@ class CompartmentTree(STree):
         stored feature matrices and and target vectors are deleted.
         """
         fit_data = self.fit_data
-        if len(fit_data['mats_feature']) > 0:
+        if len(fit_data["mats_feature"]) > 0:
             # apply the weights
-            for (m_f, v_t, w_f) in zip(fit_data['mats_feature'], fit_data['vecs_target'], fit_data['weights_fit']):
+            for m_f, v_t, w_f in zip(
+                fit_data["mats_feature"],
+                fit_data["vecs_target"],
+                fit_data["weights_fit"],
+            ):
                 nn = len(v_t)
                 m_f *= w_f / nn
                 v_t *= w_f / nn
             # create the fit matrices
-            mat_feature = np.concatenate(fit_data['mats_feature'])
-            vec_target = np.concatenate(fit_data['vecs_target'])
+            mat_feature = np.concatenate(fit_data["mats_feature"])
+            vec_target = np.concatenate(fit_data["vecs_target"])
             # do the fit
-            if len(fit_data['channel_names']) > 0:
-                self._fit_res_action('fit', mat_feature, vec_target, 1.,
-                                   channel_names=fit_data['channel_names'])
-            elif fit_data['ion'] != '':
-                self._fit_res_action('fit', mat_feature, vec_target, 1.,
-                                   ion=fit_data['ion'])
+            if len(fit_data["channel_names"]) > 0:
+                self._fit_res_action(
+                    "fit",
+                    mat_feature,
+                    vec_target,
+                    1.0,
+                    channel_names=fit_data["channel_names"],
+                )
+            elif fit_data["ion"] != "":
+                self._fit_res_action(
+                    "fit", mat_feature, vec_target, 1.0, ion=fit_data["ion"]
+                )
             # reset fit data
             self.reset_fit_data()
         else:
-             warnings.warn('No fit matrices are stored, no fit has been performed', UserWarning)
+            warnings.warn(
+                "No fit matrices are stored, no fit has been performed", UserWarning
+            )
 
-    def compute_fake_geometry(self, fake_c_m=1., fake_r_a=100.*1e-6,
-                                  factor_r_a=1e-6, delta=1e-14,
-                                  method=2):
+    def compute_fake_geometry(
+        self,
+        fake_c_m=1.0,
+        fake_r_a=100.0 * 1e-6,
+        factor_r_a=1e-6,
+        delta=1e-14,
+        method=2,
+    ):
         """
         Computes a fake geometry so that the neuron model is a reduced
         compartmental model
@@ -1722,44 +1854,53 @@ class CompartmentTree(STree):
             If the node indices are not ordered consecutively when iterating
         """
         assert self.check_ordered()
-        factor_r = 1. / np.sqrt(factor_r_a)
+        factor_r = 1.0 / np.sqrt(factor_r_a)
         # compute necessary vectors for calculating
         surfaces = np.array([node.ca / fake_c_m for node in self])
-        vec_coupling = np.array([1.] + [1./node.g_c for node in self if \
-                                            node.parent_node is not None])
+        vec_coupling = np.array(
+            [1.0] + [1.0 / node.g_c for node in self if node.parent_node is not None]
+        )
         if method == 1:
             # find the 3d points to construct the segments' geometry
             p0s = -surfaces
             p1s = np.zeros_like(p0s)
-            p2s = np.pi * (factor_r**2 - 1.) * np.ones_like(p0s)
-            p3s = 2. * np.pi**2 * vec_coupling / fake_r_a * (1. + factor_r)
+            p2s = np.pi * (factor_r**2 - 1.0) * np.ones_like(p0s)
+            p3s = 2.0 * np.pi**2 * vec_coupling / fake_r_a * (1.0 + factor_r)
             # find the polynomial roots
             points = []
             for ii, (p0, p1, p2, p3) in enumerate(zip(p0s, p1s, p2s, p3s)):
-                res = np.roots([p3,p2,p1,p0])
+                res = np.roots([p3, p2, p1, p0])
                 # compute radius and length of first half of section
-                radius = res[np.where(res.real > 0.)[0][0]].real
-                radius *= 1e4 # convert [cm] to [um]
-                length = np.pi * radius**2 * vec_coupling[ii] / (fake_r_a * 1e4) # convert [MOhm*cm] to [MOhm*um]
+                radius = res[np.where(res.real > 0.0)[0][0]].real
+                radius *= 1e4  # convert [cm] to [um]
+                length = (
+                    np.pi * radius**2 * vec_coupling[ii] / (fake_r_a * 1e4)
+                )  # convert [MOhm*cm] to [MOhm*um]
                 # compute the pt3d points
-                point0 = [0., 0., 0., 2.*radius]
-                point1 = [length, 0., 0., 2.*radius]
-                point2 = [length*(1.+delta), 0., 0., 2.*radius*factor_r]
-                point3 = [length*(2.+delta), 0., 0., 2.*radius*factor_r]
+                point0 = [0.0, 0.0, 0.0, 2.0 * radius]
+                point1 = [length, 0.0, 0.0, 2.0 * radius]
+                point2 = [length * (1.0 + delta), 0.0, 0.0, 2.0 * radius * factor_r]
+                point3 = [length * (2.0 + delta), 0.0, 0.0, 2.0 * radius * factor_r]
                 points.append([point0, point1, point2, point3])
 
             return points, surfaces
         elif method == 2:
-            radii = np.cbrt(fake_r_a * surfaces / (vec_coupling * (2.*np.pi)**2))
-            lengths = surfaces / (2. * np.pi * radii)
+            radii = np.cbrt(fake_r_a * surfaces / (vec_coupling * (2.0 * np.pi) ** 2))
+            lengths = surfaces / (2.0 * np.pi * radii)
             return lengths, radii
         else:
-            raise ValueError('Invalid `method` argument, should be 1 or 2')
+            raise ValueError("Invalid `method` argument, should be 1 or 2")
 
-    def plot_dendrogram(self, ax,
-                        plotargs={}, labelargs={}, textargs={},
-                        nodelabels={}, bbox=None,
-                        y_max=None):
+    def plot_dendrogram(
+        self,
+        ax,
+        plotargs={},
+        labelargs={},
+        textargs={},
+        nodelabels={},
+        bbox=None,
+        y_max=None,
+    ):
         """
         Generate a dendrogram of the NET
 
@@ -1790,25 +1931,35 @@ class CompartmentTree(STree):
                 not be plotted
         """
         # get the number of leafs to determine the dendrogram spacing
-        rnode    = self.root
-        n_branch  = self.degree_of_node(rnode)
-        l_spacing = np.linspace(0., 1., n_branch+1)
+        rnode = self.root
+        n_branch = self.degree_of_node(rnode)
+        l_spacing = np.linspace(0.0, 1.0, n_branch + 1)
         if y_max is None:
             y_max = np.max([self.depth_of_node(n) for n in self.leafs]) + 1.5
-        y_min = .5
+        y_min = 0.5
         # plot the dendrogram
-        self._expand_dendrogram(rnode, 0.5, None, 0.,
-                    l_spacing, y_max, ax,
-                    plotargs=plotargs, labelargs=labelargs, textargs=textargs,
-                    nodelabels=nodelabels, bbox=bbox)
+        self._expand_dendrogram(
+            rnode,
+            0.5,
+            None,
+            0.0,
+            l_spacing,
+            y_max,
+            ax,
+            plotargs=plotargs,
+            labelargs=labelargs,
+            textargs=textargs,
+            nodelabels=nodelabels,
+            bbox=bbox,
+        )
         # limits
         ax.set_ylim((y_min, y_max))
-        ax.set_xlim((0.,1.))
+        ax.set_xlim((0.0, 1.0))
 
-        ax.spines['top'].set_color('none')
-        ax.spines['bottom'].set_color('none')
-        ax.spines['right'].set_color('none')
-        ax.spines['left'].set_color('none')
+        ax.spines["top"].set_color("none")
+        ax.spines["bottom"].set_color("none")
+        ax.spines["right"].set_color("none")
+        ax.spines["left"].set_color("none")
         ax.set_xticks([])
         ax.set_yticks([])
         # ax.axes.get_xaxis().set_visible(False)
@@ -1817,12 +1968,23 @@ class CompartmentTree(STree):
 
         return y_max
 
-    def _expand_dendrogram(self, node, x0, xprev, y0,
-                                        l_spacing, y_max, ax,
-                                        plotargs={}, labelargs={}, textargs={},
-                                        nodelabels={}, bbox=None):
+    def _expand_dendrogram(
+        self,
+        node,
+        x0,
+        xprev,
+        y0,
+        l_spacing,
+        y_max,
+        ax,
+        plotargs={},
+        labelargs={},
+        textargs={},
+        nodelabels={},
+        bbox=None,
+    ):
         # impedance of layer
-        ynew = y0 + 1.
+        ynew = y0 + 1.0
         # plot vertical connection line
         # ax.vlines(x0, y0, ynew, **plotargs)
         if xprev is not None:
@@ -1834,17 +1996,27 @@ class CompartmentTree(STree):
             deg = self.degree_of_node(cnode)
             l1 = l0 + deg
             # new quantities
-            xnew = (l_spacing[l0] + l_spacing[l1]) / 2.
+            xnew = (l_spacing[l0] + l_spacing[l1]) / 2.0
             # horizontal connection line limits
             if i == 0:
                 xnew0 = xnew
-            if i == len(node.child_nodes)-1:
+            if i == len(node.child_nodes) - 1:
                 xnew1 = xnew
             # recursion
-            self._expand_dendrogram(cnode, xnew, x0, ynew,
-                    l_spacing[l0:l1+1], y_max, ax,
-                    plotargs=plotargs, labelargs=labelargs, textargs=textargs,
-                    nodelabels=nodelabels, bbox=None)
+            self._expand_dendrogram(
+                cnode,
+                xnew,
+                x0,
+                ynew,
+                l_spacing[l0 : l1 + 1],
+                y_max,
+                ax,
+                plotargs=plotargs,
+                labelargs=labelargs,
+                textargs=textargs,
+                nodelabels=nodelabels,
+                bbox=None,
+            )
             # next index
             l0 = l1
         # add label and maybe text annotation to node
@@ -1862,27 +2034,26 @@ class CompartmentTree(STree):
                 if node.index in nodelabels:
                     if labelargs == {}:
                         ax.plot([x0], [ynew], **nodelabels[node.index][1])
-                        ax.annotate(nodelabels[node.index][0],
-                                    xy=(x0, ynew), xytext=(x0+0.06, ynew),#+y_max*0.04),
-                                    bbox=bbox,
-                                    **textargs)
+                        ax.annotate(
+                            nodelabels[node.index][0],
+                            xy=(x0, ynew),
+                            xytext=(x0 + 0.06, ynew),  # +y_max*0.04),
+                            bbox=bbox,
+                            **textargs,
+                        )
                     else:
-                        ax.annotate(nodelabels[node.index],
-                                    xy=(x0, ynew), xytext=(x0+0.06, ynew),#+y_max*0.04),
-                                    bbox=bbox,
-                                    **textargs)
+                        ax.annotate(
+                            nodelabels[node.index],
+                            xy=(x0, ynew),
+                            xytext=(x0 + 0.06, ynew),  # +y_max*0.04),
+                            bbox=bbox,
+                            **textargs,
+                        )
             else:
-                ax.annotate(r'$N='+''.join([str(ind) for ind in node.loc_idxs])+'$',
-                                 xy=(x0, ynew), xytext=(x0+0.06, ynew),#+y_max*0.04),
-                                 bbox=bbox,
-                                 **textargs)
-
-
-
-
-
-
-
-
-
-
+                ax.annotate(
+                    r"$N=" + "".join([str(ind) for ind in node.loc_idxs]) + "$",
+                    xy=(x0, ynew),
+                    xytext=(x0 + 0.06, ynew),  # +y_max*0.04),
+                    bbox=bbox,
+                    **textargs,
+                )

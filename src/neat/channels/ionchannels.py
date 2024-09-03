@@ -26,6 +26,7 @@ class IfExpVisitor(ast.NodeVisitor):
     """
     Returns the first `IfExp` node in the ast, signalling an if statement
     """
+
     def __init__(self):
         self.ifexp_node = None
 
@@ -67,8 +68,9 @@ class _func(object):
             return fv_return
 
 
-def _insert_function_prefixes(string, prefix='np',
-                              functions=['exp', 'sin', 'cos', 'tan', 'pi']):
+def _insert_function_prefixes(
+    string, prefix="np", functions=["exp", "sin", "cos", "tan", "pi"]
+):
     """
     Prefix all occurences in the input `string` of the functions in the
     `functions` list with the provided `prefix`.
@@ -93,15 +95,15 @@ def _insert_function_prefixes(string, prefix='np',
     '5. * np.exp(0.) + 3. * np.cos(pi)'
     """
     for func_name in functions:
-        numpy_string = ''
+        numpy_string = ""
         while len(string) > 0:
             ind = string.find(func_name)
             if ind == -1:
                 numpy_string += string
-                string = ''
+                string = ""
             else:
-                numpy_string += string[0:ind] + prefix + '.' + func_name
-                string = string[ind+len(func_name):]
+                numpy_string += string[0:ind] + prefix + "." + func_name
+                string = string[ind + len(func_name) :]
         string = numpy_string
     return string
 
@@ -119,6 +121,7 @@ class SPDict(dict):
     """
     Dictionary that accepts both strings and similarly name sympy symbols as keys
     """
+
     def __getitem__(self, key):
         try:
             return super(SPDict, self).__getitem__(key)
@@ -129,8 +132,7 @@ class SPDict(dict):
                 return super(SPDict, self).__getitem__(sp.symbols(key))
 
     def __contains__(self, key):
-        return super().__contains__(key) or \
-               super().__contains__(sp.symbols(key))
+        return super().__contains__(key) or super().__contains__(sp.symbols(key))
 
 
 class CallDict(SPDict):
@@ -138,6 +140,7 @@ class CallDict(SPDict):
     Callable dictionary, items are supposed to be callables
     that all accept an identical argument list
     """
+
     def __call__(self, *args):
         """
         Calls dictionary items (supposed to be callable)
@@ -238,6 +241,7 @@ class IonChannel(object):
     >>>         # temperature factor for reaction rates
     >>>         self.q10 = '2.3^((temp - 23.)/10.)'
     """
+
     def __init__(self, **kwargs):
         """
         Will give an ``AttributeError`` if initialized as is. Should only be
@@ -251,12 +255,12 @@ class IonChannel(object):
         self.define()
 
         # ion that carries the channel current
-        if not hasattr(self, 'ion'):
-            self.ion = ''
+        if not hasattr(self, "ion"):
+            self.ion = ""
 
         # temperature factor, if it exist
-        if not hasattr(self, 'q10'):
-            self.q10 = '1.'
+        if not hasattr(self, "q10"):
+            self.q10 = "1."
         self.q10 = sp.sympify(self.q10, evaluate=False)
 
         # sympy temperature symbols
@@ -265,10 +269,10 @@ class IonChannel(object):
             assert str(list(self.q10.free_symbols)[0]) == "temp"
             self.sp_t = list(self.q10.free_symbols)[0]
         else:
-            self.sp_t = sp.symbols('temp')
+            self.sp_t = sp.symbols("temp")
 
         # the voltage variable
-        self.sp_v = sp.symbols('v')
+        self.sp_v = sp.symbols("v")
 
         # extract the state variables
         self.p_open = sp.sympify(self.p_open)
@@ -278,9 +282,9 @@ class IonChannel(object):
         if self.sp_v in self.statevars:
             self.statevars.remove(self.sp_v)
 
-        if not 'tauinf' in self.__dict__:
+        if not "tauinf" in self.__dict__:
             self.tauinf = {}
-        if not 'varinf' in self.__dict__:
+        if not "varinf" in self.__dict__:
             self.varinf = {}
 
         for svar in self.ordered_statevars:
@@ -294,21 +298,27 @@ class IonChannel(object):
                 del self.tauinf[key]
 
         # construct the rate functions
-        if 'alpha' in self.__dict__ and 'beta' in self.__dict__:
+        if "alpha" in self.__dict__ and "beta" in self.__dict__:
             for svar in self.ordered_statevars:
                 key = str(svar)
                 if key in (self.alpha.keys() | self.beta.keys()):
                     self.alpha[svar] = sp.sympify(self.alpha[key], evaluate=False)
                     self.beta[svar] = sp.sympify(self.beta[key], evaluate=False)
-                    self.varinf[svar] = sp.simplify(self.alpha[svar] / (self.alpha[svar] + self.beta[svar]))
-                    self.tauinf[svar] = sp.simplify((1./self.q10) / (self.alpha[svar] + self.beta[svar]))
+                    self.varinf[svar] = sp.simplify(
+                        self.alpha[svar] / (self.alpha[svar] + self.beta[svar])
+                    )
+                    self.tauinf[svar] = sp.simplify(
+                        (1.0 / self.q10) / (self.alpha[svar] + self.beta[svar])
+                    )
             del self.alpha
             del self.beta
 
         # check if rate equations where defined
-        if len(self.varinf) == 0 or len (self.tauinf) == 0:
-            raise AttributeError("Necessary attributes not defined, define either " + \
-                                 "`alpha` and `beta` or `tauinf` and `varinf`.")
+        if len(self.varinf) == 0 or len(self.tauinf) == 0:
+            raise AttributeError(
+                "Necessary attributes not defined, define either "
+                + "`alpha` and `beta` or `tauinf` and `varinf`."
+            )
 
         self.varinf, self.tauinf = SPDict(self.varinf), SPDict(self.tauinf)
 
@@ -319,32 +329,38 @@ class IonChannel(object):
             self.fstatevar[svar] = (-svar + self.varinf[svar]) / self.tauinf[svar]
 
         # concentrations the ion channel depends on
-        if not hasattr(self, 'conc'):
+        if not hasattr(self, "conc"):
             # if concentration ions are not defined, attempt to extract them from
             # the state variable functions
             self.conc = set()
             for key, expr in self.fstatevar.items():
-                self.conc |= expr.free_symbols # set union
+                self.conc |= expr.free_symbols  # set union
             # remove everything that is not a concentration
             self.conc -= self.statevars
             self.conc -= {self.sp_v, self.sp_t}
         # if no default concentrations are defined, default values are taken
         # from default concentration values
-        if not hasattr(self.conc, 'values'):
-            self.conc = SPDict({sp.symbols(str(ion)): \
-                                self.cfg.conc[str(ion)] for ion in list(sorted(self.conc))})
+        if not hasattr(self.conc, "values"):
+            self.conc = SPDict(
+                {
+                    sp.symbols(str(ion)): self.cfg.conc[str(ion)]
+                    for ion in list(sorted(self.conc))
+                }
+            )
         # sympy concentration symbols
         self.sp_c = [ion for ion in self.conc]
 
         # default parameters
         self.default_params = SPDict({})
-        self.default_params[str(self.sp_t)] = self.temp if 'temp' in self.__dict__ else \
-                                              self.cfg.temp
+        self.default_params[str(self.sp_t)] = (
+            self.temp if "temp" in self.__dict__ else self.cfg.temp
+        )
         try:
-            self.default_params['e'] = self.e if 'e' in self.__dict__ else \
-                                       self.cfg.e_rev[self.ion]
+            self.default_params["e"] = (
+                self.e if "e" in self.__dict__ else self.cfg.e_rev[self.ion]
+            )
         except KeyError:
-            warnings.warn('No default reversal potential defined.')
+            warnings.warn("No default reversal potential defined.")
 
         # self._lambdify_channel()
         self.set_default_params(**kwargs)
@@ -355,11 +371,11 @@ class IonChannel(object):
         """
         d = dict(self.__dict__)
 
-        del d['f_statevar']
-        del d['f_varinf']
-        del d['f_tauinf']
-        del d['f_p_open']
-        del d['dp_dx'], d['df_dv'], d['df_dx'], d['df_dc']
+        del d["f_statevar"]
+        del d["f_varinf"]
+        del d["f_tauinf"]
+        del d["f_p_open"]
+        del d["dp_dx"], d["df_dv"], d["df_dx"], d["df_dc"]
 
         return d
 
@@ -428,18 +444,25 @@ class IonChannel(object):
             self.f_tauinf[svar] = _broadcast(sp.lambdify(args_, tauinf))
 
             # derivatives of open probability to state variables
-            self.dp_dx[svar] = _broadcast(sp.lambdify(args, sp.diff(self.p_open, svar, 1)))
+            self.dp_dx[svar] = _broadcast(
+                sp.lambdify(args, sp.diff(self.p_open, svar, 1))
+            )
 
             # derivatives of state variable function to voltage
-            self.df_dv[svar] = _broadcast(sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1)))
+            self.df_dv[svar] = _broadcast(
+                sp.lambdify(args, sp.diff(f_svar, self.sp_v, 1))
+            )
 
             # derivatives of state variable function to state variable
             self.df_dx[svar] = _broadcast(sp.lambdify(args, sp.diff(f_svar, svar, 1)))
 
             # derivatives of state variable function to concentrations
-            self.df_dc[svar] = \
-                CallDict({c: _broadcast(sp.lambdify(args, sp.diff(f_svar, c, 1))) \
-                          for c in self.sp_c})
+            self.df_dc[svar] = CallDict(
+                {
+                    c: _broadcast(sp.lambdify(args, sp.diff(f_svar, c, 1)))
+                    for c in self.sp_c
+                }
+            )
 
     def _args_as_list(self, v, w_statevar=True, **kwargs):
         """
@@ -593,13 +616,15 @@ class IonChannel(object):
         args_aux = [v_resp] + self._args_as_list(v, **kwargs)
         out_shape = np.broadcast(*args_aux).shape
 
-        lin_svar = SPDict({
-            str(svar): np.zeros(out_shape, dtype=np.array(freqs).dtype) \
-            for svar in self.ordered_statevars
-        })
+        lin_svar = SPDict(
+            {
+                str(svar): np.zeros(out_shape, dtype=np.array(freqs).dtype)
+                for svar in self.ordered_statevars
+            }
+        )
         for svar, dp_dx_ in dp_dx.items():
-            df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
-            df_dx_ = df_dx[svar] * 1e3 # convert to 1 / s
+            df_dv_ = df_dv[svar] * 1e3  # convert to 1 / s
+            df_dx_ = df_dx[svar] * 1e3  # convert to 1 / s
             # add to the impedance contribution
             lin_svar[str(svar)] = df_dv_ / (freqs - df_dx_) * v_resp
         return lin_svar
@@ -632,8 +657,8 @@ class IonChannel(object):
 
         lin_f = np.zeros(out_shape, dtype=np.array(freqs).dtype)
         for svar, dp_dx_ in dp_dx.items():
-            df_dv_ = df_dv[svar] * 1e3 # convert to 1 / s
-            df_dx_ = df_dx[svar] * 1e3 # convert to 1 / s
+            df_dv_ = df_dv[svar] * 1e3  # convert to 1 / s
+            df_dx_ = df_dx[svar] * 1e3  # convert to 1 / s
             # add to the impedance contribution
             lin_f += dp_dx_ * df_dv_ / (freqs - df_dx_)
         return lin_f
@@ -669,8 +694,8 @@ class IonChannel(object):
 
         lin_f = np.zeros(out_shape, dtype=np.array(freqs).dtype)
         for svar, dp_dx_ in dp_dx.items():
-            df_dc_ = df_dc[svar][ion] * 1e3 # convert to 1 / s
-            df_dx_ = df_dx[svar]      * 1e3 # convert to 1 / s
+            df_dc_ = df_dc[svar][ion] * 1e3  # convert to 1 / s
+            df_dx_ = df_dx[svar] * 1e3  # convert to 1 / s
             # add to the impedance contribution
             lin_f += dp_dx_ * df_dc_ / (freqs - df_dx_)
         return lin_f
@@ -678,9 +703,9 @@ class IonChannel(object):
     def _get_reversal(self, e):
         if e is None:
             try:
-                e = self.default_params['e']
+                e = self.default_params["e"]
             except KeyError:
-                raise KeyError('No default reversal defined, provide value for `e`.')
+                raise KeyError("No default reversal defined, provide value for `e`.")
         return e
 
     def compute_lin_sum(self, v, freqs, e=None, **kwargs):
@@ -707,8 +732,9 @@ class IonChannel(object):
             the dimensions of `v`.
         """
         e = self._get_reversal(e)
-        return (e - v) * self.compute_linear(v, freqs, **kwargs) - \
-               self.compute_p_open(v, **kwargs)
+        return (e - v) * self.compute_linear(v, freqs, **kwargs) - self.compute_p_open(
+            v, **kwargs
+        )
 
     def compute_lin_conc(self, v, freqs, ion, e=None, **kwargs):
         """
@@ -737,97 +763,101 @@ class IonChannel(object):
         e = self._get_reversal(e)
         return (e - v) * self.compute_linear_conc(v, freqs, ion, **kwargs)
 
-
-    def write_mod_file(self, path, g=0., e=None):
+    def write_mod_file(self, path, g=0.0, e=None):
         """
         Writes a modfile of the ion channel for simulations with neuron
         """
-        cname =  self.__class__.__name__
+        cname = self.__class__.__name__
         sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
         e = self._get_reversal(e)
 
-        modname = 'I' + cname + '.mod'
+        modname = "I" + cname + ".mod"
         fname = os.path.join(path, modname)
 
-        file = open(fname, 'w')
+        file = open(fname, "w")
 
-        file.write(': This mod file is automaticaly generated by the ' +
-                    '``neat.channels.ionchannels`` module\n\n')
+        file.write(
+            ": This mod file is automaticaly generated by the "
+            + "``neat.channels.ionchannels`` module\n\n"
+        )
 
-        file.write('NEURON {\n')
-        file.write('    SUFFIX I%s\n'%cname)
-        if self.ion == '':
-            file.write('    NONSPECIFIC_CURRENT i' + '\n')
+        file.write("NEURON {\n")
+        file.write("    SUFFIX I%s\n" % cname)
+        if self.ion == "":
+            file.write("    NONSPECIFIC_CURRENT i" + "\n")
         else:
-            file.write('    USEION %s WRITE i%s\n'%(self.ion, self.ion))
+            file.write("    USEION %s WRITE i%s\n" % (self.ion, self.ion))
         for c in cs:
-            file.write('    USEION %s READ %si\n'%(c, c))
-        file.write('    RANGE  g, e' + '\n')
+            file.write("    USEION %s READ %si\n" % (c, c))
+        file.write("    RANGE  g, e" + "\n")
 
-        taustring = 'tau_' + ', tau_'.join(sv)
-        varstring = '_inf, '.join(sv) + '_inf'
-        file.write('    GLOBAL %s, %s\n'%(varstring, taustring))
-        file.write('    THREADSAFE' + '\n')
-        file.write('}\n\n')
+        taustring = "tau_" + ", tau_".join(sv)
+        varstring = "_inf, ".join(sv) + "_inf"
+        file.write("    GLOBAL %s, %s\n" % (varstring, taustring))
+        file.write("    THREADSAFE" + "\n")
+        file.write("}\n\n")
 
-        file.write('PARAMETER {\n')
-        file.write('    g = ' + str(g*1e-6) + ' (S/cm2)' + '\n')
-        file.write('    e = ' + str(e) + ' (mV)' + '\n')
-        file.write('    celsius (degC)\n')
-        file.write('}\n\n')
+        file.write("PARAMETER {\n")
+        file.write("    g = " + str(g * 1e-6) + " (S/cm2)" + "\n")
+        file.write("    e = " + str(e) + " (mV)" + "\n")
+        file.write("    celsius (degC)\n")
+        file.write("}\n\n")
 
-        file.write('UNITS {\n')
-        file.write('    (mA) = (milliamp)' + '\n')
-        file.write('    (mV) = (millivolt)' + '\n')
-        file.write('    (mM) = (milli/liter)' + '\n')
-        file.write('}\n\n')
+        file.write("UNITS {\n")
+        file.write("    (mA) = (milliamp)" + "\n")
+        file.write("    (mV) = (millivolt)" + "\n")
+        file.write("    (mM) = (milli/liter)" + "\n")
+        file.write("}\n\n")
 
-        file.write('ASSIGNED {\n')
-        file.write('    i%s (mA/cm2)\n'%self.ion)
+        file.write("ASSIGNED {\n")
+        file.write("    i%s (mA/cm2)\n" % self.ion)
         for var in sv:
-            file.write('    %s_inf      \n'%var)
-            file.write('    tau_%s (ms) \n'%var)
+            file.write("    %s_inf      \n" % var)
+            file.write("    tau_%s (ms) \n" % var)
         for ion in cs:
-            file.write('    ' + ion + 'i (mM)' + '\n')
-        file.write('    v (mV)' + '\n')
-        file.write('    %s (degC)\n'%(self.sp_t))
-        file.write('}\n\n')
+            file.write("    " + ion + "i (mM)" + "\n")
+        file.write("    v (mV)" + "\n")
+        file.write("    %s (degC)\n" % (self.sp_t))
+        file.write("}\n\n")
 
-        file.write('STATE {\n')
+        file.write("STATE {\n")
         for var in sv:
-            file.write('    %s\n'%var)
-        file.write('}\n\n')
+            file.write("    %s\n" % var)
+        file.write("}\n\n")
 
-        calcstring = 'i%s = g * (%s) * (v - e)'%(self.ion, sp.printing.ccode(self.p_open))
+        calcstring = "i%s = g * (%s) * (v - e)" % (
+            self.ion,
+            sp.printing.ccode(self.p_open),
+        )
 
-        file.write('BREAKPOINT {\n')
-        file.write('    SOLVE states METHOD cnexp' + '\n')
-        file.write('    %s\n'%calcstring)
-        file.write('}\n\n')
+        file.write("BREAKPOINT {\n")
+        file.write("    SOLVE states METHOD cnexp" + "\n")
+        file.write("    %s\n" % calcstring)
+        file.write("}\n\n")
 
-        concstring = 'i, '.join(cs)
+        concstring = "i, ".join(cs)
         if len(cs) > 0:
-            concstring = ', ' + concstring
-            concstring += 'i'
+            concstring = ", " + concstring
+            concstring += "i"
 
-        file.write('INITIAL {\n')
-        file.write('    rates(v%s)\n'%concstring)
+        file.write("INITIAL {\n")
+        file.write("    rates(v%s)\n" % concstring)
         for var in sv:
-            file.write('    %s = %s_inf\n'%(var,var))
-        file.write('}\n\n')
+            file.write("    %s = %s_inf\n" % (var, var))
+        file.write("}\n\n")
 
-        file.write('DERIVATIVE states {\n')
-        file.write('    rates(v%s)\n'%concstring)
+        file.write("DERIVATIVE states {\n")
+        file.write("    rates(v%s)\n" % concstring)
         for var in sv:
-            file.write('    %s\' = (%s_inf - %s) /  tau_%s \n'%(var,var,var,var))
-        file.write('}\n\n')
+            file.write("    %s' = (%s_inf - %s) /  tau_%s \n" % (var, var, var, var))
+        file.write("}\n\n")
 
         # substitution for common neuron names
-        repl_pairs = [(str(c), str(c)+'i') for c in self.conc]
+        repl_pairs = [(str(c), str(c) + "i") for c in self.conc]
 
-        file.write('PROCEDURE rates(v%s) {\n'%concstring)
-        file.write('    %s = celsius\n'%str(self.sp_t))
+        file.write("PROCEDURE rates(v%s) {\n" % concstring)
+        file.write("    %s = celsius\n" % str(self.sp_t))
         for var, svar in zip(sv, self.ordered_statevars):
             vi = sp.printing.ccode(self.varinf[svar], assign_to=f"{var}_inf")
             ti = sp.printing.ccode(self.tauinf[svar], assign_to=f"tau_{var}")
@@ -837,9 +867,9 @@ class IonChannel(object):
             # no ";" in mod-file, add indent
             vi = vi.replace(";", "").replace("\n", "\n    ")
             ti = ti.replace(";", "").replace("\n", "\n    ")
-            file.write(f'    {vi}\n')
-            file.write(f'    {ti}\n')
-        file.write('}\n\n')
+            file.write(f"    {vi}\n")
+            file.write(f"    {ti}\n")
+        file.write("}\n\n")
 
         file.close()
 
@@ -860,38 +890,44 @@ class IonChannel(object):
             assert iev.find_IfExp_node(ifexp.test) is None
             # if test is True
             cond_1_str = self._create_nestml_funcstr(
-                ast.unparse(ifexp.body),
-                n_spaces=n_spaces,
-                indent=n_spaces+indent
+                ast.unparse(ifexp.body), n_spaces=n_spaces, indent=n_spaces + indent
             )
             # if test is False
             cond_0_str = self._create_nestml_funcstr(
-                ast.unparse(ifexp.orelse),
-                n_spaces=n_spaces,
-                indent=n_spaces+indent
+                ast.unparse(ifexp.orelse), n_spaces=n_spaces, indent=n_spaces + indent
             )
-            code_str = \
-                " "*indent + f"if {ast.unparse(ifexp.test)}:\n" + \
-                    f"{cond_1_str}" + \
-                " "*indent + f"else:\n" + \
-                    f"{cond_0_str}"
+            code_str = (
+                " " * indent
+                + f"if {ast.unparse(ifexp.test)}:\n"
+                + f"{cond_1_str}"
+                + " " * indent
+                + f"else:\n"
+                + f"{cond_0_str}"
+            )
         else:
             try:
-                code_str = \
-                " "*indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
+                code_str = (
+                    " " * indent + f"val = {sp.printing.ccode(sp.sympify(code_str))}\n"
+                )
             except TypeError as e:
                 print(e)
         return code_str
 
-    def write_nestml_blocks(self, blocks=['state', 'parameters', 'equations', 'function'], v_comp=-75., g=0., e=None):
-        cname =  self.__class__.__name__
+    def write_nestml_blocks(
+        self,
+        blocks=["state", "parameters", "equations", "function"],
+        v_comp=-75.0,
+        g=0.0,
+        e=None,
+    ):
+        cname = self.__class__.__name__
         sv = [str(svar) for svar in self.ordered_statevars]
         cs = [str(conc) for conc in self.conc]
-        sv_suff = [sv_ + '_' + cname for sv_ in sv]
+        sv_suff = [sv_ + "_" + cname for sv_ in sv]
         e = self._get_reversal(e)
         sv_init = self.compute_varinf(v_comp)
 
-        blocks_dict = {block: '' for block in blocks}
+        blocks_dict = {block: "" for block in blocks}
 
         func_call_args = ["v_comp real"]
         for ckey, cval in self.conc.items():
@@ -903,33 +939,38 @@ class IonChannel(object):
             func_args.append(f"c_{ckey}")
         func_args = ", ".join(func_args)
 
-        if 'state' in blocks:
-            state_str = '\n' + \
-                        '        # state variables %s\n'%cname
+        if "state" in blocks:
+            state_str = "\n" + "        # state variables %s\n" % cname
             for sv_, sv_key in zip(sv_suff, sv):
-                state_str += '        %s real = %.8f\n'%(sv_, sv_init[sv_key])
+                state_str += "        %s real = %.8f\n" % (sv_, sv_init[sv_key])
 
-            blocks_dict['state'] += state_str
+            blocks_dict["state"] += state_str
 
-        if 'parameters' in blocks:
-            param_str = '\n' + \
-                        '        # parameters %s\n'%cname + \
-                        '        gbar_%s real = %.2f\n'%(cname, g) + \
-                        '        e_%s real = %.2f\n'%(cname, e)
+        if "parameters" in blocks:
+            param_str = (
+                "\n"
+                + "        # parameters %s\n" % cname
+                + "        gbar_%s real = %.2f\n" % (cname, g)
+                + "        e_%s real = %.2f\n" % (cname, e)
+            )
 
-            blocks_dict['parameters'] += param_str
+            blocks_dict["parameters"] += param_str
 
-        if 'equations' in blocks:
+        if "equations" in blocks:
             # reformulate open probability in terms of suffixed variables
             p_open_ = self.p_open
             for svar, sv_ in zip(self.ordered_statevars, sv_suff):
                 p_open_ = p_open_.subs(svar, sp.symbols(sv_))
-                p_open_ = p_open_.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+                p_open_ = p_open_.subs(
+                    self.sp_v, sp.UnevaluatedExpr(sp.symbols("v_comp"))
+                )
 
-            eq_str = '\n' + \
-                     '        # equation %s\n'%cname + \
-                     '        inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n'%(cname, cname, str(p_open_), cname)
-
+            eq_str = (
+                "\n"
+                + "        # equation %s\n" % cname
+                + "        inline i_%s real = gbar_%s * (%s) * (e_%s - v_comp) @mechanism::channel\n"
+                % (cname, cname, str(p_open_), cname)
+            )
 
             for var, var_suff, svar in zip(sv, sv_suff, self.ordered_statevars):
                 vi = sp.printing.ccode(self.varinf[svar])
@@ -938,14 +979,13 @@ class IonChannel(object):
                 eq_str += f"        {var_suff}' = ( {var}_inf_{cname}( {func_args} ) - {var_suff} ) / ( tau_{var}_{cname}( {func_args} ) * 1s )\n"
 
             eq_str += "\n"
-            blocks_dict['equations'] += eq_str
+            blocks_dict["equations"] += eq_str
 
         def _customsimplify(expr):
             return sp.logcombine(sp.powsimp(sp.expand(expr)))
 
-        if 'function' in blocks:
-            func_str = '\n' + \
-                       '    # functions %s\n'%cname
+        if "function" in blocks:
+            func_str = "\n" + "    # functions %s\n" % cname
             for svar, sv_, sv_suff_ in zip(self.ordered_statevars, sv, sv_suff):
                 # substitute possible default values and concentrations
                 varinf_func = self._substitute_defaults(self.varinf[svar])
@@ -955,33 +995,44 @@ class IonChannel(object):
                 func_args = ", ".join(func_args)
                 #     varinf_func = varinf_func.subs(ckey, cval)
                 # print activation function to nestml file
-                varinf_func = varinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
-                varinf_func = varinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+                varinf_func = varinf_func.subs(
+                    svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_))
+                )
+                varinf_func = varinf_func.subs(
+                    self.sp_v, sp.UnevaluatedExpr(sp.symbols("v_comp"))
+                )
 
                 code_str = sp.pycode(varinf_func, fully_qualified_modules=False)
-                func_str += f'    function {sv_}_inf_{cname} ({func_call_args}) real:\n' \
-                            f'        val real\n' \
-                            f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
-                            f'        return val\n\n'
+                func_str += (
+                    f"    function {sv_}_inf_{cname} ({func_call_args}) real:\n"
+                    f"        val real\n"
+                    f"{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}"
+                    f"        return val\n\n"
+                )
 
                 # substitute possible default values and concentrations
                 tauinf_func = self._substitute_defaults(self.tauinf[svar])
                 for ckey, cval in self.conc.items():
                     tauinf_func = tauinf_func.subs(ckey, cval)
 
-                tauinf_func = tauinf_func.subs(svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_)))
-                tauinf_func = tauinf_func.subs(self.sp_v, sp.UnevaluatedExpr(sp.symbols('v_comp')))
+                tauinf_func = tauinf_func.subs(
+                    svar, sp.UnevaluatedExpr(sp.symbols(sv_suff_))
+                )
+                tauinf_func = tauinf_func.subs(
+                    self.sp_v, sp.UnevaluatedExpr(sp.symbols("v_comp"))
+                )
 
                 code_str = sp.pycode(tauinf_func, fully_qualified_modules=False)
-                func_str += f'\n    function tau_{sv_}_{cname} ({func_call_args}) real:\n' \
-                            f'        val real\n' \
-                            f'{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}' \
-                            f'        return val\n\n'
+                func_str += (
+                    f"\n    function tau_{sv_}_{cname} ({func_call_args}) real:\n"
+                    f"        val real\n"
+                    f"{self._create_nestml_funcstr(code_str, n_spaces=4, indent=8)}"
+                    f"        return val\n\n"
+                )
 
-            blocks_dict['function'] += func_str
+            blocks_dict["function"] += func_str
 
         return blocks_dict
-
 
     def write_cpp_code(self, path):
         """
@@ -994,143 +1045,154 @@ class IonChannel(object):
         p_open_m = self.p_open
         p_open_m_inf = self.p_open
         for svar in self.ordered_statevars:
-            p_open_m = p_open_m.subs(svar, sp.symbols('m_' + str(svar)))
-            p_open_m_inf = p_open_m_inf.subs(svar, sp.symbols('m_' + str(svar) + '_inf'))
+            p_open_m = p_open_m.subs(svar, sp.symbols("m_" + str(svar)))
+            p_open_m_inf = p_open_m_inf.subs(
+                svar, sp.symbols("m_" + str(svar) + "_inf")
+            )
+
         # substitue concentrations in expression
-        def _replaceConc(expr_str, prefix='', suffix=''):
+        def _replaceConc(expr_str, prefix="", suffix=""):
             for ion, conc in self.conc.items():
                 expr_str = expr_str.replace(str(ion), prefix + str(ion) + suffix)
             return expr_str
 
         # open header and cc files
-        fcc = open(os.path.join(path, 'Ionchannels.cc'), 'a')
-        fh = open(os.path.join(path, 'Ionchannels.h'), 'a')
+        fcc = open(os.path.join(path, "Ionchannels.cc"), "a")
+        fh = open(os.path.join(path, "Ionchannels.h"), "a")
 
         # define class and functions in header file
-        fh.write('class %s: public IonChannel{\n'%c_name)
-        fh.write('private:' + '\n')
+        fh.write("class %s: public IonChannel{\n" % c_name)
+        fh.write("private:" + "\n")
         for svar in self.ordered_statevars:
             sv = sp.printing.ccode(svar)
-            fh.write('    double m_%s;\n'%sv)
-            fh.write('    double m_%s_inf, m_tau_%s;\n'%(sv, sv))
-            fh.write('    double m_v_%s = 10000.;\n'%sv)
-        fh.write('    double m_p_open_eq = 0.0, m_p_open = 0.0;\n')
+            fh.write("    double m_%s;\n" % sv)
+            fh.write("    double m_%s_inf, m_tau_%s;\n" % (sv, sv))
+            fh.write("    double m_v_%s = 10000.;\n" % sv)
+        fh.write("    double m_p_open_eq = 0.0, m_p_open = 0.0;\n")
         # hardcode default concentrations
         for ion, conc in self.conc.items():
-            fh.write('    double m_%s = %.8f;\n'%(ion, conc))
-        fh.write('public:' + '\n')
-        fh.write('    void calcFunStatevar(double v) override;' + '\n')
-        fh.write('    double calcPOpen() override;' + '\n')
-        fh.write('    void setPOpen() override;' + '\n')
-        fh.write('    void setPOpenEQ(double v) override;' + '\n')
-        fh.write('    void advance(double dt) override;' + '\n')
-        fh.write('    double getCond() override;' + '\n')
-        fh.write('    double getCondNewton() override;' + '\n')
-        fh.write('    double f(double v) override;' + '\n')
-        fh.write('    double DfDv(double v) override;' + '\n')
-        fh.write('    void setfNewtonConstant(double* vs, int v_size) override;' + '\n')
-        fh.write('    double fNewton(double v) override;' + '\n')
-        fh.write('    double DfDvNewton(double v) override;' + '\n')
-        fh.write('};' + '\n')
+            fh.write("    double m_%s = %.8f;\n" % (ion, conc))
+        fh.write("public:" + "\n")
+        fh.write("    void calcFunStatevar(double v) override;" + "\n")
+        fh.write("    double calcPOpen() override;" + "\n")
+        fh.write("    void setPOpen() override;" + "\n")
+        fh.write("    void setPOpenEQ(double v) override;" + "\n")
+        fh.write("    void advance(double dt) override;" + "\n")
+        fh.write("    double getCond() override;" + "\n")
+        fh.write("    double getCondNewton() override;" + "\n")
+        fh.write("    double f(double v) override;" + "\n")
+        fh.write("    double DfDv(double v) override;" + "\n")
+        fh.write("    void setfNewtonConstant(double* vs, int v_size) override;" + "\n")
+        fh.write("    double fNewton(double v) override;" + "\n")
+        fh.write("    double DfDvNewton(double v) override;" + "\n")
+        fh.write("};" + "\n")
 
         # function in cc file
-        fcc.write('void %s::calcFunStatevar(double v){\n'%c_name)
+        fcc.write("void %s::calcFunStatevar(double v){\n" % c_name)
         for svar in self.ordered_statevars:
             varinf = self._substitute_defaults(self.varinf[svar])
             tauinf = self._substitute_defaults(self.tauinf[svar])
             sv = str(svar)
-            vi = _replaceConc(sp.printing.ccode(varinf), prefix='m_')
-            ti = _replaceConc(sp.printing.ccode(tauinf), prefix='m_')
-            fcc.write('    m_%s_inf = %s;\n'%(sv, vi))
+            vi = _replaceConc(sp.printing.ccode(varinf), prefix="m_")
+            ti = _replaceConc(sp.printing.ccode(tauinf), prefix="m_")
+            fcc.write("    m_%s_inf = %s;\n" % (sv, vi))
             # if self.varinf.shape[1] == 2 and ind == (0,0):
-            if sv == 'm':
+            if sv == "m":
                 # instantaneous approximation possible if statevar is activation (denoted by 'm')
-                fcc.write('    if(m_instantaneous)' + '\n')
-                fcc.write('        m_tau_%s = %s;\n'%(sv, sp.printing.ccode(sp.Float(1e-5))))
-                fcc.write('    else' + '\n')
-                fcc.write('        m_tau_%s = %s;\n'%(sv, ti))
+                fcc.write("    if(m_instantaneous)" + "\n")
+                fcc.write(
+                    "        m_tau_%s = %s;\n" % (sv, sp.printing.ccode(sp.Float(1e-5)))
+                )
+                fcc.write("    else" + "\n")
+                fcc.write("        m_tau_%s = %s;\n" % (sv, ti))
             else:
-                fcc.write('    m_tau_%s = %s;\n'%(sv, ti))
-        fcc.write('}\n')
+                fcc.write("    m_tau_%s = %s;\n" % (sv, ti))
+        fcc.write("}\n")
 
-        fcc.write('double %s::calcPOpen(){\n'%c_name)
-        fcc.write('    return %s;\n'%sp.printing.ccode(p_open_m))
-        fcc.write('}\n')
+        fcc.write("double %s::calcPOpen(){\n" % c_name)
+        fcc.write("    return %s;\n" % sp.printing.ccode(p_open_m))
+        fcc.write("}\n")
 
-        fcc.write('void %s::setPOpen(){\n'%c_name)
-        fcc.write('    m_p_open = calcPOpen();\n')
-        fcc.write('}\n')
+        fcc.write("void %s::setPOpen(){\n" % c_name)
+        fcc.write("    m_p_open = calcPOpen();\n")
+        fcc.write("}\n")
 
-        fcc.write('void %s::setPOpenEQ(double v){\n'%c_name)
-        fcc.write('    calcFunStatevar(v);\n')
-        fcc.write('\n')
+        fcc.write("void %s::setPOpenEQ(double v){\n" % c_name)
+        fcc.write("    calcFunStatevar(v);\n")
+        fcc.write("\n")
         for sv in svs:
-            fcc.write('    m_%s = m_%s_inf;\n'%(sv, sv))
-        fcc.write('    m_p_open_eq = %s;\n'%sp.printing.ccode(p_open_m_inf))
-        fcc.write('}\n')
+            fcc.write("    m_%s = m_%s_inf;\n" % (sv, sv))
+        fcc.write("    m_p_open_eq = %s;\n" % sp.printing.ccode(p_open_m_inf))
+        fcc.write("}\n")
 
-        fcc.write('void %s::advance(double dt){\n'%c_name)
+        fcc.write("void %s::advance(double dt){\n" % c_name)
         for sv in svs:
-            fcc.write('    double p0_%s = exp(-dt / m_tau_%s);\n'%(sv, sv))
-            fcc.write('    m_%s *= p0_%s ;\n'%(sv, sv))
-            fcc.write('    m_%s += (1. - p0_%s) *  m_%s_inf;\n'%(sv, sv, sv))
-        fcc.write('}\n')
+            fcc.write("    double p0_%s = exp(-dt / m_tau_%s);\n" % (sv, sv))
+            fcc.write("    m_%s *= p0_%s ;\n" % (sv, sv))
+            fcc.write("    m_%s += (1. - p0_%s) *  m_%s_inf;\n" % (sv, sv, sv))
+        fcc.write("}\n")
 
-        fcc.write('double %s::getCond(){\n'%c_name)
-        fcc.write('    return m_g_bar * (m_p_open - m_p_open_eq);\n')
-        fcc.write('}\n')
+        fcc.write("double %s::getCond(){\n" % c_name)
+        fcc.write("    return m_g_bar * (m_p_open - m_p_open_eq);\n")
+        fcc.write("}\n")
 
-        fcc.write('double %s::getCondNewton(){\n'%c_name)
-        fcc.write('    return m_g_bar;\n')
-        fcc.write('}\n')
+        fcc.write("double %s::getCondNewton(){\n" % c_name)
+        fcc.write("    return m_g_bar;\n")
+        fcc.write("}\n")
 
         # function for temporal integration
-        fcc.write('double %s::f(double v){\n'%c_name)
-        fcc.write('    return (m_e_rev - v);\n')
-        fcc.write('}\n')
+        fcc.write("double %s::f(double v){\n" % c_name)
+        fcc.write("    return (m_e_rev - v);\n")
+        fcc.write("}\n")
 
-        fcc.write('double %s::DfDv(double v){\n'%c_name)
-        fcc.write('    return -1.;\n')
-        fcc.write('}\n')
+        fcc.write("double %s::DfDv(double v){\n" % c_name)
+        fcc.write("    return -1.;\n")
+        fcc.write("}\n")
 
         # set voltage values to evaluate at constant voltage during newton iteration
-        fcc.write('void %s::setfNewtonConstant(double* vs, int v_size){\n'%c_name)
-        fcc.write('    if(v_size != %d)'%len(self.ordered_statevars) + '\n')
-        fcc.write('        cerr << "input arg [vs] has incorrect size, ' + \
-                  'should have same size as number of channel state variables" << endl' + ';\n')
+        fcc.write("void %s::setfNewtonConstant(double* vs, int v_size){\n" % c_name)
+        fcc.write("    if(v_size != %d)" % len(self.ordered_statevars) + "\n")
+        fcc.write(
+            '        cerr << "input arg [vs] has incorrect size, '
+            + 'should have same size as number of channel state variables" << endl'
+            + ";\n"
+        )
         for ii, svar in enumerate(self.ordered_statevars):
-            fcc.write('    m_v_%s = vs[%d];\n'%(str(svar), ii))
-        fcc.write('}\n')
+            fcc.write("    m_v_%s = vs[%d];\n" % (str(svar), ii))
+        fcc.write("}\n")
 
         # functions for solving Newton iteration
-        fcc.write('double %s::fNewton(double v){\n'%c_name)
+        fcc.write("double %s::fNewton(double v){\n" % c_name)
         p_o = self.p_open
         for svar in self.ordered_statevars:
-            sv = 'v_' + str(svar)
+            sv = "v_" + str(svar)
             # substitute default parameters
             vi = self._substitute_defaults(self.varinf[svar])
             # write ccode and substitute variable names
             vi_ccode = sp.printing.ccode(vi)
             vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
-            vi_ccode = _replaceConc(vi_ccode, prefix='m_')
+            vi_ccode = _replaceConc(vi_ccode, prefix="m_")
             # assign dynamic or fixed voltage to the activation
-            fcc.write('    double %s;\n'%(sv))
-            fcc.write('    if(m_%s > 1000.){\n'%sv)
-            fcc.write('        %s = v;\n'%(sv))
-            fcc.write('    } else{\n')
-            fcc.write('        %s = m_%s;\n'%(sv, sv))
-            fcc.write('    }' + '\n')
-            fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
+            fcc.write("    double %s;\n" % (sv))
+            fcc.write("    if(m_%s > 1000.){\n" % sv)
+            fcc.write("        %s = v;\n" % (sv))
+            fcc.write("    } else{\n")
+            fcc.write("        %s = m_%s;\n" % (sv, sv))
+            fcc.write("    }" + "\n")
+            fcc.write("    double %s = %s;\n" % (str(svar), vi_ccode))
 
-        fcc.write('    return (m_e_rev - v) * (%s - m_p_open_eq);\n'%sp.printing.ccode(self.p_open))
-        fcc.write('}\n')
+        fcc.write(
+            "    return (m_e_rev - v) * (%s - m_p_open_eq);\n"
+            % sp.printing.ccode(self.p_open)
+        )
+        fcc.write("}\n")
 
-        fcc.write('double %s::DfDvNewton(double v){\n'%c_name)
+        fcc.write("double %s::DfDvNewton(double v){\n" % c_name)
         dp_o = {svar: sp.diff(self.p_open, svar, 1) for svar in self.ordered_statevars}
 
         # print derivatives
         for svar in self.ordered_statevars:
-            sv = 'v_' + str(svar)
+            sv = "v_" + str(svar)
             v_var = sp.symbols(sv)
 
             # substitute default parameters
@@ -1138,34 +1200,40 @@ class IonChannel(object):
             # write ccode and substitute variable names
             vi_ccode = sp.printing.ccode(vi)
             vi_ccode = vi_ccode.replace(str(self.sp_v), sv)
-            vi_ccode = _replaceConc(vi_ccode, prefix='m_')
+            vi_ccode = _replaceConc(vi_ccode, prefix="m_")
             # compute voltage derivatives
             dvi_dv = sp.diff(vi, self.sp_v, 1)
             dvi_dv_ccode = sp.printing.ccode(dvi_dv)
             dvi_dv_ccode = dvi_dv_ccode.replace(str(self.sp_v), sv)
-            dvi_dv_ccode = _replaceConc(dvi_dv_ccode, prefix='m_')
+            dvi_dv_ccode = _replaceConc(dvi_dv_ccode, prefix="m_")
 
             # compute derivative
-            fcc.write('    double %s;\n'%sv)
-            fcc.write('    double d%s_dv;\n'%str(svar))
-            fcc.write('    if(m_%s > 1000.){\n'%sv)
-            fcc.write('        %s = v;\n'%sv)
-            fcc.write('        d%s_dv = %s;\n'%(str(svar), dvi_dv_ccode))
-            fcc.write('    } else{\n')
-            fcc.write('        %s = m_%s;\n'%(sv, sv))
-            fcc.write('        d%s_dv = 0;\n'%str(svar))
-            fcc.write('    }\n')
-            fcc.write('    double %s = %s;\n'%(str(svar), vi_ccode))
+            fcc.write("    double %s;\n" % sv)
+            fcc.write("    double d%s_dv;\n" % str(svar))
+            fcc.write("    if(m_%s > 1000.){\n" % sv)
+            fcc.write("        %s = v;\n" % sv)
+            fcc.write("        d%s_dv = %s;\n" % (str(svar), dvi_dv_ccode))
+            fcc.write("    } else{\n")
+            fcc.write("        %s = m_%s;\n" % (sv, sv))
+            fcc.write("        d%s_dv = 0;\n" % str(svar))
+            fcc.write("    }\n")
+            fcc.write("    double %s = %s;\n" % (str(svar), vi_ccode))
 
-        expr_str = ' + '.join(['%s * d%s_dv'%(sp.printing.ccode(dp_o[svar]), str(svar)) \
-                               for svar in self.ordered_statevars])
+        expr_str = " + ".join(
+            [
+                "%s * d%s_dv" % (sp.printing.ccode(dp_o[svar]), str(svar))
+                for svar in self.ordered_statevars
+            ]
+        )
 
-        fcc.write('    return -1. * (%s - m_p_open_eq) + (%s) * (m_e_rev - v);\n'%(sp.printing.ccode(self.p_open), expr_str))
-        fcc.write('}\n')
+        fcc.write(
+            "    return -1. * (%s - m_p_open_eq) + (%s) * (m_e_rev - v);\n"
+            % (sp.printing.ccode(self.p_open), expr_str)
+        )
+        fcc.write("}\n")
 
-        fh.write('\n')
-        fcc.write('\n')
+        fh.write("\n")
+        fcc.write("\n")
 
         fh.close()
         fcc.close()
-

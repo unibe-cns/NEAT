@@ -5,11 +5,12 @@ import warnings
 havedisplay = "DISPLAY" in os.environ
 if not havedisplay:
     exitval = os.system('python -c "import matplotlib.pyplot as plt; plt.figure()"')
-    havedisplay = (exitval == 0)
+    havedisplay = exitval == 0
 
 if not havedisplay:
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
 
 from .trees.stree import STree
 from .trees.stree import SNode
@@ -40,14 +41,14 @@ try:
     from .simulations.neuron.neuronmodel import NeuronSimNode
     from .simulations.neuron.neuronmodel import NeuronCompartmentTree
 except ModuleNotFoundError:
-    warnings.warn('NEURON not available', UserWarning)
+    warnings.warn("NEURON not available", UserWarning)
 
 try:
     from .simulations.nest.nestmodel import NestCompartmentTree
     from .simulations.nest.nestmodel import NestCompartmentNode
     from .simulations.nest.nestmodel import load_nest_model
 except ModuleNotFoundError:
-    warnings.warn('NEST not available', UserWarning)
+    warnings.warn("NEST not available", UserWarning)
 
 from .tools.kernelextraction import FourrierTools
 

@@ -5,6 +5,7 @@ File contains:
 
 Authors: W. Wybo
 """
+
 import dill
 import numpy as np
 
@@ -23,25 +24,28 @@ from ..trees.netree import NET, NETNode
 try:
     from ..simulations.neuron import neuronmodel as neurm
 except ModuleNotFoundError:
-    warnings.warn('NEURON not available, equilibrium evaluation not working', UserWarning)
+    warnings.warn(
+        "NEURON not available, equilibrium evaluation not working", UserWarning
+    )
 
 
 def consecutive(inds):
     """
     split a list of ints into consecutive sublists
     """
-    return np.split(inds, np.where(np.diff(inds) != 1)[0]+1)
+    return np.split(inds, np.where(np.diff(inds) != 1)[0] + 1)
 
 
 class CachedTree(PhysTree):
-    def __init__(self,
-            *args,
-            recompute_cache=None,
-            save_cache=None,
-            cache_name=None,
-            cache_path=None,
-            **kwargs
-        ):
+    def __init__(
+        self,
+        *args,
+        recompute_cache=None,
+        save_cache=None,
+        cache_name=None,
+        cache_path=None,
+        **kwargs,
+    ):
         # we want a behaviour where the cache parameters are initialized to certain defauls
         # if they are not provided, but where the initialization operation based on copying
         # the tree leaves the cache parameters intact if the input tree is a subclass
@@ -63,35 +67,39 @@ class CachedTree(PhysTree):
             cache_path=cache_path,
         )
 
-    def get_cache_defaults(self,
-            recompute_cache=None,
-            save_cache=None,
-            cache_name=None,
-            cache_path=None,
-        ):
+    def get_cache_defaults(
+        self,
+        recompute_cache=None,
+        save_cache=None,
+        cache_name=None,
+        cache_path=None,
+    ):
         cache_params = {}
-        cache_params["recompute_cache"] = False if recompute_cache is None else recompute_cache
+        cache_params["recompute_cache"] = (
+            False if recompute_cache is None else recompute_cache
+        )
         cache_params["save_cache"] = True if save_cache is None else save_cache
-        cache_params["cache_name"] = '' if cache_name is None else cache_name 
-        cache_params["cache_path"] = 'neatcache/' if cache_path is None else cache_path
+        cache_params["cache_name"] = "" if cache_name is None else cache_name
+        cache_params["cache_path"] = "neatcache/" if cache_path is None else cache_path
         return cache_params
 
-    def set_cache_params(self,
-            recompute_cache=None,
-            save_cache=None,
-            cache_name=None,
-            cache_path=None,
-        ):
+    def set_cache_params(
+        self,
+        recompute_cache=None,
+        save_cache=None,
+        cache_name=None,
+        cache_path=None,
+    ):
         if cache_path is not None:
             os.makedirs(cache_path, exist_ok=True)
-        
+
         if cache_name is not None:
             self.cache_name = cache_name
         if cache_path is not None:
             self.cache_path = cache_path
         if save_cache is not None:
             self.save_cache = save_cache
-        if recompute_cache is not None: 
+        if recompute_cache is not None:
             self.recompute_cache = recompute_cache
 
     def get_cache_params(self):
@@ -104,9 +112,9 @@ class CachedTree(PhysTree):
 
     def get_cache_params_in_dict(self, kwarg_dict):
         return {
-            key: val for key, val in kwarg_dict.iteritems() if key in {
-                "cache_name", "cache_path", "save_cache", "recompute_cache"
-            }
+            key: val
+            for key, val in kwarg_dict.iteritems()
+            if key in {"cache_name", "cache_path", "save_cache", "recompute_cache"}
         }
 
     def get_attributes_excluded_from_cache_override(self):
@@ -119,8 +127,9 @@ class CachedTree(PhysTree):
             Attribute names that should not be overwritten
         """
         return ["cache_name", "cache_path", "save_cache", "recompute_cache"]
-    
-    def maybe_execute_funcs(self,
+
+    def maybe_execute_funcs(
+        self,
         funcs_args_kwargs=[],
         pprint=False,
     ):
@@ -130,14 +139,16 @@ class CachedTree(PhysTree):
         )
 
         if pprint:
-            print(f"\n>>>> Cache file for {self.__class__.__name__}:\n    {file_name}\n<<<<")
+            print(
+                f"\n>>>> Cache file for {self.__class__.__name__}:\n    {file_name}\n<<<<"
+            )
 
         try:
             # ensure that the funcs are recomputed if 'recompute' is true
             if self.recompute_cache:
                 raise IOError
 
-            with open(file_name, 'rb') as file:
+            with open(file_name, "rb") as file:
                 tree_ = dill.load(file)
 
             for key in self.get_attributes_excluded_from_cache_override():
@@ -149,9 +160,9 @@ class CachedTree(PhysTree):
         except (Exception, IOError, EOFError, KeyError) as err:
             if pprint:
                 if self.recompute_cache:
-                    logstr = '>>> Force recomputing cache...'
+                    logstr = ">>> Force recomputing cache..."
                 else:
-                    logstr = '>>> No cache found, recomputing...'
+                    logstr = ">>> No cache found, recomputing..."
                 print(logstr)
 
             # execute the functions
@@ -159,7 +170,7 @@ class CachedTree(PhysTree):
                 func(*args, **kwargs)
 
             if self.save_cache:
-                with open(file_name, 'wb') as file:
+                with open(file_name, "wb") as file:
                     dill.dump(self, file)
 
 
@@ -174,7 +185,7 @@ class EquilibriumTree(CachedTree):
     The equilibrium potential is stored under the `v_ep` attribute of each node.
     """
 
-    def _calc_e_eq(self, loc_arg, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
+    def _calc_e_eq(self, loc_arg, ions=None, t_max=500.0, dt=0.1, factor_lambda=10.0):
         """
         Calculates equilibrium potentials and concentrations in the tree.
         Computes the equilibria through a NEURON simulations without inputs.
@@ -195,25 +206,33 @@ class EquilibriumTree(CachedTree):
             multiplies the number of compartments suggested by the lambda-rule
         """
         locs = self.convert_loc_arg_to_locs(loc_arg)
-        if ions is None: ions = self.ions
+        if ions is None:
+            ions = self.ions
         # use longer simulation for Eeq fit if concentration mechansims are present
-        t_max = t_max*20. if len(ions) > 0 else t_max
+        t_max = t_max * 20.0 if len(ions) > 0 else t_max
 
         # create a biophysical simulation model
         sim_tree_biophys = neurm.NeuronSimTree(self)
 
         # compute equilibrium potentials
         sim_tree_biophys.init_model(dt=dt, factor_lambda=factor_lambda)
-        sim_tree_biophys.store_locs(locs, 'rec locs', warn=False)
-        res_biophys = sim_tree_biophys.run(t_max, dt_rec=20., record_concentrations=ions)
+        sim_tree_biophys.store_locs(locs, "rec locs", warn=False)
+        res_biophys = sim_tree_biophys.run(
+            t_max, dt_rec=20.0, record_concentrations=ions
+        )
         sim_tree_biophys.delete_model()
 
         return (
-            np.array([v_m[-1] for v_m in res_biophys['v_m']]),
-            {ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]]) for ion in ions}
+            np.array([v_m[-1] for v_m in res_biophys["v_m"]]),
+            {
+                ion: np.array([ion_eq[-1] for ion_eq in res_biophys[ion]])
+                for ion in ions
+            },
         )
 
-    def calc_e_eq(self, loc_arg, ions=None, method="interp", L_eps=50., pprint=False, **kwargs):
+    def calc_e_eq(
+        self, loc_arg, ions=None, method="interp", L_eps=50.0, pprint=False, **kwargs
+    ):
         """
         Calculates equilibrium potentials and concentrations in the tree.
 
@@ -237,9 +256,10 @@ class EquilibriumTree(CachedTree):
         pprint: bool
             Whether or not to print additional information
         """
-        if ions is None: ions = self.ions
+        if ions is None:
+            ions = self.ions
         locs = self.convert_loc_arg_to_locs(loc_arg)
-        ref_locs = [(n.index, .5) for n in self]
+        ref_locs = [(n.index, 0.5) for n in self]
         self.store_locs(ref_locs, name="ref locs")
 
         e_eqs = []
@@ -306,25 +326,32 @@ class EquilibriumTree(CachedTree):
             if pprint:
                 print("> equilibria:")
                 for ii, loc in enumerate(locs):
-                    conc_eq_str = str({ion: f"{conc_eq[ii]:.8f}" for ion, conc_eq in conc_eqs.items()})
+                    conc_eq_str = str(
+                        {ion: f"{conc_eq[ii]:.8f}" for ion, conc_eq in conc_eqs.items()}
+                    )
                     print(f"    loc {loc}: e_eq = {e_eqs[ii]:.2f} mV, {conc_eq_str}")
             return (
                 np.array(e_eqs),
-                {ion: np.array(conc_eq) for ion, conc_eq in conc_eqs.items()}
+                {ion: np.array(conc_eq) for ion, conc_eq in conc_eqs.items()},
             )
 
-    def _set_e_eq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10.):
-        if ions is None: ions = self.ions
+    def _set_e_eq(self, ions=None, t_max=500.0, dt=0.1, factor_lambda=10.0):
+        if ions is None:
+            ions = self.ions
 
-        locs = [(n.index, .5) for n in self]
-        res = self._calc_e_eq(locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
+        locs = [(n.index, 0.5) for n in self]
+        res = self._calc_e_eq(
+            locs, ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda
+        )
 
         for ii, n in enumerate(self):
             n.set_v_ep(res[0][ii])
             for ion, conc in res[1].items():
                 n.set_conc_ep(ion, conc[ii])
 
-    def set_e_eq(self, ions=None, t_max=500., dt=0.1, factor_lambda=10., pprint=False):
+    def set_e_eq(
+        self, ions=None, t_max=500.0, dt=0.1, factor_lambda=10.0, pprint=False
+    ):
         """
         Set equilibrium potentials and concentrations in the tree. Computes
         the equilibria through a NEURON simulation without inputs.
@@ -346,9 +373,9 @@ class EquilibriumTree(CachedTree):
                 (
                     self._set_e_eq,
                     (),
-                    dict(ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda)
+                    dict(ions=ions, t_max=t_max, dt=dt, factor_lambda=factor_lambda),
                 ),
-            ]
+            ],
         )
 
 
@@ -357,14 +384,16 @@ class CachedGreensTree(GreensTree, CachedTree):
     Derived class of `neat.GreensTree` that caches the impedance calculation at each
     node.
     """
-    def __init__(self,
-            *args,
-            recompute_cache=None,
-            save_cache=None,
-            cache_name=None,
-            cache_path=None,
-            **kwargs
-        ):
+
+    def __init__(
+        self,
+        *args,
+        recompute_cache=None,
+        save_cache=None,
+        cache_name=None,
+        cache_path=None,
+        **kwargs,
+    ):
         # we want a behaviour where the cache parameters are initialized to certain defauls
         # if they are not provided, but where the initialization operation based on copying
         # the tree leaves the cache parameters intact if the input tree is a subclass
@@ -401,8 +430,8 @@ class CachedGreensTree(GreensTree, CachedTree):
             Print info
         """
         if pprint:
-            cname_string = ', '.join(list(self.channel_storage.keys()))
-            print(f'>>> evaluating impedances with {cname_string}')
+            cname_string = ", ".join(list(self.channel_storage.keys()))
+            print(f">>> evaluating impedances with {cname_string}")
 
         # we set freqs here already because it needs to be included in the
         # representation to generate a hash
@@ -422,31 +451,43 @@ class CachedGreensTree(GreensTree, CachedTree):
             pprint=pprint,
             funcs_args_kwargs=[
                 (self.set_comp_tree, [], {}),
-                (self.set_impedance, [freqs], {"pprint": pprint, **kwargs})
-            ]
+                (self.set_impedance, [freqs], {"pprint": pprint, **kwargs}),
+            ],
         )
 
     @computational_tree_decorator
-    def calc_net_steadystate(self, root_loc=None, dx=5., dz=5.):
-        if root_loc is None: root_loc = (1, .5)
+    def calc_net_steadystate(self, root_loc=None, dx=5.0, dz=5.0):
+        if root_loc is None:
+            root_loc = (1, 0.5)
         root_loc = MorphLoc(root_loc, self)
         # distribute locs on nodes
-        st_nodes = self.gather_nodes(self[root_loc['node']])
-        d2s_loc = self.path_length(root_loc, (1,0.5))
-        net_locs = self.distribute_locs_on_nodes(d2s=np.arange(d2s_loc, 5000., dx),
-                                   node_arg=st_nodes, name='net eval')
+        st_nodes = self.gather_nodes(self[root_loc["node"]])
+        d2s_loc = self.path_length(root_loc, (1, 0.5))
+        net_locs = self.distribute_locs_on_nodes(
+            d2s=np.arange(d2s_loc, 5000.0, dx), node_arg=st_nodes, name="net eval"
+        )
         # compute the impedance matrix for net calculation
-        z_mat = self.calc_impedance_matrix('net eval', explicit_method=False)[0]
+        z_mat = self.calc_impedance_matrix("net eval", explicit_method=False)[0]
         # assert np.allclose(z_mat, z_mat_)
         # derive the NET
         net = NET()
-        self._add_node_to_net(0., z_mat[0,0], z_mat, np.arange(z_mat.shape[0]), None, net,
-                           alpha=1., dz=dz)
+        self._add_node_to_net(
+            0.0,
+            z_mat[0, 0],
+            z_mat,
+            np.arange(z_mat.shape[0]),
+            None,
+            net,
+            alpha=1.0,
+            dz=dz,
+        )
         net.set_new_loc_idxs()
 
         return net, z_mat
 
-    def _add_node_to_net(self, z_min, z_max, z_mat, loc_idxs, pnode, net, alpha=1., dz=20.):
+    def _add_node_to_net(
+        self, z_min, z_max, z_mat, loc_idxs, pnode, net, alpha=1.0, dz=20.0
+    ):
         # compute mean impedance of node
         inds = [[]]
         while len(inds[0]) == 0:
@@ -466,12 +507,20 @@ class CachedGreensTree(GreensTree, CachedTree):
         d_inds = consecutive(np.where(np.diag(z_mat) > z_max)[0])
         for di in d_inds:
             if len(di) > 0:
-                self._add_node_to_net(z_max, z_max+dz, z_mat[di,:][:,di], loc_idxs[di], node, net,
-                                       alpha=alpha, dz=dz)
+                self._add_node_to_net(
+                    z_max,
+                    z_max + dz,
+                    z_mat[di, :][:, di],
+                    loc_idxs[di],
+                    node,
+                    net,
+                    alpha=alpha,
+                    dz=dz,
+                )
 
     def _subtract_parent_kernels(self, gammas, pnode):
         if pnode != None:
-            gammas -= pnode.z_kernel['c']
+            gammas -= pnode.z_kernel["c"]
             self._subtract_parent_kernels(gammas, pnode.parent_node)
 
 
@@ -479,14 +528,16 @@ class CachedGreensTreeTime(GreensTreeTime, CachedTree):
     """
     Derived class of `neat.GreensTreeTime` that caches the separation of variables calculation
     """
-    def __init__(self,
-            *args,
-            recompute_cache=None,
-            save_cache=None,
-            cache_name=None,
-            cache_path=None,
-            **kwargs
-        ):
+
+    def __init__(
+        self,
+        *args,
+        recompute_cache=None,
+        save_cache=None,
+        cache_name=None,
+        cache_path=None,
+        **kwargs,
+    ):
         # we want a behaviour where the cache parameters are initialized to certain defauls
         # if they are not provided, but where the initialization operation based on copying
         # the tree leaves the cache parameters intact if the input tree is a subclass
@@ -521,8 +572,8 @@ class CachedGreensTreeTime(GreensTreeTime, CachedTree):
             Print info
         """
         if pprint:
-            cname_string = ', '.join(list(self.channel_storage.keys()))
-            print(f'>>> evaluating response kernels with {cname_string}')
+            cname_string = ", ".join(list(self.channel_storage.keys()))
+            print(f">>> evaluating response kernels with {cname_string}")
 
         self._set_freq_and_time_arrays(t_arr)
 
@@ -530,8 +581,8 @@ class CachedGreensTreeTime(GreensTreeTime, CachedTree):
             pprint=pprint,
             funcs_args_kwargs=[
                 (self.set_comp_tree, [], {}),
-                (self.set_impedance, [t_arr], {})
-            ]
+                (self.set_impedance, [t_arr], {}),
+            ],
         )
 
 
@@ -540,14 +591,16 @@ class CachedSOVTree(SOVTree, CachedTree):
     Derived class of `neat.GreensTreeTime` that caches the impedance calculation at each
     node.
     """
-    def __init__(self,
-            *args,
-            recompute_cache=None,
-            save_cache=None,
-            cache_name=None,
-            cache_path=None,
-            **kwargs
-        ):
+
+    def __init__(
+        self,
+        *args,
+        recompute_cache=None,
+        save_cache=None,
+        cache_name=None,
+        cache_path=None,
+        **kwargs,
+    ):
         # we want a behaviour where the cache parameters are initialized to certain defauls
         # if they are not provided, but where the initialization operation based on copying
         # the tree leaves the cache parameters intact if the input tree is a subclass
@@ -569,7 +622,7 @@ class CachedSOVTree(SOVTree, CachedTree):
             cache_path=cache_path,
         )
 
-    def set_sov_in_tree(self, maxspace_freq=100., pprint=False):
+    def set_sov_in_tree(self, maxspace_freq=100.0, pprint=False):
         """
         Calculate the timescales and spatial functions of the separation of
         variables approach, using the algorithm by (Major, 1993).
@@ -587,16 +640,21 @@ class CachedSOVTree(SOVTree, CachedTree):
             Verbose if ``True``.
         """
         if pprint:
-            print(f'>>> evaluating SOV expansion')
+            print(f">>> evaluating SOV expansion")
 
         self.maxspace_freq = maxspace_freq
 
         self.maybe_execute_funcs(
             pprint=pprint,
             funcs_args_kwargs=[
-                (self.set_comp_tree, [], {"eps": 1.}),
-                (self.calc_sov_equations, [], {
-                    "maxspace_freq": maxspace_freq,"pprint": pprint,
-                })
-            ]
+                (self.set_comp_tree, [], {"eps": 1.0}),
+                (
+                    self.calc_sov_equations,
+                    [],
+                    {
+                        "maxspace_freq": maxspace_freq,
+                        "pprint": pprint,
+                    },
+                ),
+            ],
         )

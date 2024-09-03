@@ -39,19 +39,21 @@ def computational_tree_decorator(fun):
             If this function is called and no computational tree has been
             defined
     """
+
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
         if self._computational_root is None:
             raise AttributeError(
-                'No computational tree has been defined, ' \
-                'and this function requires one. Use ' \
-                '`MorphTree.set_comp_tree()` or its ' \
-                'overwritten version in one of the derived' \
-                'classes'
+                "No computational tree has been defined, "
+                "and this function requires one. Use "
+                "`MorphTree.set_comp_tree()` or its "
+                "overwritten version in one of the derived"
+                "classes"
             )
         with self.as_computational_tree:
             res = fun(self, *args, **kwargs)
         return res
+
     wrapped.__doc__ = fun.__doc__
     return wrapped
 
@@ -61,11 +63,13 @@ def original_tree_decorator(fun):
     Decorator that provides the safety that active tree is the
     original one inside the functions it decorates.
     """
+
     # wrapper to access self
     def wrapped(self, *args, **kwargs):
         with self.as_original_tree:
             res = fun(self, *args, **kwargs)
         return res
+
     wrapped.__doc__ = fun.__doc__
     return wrapped
 
@@ -107,17 +111,17 @@ class MorphLoc(object):
 
         if isinstance(loc, tuple):
             x = float(loc[1])
-            if x > 1. or x < 0.:
-                raise ValueError('x-value should be in [0,1]')
+            if x > 1.0 or x < 0.0:
+                raise ValueError("x-value should be in [0,1]")
             if set_as_comploc:
-                self.comp_loc = {'node': int(loc[0]), 'x': x}
+                self.comp_loc = {"node": int(loc[0]), "x": x}
                 self._set_original_loc()
             else:
-                self.loc = {'node': int(loc[0]), 'x': x}
+                self.loc = {"node": int(loc[0]), "x": x}
         elif isinstance(loc, dict):
-            x = float(loc['x'])
-            if x > 1. or x < 0.:
-                raise ValueError('x-value should be in [0,1]')
+            x = float(loc["x"])
+            if x > 1.0 or x < 0.0:
+                raise ValueError("x-value should be in [0,1]")
             if set_as_comploc:
                 self.comp_loc = loc
                 self._set_original_loc()
@@ -127,11 +131,11 @@ class MorphLoc(object):
             self.loc = loc.loc
             self.reftree = reftree
         else:
-            raise TypeError('Not a valid location type, should be tuple or dict')
+            raise TypeError("Not a valid location type, should be tuple or dict")
 
     def __getitem__(self, key):
-        if isinstance(key, int) and key in (0,1):
-            key = 'node' if key == 0 else 'x'
+        if isinstance(key, int) and key in (0, 1):
+            key = "node" if key == 0 else "x"
         if isinstance(key, str):
             if self.reftree.check_computational_tree_active():
                 try:
@@ -144,40 +148,42 @@ class MorphLoc(object):
 
     def __eq__(self, other_loc):
         loc1 = self.loc
-        loc2 = MorphLoc(other_loc, self.reftree,
-            set_as_comploc=self.reftree.check_computational_tree_active()
+        loc2 = MorphLoc(
+            other_loc,
+            self.reftree,
+            set_as_comploc=self.reftree.check_computational_tree_active(),
         )
 
         # covering all posible combinations
-        if loc1['node'] != 1:
-            if loc2['node'] != 1:
-                if (loc1['x'] < 1e-8) and ((1. - loc2['x']) < 1e-8):
-                    node = self.reftree[loc2['node']]
-                    parent = self.reftree[loc1['node']].parent_node
-                    result = (node.index == parent.index)
+        if loc1["node"] != 1:
+            if loc2["node"] != 1:
+                if (loc1["x"] < 1e-8) and ((1.0 - loc2["x"]) < 1e-8):
+                    node = self.reftree[loc2["node"]]
+                    parent = self.reftree[loc1["node"]].parent_node
+                    result = node.index == parent.index
 
-                elif (loc2['x'] < 1e-8) and ((1. - loc1['x']) < 1e-8):
-                    node = self.reftree[loc1['node']]
-                    parent = self.reftree[loc2['node']].parent_node
-                    result = (node.index == parent.index)
+                elif (loc2["x"] < 1e-8) and ((1.0 - loc1["x"]) < 1e-8):
+                    node = self.reftree[loc1["node"]]
+                    parent = self.reftree[loc2["node"]].parent_node
+                    result = node.index == parent.index
 
                 else:
-                    result = (loc1['node'] == loc2['node'])
-                    result *= np.allclose(loc1['x'], loc2['x'])
+                    result = loc1["node"] == loc2["node"]
+                    result *= np.allclose(loc1["x"], loc2["x"])
 
             else:
-                if loc1['x'] < 1e-8:
-                    node = self.reftree[loc1['node']]
-                    result = (node.parent_node.index == 1)
+                if loc1["x"] < 1e-8:
+                    node = self.reftree[loc1["node"]]
+                    result = node.parent_node.index == 1
 
                 else:
                     result = False
 
         else:
-            if loc2['node'] != 1:
-                if loc2['x'] < 1e-8:
-                    node = self.reftree[loc2['node']]
-                    result = (node.parent_node.index == 1)
+            if loc2["node"] != 1:
+                if loc2["x"] < 1e-8:
+                    node = self.reftree[loc2["node"]]
+                    result = node.parent_node.index == 1
 
                 else:
                     result = False
@@ -187,13 +193,12 @@ class MorphLoc(object):
 
         return result
 
-
     def keys(self):
-        return ['node', 'x']
+        return ["node", "x"]
 
     def __iter__(self):
-        yield self['node']
-        yield self['x']
+        yield self["node"]
+        yield self["x"]
 
     def __neq__(self, other_loc):
         result = self.__eq__(other_loc)
@@ -209,56 +214,61 @@ class MorphLoc(object):
         original tree
         """
         new_loc = type(self)(copy.deepcopy(self.loc), self.reftree)
-        if hasattr(self, 'comp_loc'):
-            new_loc.__dict__.update({'comp_loc': copy.deepcopy(self.comp_loc)})
+        if hasattr(self, "comp_loc"):
+            new_loc.__dict__.update({"comp_loc": copy.deepcopy(self.comp_loc)})
         return new_loc
 
     def __str__(self):
-        return '{\'node\': %d, \'x\': %.2f }'%(self.loc['node'], self.loc['x'])
+        return "{'node': %d, 'x': %.2f }" % (self.loc["node"], self.loc["x"])
 
     def __repr__(self):
         return str(self)
 
     def _set_computational_loc(self):
-        if self.loc['node'] != 1:
+        if self.loc["node"] != 1:
             with self.reftree.as_original_tree:
-                node = self.reftree[self.loc['node']]
+                node = self.reftree[self.loc["node"]]
                 # find the computational nodes that are resp. up and down from the node
                 node_start = self.reftree._find_comp_node_to_root(node.parent_node)
-                node_stop  = self.reftree._find_comp_node_from_root(node)
+                node_stop = self.reftree._find_comp_node_from_root(node)
                 # length between loc and parent computational node to compute segment
                 # length
-                L = self.reftree.path_length({'node': node_start.index, 'x': 1.},
-                                            self.loc)
+                L = self.reftree.path_length(
+                    {"node": node_start.index, "x": 1.0}, self.loc
+                )
             # get the computational nodes' length
             with self.reftree.as_computational_tree:
                 L_cn = self.reftree[node_stop.index].L
             # set the computational loc
-            self.comp_loc = {'node': node_stop.index, 'x': L/L_cn}
+            self.comp_loc = {"node": node_stop.index, "x": L / L_cn}
         else:
             self.comp_loc = copy.deepcopy(self.loc)
 
     def _set_original_loc(self):
-        if self.comp_loc['node'] != 1:
+        if self.comp_loc["node"] != 1:
             with self.reftree.as_computational_tree:
-                compnode = self.reftree[self.comp_loc['node']]
+                compnode = self.reftree[self.comp_loc["node"]]
             with self.reftree.as_original_tree:
-                node = self.reftree[self.comp_loc['node']]
+                node = self.reftree[self.comp_loc["node"]]
                 # find the computational node that is down from the original node
                 pcnode = self.reftree._find_comp_node_to_root(node.parent_node)
                 # find the node index and x-coordinate of the original location
                 path = self.reftree.path_between_nodes(pcnode, node)
-                L0 = 0. ; found = False
+                L0 = 0.0
+                found = False
                 for pathnode in path[1:]:
                     L1 = L0 + pathnode.L
-                    Lloc = self.comp_loc['x']*compnode.L
-                    if Lloc == 0.: Lloc += 1e-7
+                    Lloc = self.comp_loc["x"] * compnode.L
+                    if Lloc == 0.0:
+                        Lloc += 1e-7
                     if Lloc > L0 and Lloc <= L1:
-                        self.loc = {'node': pathnode.index,
-                                    'x': (Lloc-L0-1e-8) / pathnode.L}
+                        self.loc = {
+                            "node": pathnode.index,
+                            "x": (Lloc - L0 - 1e-8) / pathnode.L,
+                        }
                     L0 = L1
-                if self.loc['x'] > 1. or self.loc['x'] < 0.:
-                    raise ValueError('x-value should be in [0,1]')
+                if self.loc["x"] > 1.0 or self.loc["x"] < 0.0:
+                    raise ValueError("x-value should be in [0,1]")
         else:
             self.loc = copy.deepcopy(self.comp_loc)
 
@@ -281,15 +291,16 @@ class MorphNode(SNode):
         L: float
             The length of the node (um)
     """
+
     def __init__(self, index, p3d=None):
         super().__init__(index)
         if p3d != None:
             self.set_p3d(*p3d)
         else:
             # bogus values, to overwrite
-            self.set_p3d(np.array([0.,0.,0.]), 1., 1)
-            self.L = 1.
-            self.R = 1.
+            self.set_p3d(np.array([0.0, 0.0, 0.0]), 1.0, 1)
+            self.L = 1.0
+            self.R = 1.0
 
     def set_p3d(self, xyz, R, swc_type):
         """
@@ -333,7 +344,7 @@ class MorphNode(SNode):
         """
         self.R = R
 
-    def get_child_nodes(self, skip_inds=(2,3)):
+    def get_child_nodes(self, skip_inds=(2, 3)):
         """
         Get the `child_nodes` of this node. Indices ``2`` and ``3`` are skipped
         by default (3-point soma convention)
@@ -348,8 +359,7 @@ class MorphNode(SNode):
         list of `neat.MorphNode`
             The child nodes
         """
-        return [cnode for cnode in self._child_nodes \
-                      if cnode.index not in skip_inds]
+        return [cnode for cnode in self._child_nodes if cnode.index not in skip_inds]
 
     def set_child_nodes(self, cnodes):
         return super().set_child_nodes(cnodes)
@@ -358,17 +368,21 @@ class MorphNode(SNode):
 
     def __str__(self, **kwargs):
         node_str = super().__str__(**kwargs)
-        node_str += f" --- xyz = [{self.xyz[0]:.3f}, {self.xyz[1]:.3f}, {self.xyz[2]:.3f}] um, " \
+        node_str += (
+            f" --- xyz = [{self.xyz[0]:.3f}, {self.xyz[1]:.3f}, {self.xyz[2]:.3f}] um, "
             f"R = {self.R:.2f} um, swc_type = {self.swc_type}"
+        )
         return node_str
 
     def _get_repr_dict(self):
         repr_dict = super()._get_repr_dict()
-        repr_dict.update({
-            'xyz': self.xyz,
-            'R': f"{self.R:1.6g}",
-            'swc_type': self.swc_type,
-        })
+        repr_dict.update(
+            {
+                "xyz": self.xyz,
+                "R": f"{self.R:1.6g}",
+                "swc_type": self.swc_type,
+            }
+        )
         return repr_dict
 
     def __repr__(self):
@@ -385,11 +399,11 @@ class MorphTree(STree):
     indices 2 and 3 do not represent anything and are skipped in iterations and
     getters.
 
-    The `MorphTree` can also store a simplified version of the original tree, 
-    where only nodes are retained that should hold computational parameters, 
-    i.e. the root, the bifurcation nodes and the leafs at least, although the 
-    user can also specify additional nodes. By default, the active tree is the 
-    original one, where nodes correspond to the underlying '.swc' file. Trough the 
+    The `MorphTree` can also store a simplified version of the original tree,
+    where only nodes are retained that should hold computational parameters,
+    i.e. the root, the bifurcation nodes and the leafs at least, although the
+    user can also specify additional nodes. By default, the active tree is the
+    original one, where nodes correspond to the underlying '.swc' file. Trough the
     `MorphTree.as_computational_tree` context, the computational tree can be
     accessed.
 
@@ -403,7 +417,7 @@ class MorphTree(STree):
     Parameters
     ----------
     arg: `str` (optional), `neat.MorphNode` or subclass, or `neat.MorphTree` or subclass, or ``None``
-        - If `str`, represents the file path of the morphology file. 
+        - If `str`, represents the file path of the morphology file.
         Assumed to follow the '.swc' format.
         - If `neat.MorphNode` or derived class, initializes a the tree with the
         provided node as root.
@@ -432,19 +446,22 @@ class MorphTree(STree):
             distances to nearest bifurcation in the direction of the soma
             of locations. Initialized as empty dict.
     """
-    def __init__(self, arg=None, types=[1,3,4]):
+
+    def __init__(self, arg=None, types=[1, 3, 4]):
         # we initialize two root nodes, one for the original tree mimicking the
         # .swc file, and one for the coarse grained tree for computational efficiency
         self._computational_root = None
         self._original_root = None
         # to store sets of locations on the morphology
         self.locs = {}
-        self._nids_orig = {}; self._nids_comp = {}
-        self._xs_orig = {}; self._xs_comp = {}
+        self._nids_orig = {}
+        self._nids_comp = {}
+        self._xs_orig = {}
+        self._xs_comp = {}
         self.d2s = {}
         self.d2b = {}
         self.leafinds = {}
-        
+
         # instantiate the tree structure
         try:
             swc_file_path = pathlib.Path(arg)
@@ -452,7 +469,7 @@ class MorphTree(STree):
         except TypeError:
             super().__init__(arg)
             # STree will always initialize `self._root`, independent of whether the
-            # input argument is a node or a tree. 
+            # input argument is a node or a tree.
             # When the input argument is a node, it will *only* initialize `self._root`.
             # When the input argument is a tree, it will call `self.__copy__`, which
             # ensures that both the `self._original_root`` and `self._computational_root``
@@ -462,7 +479,7 @@ class MorphTree(STree):
             if not self.check_computational_tree_active():
                 self._original_root = self._root
 
-    def __getitem__(self, index, skip_inds=(2,3)):
+    def __getitem__(self, index, skip_inds=(2, 3)):
         """
         Returns the node with given index, if no such node is in the tree, None
         is returned.
@@ -477,7 +494,7 @@ class MorphTree(STree):
         """
         return self._find_node(self.root, index, skip_inds=skip_inds)
 
-    def _find_node(self, node, index, skip_inds=(2,3)):
+    def _find_node(self, node, index, skip_inds=(2, 3)):
         """
         Breadth-first/stack iteration to replace the recursive call.
         Traverses the tree until it finds the node you are looking for.
@@ -494,7 +511,7 @@ class MorphTree(STree):
         -------
             :class:`SNode`
         """
-        stack = [];
+        stack = []
         stack.append(node)
         while len(stack) != 0:
             for cnode in stack:
@@ -503,9 +520,9 @@ class MorphTree(STree):
                 else:
                     stack.remove(cnode)
                     stack.extend(cnode.get_child_nodes(skip_inds=skip_inds))
-        return None # Not found!
+        return None  # Not found!
 
-    def __iter__(self, node=None, skip_inds=(2,3)):
+    def __iter__(self, node=None, skip_inds=(2, 3)):
         """
         Overloaded iterator from parent class that avoids iterating over the
         nodes with index 2 and 3
@@ -527,19 +544,21 @@ class MorphTree(STree):
         if node is None:
             node = self.root
         if node is not None:
-            if node.index not in skip_inds: yield node
+            if node.index not in skip_inds:
+                yield node
             for cnode in node.get_child_nodes(skip_inds=skip_inds):
                 for inode in self.__iter__(cnode, skip_inds=skip_inds):
-                    if node.index not in skip_inds: yield inode
+                    if node.index not in skip_inds:
+                        yield inode
 
     def reset_indices(self):
         """
         Resets the indices in the order they appear in a depth-first iteration
         """
         for ind, node in enumerate(self):
-            node.index = ind+1
+            node.index = ind + 1
 
-    def get_nodes(self, skip_inds=(2,3)):
+    def get_nodes(self, skip_inds=(2, 3)):
         """
         Overloads the parent function to allow skipping nodes with certain
         indices and to return the nodes associated with the corresponding
@@ -557,20 +576,18 @@ class MorphTree(STree):
             list of `neat.MorphNode`
         """
         nodes = []
-        self._gather_nodes(self.root, nodes,
-            skip_inds=skip_inds
-        )
+        self._gather_nodes(self.root, nodes, skip_inds=skip_inds)
         return nodes
 
     def set_nodes(self, illegal):
         raise AttributeError(
-            "`nodes` is a read-only attribute. " \
+            "`nodes` is a read-only attribute. "
             "Add nodes to the tree with `tree.add_node_with_parent(node)`"
         )
 
     nodes = property(get_nodes, set_nodes)
 
-    def _gather_nodes(self, node, node_list=[], skip_inds=(2,3)):
+    def _gather_nodes(self, node, node_list=[], skip_inds=(2, 3)):
         """
         Overloaded gathering function that avoids appending nodes with index 2
         or 3 to the list.
@@ -580,7 +597,8 @@ class MorphTree(STree):
             node: `neat.MorphNode`
             node_list: list of `neat.MorphNode`
         """
-        if node.index not in skip_inds: node_list.append(node)
+        if node.index not in skip_inds:
+            node_list.append(node)
         for cnode in node.get_child_nodes(skip_inds=skip_inds):
             self._gather_nodes(cnode, node_list=node_list, skip_inds=skip_inds)
 
@@ -632,16 +650,18 @@ class MorphTree(STree):
     def _check_computational_root(self):
         if self._computational_root is None:
             raise AttributeError(
-                'No computational tree has been defined. Use ' \
-                '`MorphTree.set_comp_tree()` or its overwritten ' \
-                'version in one of the derived classes'
+                "No computational tree has been defined. Use "
+                "`MorphTree.set_comp_tree()` or its overwritten "
+                "version in one of the derived classes"
             )
 
-    def set_default_tree(self, default: Literal['original', 'computational'] = 'original'):
+    def set_default_tree(
+        self, default: Literal["original", "computational"] = "original"
+    ):
         """
         Set either the 'original' or 'computatianal' tree as the default one.
         Note that this function should be used outside
-        `as_computational_tree()` and `as_original_tree()` context managers, 
+        `as_computational_tree()` and `as_original_tree()` context managers,
         otherwise the default will not be stored.
 
         Parameters
@@ -654,9 +674,9 @@ class MorphTree(STree):
         ValueError
             For incorrect argument
         """
-        if default == 'original':
+        if default == "original":
             self.root = self._original_root
-        elif default == 'computational':
+        elif default == "computational":
             self._check_computational_root()
             self.root = self._computational_root
         else:
@@ -669,14 +689,20 @@ class MorphTree(STree):
         Context manager that ensures the computational tree is active
         """
         self._check_computational_root()
-        treetype = 'computational' if self.check_computational_tree_active() else 'original'
+        treetype = (
+            "computational" if self.check_computational_tree_active() else "original"
+        )
         self.root = self._computational_root
         try:
             yield self
         except Exception as e:
             raise
         finally:
-            self.root = self._computational_root if treetype == 'computational' else self._original_root
+            self.root = (
+                self._computational_root
+                if treetype == "computational"
+                else self._original_root
+            )
 
     @property
     @contextmanager
@@ -684,14 +710,20 @@ class MorphTree(STree):
         """
         Context manager that ensures the original tree is active
         """
-        treetype = 'computational' if self.check_computational_tree_active() else 'original'
+        treetype = (
+            "computational" if self.check_computational_tree_active() else "original"
+        )
         self.root = self._original_root
         try:
             yield self
         except Exception as e:
             raise
         finally:
-            self.root = self._computational_root if treetype == 'computational' else self._original_root
+            self.root = (
+                self._computational_root
+                if treetype == "computational"
+                else self._original_root
+            )
 
     def check_computational_tree_active(self):
         """
@@ -702,7 +734,10 @@ class MorphTree(STree):
         `bool`:
             ``True`` if the computational tree is active
         """
-        return self.root is self._computational_root and self._computational_root is not None
+        return (
+            self.root is self._computational_root
+            and self._computational_root is not None
+        )
 
     def create_corresponding_node(self, node_index, p3d=None):
         """
@@ -715,7 +750,7 @@ class MorphTree(STree):
         """
         return MorphNode(node_index, p3d=p3d)
 
-    def read_swc_tree_from_file(self, file_n, types=[1,3,4]):
+    def read_swc_tree_from_file(self, file_n, types=[1, 3, 4]):
         """
         Non-specific for a "tree data structure"
         Read and load a morphology from an SWC file and parse it into
@@ -791,10 +826,10 @@ class MorphTree(STree):
         # check soma-representation: 3-point soma or a non-standard representation
         soma_type = self.determine_soma_type(file_n)
 
-        file = open(file_n,'r')
+        file = open(file_n, "r")
         all_nodes = dict()
-        for line in file :
-            if not line.startswith('#') :
+        for line in file:
+            if not line.startswith("#"):
                 split = line.split()
                 index = int(split[0].rstrip())
                 swc_type = int(split[1].rstrip())
@@ -805,17 +840,19 @@ class MorphTree(STree):
                 parent_index = int(split[6].rstrip())
                 # create the nodes
                 if swc_type in types:
-                    p3d = (np.array([x,y,z]), radius, swc_type)
+                    p3d = (np.array([x, y, z]), radius, swc_type)
                     node = self.create_corresponding_node(index, p3d)
                     all_nodes[index] = (swc_type, node, parent_index)
 
         # check if node with index 1 is soma node (swc_type == 1)
         if all_nodes[1][0] != 1:
-            raise ValueError('Node with index 1 should be soma-type, i.e. swc_type == 1')
+            raise ValueError(
+                "Node with index 1 should be soma-type, i.e. swc_type == 1"
+            )
 
         # one point soma representation
         if soma_type == 0:
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in list(all_nodes.items()):
                 if index == 1:
                     self.root = node
                 else:
@@ -844,10 +881,10 @@ class MorphTree(STree):
 
         # three point soma representation
         if soma_type == 1:
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in list(all_nodes.items()):
                 if index == 1:
                     self.root = node
-                elif index in (2,3):
+                elif index in (2, 3):
                     # the 3-point soma representation
                     # (https://neuromorpho.org/SomaFormat.html)
                     somanode = all_nodes[1][1]
@@ -857,14 +894,21 @@ class MorphTree(STree):
                     self.add_node_with_parent(node, parent_node)
 
             # check if soma follows three point convention
-            radius_arr = np.array([all_nodes[1][1].R,
-                                   all_nodes[2][1].R,
-                                   all_nodes[3][1].R,
-                                   np.linalg.norm(all_nodes[2][1].xyz - all_nodes[1][1].xyz),
-                                   np.linalg.norm(all_nodes[3][1].xyz - all_nodes[1][1].xyz)])
-            if not np.allclose(np.abs(radius_arr - radius_arr[0]),
-                               np.zeros_like(radius_arr), atol=2e-2):
-                raise ValueError('Soma radii not consistent with three-point convention')
+            radius_arr = np.array(
+                [
+                    all_nodes[1][1].R,
+                    all_nodes[2][1].R,
+                    all_nodes[3][1].R,
+                    np.linalg.norm(all_nodes[2][1].xyz - all_nodes[1][1].xyz),
+                    np.linalg.norm(all_nodes[3][1].xyz - all_nodes[1][1].xyz),
+                ]
+            )
+            if not np.allclose(
+                np.abs(radius_arr - radius_arr[0]), np.zeros_like(radius_arr), atol=2e-2
+            ):
+                raise ValueError(
+                    "Soma radii not consistent with three-point convention"
+                )
 
         # IF multiple cylinder soma representation
         elif soma_type == 2:
@@ -873,15 +917,16 @@ class MorphTree(STree):
             # get all soma info
             soma_cylinders = []
             connected_to_root = []
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in list(all_nodes.items()):
                 if swc_type == 1 and not index == 1:
                     soma_cylinders.append((node, parent_index))
-                    if index > 1 :
+                    if index > 1:
                         connected_to_root.append(index)
 
             # make soma
-            s_node_2, s_node_3 = \
-                    self._make_soma_from_cylinders(soma_cylinders, all_nodes)
+            s_node_2, s_node_3 = self._make_soma_from_cylinders(
+                soma_cylinders, all_nodes
+            )
 
             # add soma
             self.root.R = s_node_2.R
@@ -889,7 +934,7 @@ class MorphTree(STree):
             self.add_node_with_parent(s_node_3, self.root)
 
             # add the other points
-            for index, (swc_type, node, parent_index) in list(all_nodes.items()) :
+            for index, (swc_type, node, parent_index) in list(all_nodes.items()):
                 if swc_type == 1:
                     pass
                 else:
@@ -902,12 +947,12 @@ class MorphTree(STree):
         # set the lengths of the nodes
         for node in self:
             if node.parent_node != None:
-                L = np.sqrt(np.sum((node.parent_node.xyz - node.xyz)**2))
+                L = np.sqrt(np.sum((node.parent_node.xyz - node.xyz) ** 2))
                 # if the length is zero we can just delete it
                 if L == 0:
                     self.remove_single_node(node)
             else:
-                L = 0.
+                L = 0.0
             node.set_length(L)
 
         # store the created root as the root of the original tree
@@ -923,14 +968,14 @@ class MorphTree(STree):
         """
         total_surf = 0
         xyz_sum = self.root.xyz
-        for (node, parent_index) in soma_cylinders:
+        for node, parent_index in soma_cylinders:
 
             parent = all_nodes[parent_index][1]
 
             nxyz = node.xyz
             pxyz = parent.xyz
 
-            H = np.sqrt(np.sum( (nxyz - pxyz)**2 ))
+            H = np.sqrt(np.sum((nxyz - pxyz) ** 2))
 
             surf = 2 * np.pi * parent.R * H
             total_surf += surf
@@ -938,8 +983,8 @@ class MorphTree(STree):
             xyz_sum += node.xyz
 
         # define apropriate radius
-        radius = np.sqrt(total_surf / (4.*np.pi))
-        rp = xyz_sum / (len(soma_cylinders)+1.)
+        radius = np.sqrt(total_surf / (4.0 * np.pi))
+        rp = xyz_sum / (len(soma_cylinders) + 1.0)
         rp2 = np.array([rp[0], rp[1] - radius, rp[2]])
         rp3 = np.array([rp[0], rp[1] + radius, rp[2]])
 
@@ -979,22 +1024,24 @@ class MorphTree(STree):
         ValueError
             If soma type is not supported (less than three nodes have soma)
         """
-        file = open(file_n, 'r')
+        file = open(file_n, "r")
         somas = 0
         for line in file:
-            if not line.startswith('#') :
+            if not line.startswith("#"):
                 split = line.split()
                 index = int(split[0].rstrip())
                 s_type = int(split[1].rstrip())
-                if s_type == 1 :
-                    somas = somas +1
+                if s_type == 1:
+                    somas = somas + 1
         file.close()
         if somas == 1:
             return 0
         if somas == 3:
             return 1
         elif somas < 3:
-            raise ValueError('Soma description not supported, use 3-point or multi-cylinder description')
+            raise ValueError(
+                "Soma description not supported, use 3-point or multi-cylinder description"
+            )
         else:
             return 2
 
@@ -1044,7 +1091,9 @@ class MorphTree(STree):
         self.remove_comp_tree()
         if compnodes is None:
             compnodes = []
-        compnodes += [node for node in self if self._evaluate_comp_criteria(node, eps=eps)]
+        compnodes += [
+            node for node in self if self._evaluate_comp_criteria(node, eps=eps)
+        ]
         compnode_indices = [node.index for node in compnodes]
         nodes = copy.deepcopy(self.nodes)
 
@@ -1054,9 +1103,11 @@ class MorphTree(STree):
             elif node.parent_node != None:
                 orig_node = self[node.index]
                 orig_bnode = node.parent_node
-                L, R = self.path_length({'node': orig_bnode.index, 'x': 1.},
-                                        {'node': orig_node.index, 'x': 1.},
-                                        compute_radius=1)
+                L, R = self.path_length(
+                    {"node": orig_bnode.index, "x": 1.0},
+                    {"node": orig_node.index, "x": 1.0},
+                    compute_radius=1,
+                )
                 node.set_length(L)
                 node.set_radius(R)
                 node.used_in_comp_tree = True
@@ -1066,8 +1117,7 @@ class MorphTree(STree):
                 node.used_in_comp_tree = True
                 orig_node.used_in_comp_tree = True
 
-        self._computational_root = \
-                    next(node for node in nodes if node.index == 1)
+        self._computational_root = next(node for node in nodes if node.index == 1)
         self._leafs_comp = [node for node in nodes if self.is_leaf(node)]
         self._nodes_comp = []
         self._gather_nodes(self._computational_root, self._nodes_comp)
@@ -1153,7 +1203,7 @@ class MorphTree(STree):
             self._try_name(loc_arg)
             locs = self.get_locs(loc_arg)
         else:
-            raise IOError('`loc_arg` should be list of locs or string')
+            raise IOError("`loc_arg` should be list of locs or string")
         return locs
 
     def convert_node_arg_to_nodes(self, node_arg):
@@ -1218,37 +1268,37 @@ class MorphTree(STree):
             else:
                 if not isinstance(node_arg, str):
                     for entry in node_arg:
-                        if entry not in ['apical', 'basal', 'axonal', 'somatic']:
+                        if entry not in ["apical", "basal", "axonal", "somatic"]:
                             raise IOError(
-                                'input should be (i) `None`, (ii) an instance of '
-                                '`neat.MorphNode`, (iii) one of the following 4 strings '
-                                '\'somatic\', \'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
-                                'collection of instances of :class:MorphNode'
+                                "input should be (i) `None`, (ii) an instance of "
+                                "`neat.MorphNode`, (iii) one of the following 4 strings "
+                                "'somatic', 'apical', 'basal' or 'axonal' or (iv) an iterable "
+                                "collection of instances of :class:MorphNode"
                             )
                 else:
-                    if node_arg not in ['apical', 'basal', 'axonal', 'somatic']:
+                    if node_arg not in ["apical", "basal", "axonal", "somatic"]:
                         raise IOError(
-                                    'input should be (i) `None`, (ii) an instance of '
-                                    '`neat.MorphNode`, (iii) one of the following 3 strings '
-                                    '\'somatic\', \'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
-                                    'collection of instances of :class:MorphNode'
-                                )
+                            "input should be (i) `None`, (ii) an instance of "
+                            "`neat.MorphNode`, (iii) one of the following 3 strings "
+                            "'somatic', 'apical', 'basal' or 'axonal' or (iv) an iterable "
+                            "collection of instances of :class:MorphNode"
+                        )
 
-                if 'apical' in node_arg:
+                if "apical" in node_arg:
                     nodes.extend(self.get_nodes_in_apical_subtree())
-                if 'basal' in node_arg:
+                if "basal" in node_arg:
                     nodes.extend(self.get_nodes_in_basal_subtree())
-                if 'axonal' in node_arg:
+                if "axonal" in node_arg:
                     nodes.extend(self.get_nodes_in_axonal_subtree())
-                if 'somatic' in node_arg:
+                if "somatic" in node_arg:
                     nodes.extend([self[1]])
 
         else:
             raise IOError(
-                'input should be (i) `None`, (ii) an instance of '
-                '`neat.MorphNode`, (iii) one of the following 3 strings '
-                '\'apical\', \'basal\' or \'axonal\' or (iv) an iterable '
-                'collection of instances of :class:MorphNode'
+                "input should be (i) `None`, (ii) an instance of "
+                "`neat.MorphNode`, (iii) one of the following 3 strings "
+                "'apical', 'basal' or 'axonal' or (iv) an iterable "
+                "collection of instances of :class:MorphNode"
             )
 
         return nodes
@@ -1280,50 +1330,51 @@ class MorphTree(STree):
         if type(loc2) == dict or type(loc2) == tuple:
             loc2 = MorphLoc(loc2, self)
         # start path length calculation
-        if loc1['node'] == loc2['node']:
-            node = self[loc1['node']]
+        if loc1["node"] == loc2["node"]:
+            node = self[loc1["node"]]
             if node.index == 1:
-                L = 0. # soma is spherical and has no lenght
+                L = 0.0  # soma is spherical and has no lenght
             else:
-                L = node.L * np.abs(loc1['x'] - loc2['x'])
+                L = node.L * np.abs(loc1["x"] - loc2["x"])
             if compute_radius:
                 R = node.R
         else:
-            node1 = self[loc1['node']]
-            node2 = self[loc2['node']]
+            node1 = self[loc1["node"]]
+            node2 = self[loc2["node"]]
             path1 = self.path_to_root(node1)[::-1]
             path2 = self.path_to_root(node2)[::-1]
             path = path1 if len(path1) < len(path2) else path2
-            ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
-                       len(path))
-            if path1[ind-1] == node1:
-                L  = node1.L * (1. - loc1['x'])
+            ind = next(
+                (ii for ii in range(len(path)) if path1[ii] != path2[ii]), len(path)
+            )
+            if path1[ind - 1] == node1:
+                L = node1.L * (1.0 - loc1["x"])
                 L += sum(node.L for node in path2[ind:-1])
-                L += node2.L * loc2['x']
+                L += node2.L * loc2["x"]
                 if compute_radius:
-                    R  = node1.R * node1.L * (1. - loc1['x'])
+                    R = node1.R * node1.L * (1.0 - loc1["x"])
                     R += sum(node.R * node.L for node in path2[ind:-1])
-                    R += node2.R * node2.L * loc2['x']
+                    R += node2.R * node2.L * loc2["x"]
                     R /= L
-            elif path2[ind-1] == node2:
-                L  = node1.L * loc1['x']
+            elif path2[ind - 1] == node2:
+                L = node1.L * loc1["x"]
                 L += sum(node.L for node in path1[ind:-1])
-                L += node2.L * (1. - loc2['x'])
+                L += node2.L * (1.0 - loc2["x"])
                 if compute_radius:
-                    R  = node1.R * node1.L * loc1['x']
+                    R = node1.R * node1.L * loc1["x"]
                     R += sum(node.R * node.L for node in path2[ind:-1])
-                    R += node2.R * node2.L * (1. - loc2['x'])
+                    R += node2.R * node2.L * (1.0 - loc2["x"])
                     R /= L
             else:
-                L  = node1.L * loc1['x']
+                L = node1.L * loc1["x"]
                 L += sum(node.L for node in path1[ind:-1])
                 L += sum(node.L for node in path2[ind:-1])
-                L += node2.L * loc2['x']
+                L += node2.L * loc2["x"]
                 if compute_radius:
-                    R  = node1.R * node1.L * loc1['x']
+                    R = node1.R * node1.L * loc1["x"]
                     R += sum(node.R * node.L for node in path1[ind:-1])
                     R += sum(node.R * node.L for node in path2[ind:-1])
-                    R += node2.R * node2.L * loc2['x']
+                    R += node2.R * node2.L * loc2["x"]
                     R /= L
         if compute_radius:
             return L, R
@@ -1350,23 +1401,27 @@ class MorphTree(STree):
         n1 = 0
         for loc in locs:
             locs_.append(MorphLoc(loc, self))
-            if locs_[-1]['node'] == 1: n1 += 1
+            if locs_[-1]["node"] == 1:
+                n1 += 1
         if n1 > 1 and warn:
-            warnings.warn('There are multiple locations on the soma in this set ' + \
-                          'locations, this can cause issues in certain functions', UserWarning)
+            warnings.warn(
+                "There are multiple locations on the soma in this set "
+                + "locations, this can cause issues in certain functions",
+                UserWarning,
+            )
 
         self.remove_locs(name)
 
         self.locs[name] = locs_
-        self._nids_orig[name] = np.array([loc['node'] for loc in locs_])
-        self._xs_orig[name] = np.array([loc['x'] for loc in locs_])
+        self._nids_orig[name] = np.array([loc["node"] for loc in locs_])
+        self._xs_orig[name] = np.array([loc["x"] for loc in locs_])
         if self._computational_root != None:
             self._store_comp_locs(name)
 
     @computational_tree_decorator
     def _store_comp_locs(self, name):
-        self._nids_comp[name] = np.array([loc['node'] for loc in self.locs[name]])
-        self._xs_comp[name] = np.array([loc['x'] for loc in self.locs[name]])
+        self._nids_comp[name] = np.array([loc["node"] for loc in self.locs[name]])
+        self._xs_comp[name] = np.array([loc["x"] for loc in self.locs[name]])
 
     def add_loc(self, loc, name):
         """
@@ -1381,23 +1436,25 @@ class MorphTree(STree):
         """
         loc = MorphLoc(loc, self)
         self.locs[name].append(loc)
-        self._nids_orig[name] = np.concatenate((self._nids_orig[name], [loc['node']]))
-        self._xs_orig[name] = np.concatenate((self._xs_orig[name], [loc['x']]))
+        self._nids_orig[name] = np.concatenate((self._nids_orig[name], [loc["node"]]))
+        self._xs_orig[name] = np.concatenate((self._xs_orig[name], [loc["x"]]))
         if self._computational_root != None:
             self._add_comp_loc(loc, name)
 
     @computational_tree_decorator
     def _add_comp_loc(self, loc, name):
-        self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc['node']]))
-        self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc['x']]))
+        self._nids_comp[name] = np.concatenate((self._nids_comp[name], [loc["node"]]))
+        self._xs_comp[name] = np.concatenate((self._xs_comp[name], [loc["x"]]))
 
     def clear_locs(self):
         """
         Remove all set of locs stored in the tree
         """
         self.locs = {}
-        self._nids_orig = {}; self._nids_comp = {}
-        self._xs_orig = {}; self._xs_comp = {}
+        self._nids_orig = {}
+        self._nids_comp = {}
+        self._xs_orig = {}
+        self._xs_comp = {}
         self.d2s = {}
         self.d2b = {}
         self.leafinds = {}
@@ -1417,17 +1474,21 @@ class MorphTree(STree):
             del self._nids_comp[name]
             del self._xs_orig[name]
             del self._xs_comp[name]
-        except KeyError: pass
-            # warnings.warn('Locations of name %s were not defined'%name)
+        except KeyError:
+            pass
+        # warnings.warn('Locations of name %s were not defined'%name)
         try:
             del self.d2s[name]
-        except KeyError: pass
+        except KeyError:
+            pass
         try:
             del self.d2b[name]
-        except KeyError: pass
+        except KeyError:
+            pass
         try:
             del self.leafinds[name]
-        except KeyError: pass
+        except KeyError:
+            pass
 
     def _try_name(self, name):
         """
@@ -1447,9 +1508,12 @@ class MorphTree(STree):
         try:
             self.locs[name]
         except KeyError as err:
-            err.args = ('\'' + err.args[0] \
-                             + '\' name not in use. Possible names are ' \
-                             + str(list(self.locs.keys())),)
+            err.args = (
+                "'"
+                + err.args[0]
+                + "' name not in use. Possible names are "
+                + str(list(self.locs.keys())),
+            )
             raise
 
     def get_locs(self, name):
@@ -1574,7 +1638,7 @@ class MorphTree(STree):
 
         return locinds
 
-    def get_loc_idxs_on_path(self, name, node0, node1, xstart=0., xstop=1.):
+    def get_loc_idxs_on_path(self, name, node0, node1, xstart=0.0, xstop=1.0):
         """
         Returns a list of the indices of locations in the list of a given name
         that are on the given path. The path is taken to start at the input
@@ -1628,7 +1692,7 @@ class MorphTree(STree):
                 ninds = np.array(self.get_loc_idxs_on_node(name, node)).astype(int)
                 if node.parent_node == None:
                     locinds.extend(ninds)
-                elif path[ii+2] == node.parent_node:
+                elif path[ii + 2] == node.parent_node:
                     # path goes towards root
                     sortinds = np.argsort(xs[ninds])
                     locinds.extend(ninds[sortinds[::-1]])
@@ -1638,7 +1702,7 @@ class MorphTree(STree):
                     locinds.extend(ninds[sortinds])
                 else:
                     # turning point (path only goes on this node at x=1)
-                    inds = np.where((1. - xs[ninds]) < 1e-4)[0]
+                    inds = np.where((1.0 - xs[ninds]) < 1e-4)[0]
                     if len(inds) > 0:
                         locinds.extend(ninds[inds])
             # last node in path
@@ -1647,7 +1711,7 @@ class MorphTree(STree):
             if node.parent_node == None:
                 locinds.extend(ninds)
             else:
-                if node.parent_node  == path[-2]:
+                if node.parent_node == path[-2]:
                     # path goes away from root
                     inds = np.where(xs[ninds] <= xstop)[0]
                     sortinds = np.argsort(xs[ninds][inds])
@@ -1663,16 +1727,22 @@ class MorphTree(STree):
                 locinds.extend(ninds)
             else:
                 if xstart < xstop:
-                    inds = np.where(np.logical_and(xs[ninds]>=xstart, xs[ninds]<=xstop))[0]
+                    inds = np.where(
+                        np.logical_and(xs[ninds] >= xstart, xs[ninds] <= xstop)
+                    )[0]
                     sortinds = np.argsort(xs[ninds][inds])
                 else:
-                    inds = np.where(np.logical_and(xs[ninds]>=xstop, xs[ninds]<=xstart))[0]
+                    inds = np.where(
+                        np.logical_and(xs[ninds] >= xstop, xs[ninds] <= xstart)
+                    )[0]
                     sortinds = np.argsort(xs[ninds][inds])[::-1]
                 locinds.extend(ninds[inds][sortinds])
 
         return locinds
 
-    def get_nearest_loc_idxs(self, locs, name, direction=0, check_siblings=True, pprint=False):
+    def get_nearest_loc_idxs(
+        self, locs, name, direction=0, check_siblings=True, pprint=False
+    ):
         """
         For each location in the input location list, find the index of the
         closest location in a set of locations stored under a given name. The
@@ -1705,10 +1775,13 @@ class MorphTree(STree):
         # look for the location indices
         loc_idxices = []
         for loc in locs:
-            loc_idx1 = None; loc_idx2 = None
+            loc_idx1 = None
+            loc_idx2 = None
             # find the location indices if necessary
             if direction == 0 or direction == 1:
-                loc_idx1 = self._find_locs_to_root(loc, name, check_siblings=check_siblings)
+                loc_idx1 = self._find_locs_to_root(
+                    loc, name, check_siblings=check_siblings
+                )
             if direction == 0 or direction == 2:
                 loc_idx2 = self._find_locs_from_root(loc, name)
             # save the index of the closest location, if it exists and
@@ -1729,12 +1802,12 @@ class MorphTree(STree):
     def _find_locs_from_root(self, loc, name):
         look_further = False
         # look if there are locs on the same node
-        n_inds = np.where(loc['node'] == self.nids[name])[0]
+        n_inds = np.where(loc["node"] == self.nids[name])[0]
         if len(n_inds) > 0:
-            if loc['node'] == 1:
+            if loc["node"] == 1:
                 loc_idx = n_inds[0]
             else:
-                x_inds = np.where(loc['x'] <= self.xs[name][n_inds])[0]
+                x_inds = np.where(loc["x"] <= self.xs[name][n_inds])[0]
                 if len(x_inds) != 0:
                     ind = np.argmin(self.xs[name][n_inds][x_inds])
                     loc_idx = n_inds[x_inds[ind]]
@@ -1745,24 +1818,28 @@ class MorphTree(STree):
         # if no locs on the same node, then proceed to child nodes
         # else, return the smallest location larger than loc
         if look_further:
-            node = self[loc['node']]
+            node = self[loc["node"]]
             cnodes = node.get_child_nodes()
             loc_idxs = []
             for cnode in cnodes:
-                cloc_idx = self._find_locs_from_root({'node': cnode.index, 'x': 0.}, name)
+                cloc_idx = self._find_locs_from_root(
+                    {"node": cnode.index, "x": 0.0}, name
+                )
                 if cloc_idx != None:
                     loc_idxs.append(cloc_idx)
             # get the one that is closest, if they exist
             pl_aux = 1e4
             ind_loc = 0
             for i, l_i in enumerate(loc_idxs):
-                pl = self.path_length({'node': loc['node'], 'x': 1.}, self.locs[name][l_i])
+                pl = self.path_length(
+                    {"node": loc["node"], "x": 1.0}, self.locs[name][l_i]
+                )
                 if pl < pl_aux:
                     pl_aux = pl
                     ind_loc = i
-            if pl_aux > 0. and len(loc_idxs) > 0:
+            if pl_aux > 0.0 and len(loc_idxs) > 0:
                 loc_idx = loc_idxs[ind_loc]
-            elif pl_aux == 0. and node.index == 1:
+            elif pl_aux == 0.0 and node.index == 1:
                 loc_idx = loc_idxs[ind_loc]
             else:
                 loc_idx = None
@@ -1771,12 +1848,12 @@ class MorphTree(STree):
     def _find_locs_to_root(self, loc, name, check_siblings=True):
         look_further = False
         # look if there are locs on the same node
-        n_inds = np.where(loc['node'] == self.nids[name] )[0]
+        n_inds = np.where(loc["node"] == self.nids[name])[0]
         if len(n_inds) > 0:
-            if loc['node'] == 1:
+            if loc["node"] == 1:
                 loc_idx = n_inds[0]
             else:
-                x_inds = np.where(loc['x'] >= self.xs[name][n_inds])[0]
+                x_inds = np.where(loc["x"] >= self.xs[name][n_inds])[0]
                 if len(x_inds) != 0:
                     ind = np.argmax(self.xs[name][n_inds][x_inds])
                     loc_idx = n_inds[x_inds[ind]]
@@ -1786,13 +1863,14 @@ class MorphTree(STree):
             look_further = True
         if look_further:
             # if no locs on the same node, then proceed to resp. parent and child nodes
-            node = self[loc['node']]
+            node = self[loc["node"]]
             pnode = node.get_parent_node()
             loc_idxs = []
             # check parent node
             if pnode != None:
-                ploc_idx = self._find_locs_to_root({'node': pnode.index, 'x': 1.}, name,
-                                              check_siblings=check_siblings)
+                ploc_idx = self._find_locs_to_root(
+                    {"node": pnode.index, "x": 1.0}, name, check_siblings=check_siblings
+                )
                 if ploc_idx != None:
                     loc_idxs.append(ploc_idx)
             # check other child nodes of parent node
@@ -1802,18 +1880,22 @@ class MorphTree(STree):
             else:
                 ocnodes = []
             for cnode in ocnodes:
-                cloc_idx = self._find_locs_from_root({'node': cnode.index, 'x': 0.}, name)
+                cloc_idx = self._find_locs_from_root(
+                    {"node": cnode.index, "x": 0.0}, name
+                )
                 if cloc_idx != None:
                     loc_idxs.append(cloc_idx)
             # get the one that is closest, if they exist
             pl_aux = 1e4
             ind_loc = 0
             for i, l_i in enumerate(loc_idxs):
-                pl = self.path_length({'node': loc['node'], 'x': 1.}, self.locs[name][l_i])
+                pl = self.path_length(
+                    {"node": loc["node"], "x": 1.0}, self.locs[name][l_i]
+                )
                 if pl < pl_aux:
                     pl_aux = pl
                     ind_loc = i
-            if pl_aux > 0. and len(loc_idxs) > 0:
+            if pl_aux > 0.0 and len(loc_idxs) > 0:
                 loc_idx = loc_idxs[ind_loc]
             else:
                 loc_idx = None
@@ -1842,16 +1924,16 @@ class MorphTree(STree):
             name = loc_arg
             locs = self.convert_loc_arg_to_locs(loc_arg)
         else:
-            name = 'nn aux'
+            name = "nn aux"
             locs = loc_arg
             self.store_locs(locs, name=name)
 
         nns = []
         # search for nearest neighbours
-        node = self[loc['node']]
+        node = self[loc["node"]]
         locinds_aux = np.where(node.index == self.nids[name])[0]
         if len(locinds_aux) > 0:
-            dx = self.xs[name][locinds_aux] - loc['x']
+            dx = self.xs[name][locinds_aux] - loc["x"]
             # locs on node in down direction
             inds_down = np.where(dx >= 0)[0]
             if len(inds_down) > 0:
@@ -1872,7 +1954,7 @@ class MorphTree(STree):
                 self._search_nn_from_root(c_node, nns, name)
             self._search_nn_to_root(node, nns, name)
 
-        if name == 'nn aux':
+        if name == "nn aux":
             self.remove_locs(name)
 
         return list(set(nns))
@@ -1882,7 +1964,7 @@ class MorphTree(STree):
         if p_node is not None:
             # up direction
             locinds_aux = np.where(p_node.index == self.nids[name])[0]
-            xval = 0.
+            xval = 0.0
             if len(locinds_aux) > 0:
                 ind_aux = np.argmax(self.xs[name][locinds_aux])
                 locind = locinds_aux[ind_aux]
@@ -1891,7 +1973,7 @@ class MorphTree(STree):
             else:
                 self._search_nn_to_root(p_node, nns, name)
             # down direction
-            if xval < 1.-1e-5:
+            if xval < 1.0 - 1e-5:
                 for c_node in set(p_node.child_nodes) - {node}:
                     self._search_nn_from_root(c_node, nns, name)
 
@@ -1903,12 +1985,12 @@ class MorphTree(STree):
             nns.append(locind)
         else:
             for c_node in node.child_nodes:
-                    self._search_nn_from_root(c_node, nns, name)
+                self._search_nn_from_root(c_node, nns, name)
 
     def get_leaf_loc_idxs(self, name, recompute=False):
         """
-        Find the indices in the location list specified stored under `name` 
-        that are 'leafs', i.e. locations for which no other location exist 
+        Find the indices in the location list specified stored under `name`
+        that are 'leafs', i.e. locations for which no other location exist
         that is farther from the root.
 
         Parameters
@@ -1939,10 +2021,10 @@ class MorphTree(STree):
     def _has_loc_from_root(self, loc, name):
         look_further = False
         # look if there are locs on the same node
-        if loc['node'] != 1:
-            n_inds = np.where(loc['node'] == self.nids[name] )[0]
+        if loc["node"] != 1:
+            n_inds = np.where(loc["node"] == self.nids[name])[0]
             if len(n_inds) > 0:
-                x_inds = np.where(loc['x'] < self.xs[name][n_inds])[0]
+                x_inds = np.where(loc["x"] < self.xs[name][n_inds])[0]
                 if len(x_inds) > 0:
                     returnbool = True
                 else:
@@ -1953,11 +2035,11 @@ class MorphTree(STree):
             look_further = True
         # if no locs on the same node, then proceed to child nodes
         if look_further:
-            node = self[loc['node']]
+            node = self[loc["node"]]
             cnodes = node.child_nodes
             returnbool = False
             for cnode in cnodes:
-                if self._has_loc_from_root({'node': cnode.index, 'x': 0.}, name):
+                if self._has_loc_from_root({"node": cnode.index, "x": 0.0}, name):
                     returnbool = True
         return returnbool
 
@@ -1991,11 +2073,12 @@ class MorphTree(STree):
             recompute = not (name in self.d2s) or recompute
             save = True
         else:
-            raise IOError('`loc_arg` should be list of locs or string')
+            raise IOError("`loc_arg` should be list of locs or string")
 
         if recompute:
-            d2s = np.array([self.path_length({'node': 1, 'x': 0.}, loc) \
-                                        for loc in locs])
+            d2s = np.array(
+                [self.path_length({"node": 1, "x": 0.0}, loc) for loc in locs]
+            )
         else:
             d2s = self.d2s[name]
 
@@ -2031,17 +2114,18 @@ class MorphTree(STree):
             self.d2b[name] = []
             locs = self.locs[name]
             for i, loc in enumerate(locs):
-                if loc['node'] != 1:
-                    if loc['node'] != locs[i-1]['node']:
-                        node = self[loc['node']]
+                if loc["node"] != 1:
+                    if loc["node"] != locs[i - 1]["node"]:
+                        node = self[loc["node"]]
                         bnode, _ = self.find_bifurcation_node_to_root(node)
-                    self.d2b[name].append(self.path_length( \
-                                          {'node': bnode.index, 'x': 1.}, loc))
+                    self.d2b[name].append(
+                        self.path_length({"node": bnode.index, "x": 1.0}, loc)
+                    )
                 else:
-                    self.d2b[name].append(0.)
+                    self.d2b[name].append(0.0)
             return self.d2b[name]
 
-    def distribute_locs_on_nodes(self, d2s, node_arg=None, name='dont save'):
+    def distribute_locs_on_nodes(self, d2s, node_arg=None, name="dont save"):
         """
         Distributes locs on a given set of nodes at specified distances from the
         soma. If the specified distances are on the specified nodes, the list
@@ -2068,23 +2152,32 @@ class MorphTree(STree):
         locs = []
         for node in self.convert_node_arg_to_nodes(node_arg):
             if node.parent_node != None:
-                L0 = self.path_length({'node': 1, 'x': 0.5},
-                                      {'node': node.index, 'x': 0.})
-                L1 = self.path_length({'node': 1, 'x': 0.5},
-                                      {'node': node.index, 'x': 1.})
+                L0 = self.path_length(
+                    {"node": 1, "x": 0.5}, {"node": node.index, "x": 0.0}
+                )
+                L1 = self.path_length(
+                    {"node": 1, "x": 0.5}, {"node": node.index, "x": 1.0}
+                )
                 inds = np.where(np.logical_and(L0 < d2s, d2s <= L1))[0]
                 Ls = np.sort(d2s[inds])
-                locs.extend([MorphLoc((node.index, (L-L0)/(L1-L0)), self) \
-                                        for L in Ls if L > 1e-12])
+                locs.extend(
+                    [
+                        MorphLoc((node.index, (L - L0) / (L1 - L0)), self)
+                        for L in Ls
+                        if L > 1e-12
+                    ]
+                )
             elif np.any(np.abs(d2s) <= 1e-12):
                 # node is soma, append a location on the soma
                 locs.append(MorphLoc((node.index, 0.5), self))
-        if name != 'dont save': self.store_locs(locs, name=name)
+        if name != "dont save":
+            self.store_locs(locs, name=name)
         return locs
 
     @computational_tree_decorator
-    def distribute_locs_uniform(self, dx, node_arg=None, add_bifurcations=False,
-                              name='dont save'):
+    def distribute_locs_uniform(
+        self, dx, node_arg=None, add_bifurcations=False, name="dont save"
+    ):
         """
         Distributes locations as uniform as possible, i.e. for a given distance
         between locations `dx`, locations are distributed equidistantly on each
@@ -2116,23 +2209,25 @@ class MorphTree(STree):
         for node in self.convert_node_arg_to_nodes(node_arg):
             ii += 1
             if node.parent_node == None:
-                locs.append(MorphLoc((node.index, 0.5), self,
-                                     set_as_comploc=True))
+                locs.append(MorphLoc((node.index, 0.5), self, set_as_comploc=True))
             else:
                 Nloc = np.round(node.L / dx)
                 if Nloc == 0 and len(node.child_nodes) > 1 and add_bifurcations:
                     Nloc = 1
-                xvals = np.arange(1, Nloc+1) / float(Nloc)
-                locs.extend([
-                    MorphLoc(
-                        (node.index, xv), self, set_as_comploc=True
-                    ) for xv in xvals
-                ])
-        if name != 'dont save': self.store_locs(locs, name=name)
+                xvals = np.arange(1, Nloc + 1) / float(Nloc)
+                locs.extend(
+                    [
+                        MorphLoc((node.index, xv), self, set_as_comploc=True)
+                        for xv in xvals
+                    ]
+                )
+        if name != "dont save":
+            self.store_locs(locs, name=name)
         return locs
 
-    def distribute_locs_random(self, num, dx=0.001, node_arg=None,
-                             add_soma=True, name='dont save', seed=None):
+    def distribute_locs_random(
+        self, num, dx=0.001, node_arg=None, add_soma=True, name="dont save", seed=None
+    ):
         """
         Returns a list of input locations randomly distributed on the tree
 
@@ -2160,18 +2255,18 @@ class MorphTree(STree):
         """
         np.random.seed(seed)
         # use the requested subset of nodes
-        nodes = [node for node in self.convert_node_arg_to_nodes(node_arg)
-                 if node.index != 1]
+        nodes = [
+            node for node in self.convert_node_arg_to_nodes(node_arg) if node.index != 1
+        ]
         # initialize the loclist with or without soma
         if add_soma:
-            locs = [MorphLoc({'node': 1, 'x': 0.}, self)]
-            self.root.content['tag'] = 1
+            locs = [MorphLoc({"node": 1, "x": 0.0}, self)]
+            self.root.content["tag"] = 1
         else:
             locs = []
         # add the nodes
         for ii in range(num):
-            nodes_left = [node.index for node in nodes
-                            if 'tag' not in node.content]
+            nodes_left = [node.index for node in nodes if "tag" not in node.content]
             if len(nodes_left) < 1:
                 break
             index = np.random.choice(nodes_left)
@@ -2182,29 +2277,32 @@ class MorphTree(STree):
             self._tag_nodes_to_root(node, node, dx=dx)
         self._removeTags()
         # store the locations
-        if name != 'dont save': self.store_locs(locs, name=name)
+        if name != "dont save":
+            self.store_locs(locs, name=name)
         return locs
 
     def _tag_nodes_from_root(self, start_node, node, dx=0.001):
-        if 'tag' not in node.content:
+        if "tag" not in node.content:
             if node.index == start_node.index:
-                length = 0.
+                length = 0.0
             else:
-                length = self.path_length({'node': start_node.index, 'x': 1.},
-                                          {'node': node.index, 'x': 0.})
+                length = self.path_length(
+                    {"node": start_node.index, "x": 1.0}, {"node": node.index, "x": 0.0}
+                )
             if length < dx:
-                node.content['tag'] = 1
+                node.content["tag"] = 1
                 for cnode in node.child_nodes:
                     self._tag_nodes_from_root(start_node, cnode, dx=dx)
 
     def _tag_nodes_to_root(self, start_node, node, cnode=None, dx=0.001):
         if node.index == start_node.index:
-            length = 0.
+            length = 0.0
         else:
-            length = self.path_length({'node': start_node.index, 'x': 1.},
-                                      {'node': node.index, 'x': 1.})
+            length = self.path_length(
+                {"node": start_node.index, "x": 1.0}, {"node": node.index, "x": 1.0}
+            )
         if length < dx:
-            node.content['tag'] = 1
+            node.content["tag"] = 1
             cnodes = node.child_nodes
             if len(cnodes) > 1:
                 if cnode != None:
@@ -2217,10 +2315,10 @@ class MorphTree(STree):
 
     def _removeTags(self):
         for node in self:
-            if 'tag' in node.content:
-                del node.content['tag']
+            if "tag" in node.content:
+                del node.content["tag"]
 
-    def extend_with_bifurcation_locs(self, loc_arg, name='dont save'):
+    def extend_with_bifurcation_locs(self, loc_arg, name="dont save"):
         """
         Extends input loc_arg with the intermediate bifurcations. They are
         appended to the end of the list
@@ -2240,16 +2338,17 @@ class MorphTree(STree):
         """
         locs = self.convert_loc_arg_to_locs(loc_arg)
         # get the bifurcation locs
-        nodes = [self[loc['node']] for loc in locs]
+        nodes = [self[loc["node"]] for loc in locs]
         bnodes = self.find_in_between_bifurcation_nodes(nodes)
-        blocs = [MorphLoc((bnode.index, 1.), self) for bnode in bnodes]
+        blocs = [MorphLoc((bnode.index, 1.0), self) for bnode in bnodes]
         # retain unique locs
         all_locs = self.unique_locs(locs + blocs)
         # store the locations
-        if name != 'dont save': self.store_locs(all_locs, name=name)
+        if name != "dont save":
+            self.store_locs(all_locs, name=name)
         return all_locs
 
-    def unique_locs(self, loc_arg, name='dont save'):
+    def unique_locs(self, loc_arg, name="dont save"):
         """
         Gets the unique locations in the provided locs
 
@@ -2269,10 +2368,11 @@ class MorphTree(STree):
         locs = self.convert_loc_arg_to_locs(loc_arg)
         locs_ = reduce(lambda l, x: l.append(x) or l if x not in l else l, locs, [])
 
-        if name != 'dont save': self.store_locs(locs_, name=name)
+        if name != "dont save":
+            self.store_locs(locs_, name=name)
         return locs_
 
-    def make_x_axis(self, dx=10., node_arg=None, loc_arg=None):
+    def make_x_axis(self, dx=10.0, node_arg=None, loc_arg=None):
         """
         Create a set of locs suitable for serving as the x-axis for 1D plotting.
         The neurons is put on a 1D axis with a depth-first ordering.
@@ -2296,14 +2396,16 @@ class MorphTree(STree):
             if self._computational_root == None:
                 self.set_comp_tree()
             # distribute the x-axis locations
-            self.distribute_locs_uniform(dx, node_arg=node_arg, name='xaxis')
+            self.distribute_locs_uniform(dx, node_arg=node_arg, name="xaxis")
             # get the root node
             nodes = self.convert_node_arg_to_nodes(node_arg)
             # check that first node is root
             for node in nodes:
                 if nodes[0] in node.child_nodes:
-                    raise ValueError('Input `node_arg` is not a depth-first ordered'
-                                     ' list of nodes.')
+                    raise ValueError(
+                        "Input `node_arg` is not a depth-first ordered"
+                        " list of nodes."
+                    )
             # set the node colors for original and computational trees
             tempnode_orig = self._find_comp_node_from_root(nodes[0])
             self.set_node_colors(tempnode_orig)
@@ -2313,20 +2415,23 @@ class MorphTree(STree):
 
         else:
             if isinstance(loc_arg, list):
-                self.store_locs(loc_arg, name='xaxis')
+                self.store_locs(loc_arg, name="xaxis")
             elif isinstance(loc_arg, str):
-                self.store_locs(self.get_locs(loc_arg), name='xaxis')
+                self.store_locs(self.get_locs(loc_arg), name="xaxis")
             else:
-                raise IOError('`loc_org` should be string or list of locs')
+                raise IOError("`loc_org` should be string or list of locs")
         # compute the x-axis 1D array
-        pinds = self.get_leaf_loc_idxs('xaxis')
-        d2s = self.distances_to_soma('xaxis')
-        xaxis = d2s[0:pinds[0]+1].tolist()
+        pinds = self.get_leaf_loc_idxs("xaxis")
+        d2s = self.distances_to_soma("xaxis")
+        xaxis = d2s[0 : pinds[0] + 1].tolist()
         d_add = d2s[pinds[0]]
-        for ii in range(0,len(pinds)-1):
-            xaxis.extend((d_add + d2s[pinds[ii]+1:pinds[ii+1]+1] \
-                                - d2s[pinds[ii]+1]).tolist())
-            d_add += d2s[pinds[ii+1]] - d2s[pinds[ii]+1]
+        for ii in range(0, len(pinds) - 1):
+            xaxis.extend(
+                (
+                    d_add + d2s[pinds[ii] + 1 : pinds[ii + 1] + 1] - d2s[pinds[ii] + 1]
+                ).tolist()
+            )
+            d_add += d2s[pinds[ii + 1]] - d2s[pinds[ii] + 1]
         self.xaxis = np.array(xaxis)
 
     def set_node_colors(self, startnode=None):
@@ -2339,15 +2444,17 @@ class MorphTree(STree):
                 index of the node or node whose subtree will be colored. Defaults
                 to the root
         """
-        if startnode == None: startnode = self.root
-        for node in self: node.content['color'] = 0.
-        self.node_color = [0.] # trick to pass the pointer and not the number itself
+        if startnode == None:
+            startnode = self.root
+        for node in self:
+            node.content["color"] = 0.0
+        self.node_color = [0.0]  # trick to pass the pointer and not the number itself
         self._set_node_colors_from_root(startnode)
 
     def _set_node_colors_from_root(self, node):
-        node.content['color'] = self.node_color[0]
+        node.content["color"] = self.node_color[0]
         if self.is_leaf(node):
-            self.node_color[0] += 1.
+            self.node_color[0] += 1.0
         for cnode in node.child_nodes:
             self._set_node_colors_from_root(cnode)
 
@@ -2360,7 +2467,7 @@ class MorphTree(STree):
             locs: list of tuples, dicts or `neat.MorphLoc`
                 list of the locations
         """
-        locinds = np.array(self.get_nearest_loc_idxs(locs, 'xaxis')).astype(int)
+        locinds = np.array(self.get_nearest_loc_idxs(locs, "xaxis")).astype(int)
         return self.xaxis[locinds]
 
     def plot_1d(self, ax, parr, *args, **kwargs):
@@ -2389,22 +2496,26 @@ class MorphTree(STree):
                 When the number of elements in the data array in not equal to
                 the number of elements on the x-axis
         """
-        assert len(parr) == len(self.locs['xaxis'])
-        pinds = self.get_leaf_loc_idxs('xaxis')
-        d2s = self.distances_to_soma('xaxis')
+        assert len(parr) == len(self.locs["xaxis"])
+        pinds = self.get_leaf_loc_idxs("xaxis")
+        d2s = self.distances_to_soma("xaxis")
         # make the plot
         lines = []
 
-        line = ax.plot(self.xaxis[0:pinds[0]+1], parr[0:pinds[0]+1],
-                       *args, **kwargs)
+        line = ax.plot(
+            self.xaxis[0 : pinds[0] + 1], parr[0 : pinds[0] + 1], *args, **kwargs
+        )
         lines.append(line[0])
-        if 'label' in list(kwargs.keys()):
+        if "label" in list(kwargs.keys()):
             kwargs = copy.deepcopy(kwargs)
-            del kwargs['label']
-        for ii in range(0,len(pinds)-1):
-            line = ax.plot(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
-                            parr[pinds[ii]+1:pinds[ii+1]+1],
-                            *args, **kwargs)
+            del kwargs["label"]
+        for ii in range(0, len(pinds) - 1):
+            line = ax.plot(
+                self.xaxis[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                parr[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                *args,
+                **kwargs,
+            )
             lines.append(line[0])
         return lines
 
@@ -2425,14 +2536,16 @@ class MorphTree(STree):
                 When the number of elements in the data array in not equal to
                 the number of elements on the x-axis
         """
-        assert len(parr) == len(self.locs['xaxis'])
-        pinds = self.get_leaf_loc_idxs('xaxis')
-        d2s = self.distances_to_soma('xaxis')
-        lines[0].set_data(self.xaxis[0:pinds[0]+1], parr[0:pinds[0]+1])
-        for ii in range(0,len(pinds)-1):
-            ll = ii+1
-            lines[ll].set_data(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
-                                parr[pinds[ii]+1:pinds[ii+1]+1])
+        assert len(parr) == len(self.locs["xaxis"])
+        pinds = self.get_leaf_loc_idxs("xaxis")
+        d2s = self.distances_to_soma("xaxis")
+        lines[0].set_data(self.xaxis[0 : pinds[0] + 1], parr[0 : pinds[0] + 1])
+        for ii in range(0, len(pinds) - 1):
+            ll = ii + 1
+            lines[ll].set_data(
+                self.xaxis[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                parr[pinds[ii] + 1 : pinds[ii + 1] + 1],
+            )
 
     def plot_true_d2s(self, ax, parr, cmap=None, **kwargs):
         """
@@ -2465,41 +2578,53 @@ class MorphTree(STree):
                 When the number of elements in the data array in not equal to
                 the number of elements on the x-axis
         """
-        assert len(parr) == len(self.locs['xaxis'])
-        locs = self.locs['xaxis']
-        pinds = self.get_leaf_loc_idxs('xaxis')
-        d2s = self.distances_to_soma('xaxis')
+        assert len(parr) == len(self.locs["xaxis"])
+        locs = self.locs["xaxis"]
+        pinds = self.get_leaf_loc_idxs("xaxis")
+        d2s = self.distances_to_soma("xaxis")
         # list of colors for plotting
-        cs = {node.index: node.content['color'] for node in self}
-        cplot = [cs[loc['node']] for loc in locs]
+        cs = {node.index: node.content["color"] for node in self}
+        cplot = [cs[loc["node"]] for loc in locs]
         max_cs = max(cplot)
         min_cs = min(cplot)
         if np.abs(max_cs - min_cs) < 1e-12:
             norm_cs = max_cs + 1e-2
         else:
-            norm_cs = (max_cs - min_cs) * (1. + 1./100.)
+            norm_cs = (max_cs - min_cs) * (1.0 + 1.0 / 100.0)
         # create the truespace plot
         lines = []
         if cmap != None:
-            kwargs['c'] = cmap((cplot[0]-min_cs)/norm_cs)
-            if 'color' in kwargs: del kwargs['color']
-        line = ax.plot(d2s[0:pinds[0]+1], parr[0:pinds[0]+1], **kwargs)
+            kwargs["c"] = cmap((cplot[0] - min_cs) / norm_cs)
+            if "color" in kwargs:
+                del kwargs["color"]
+        line = ax.plot(d2s[0 : pinds[0] + 1], parr[0 : pinds[0] + 1], **kwargs)
         lines.append(line[0])
-        if 'label' in kwargs: del kwargs['label']
-        for ii in range(0,len(pinds)-1):
+        if "label" in kwargs:
+            del kwargs["label"]
+        for ii in range(0, len(pinds) - 1):
             if cmap != None:
-                kwargs['c'] = cmap((cs[locs[pinds[ii]+1]['node']]-min_cs)/norm_cs)
-            line = ax.plot(d2s[pinds[ii]+1:pinds[ii+1]+1],
-                           parr[pinds[ii]+1:pinds[ii+1]+1],
-                           **kwargs)
+                kwargs["c"] = cmap((cs[locs[pinds[ii] + 1]["node"]] - min_cs) / norm_cs)
+            line = ax.plot(
+                d2s[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                parr[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                **kwargs,
+            )
             lines.append(line[0])
         return lines
 
     def _add_scalebar(self, ax, borderpad=-1.8, sep=2):
         from neat.tools.plottools import scalebars
-        scalebars.addScalebar(ax, hidex=False, hidey=False, matchy=False,
-                                    labelx='μm',
-                                    loc=8, borderpad=borderpad, sep=sep)
+
+        scalebars.addScalebar(
+            ax,
+            hidex=False,
+            hidey=False,
+            matchy=False,
+            labelx="μm",
+            loc=8,
+            borderpad=borderpad,
+            sep=sep,
+        )
         ax.set_xticklabels([])
 
     def color_x_axis(self, ax, cmap, addScalebar=1, borderpad=-1.8):
@@ -2524,47 +2649,74 @@ class MorphTree(STree):
             borderpad: float
                 Borderpad of scalebar
         """
-        locs = self.locs['xaxis']
+        locs = self.locs["xaxis"]
         # list of colors for plotting
-        cs = {node.index: node.content['color'] for node in self}
-        cplot = [cs[loc['node']] for loc in locs]
+        cs = {node.index: node.content["color"] for node in self}
+        cplot = [cs[loc["node"]] for loc in locs]
         max_cs = max(cplot)
         min_cs = min(cplot)
         if np.abs(max_cs - min_cs) < 1e-12:
             norm_cs = max_cs + 1e-2
         else:
-            norm_cs = (max_cs - min_cs) * (1. + 1./100.)
+            norm_cs = (max_cs - min_cs) * (1.0 + 1.0 / 100.0)
         # necessary distance arrays
-        pinds = self.get_leaf_loc_idxs('xaxis')
+        pinds = self.get_leaf_loc_idxs("xaxis")
         assert len(pinds) > 0
-        d2s = self.distances_to_soma('xaxis')
+        d2s = self.distances_to_soma("xaxis")
         # plot colored xaxis
         ylim = np.array(ax.get_ylim())
-        ax.plot(self.xaxis[0:pinds[0]+1], [ylim[0]+1e-9 for _ in d2s[0:pinds[0]+1]],
-                                    c=cmap((cplot[0]-min_cs)/norm_cs), lw=10)
-        for ii in range(0,len(pinds)-1):
-            if locs[pinds[ii]+1]['node'] in list(cs.keys()):
-                ax.plot(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
-                        [ylim[0]+1e-9 for _ in d2s[pinds[ii]+1:pinds[ii+1]+1]],
-                        c=cmap((cs[locs[pinds[ii]+1]['node']]-min_cs)/norm_cs), lw=10)
+        ax.plot(
+            self.xaxis[0 : pinds[0] + 1],
+            [ylim[0] + 1e-9 for _ in d2s[0 : pinds[0] + 1]],
+            c=cmap((cplot[0] - min_cs) / norm_cs),
+            lw=10,
+        )
+        for ii in range(0, len(pinds) - 1):
+            if locs[pinds[ii] + 1]["node"] in list(cs.keys()):
+                ax.plot(
+                    self.xaxis[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                    [ylim[0] + 1e-9 for _ in d2s[pinds[ii] + 1 : pinds[ii + 1] + 1]],
+                    c=cmap((cs[locs[pinds[ii] + 1]["node"]] - min_cs) / norm_cs),
+                    lw=10,
+                )
             else:
-                ax.plot(self.xaxis[pinds[ii]+1:pinds[ii+1]+1],
-                        [ylim[0]+1e-9 for _ in d2s[pinds[ii]+1:pinds[ii+1]+1]],
-                        c='k', lw=10)
+                ax.plot(
+                    self.xaxis[pinds[ii] + 1 : pinds[ii + 1] + 1],
+                    [ylim[0] + 1e-9 for _ in d2s[pinds[ii] + 1 : pinds[ii + 1] + 1]],
+                    c="k",
+                    lw=10,
+                )
         ax.set_ylim((ylim[0], ylim[1]))
         # add scalebar
         if addScalebar:
             self._add_scalebar(ax, borderpad=borderpad)
         ax.axes.get_xaxis().set_visible(False)
 
-    def plot_2d_morphology(self, ax, node_arg=None, cs=None, cminmax=None, cmap=None,
-                            use_radius=1, draw_soma_circle=1,
-                            plotargs={}, textargs={},
-                            marklocs=[], loc_args={},
-                            marklabels={}, labelargs={},
-                            cb_draw=0, cb_orientation='vertical', cb_label='',
-                            sb_draw=1, sb_scale=100, sb_width=5.,
-                            set_lims=True, lims_margin=.1, soma_pos=None):
+    def plot_2d_morphology(
+        self,
+        ax,
+        node_arg=None,
+        cs=None,
+        cminmax=None,
+        cmap=None,
+        use_radius=1,
+        draw_soma_circle=1,
+        plotargs={},
+        textargs={},
+        marklocs=[],
+        loc_args={},
+        marklabels={},
+        labelargs={},
+        cb_draw=0,
+        cb_orientation="vertical",
+        cb_label="",
+        sb_draw=1,
+        sb_scale=100,
+        sb_width=5.0,
+        set_lims=True,
+        lims_margin=0.1,
+        soma_pos=None,
+    ):
         """
         Plot the morphology projected on the x,y-plane
 
@@ -2642,136 +2794,161 @@ class MorphTree(STree):
             node.xyz += soma_pos
         # default cmap
         if cmap is None:
-            cmap = cm.get_cmap('jet')
+            cmap = cm.get_cmap("jet")
         # ensure color is indicated by the 'c'-parameter in `plotargs`
-        if 'color' in plotargs:
-            plotargs['c'] = plotargs['color']
-            del plotargs['color']
-        elif 'c' not in plotargs:
-            plotargs['c'] = 'k'
+        if "color" in plotargs:
+            plotargs["c"] = plotargs["color"]
+            del plotargs["color"]
+        elif "c" not in plotargs:
+            plotargs["c"] = "k"
         # define a norm for the colors, if defined
-        if cs == 'x_color':
-            cs = {node.index: node.content['color'] for node in self}
+        if cs == "x_color":
+            cs = {node.index: node.content["color"] for node in self}
         if cs is not None:
             if cminmax is None:
                 if len(cs) > 0:
-                    max_cs = cs[max(cs, key=cs.__getitem__)] # works for dict and list
-                    min_cs = cs[min(cs, key=cs.__getitem__)] # works for dict and list
+                    max_cs = cs[max(cs, key=cs.__getitem__)]  # works for dict and list
+                    min_cs = cs[min(cs, key=cs.__getitem__)]  # works for dict and list
                 else:
-                    min_cs, max_cs = 0., 1.
+                    min_cs, max_cs = 0.0, 1.0
             else:
                 min_cs = cminmax[0]
                 max_cs = cminmax[1]
             norm = pl.Normalize(vmin=min_cs, vmax=max_cs)
         # ensure linewidth is indicated as 'lw' in plotargs
-        if 'linewidth' in plotargs:
-            plotargs['lw'] = plotargs['linewidth']
-            del plotargs['linewidth']
-        elif 'lw' not in plotargs:
-            plotargs['lw'] = 1.
+        if "linewidth" in plotargs:
+            plotargs["lw"] = plotargs["linewidth"]
+            del plotargs["linewidth"]
+        elif "lw" not in plotargs:
+            plotargs["lw"] = 1.0
         plotargs_orig = copy.deepcopy(plotargs)
         # loc_args can be dictionary, so that the same properties hold for every
         # markloc, or can be list with the same size as marklocs, so that every
         # marker has different properties. `zorder` of the markers is also set
         # very high so that they are always in the foreground
-        self.store_locs(marklocs, 'plotlocs')
-        xs = self.xs['plotlocs']
+        self.store_locs(marklocs, "plotlocs")
+        xs = self.xs["plotlocs"]
         if isinstance(loc_args, dict):
-            if 'zorder' not in loc_args:
-                loc_args['zorder'] = 1e4
+            if "zorder" not in loc_args:
+                loc_args["zorder"] = 1e4
             loc_args = [loc_args for _ in marklocs]
         else:
             assert len(loc_args) == len(marklocs)
             for loc_arg in loc_args:
-                if 'zorder' not in loc_arg:
-                    loc_arg['zorder'] = 1e4
+                if "zorder" not in loc_arg:
+                    loc_arg["zorder"] = 1e4
         # `marklabels` is a dictionary with as keys the index of the loc in
         # `marklocs` to which the label belongs. `labelargs` is the same for
         # every label
-        for ind in marklabels: assert ind < len(marklocs)
+        for ind in marklabels:
+            assert ind < len(marklocs)
         # plot the tree
-        xlim = [0.,0.]; ylim = [0.,0.]
+        xlim = [0.0, 0.0]
+        ylim = [0.0, 0.0]
         for node in self.convert_node_arg_to_nodes(node_arg):
-            if node.xyz[0] < xlim[0]: xlim[0] = node.xyz[0]
-            if node.xyz[0] > xlim[1]: xlim[1] = node.xyz[0]
-            if node.xyz[1] < ylim[0]: ylim[0] = node.xyz[1]
-            if node.xyz[1] > ylim[1]: ylim[1] = node.xyz[1]
+            if node.xyz[0] < xlim[0]:
+                xlim[0] = node.xyz[0]
+            if node.xyz[0] > xlim[1]:
+                xlim[1] = node.xyz[0]
+            if node.xyz[1] < ylim[0]:
+                ylim[0] = node.xyz[1]
+            if node.xyz[1] > ylim[1]:
+                ylim[1] = node.xyz[1]
             # find the locations that are on the current node
-            inds = self.get_loc_idxs_on_node('plotlocs', node)
+            inds = self.get_loc_idxs_on_node("plotlocs", node)
             if node.parent_node is None:
                 # node is soma, draw as circle if necessary
                 if draw_soma_circle:
                     if cs is not None and node.index in cs:
-                        plotargs['c'] = cmap(norm(cs[node.index]))
+                        plotargs["c"] = cmap(norm(cs[node.index]))
                     else:
-                        plotargs['c'] = plotargs_orig['c']
-                    circ = patches.Circle(node.xyz[0:2], node.R,
-                                          color=plotargs['c'])
+                        plotargs["c"] = plotargs_orig["c"]
+                    circ = patches.Circle(node.xyz[0:2], node.R, color=plotargs["c"])
                     ax.add_patch(circ)
                 for ind in inds:
-                    self._plot_loc(ax, ind, node.xyz[0], node.xyz[1],
-                                   loc_args, marklabels, labelargs)
+                    self._plot_loc(
+                        ax,
+                        ind,
+                        node.xyz[0],
+                        node.xyz[1],
+                        loc_args,
+                        marklabels,
+                        labelargs,
+                    )
             else:
                 # plot line segment associated with node
-                nxyz = node.xyz; pxyz = node.parent_node.xyz
+                nxyz = node.xyz
+                pxyz = node.parent_node.xyz
                 if cs is not None and node.index in cs:
-                    plotargs['c'] = cmap(norm(cs[node.index]))
+                    plotargs["c"] = cmap(norm(cs[node.index]))
                 else:
-                    plotargs['c'] = plotargs_orig['c']
+                    plotargs["c"] = plotargs_orig["c"]
                 if use_radius:
-                    plotargs['lw'] = plotargs_orig['lw'] * node.R
+                    plotargs["lw"] = plotargs_orig["lw"] * node.R
                 ax.plot([pxyz[0], nxyz[0]], [pxyz[1], nxyz[1]], **plotargs)
                 # plot the locations
                 for ind in inds:
                     locxyz = pxyz + (nxyz - pxyz) * xs[ind]
-                    self._plot_loc(ax, ind, locxyz[0], locxyz[1],
-                                   loc_args, marklabels, labelargs)
+                    self._plot_loc(
+                        ax, ind, locxyz[0], locxyz[1], loc_args, marklabels, labelargs
+                    )
         # margins
-        dx = xlim[1]-xlim[0]
-        dy = ylim[1]-ylim[0]
-        xlim[0] -= dx*lims_margin; xlim[1] += dx*lims_margin
-        ylim[0] -= dy*lims_margin; ylim[1] += dy*lims_margin
+        dx = xlim[1] - xlim[0]
+        dy = ylim[1] - ylim[0]
+        xlim[0] -= dx * lims_margin
+        xlim[1] += dx * lims_margin
+        ylim[0] -= dy * lims_margin
+        ylim[1] += dy * lims_margin
         # draw a scale bar
         if sb_draw:
             scale = sb_scale
-            dy = ylim[1]-ylim[0]
-            dx = xlim[1]-xlim[0]
-            ax.plot([xlim[0],xlim[0]+scale],
-                    [ylim[0],ylim[0]],
-                    'k', linewidth=sb_width, zorder=1e5)
-            txt = ax.annotate(r'' + str(scale) + ' μm',
-                              xy=(xlim[0]+scale/2., ylim[0]),
-                              xycoords='data', xytext=(xlim[0]+scale/2.,ylim[0]-dy/200.), ha='center', va='top',
-                              **textargs)
-                              # textcoords='offset points', **textargs)
-            txt.set_path_effects([patheffects.withStroke(foreground="w",
-                                                         linewidth=2)])
+            dy = ylim[1] - ylim[0]
+            dx = xlim[1] - xlim[0]
+            ax.plot(
+                [xlim[0], xlim[0] + scale],
+                [ylim[0], ylim[0]],
+                "k",
+                linewidth=sb_width,
+                zorder=1e5,
+            )
+            txt = ax.annotate(
+                r"" + str(scale) + " μm",
+                xy=(xlim[0] + scale / 2.0, ylim[0]),
+                xycoords="data",
+                xytext=(xlim[0] + scale / 2.0, ylim[0] - dy / 200.0),
+                ha="center",
+                va="top",
+                **textargs,
+            )
+            # textcoords='offset points', **textargs)
+            txt.set_path_effects([patheffects.withStroke(foreground="w", linewidth=2)])
         if set_lims:
-            ax.set_xlim(xlim); ax.set_ylim(ylim)
-            ax.set_aspect('equal', 'datalim')
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+            ax.set_aspect("equal", "datalim")
         if cs != None and cb_draw:
             # create colorbar ax
             divider = make_axes_locatable(ax)
-            if cb_orientation == 'horizontal':
+            if cb_orientation == "horizontal":
                 cax = divider.append_axes("bottom", "5%", pad="3%")
             else:
                 cax = divider.append_axes("right", "5%", pad="3%")
             # create a mappable
             sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm._A = [] # fake array for scalar mappable
+            sm._A = []  # fake array for scalar mappable
             # create the colorbar
             cb = pl.colorbar(sm, cax=cax, orientation=cb_orientation)
             ticks_cb = np.round(np.linspace(min_cs, max_cs, 7), decimals=1)
             cb.set_ticks(ticks_cb)
-            if cb_orientation == 'horizontal':
-                cb.ax.xaxis.set_ticks_position('bottom')
+            if cb_orientation == "horizontal":
+                cb.ax.xaxis.set_ticks_position("bottom")
             else:
-                cb.ax.yaxis.set_ticks_position('right')
+                cb.ax.yaxis.set_ticks_position("right")
             cb.set_label(cb_label, **textargs)
-        ax.spines['top'].set_color('none')
-        ax.spines['bottom'].set_color('none')
-        ax.spines['right'].set_color('none')
-        ax.spines['left'].set_color('none')
+        ax.spines["top"].set_color("none")
+        ax.spines["bottom"].set_color("none")
+        ax.spines["right"].set_color("none")
+        ax.spines["left"].set_color("none")
         ax.draw_frame = False
 
         ax.set_xticks([])
@@ -2787,16 +2964,24 @@ class MorphTree(STree):
         """
         ax.plot(xval, yval, **loc_args[ind])
         if ind in marklabels:
-            txt = ax.annotate(marklabels[ind], xy=(xval, yval),
-                              xycoords='data', xytext=(5,5),
-                              textcoords='offset points', **labelargs)
-            txt.set_path_effects([patheffects.withStroke(foreground="w",
-                                                         linewidth=2)])
+            txt = ax.annotate(
+                marklabels[ind],
+                xy=(xval, yval),
+                xycoords="data",
+                xytext=(5, 5),
+                textcoords="offset points",
+                **labelargs,
+            )
+            txt.set_path_effects([patheffects.withStroke(foreground="w", linewidth=2)])
 
-    def plot_morphology_interactive(self, node_arg=None,
-                            use_radius=1, draw_soma_circle=1,
-                            plotargs={'c': 'k', 'lw': 1.},
-                            project3d=False):
+    def plot_morphology_interactive(
+        self,
+        node_arg=None,
+        use_radius=1,
+        draw_soma_circle=1,
+        plotargs={"c": "k", "lw": 1.0},
+        project3d=False,
+    ):
         """
         Show the morphology either in 3d or projected on the x,y-plane. When
         a line segment is clicked, the associated node is printed.
@@ -2814,34 +2999,43 @@ class MorphTree(STree):
                 If ``True``, draws the soma as a circle, otherwise doesn't draw
                 soma
         """
-        fig = pl.figure('Morphology interactive')
-        ax = pl.gca(projection='3d') if project3d else pl.gca()
+        fig = pl.figure("Morphology interactive")
+        ax = pl.gca(projection="3d") if project3d else pl.gca()
         # ax = pl.gca()
-        if 'c' not in plotargs:
-            plotargs.update({'c': 'k'})
-        if 'linewidth' in plotargs:
-            plotargs['lw'] = plotargs['linewidth']
-            del plotargs['linewidth']
-        if 'lw' not in plotargs:
-            plotargs.update({'lw': 'k'})
+        if "c" not in plotargs:
+            plotargs.update({"c": "k"})
+        if "linewidth" in plotargs:
+            plotargs["lw"] = plotargs["linewidth"]
+            del plotargs["linewidth"]
+        if "lw" not in plotargs:
+            plotargs.update({"lw": "k"})
         plotargs_orig = copy.deepcopy(plotargs)
         # plot the tree
         node_line_associators = {}
         for ii, node in enumerate(self.convert_node_arg_to_nodes(node_arg)):
             if node.parent_node is not None:
                 # plot line segment associated with node
-                nxyz = node.xyz; pxyz = node.parent_node.xyz
+                nxyz = node.xyz
+                pxyz = node.parent_node.xyz
                 if use_radius:
-                    plotargs['lw'] = plotargs_orig['lw'] * node.R
+                    plotargs["lw"] = plotargs_orig["lw"] * node.R
                 if project3d:
-                    line = ax.plot([pxyz[0], nxyz[0]],
-                                   [pxyz[1], nxyz[1]],
-                                   [pxyz[2], nxyz[2]],
-                                   label=str(ii), picker=2., **plotargs)
+                    line = ax.plot(
+                        [pxyz[0], nxyz[0]],
+                        [pxyz[1], nxyz[1]],
+                        [pxyz[2], nxyz[2]],
+                        label=str(ii),
+                        picker=2.0,
+                        **plotargs,
+                    )
                 else:
-                    line = ax.plot([pxyz[0], nxyz[0]],
-                                   [pxyz[1], nxyz[1]],
-                                   label=str(ii), picker=2., **plotargs)
+                    line = ax.plot(
+                        [pxyz[0], nxyz[0]],
+                        [pxyz[1], nxyz[1]],
+                        label=str(ii),
+                        picker=2.0,
+                        **plotargs,
+                    )
                 node_line_associators.update({str(ii): node})
         ax.axes.get_xaxis().set_visible(0)
         ax.axes.get_yaxis().set_visible(0)
@@ -2852,12 +3046,19 @@ class MorphTree(STree):
             line = event.artist
             node = node_line_associators[line.get_label()]
             # print the associated node
-            print('\n>>> line segment at ' + str(node) + \
-                   ', distance to soma (um) = ' + \
-                   str(self.path_length({'node': node.index, 'x': 1},
-                                       {'node': 1, 'x':0.})))
+            print(
+                "\n>>> line segment at "
+                + str(node)
+                + ", distance to soma (um) = "
+                + str(
+                    self.path_length(
+                        {"node": node.index, "x": 1}, {"node": 1, "x": 0.0}
+                    )
+                )
+            )
+
         # show morphology
-        cid = fig.canvas.mpl_connect('pick_event', onPick)
+        cid = fig.canvas.mpl_connect("pick_event", onPick)
         pl.show()
 
     def find_common_root(self, name):
@@ -2872,9 +3073,13 @@ class MorphTree(STree):
         rootind = np.argmax([self.order_of_node(node) for node in roots])
         return roots[rootind]
 
-    def create_new_tree(self, loc_arg, 
-            fake_soma=False, store_loc_idxs=False, new_tree=None,
-        ):
+    def create_new_tree(
+        self,
+        loc_arg,
+        fake_soma=False,
+        store_loc_idxs=False,
+        new_tree=None,
+    ):
         """
         Creates a new tree where the locs of a given 'name' are now the nodes.
         Distance relations between locations are maintained (note that this
@@ -2910,7 +3115,7 @@ class MorphTree(STree):
             name = loc_arg
             self._try_name(name)
         else:
-            name = 'new tree'
+            name = "new tree"
             self.store_locs(loc_arg, name)
 
         nids = self.get_node_indices(name)
@@ -2919,7 +3124,7 @@ class MorphTree(STree):
             new_tree = self.__class__()
         elif not issubclass(type(new_tree), MorphTree):
             raise ValueError(
-                f"`new_tree` is an instance of {new_tree.__class__}, "\
+                f"`new_tree` is an instance of {new_tree.__class__}, "
                 f"but should be a subclass of <class 'neat.MorphTree'>."
             )
 
@@ -2935,37 +3140,45 @@ class MorphTree(STree):
         new_tree.set_root(new_snode)
         new_nodes = [new_snode]
         if store_loc_idxs:
-            new_snode.content['loc ind'] = None if 1 not in nids else \
-                                           np.where(nids == 1)[0][0]
+            new_snode.content["loc ind"] = (
+                None if 1 not in nids else np.where(nids == 1)[0][0]
+            )
         # make two other soma nodes
         if fake_soma:
-            for index in [2,3]:
+            for index in [2, 3]:
                 new_cnode = new_tree.create_corresponding_node(index, p3d)
                 new_tree.add_node_with_parent(new_cnode, new_snode)
                 new_nodes.append(new_cnode)
         else:
             for cnode in snode.get_child_nodes(skip_inds=[]):
-                if cnode.index in [2,3]:
+                if cnode.index in [2, 3]:
                     p3d = (cnode.xyz, cnode.R, cnode.swc_type)
                     new_cnode = new_tree.create_corresponding_node(cnode.index, p3d)
                     new_tree.add_node_with_parent(new_cnode, new_snode)
                     new_nodes.append(new_cnode)
         # make rest of tree
         for cnode in snode.child_nodes:
-            self._add_nodes_to_tree(cnode, new_snode, new_tree, new_nodes, name,
-                                 store_loc_idxs=store_loc_idxs)
+            self._add_nodes_to_tree(
+                cnode,
+                new_snode,
+                new_tree,
+                new_nodes,
+                name,
+                store_loc_idxs=store_loc_idxs,
+            )
         # set the lengths of the nodes
         for new_node in new_tree:
             if new_node.parent_node != None:
-                L = np.sqrt(np.sum((new_node.parent_node.xyz - new_node.xyz)**2))
+                L = np.sqrt(np.sum((new_node.parent_node.xyz - new_node.xyz) ** 2))
             else:
-                L = 0.
+                L = 0.0
             new_node.set_length(L)
 
         return new_tree
 
-    def _add_nodes_to_tree(self, node, new_pnode, new_tree, new_nodes, name,
-                              store_loc_idxs=False):
+    def _add_nodes_to_tree(
+        self, node, new_pnode, new_tree, new_nodes, name, store_loc_idxs=False
+    ):
         # get the specified locs
         xs = self.xs[name]
         # check which locinds are on the branch
@@ -2974,16 +3187,16 @@ class MorphTree(STree):
         for ind in np.array(ninds)[order_inds]:
             index = len(new_nodes) + 1
             # new coordinates
-            new_xyz = node.parent_node.xyz * (1.-xs[ind]) + node.xyz * xs[ind]
+            new_xyz = node.parent_node.xyz * (1.0 - xs[ind]) + node.xyz * xs[ind]
             if node.parent_node.index == 1:
                 new_radius = node.R
             else:
-                new_radius = node.parent_node.R * (1.-xs[ind]) + node.R * xs[ind]
+                new_radius = node.parent_node.R * (1.0 - xs[ind]) + node.R * xs[ind]
             # make new node
             p3d = (new_xyz, new_radius, node.swc_type)
             new_node = new_tree.create_corresponding_node(index, p3d)
             if store_loc_idxs:
-                new_node.content['loc ind'] = ind
+                new_node.content["loc ind"] = ind
             # add new node
             new_tree.add_node_with_parent(new_node, new_pnode)
             new_nodes.append(new_node)
@@ -2991,8 +3204,14 @@ class MorphTree(STree):
             new_pnode = new_node
         # continue with the children
         for cnode in node.child_nodes:
-            self._add_nodes_to_tree(cnode, new_pnode, new_tree, new_nodes, name,
-                                 store_loc_idxs=store_loc_idxs)
+            self._add_nodes_to_tree(
+                cnode,
+                new_pnode,
+                new_tree,
+                new_nodes,
+                name,
+                store_loc_idxs=store_loc_idxs,
+            )
 
     def create_compartment_tree(self, loc_arg):
         """
@@ -3014,13 +3233,13 @@ class MorphTree(STree):
         # process input argument
         if isinstance(loc_arg, list):
             locs = [MorphLoc(loc, self) for loc in loc_arg]
-            name = 'comp_locs'
+            name = "comp_locs"
             self.store_locs(locs, name=name)
         elif isinstance(loc_arg, str):
             name = loc_arg
             self._try_name(name)
         else:
-            raise IOError('`loc_arg` should be list of locs or string')
+            raise IOError("`loc_arg` should be list of locs or string")
         nids = self.nids[name]
         xs = self.xs[name]
         # create new tree
@@ -3045,10 +3264,14 @@ class MorphTree(STree):
                 # set new node as next parent node
                 new_pnode = new_node
         else:
-            warnings.warn('Locations of name `' + name + '` do not define a root - ' + \
-                          'adding root to set of locations')
+            warnings.warn(
+                "Locations of name `"
+                + name
+                + "` do not define a root - "
+                + "adding root to set of locations"
+            )
             locs = self.get_locs(name)
-            locs = [(snode.index, 1.)] + locs
+            locs = [(snode.index, 1.0)] + locs
             self.store_locs(locs, name=name)
             # create the new root node
             new_pnode = CompartmentNode(0, loc_idx=0)
@@ -3056,10 +3279,14 @@ class MorphTree(STree):
             new_nodes = [new_pnode]
         # make rest of tree
         for cnode in snode.child_nodes:
-            self._add_compartment_nodes_to_tree(cnode, new_pnode, new_tree, new_nodes, name)
+            self._add_compartment_nodes_to_tree(
+                cnode, new_pnode, new_tree, new_nodes, name
+            )
         return new_tree
 
-    def _add_compartment_nodes_to_tree(self, node, new_pnode, new_tree, new_nodes, name):
+    def _add_compartment_nodes_to_tree(
+        self, node, new_pnode, new_tree, new_nodes, name
+    ):
         # get the specified locs
         xs = self.xs[name]
         # check which locinds are on the branch
@@ -3076,7 +3303,9 @@ class MorphTree(STree):
             new_pnode = new_node
         # continue with the children
         for cnode in node.child_nodes:
-            self._add_compartment_nodes_to_tree(cnode, new_pnode, new_tree, new_nodes, name)
+            self._add_compartment_nodes_to_tree(
+                cnode, new_pnode, new_tree, new_nodes, name
+            )
 
     @original_tree_decorator
     def __copy__(self, new_tree=None):

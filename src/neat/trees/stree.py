@@ -15,6 +15,7 @@ import hashlib
 from collections import Counter
 from functools import reduce
 
+
 class SNode(object):
     """
     Simple Node for use with a simple Tree (`neat.STree`)
@@ -35,6 +36,7 @@ class SNode(object):
     content: dict
         arbitrary items can be stored at the node
     """
+
     def __init__(self, index):
         self.index = index
         self._parent_node = None
@@ -66,28 +68,28 @@ class SNode(object):
     def set_content(self, content):
         if isinstance(content, dict):
             self._content = content
-        else :
+        else:
             raise Exception("SNode.set_content must receive a dict")
 
     content = property(get_content, set_content)
 
     def make_empty(self):
-        '''
+        """
         Remove content and references to parent and child nodes
-        '''
+        """
         self._parent_node = None
         self._content = None
         self._child_nodes = []
 
     def remove_child(self, child_node):
-        '''
+        """
         Remove a single child node
 
         Parameters
         ----------
         child_node: `neat.SNode`
             child node to be removed
-        '''
+        """
         self._child_nodes.remove(child_node)
 
     def __getitem__(self, key):
@@ -120,9 +122,10 @@ class SNode(object):
 
     def __str__(self, with_parent=True):
         parent_idx = self.parent_node.index if self.parent_node is not None else -1
-        node_str = f'{self.__class__.__name__} {self.index}'
+        node_str = f"{self.__class__.__name__} {self.index}"
         if with_parent:
-            pstr = "None" if self.parent_node is None else str(self.parent_node.index)
+            pstr = "None" if self.parent_node is None else str(
+                self.parent_node.index)
             node_str += f", Parent: {pstr}"
         return node_str
 
@@ -146,7 +149,8 @@ class SNode(object):
         """
         if new_node is None:
             new_node = self.__class__(self.index)
-        orig_keys = set(self.__dict__.keys()) - {'_parent_node', '_child_nodes'}
+        orig_keys = set(self.__dict__.keys()) - \
+            {"_parent_node", "_child_nodes"}
         copy_keys = orig_keys.intersection(set(new_node.__dict__.keys()))
         for key in copy_keys:
             new_node.__dict__[key] = copy.deepcopy(self.__dict__[key])
@@ -182,7 +186,7 @@ class STree(object):
         Initialize an empty tree by default
         """
         self._root = None
-        
+
         if issubclass(type(arg), STree):
             # copy the provided tree into self
             arg.__copy__(new_tree=self)
@@ -190,7 +194,7 @@ class STree(object):
             self.root = arg
         else:
             raise ValueError(
-                f"`arg` should be a node (the root node of the tree), " \
+                f"`arg` should be a node (the root node of the tree), "
                 f"a tree, or ``None``. Provided `arg` is {type(arg)}"
             )
 
@@ -227,7 +231,7 @@ class STree(object):
         -------
             `neat.SNode`
         """
-        stack = [];
+        stack = []
         stack.append(node)
         while len(stack) != 0:
             for cnode in stack:
@@ -236,7 +240,7 @@ class STree(object):
                 else:
                     stack.remove(cnode)
                     stack.extend(cnode.get_child_nodes())
-        return None # Not found!
+        return None  # Not found!
 
     def __len__(self, node=None):
         """
@@ -292,11 +296,10 @@ class STree(object):
         """
         if node is None:
             node = self.root
-        tree_string = f'>>> {self.__class__.__name__}'
+        tree_string = f">>> {self.__class__.__name__}"
         for iternode in self.__iter__(node):
-            tree_string += '\n    ' + iternode.__str__(with_parent=True)
+            tree_string += "\n    " + iternode.__str__(with_parent=True)
         return tree_string
-
 
     def __repr__(self, node=None):
         """
@@ -337,7 +340,7 @@ class STree(object):
         -------
             `str`: the hash string
         """
-        h = hashlib.new('sha256')
+        h = hashlib.new("sha256")
         h.update(repr(self).encode())
 
         return h.hexdigest()
@@ -486,7 +489,7 @@ class STree(object):
             node = self.create_corresponding_node(node_index, *args, **kwargs)
             self.add_node_with_parent(node, pnode)
         else:
-            raise ValueError('Index %d is already exists in the tree.')
+            raise ValueError("Index %d is already exists in the tree.")
 
     def add_node_with_parent(self, node, pnode):
         """
@@ -503,7 +506,7 @@ class STree(object):
             node.set_parent_node(pnode)
             pnode.add_child(node)
         else:
-            warnings.warn('`pnode` was `None`, did nothing.')
+            warnings.warn("`pnode` was `None`, did nothing.")
 
     def soft_remove_node(self, node):
         """
@@ -547,7 +550,7 @@ class STree(object):
                 node to be removed
         """
         if node == self.root:
-            raise ValueError('Removing root is forbidden')
+            raise ValueError("Removing root is forbidden")
         cnodes = node.get_child_nodes()
         pnode = node.get_parent_node()
         pnode.remove_child(node)
@@ -581,8 +584,12 @@ class STree(object):
                     node.add_child(pcnode)
                     pcnode.set_parent_node(node)
                 else:
-                    warnings.warn(str(pcnode) + ' is not a child of ' \
-                                              + str(pnode) + ', ignoring it')
+                    warnings.warn(
+                        str(pcnode)
+                        + " is not a child of "
+                        + str(pnode)
+                        + ", ignoring it"
+                    )
             node.set_parent_node(pnode)
             pnode.add_child(node)
         if pnode == None:
@@ -597,7 +604,7 @@ class STree(object):
         Resets the indices in the order they appear in a depth-first iteration
         """
         for ind, node in enumerate(self):
-            node.index = ind+n
+            node.index = ind + n
 
     def get_sub_tree(self, node, new_tree=None):
         """
@@ -691,7 +698,7 @@ class STree(object):
     def _go_to_root_from(self, node, nodes):
         nodes.append(node)
         pnode = node.get_parent_node()
-        if pnode != None :
+        if pnode != None:
             self._go_to_root_from(pnode, nodes)
 
     def path_between_nodes(self, from_node, to_node):
@@ -713,9 +720,9 @@ class STree(object):
         path1 = self.path_to_root(from_node)[::-1]
         path2 = self.path_to_root(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
-                   len(path))
-        return path1[ind:][::-1] + path2[ind-1:]
+        ind = next((ii for ii in range(len(path))
+                   if path1[ii] != path2[ii]), len(path))
+        return path1[ind:][::-1] + path2[ind - 1:]
 
     def path_between_nodes_depth_first(self, from_node, to_node):
         """
@@ -737,9 +744,9 @@ class STree(object):
         path1 = self.path_to_root(from_node)[::-1]
         path2 = self.path_to_root(to_node)[::-1]
         path = path1 if len(path1) < len(path2) else path2
-        ind = next((ii for ii in range(len(path)) if path1[ii] != path2[ii]),
-                   len(path))
-        return path1[ind-1:] + path2[ind:]
+        ind = next((ii for ii in range(len(path))
+                   if path1[ii] != path2[ii]), len(path))
+        return path1[ind - 1:] + path2[ind:]
 
     def get_nodes_in_subtree(self, ref_node, subtree_root=None):
         """
@@ -767,13 +774,15 @@ class STree(object):
         ref_path = self.path_between_nodes(ref_node, subtree_root)
         if subtree_root in ref_path:
             if len(ref_path) > 1:
-                subtree_nodes = [subtree_root] \
-                                + self.gather_nodes(ref_path[-2])
+                subtree_nodes = [subtree_root] + \
+                    self.gather_nodes(ref_path[-2])
             else:
-                subtree_nodes = [ref_node] # both input nodes are the same
+                subtree_nodes = [ref_node]  # both input nodes are the same
         else:
-            raise ValueError('|subtree_root| not in path from |ref_node| \
-                                root')
+            raise ValueError(
+                "|subtree_root| not in path from |ref_node| \
+                                root"
+            )
         return subtree_nodes
 
     def sister_leafs(self, node):
@@ -801,7 +810,8 @@ class STree(object):
             ``corresponding_children`` has exactly one leaf, the corresponding
             element in ``sister_leafs``
         """
-        sleafs = [node]; cchildren = []
+        sleafs = [node]
+        cchildren = []
         snode = self._go_to_root_until(node, None, sl=sleafs, cc=cchildren)
         return snode, sleafs, cchildren
 
@@ -847,7 +857,8 @@ class STree(object):
         if cnode == None or len(node.get_child_nodes()) <= 1:
             pnode = node.get_parent_node()
             if pnode != None:
-                node, cnode = self.find_bifurcation_node_to_root(pnode, cnode=node)
+                node, cnode = self.find_bifurcation_node_to_root(
+                    pnode, cnode=node)
         return node, cnode
 
     def find_bifurcation_node_from_root(self, node):
@@ -886,10 +897,11 @@ class STree(object):
             the bifurcation nodes
         """
         # unique nodes
-        nodes = reduce(lambda l, x: l.append(x) or l if x not in l else l, nodes, [])
+        nodes = reduce(lambda l, x: l.append(
+            x) or l if x not in l else l, nodes, [])
         # tag all nodes
         for node in self:
-            node['tag'] = 0
+            node["tag"] = 0
         # find the 'leafs' within the list of nodes (i.e. most centripetal nodes)
         pnodes = []
         for node in nodes:
@@ -901,18 +913,19 @@ class STree(object):
         for node in nodes:
             pnodes.extend([n for n in self.path_to_root(node)])
         for pathnode in pnodes:
-            pathnode['tag'] += 1
+            pathnode["tag"] += 1
         # find the bifurcation nodes
         bifur_nodes = [self.root]
         for node in self:
             # !!! only works for bifurcations with two children
             # TODO: extend for all bifurcations
-            if len(node.child_nodes) > 1 and \
-               not np.any([cn['tag'] == 0 for cn in node.child_nodes]):
+            if len(node.child_nodes) > 1 and not np.any(
+                [cn["tag"] == 0 for cn in node.child_nodes]
+            ):
                 bifur_nodes.append(node)
         # remove the tags
         for node in self:
-            del node.content['tag']
+            del node.content["tag"]
         # add root if necessary
         if self.root not in bifur_nodes:
             bifur_nodes = [self.root] + bifur_nodes
@@ -983,7 +996,7 @@ class STree(object):
         orig_keys = set(self.__dict__.keys())
         copy_keys = orig_keys.intersection(set(new_tree.__dict__.keys()))
         for key in copy_keys:
-            if key not in ['root', '_root', '_computational_root', '_original_root']:
+            if key not in ["root", "_root", "_computational_root", "_original_root"]:
                 new_tree.__dict__[key] = copy.deepcopy(self.__dict__[key])
 
         # copy the tree structure
@@ -999,7 +1012,7 @@ class STree(object):
         for node in pnode.get_child_nodes(skip_inds=[]):
             new_node = new_tree.create_corresponding_node(node.index)
             new_node = node.__copy__(new_node=new_node)
-            new_tree.add_node_with_parent(new_node, new_tree.__getitem__(pnode.index,
-                                                                      skip_inds=[]))
+            new_tree.add_node_with_parent(
+                new_node, new_tree.__getitem__(pnode.index, skip_inds=[])
+            )
             self._recurse_copy(node, new_tree)
-

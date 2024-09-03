@@ -13,13 +13,17 @@ CFG = DefaultPhysiology()
 try:
     import nest
 except ModuleNotFoundError:
-    warnings.warn('NEST not available, importing non-functional nest module only for doc generation', UserWarning)
+    warnings.warn(
+        "NEST not available, importing non-functional nest module only for doc generation",
+        UserWarning,
+    )
+
     # universal iterable mock object
     class N(object):
         def __init__(self):
             pass
 
-        def __getattr__(self,attr):
+        def __getattr__(self, attr):
             try:
                 return super(N, self).__getattr__(attr)
             except AttributeError:
@@ -40,10 +44,12 @@ except ModuleNotFoundError:
         def __rmul__(self, other):
             return self * other
 
-        def __call__(self, *args, **kwargs): # make callable
+        def __call__(self, *args, **kwargs):  # make callable
             return N()
+
     nest = N()
     np_array = np.array
+
     def array(*args, **kwargs):
         if isinstance(args[0], N):
             print(args)
@@ -51,6 +57,7 @@ except ModuleNotFoundError:
             return np.eye(2)
         else:
             return np_array(*args, **kwargs)
+
     np.array = array
 
 
@@ -59,11 +66,16 @@ def load_nest_model(name):
     # associated with the model is in {nest build directory}/lib/nest,
     # so instead we check whether the model is installed in NEAT
     output = str(
-        subprocess.check_output([
-            "neatmodels", "list", "multichannel_test",
-            "-s", "nest",
-        ]),
-        'utf-8',
+        subprocess.check_output(
+            [
+                "neatmodels",
+                "list",
+                "multichannel_test",
+                "-s",
+                "nest",
+            ]
+        ),
+        "utf-8",
     )
     if name not in output:
         raise FileNotFoundError(f"The NEST model '{name}' is not installed")
@@ -75,6 +87,7 @@ class NestCompartmentNode(CompartmentNode):
     Node class that summarizes the parameters of `neat.CompartmentNode` into
     a parameter dictionary suitable for the NEST model.
     """
+
     def __init__(self, index, **kwargs):
         super().__init__(index, **kwargs)
 
@@ -82,42 +95,42 @@ class NestCompartmentNode(CompartmentNode):
 
         # channel parameters
         g_dict = {
-            f'gbar_{key}': self.currents[key][0] for key in self.currents if key != 'L'
+            f"gbar_{key}": self.currents[key][0] for key in self.currents if key != "L"
         }
         e_dict = {
-            f'e_{key}': self.currents[key][1] for key in self.currents if key != 'L'
+            f"e_{key}": self.currents[key][1] for key in self.currents if key != "L"
         }
 
         # concentration mech parameters
         c_dict = {}
         for ion, concmech in self.concmechs.items():
-            c_dict.update({
-                f'gamma_{ion}': concmech.gamma,
-                f'tau_{ion}': concmech.tau,
-                f'inf_{ion}': concmech.inf,
-            })
+            c_dict.update(
+                {
+                    f"gamma_{ion}": concmech.gamma,
+                    f"tau_{ion}": concmech.tau,
+                    f"inf_{ion}": concmech.inf,
+                }
+            )
 
         # passive parameters
         p_dict = {
-            'g_L': self.currents['L'][0],
-            'e_L': self.currents['L'][1],
-            'C_m': self.ca*1e3, # convert uF to nF
-            'g_C': self.g_c,
+            "g_L": self.currents["L"][0],
+            "e_L": self.currents["L"][1],
+            "C_m": self.ca * 1e3,  # convert uF to nF
+            "g_C": self.g_c,
         }
 
         # initialization parameter
-        i_dict = {
-            'v_comp': self.e_eq
-        }
+        i_dict = {"v_comp": self.e_eq}
         for key, (g, e) in self.currents.items():
-            if key == 'L':
+            if key == "L":
                 continue
             channel = channel_storage[key]
 
             # append asymptotic state variables to initialization dictionary
-            svs = channel.compute_varinf(i_dict['v_comp'])
+            svs = channel.compute_varinf(i_dict["v_comp"])
             for sv, val in svs.items():
-                i_dict[f'{sv}_{key}'] = val
+                i_dict[f"{sv}_{key}"] = val
 
         # create full compartment initialization dictionary
         p_dict.update(g_dict)
@@ -156,9 +169,12 @@ class NestCompartmentTree(CompartmentTree):
         # model indices
         self.reset_indices()
 
-        return [node._make_compartment_dict(channel_storage=self.channel_storage) for node in self]
+        return [
+            node._make_compartment_dict(channel_storage=self.channel_storage)
+            for node in self
+        ]
 
-    def init_model(self, model_name, n, suffix="_model", v_th=-20., **kwargs):
+    def init_model(self, model_name, n, suffix="_model", v_th=-20.0, **kwargs):
         """
         Initialize n nest instantiations of the current model.
 
