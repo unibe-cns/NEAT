@@ -7,6 +7,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check_codestyle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "./src"
+
   build_and_test_neat:
     runs-on: ubuntu-latest
     strategy:
