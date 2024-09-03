@@ -42,11 +42,11 @@ jobs:
 
       # Setup Python version
       - name: Setup Python 3.8
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
 
       - name: Copyright header check
-        uses: actions/setup-python@v5
         uses: actions/checkout@v4
         run: |
           python extras/check_copyright_headers.py
