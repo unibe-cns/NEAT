@@ -798,7 +798,7 @@ class TestConcMechs:
 
         return res_nest
 
-    @pytest.mark.skipif(WITH_NEST, reason="NEST not installed")
+    @pytest.mark.skipif(not WITH_NEST, reason="NEST not installed")
     def test_nest_neuron_sim_ball(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
         locs = [(1,.5)]
 
