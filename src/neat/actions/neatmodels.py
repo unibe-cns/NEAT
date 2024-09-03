@@ -85,8 +85,6 @@ def main():
     # parse the commandline args
     cmd_args = parse_cmd_args(path_neat)
 
-    print("\n\n\n!!! {cmd_args.neuronresource} !!!\n\n\n")
-
     if len(cmd_args.name) > 1:
         raise IOError("At most one [name] argument can be provided")
     else:

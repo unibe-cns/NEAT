@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Install NEAT (repeated)
+      # Install NEAT
       - name: Install NEAT
         run: |
           pip install .
