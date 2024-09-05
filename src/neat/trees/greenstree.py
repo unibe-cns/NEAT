@@ -1011,7 +1011,7 @@ class GreensTreeTime(GreensTree):
 
         Returns
         -------
-        `np.ndarray` (``dtype = self.freqs.dtype``, ``ndim = 3``)
+        `np.ndarray` (``ndim = 3``)
             the matrix of impulse responses, first dimension corresponds to the
             time axis, second and third dimensions contain the impulse response
             in ``[MOhm/ms]`` at that time point

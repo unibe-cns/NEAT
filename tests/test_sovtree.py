@@ -177,6 +177,37 @@ class TestSOVTree():
         assert np.abs(gammas[0,0]**2/np.abs(alphas[0]) - 1./g_s) < 1e-10
         assert np.abs(z_inp_sov - 1./g_s) < 1e-10
 
+    def test_kernel_calculation(self):
+        self.load_T_tree()
+        self.tree.calc_sov_equations(maxspace_freq=500)
+
+        freqs = np.linspace(-10., 10., 11) * 1j
+        times = np.linspace(0.1, 10., 10)
+
+        locs = [(4,.1), (8,.4)]
+
+        zf_trans = self.tree.calc_zf(locs[0], locs[1], freqs=freqs)
+        zf_in1 = self.tree.calc_zf(locs[1], locs[1], freqs=freqs)
+        zf_in0 = self.tree.calc_zf(locs[0], locs[0], freqs=freqs)
+        zf_mat = self.tree.calc_impedance_matrix(loc_arg=locs, freqs=freqs)
+
+        assert np.allclose(zf_mat[:,0,0], zf_in0)
+        assert np.allclose(zf_mat[:,1,1], zf_in1)
+        assert np.allclose(zf_mat[:,0,1], zf_trans)
+        assert np.allclose(zf_mat[:,1,0], zf_trans)
+
+        zt_trans = self.tree.calc_zt(locs[0], locs[1], times=times)
+        zt_in1 = self.tree.calc_zt(locs[1], locs[1], times=times)
+        zt_in0 = self.tree.calc_zt(locs[0], locs[0], times=times)
+        zt_mat = self.tree.calc_impulse_response_matrix(loc_arg=locs, times=times)
+
+        assert np.allclose(zt_mat[:,0,0], zt_in0)
+        assert np.allclose(zt_mat[:,1,1], zt_in1)
+        assert np.allclose(zt_mat[:,0,1], zt_trans)
+        assert np.allclose(zt_mat[:,1,0], zt_trans)
+
+
+
     def test_net_derivation(self):
         # initialize
         self.load_validation_tree()
