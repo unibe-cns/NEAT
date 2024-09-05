@@ -817,8 +817,8 @@ class SOVTree(PhysTree):
             time axis, second and third dimensions contain the impulse response
             in ``[MOhm/ms]`` at that time point
         """
-        if t is None:
-            t = np.linspace(0.1, 100., 1000)
+        if times is None:
+            times = np.linspace(0.1, 100., 1000)
         kernels = self.get_kernels(loc_arg=loc_arg, sov_data=sov_data, eps=eps)
         zt_mat = np.array([[zk.t(times) for zk in row] for row in kernels])
         return np.transpose(zt_mat, axes=(2,0,1))
@@ -863,6 +863,7 @@ class SOVTree(PhysTree):
             frequency dependent impedance matrix if `freqs` is given, with
             the frequency dependence at the first dimension ``[MOhm ]``
         """
+        # TODO: this shortened formulation causes some tests to fail, have to figure out why
         # remove_dim = False
         # if freqs is None:
         #     remove_dim = True
