@@ -24,7 +24,7 @@ from neat import STree, SNode
 import pytest
 
 
-class TestSTree():
+class TestSTree:
     def create_tree(self, reinitialize=0):
         # Create a simple tree structure
 
@@ -112,39 +112,47 @@ class TestSTree():
         self.create_tree()
 
         node_str = "SNode 0, Parent: None"
-        node_repr = \
-            "{'node index': 0, 'parent index': -1, 'content': '{}'}"
+        node_repr = "{'node index': 0, 'parent index': -1, 'content': '{}'}"
         assert str(self.tree[0]) == node_str
         assert repr(self.tree[0]) == node_repr
 
-        tree_str = ">>> STree\n" \
-            "    SNode 0, Parent: None\n" \
-            "    SNode 1, Parent: 0\n" \
-            "    SNode 2, Parent: 1\n" \
+        tree_str = (
+            ">>> STree\n"
+            "    SNode 0, Parent: None\n"
+            "    SNode 1, Parent: 0\n"
+            "    SNode 2, Parent: 1\n"
             "    SNode 3, Parent: 1"
-        tree_repr = "['STree', "\
-            "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
-            "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", " \
-            "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", " \
+        )
+        tree_repr = (
+            "['STree', "
+            "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", "
+            "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", "
+            "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", "
             "\"{'node index': 3, 'parent index': 1, 'content': '{}'}\"]"
+        )
         assert tree_str == str(self.tree)
         assert tree_repr == repr(self.tree)
 
     def test_hashing(self):
         self.create_tree()
 
-        tree_repr = "['STree', "\
-            "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", " \
-            "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", " \
-            "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", " \
+        tree_repr = (
+            "['STree', "
+            "\"{'node index': 0, 'parent index': -1, 'content': '{}'}\", "
+            "\"{'node index': 1, 'parent index': 0, 'content': '{}'}\", "
+            "\"{'node index': 2, 'parent index': 1, 'content': '{}'}\", "
             "\"{'node index': 3, 'parent index': 1, 'content': '{}'}\"]"
+        )
 
         # we check whether the hashes generated with the standard hash function
         # are consistent
         assert hash(self.tree) == hash(tree_repr)
         # we check whether the hash generated with the unique_hash function is
         # correct, as this hash should be the same in every session
-        assert self.tree.unique_hash() == 'd2a693df13fd87b89b4ecb4166713cb9dcd90a13743bcfc8311a3d3d75e854e9'
+        assert (
+            self.tree.unique_hash()
+            == "d2a693df13fd87b89b4ecb4166713cb9dcd90a13743bcfc8311a3d3d75e854e9"
+        )
 
     def test_node_counting(self):
         self.create_tree()
@@ -188,8 +196,9 @@ class TestSTree():
         assert [node.index for node in self.tree] == list(range(5))
         # test node removal
         self.tree.remove_single_node(newnode)
-        assert set(self.nodelist[1].child_nodes) == set([self.nodelist[2],
-                                                         self.nodelist[3]])
+        assert set(self.nodelist[1].child_nodes) == set(
+            [self.nodelist[2], self.nodelist[3]]
+        )
         assert self.nodelist[2].parent_node == self.nodelist[1]
         assert self.nodelist[3].parent_node == self.nodelist[1]
         self.tree.reset_indices()
@@ -229,40 +238,52 @@ class TestSTree():
     def test_paths(self):
         self.create_tree()
         # paths to root
-        assert self.tree.path_to_root(self.nodelist[0]) == \
-                    self.nodelist[0:1]
-        assert self.tree.path_to_root(self.nodelist[2]) == \
-                    self.nodelist[0:3][::-1]
+        assert self.tree.path_to_root(self.nodelist[0]) == self.nodelist[0:1]
+        assert self.tree.path_to_root(self.nodelist[2]) == self.nodelist[0:3][::-1]
         # paths from node to node
-        assert self.tree.path_between_nodes(self.nodelist[2], self.nodelist[3]) == \
-                    [self.nodelist[2], self.nodelist[1], self.nodelist[3]]
-        assert self.tree.path_between_nodes(self.nodelist[2], self.nodelist[1]) == \
-                    [self.nodelist[2], self.nodelist[1]]
-        assert self.tree.path_between_nodes(self.nodelist[1], self.nodelist[2]) == \
-                    [self.nodelist[1], self.nodelist[2]]
-        assert self.tree.path_between_nodes(self.nodelist[2], self.nodelist[2]) == \
-                    [self.nodelist[2]]
+        assert self.tree.path_between_nodes(self.nodelist[2], self.nodelist[3]) == [
+            self.nodelist[2],
+            self.nodelist[1],
+            self.nodelist[3],
+        ]
+        assert self.tree.path_between_nodes(self.nodelist[2], self.nodelist[1]) == [
+            self.nodelist[2],
+            self.nodelist[1],
+        ]
+        assert self.tree.path_between_nodes(self.nodelist[1], self.nodelist[2]) == [
+            self.nodelist[1],
+            self.nodelist[2],
+        ]
+        assert self.tree.path_between_nodes(self.nodelist[2], self.nodelist[2]) == [
+            self.nodelist[2]
+        ]
         # path from node to node in a depth-first ordering
-        assert self.tree.path_between_nodes_depth_first(self.nodelist[2], self.nodelist[3]) == \
-                    [self.nodelist[1], self.nodelist[2], self.nodelist[3]]
-        assert self.tree.path_between_nodes_depth_first(self.nodelist[2], self.nodelist[1]) == \
-                    [self.nodelist[1], self.nodelist[2]]
-        assert self.tree.path_between_nodes_depth_first(self.nodelist[1], self.nodelist[2]) == \
-                    [self.nodelist[1], self.nodelist[2]]
-        assert self.tree.path_between_nodes_depth_first(self.nodelist[2], self.nodelist[2]) == \
-                    [self.nodelist[2]]
+        assert self.tree.path_between_nodes_depth_first(
+            self.nodelist[2], self.nodelist[3]
+        ) == [self.nodelist[1], self.nodelist[2], self.nodelist[3]]
+        assert self.tree.path_between_nodes_depth_first(
+            self.nodelist[2], self.nodelist[1]
+        ) == [self.nodelist[1], self.nodelist[2]]
+        assert self.tree.path_between_nodes_depth_first(
+            self.nodelist[1], self.nodelist[2]
+        ) == [self.nodelist[1], self.nodelist[2]]
+        assert self.tree.path_between_nodes_depth_first(
+            self.nodelist[2], self.nodelist[2]
+        ) == [self.nodelist[2]]
 
     def test_sister_leafs(self):
         self.create_tree()
         # normal case
-        bnode, sister_leafs, corresponding_children = \
-                                    self.tree.sister_leafs(self.nodelist[2])
+        bnode, sister_leafs, corresponding_children = self.tree.sister_leafs(
+            self.nodelist[2]
+        )
         assert bnode == self.nodelist[1]
         assert sister_leafs == self.nodelist[2:]
         assert corresponding_children == self.nodelist[2:]
         # node is bifurcation case
-        bnode, sister_leafs, corresponding_children = \
-                                    self.tree.sister_leafs(self.nodelist[1])
+        bnode, sister_leafs, corresponding_children = self.tree.sister_leafs(
+            self.nodelist[1]
+        )
         assert bnode == self.nodelist[0]
         assert sister_leafs == [self.nodelist[1]]
         assert corresponding_children == [self.nodelist[1]]
@@ -287,9 +308,9 @@ class TestSTree():
         rn = self.tree[2]
         rr = self.tree[1]
         nodes1 = self.tree.get_nodes_in_subtree(rn, subtree_root=rr)
-        assert [nn.index for nn in nodes1] == [1,2]
+        assert [nn.index for nn in nodes1] == [1, 2]
         nodes2 = self.tree.get_nodes_in_subtree(rn)
-        assert [nn.index for nn in nodes2] == [0,1,2,3]
+        assert [nn.index for nn in nodes2] == [0, 1, 2, 3]
         nodes3 = self.tree.get_nodes_in_subtree(rn, subtree_root=rn)
         assert len(nodes3) == 1 and nodes3[0].index == 2
 
@@ -312,8 +333,7 @@ class TestSTree():
         assert bnodes == [self.tree[0], self.tree[1], self.tree[2]]
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     tst = TestSTree()
     tst.test_string_representations()
     tst.test_hashing()

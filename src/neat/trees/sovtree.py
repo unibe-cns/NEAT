@@ -662,12 +662,12 @@ class SOVTree(PhysTree):
             return alphas[inds_sort], gammas[inds_sort, :], importance[inds_sort]
         else:
             return alphas[inds_sort], gammas[inds_sort, :]
-        
+
     def get_kernels(
         self,
         loc_arg=None,
         sov_data=None,
-        eps=0.,
+        eps=0.0,
     ):
         """
         Returns the impulse response kernels as a double nested list of "neat.Kernel".
@@ -709,13 +709,13 @@ class SOVTree(PhysTree):
         aa = alphas
         cc = np.einsum("ik,kj->kij", gammas.T, gammas)
         return [[Kernel((aa, cc[:, ii, jj])) for ii in range(nn)] for jj in range(nn)]
-    
+
     def calc_zf(
         self,
         loc0,
         loc1,
         freqs=None,
-        eps=0.,
+        eps=0.0,
     ):
         """
         Computes the impedance between two locations for the provided frequencies
@@ -742,16 +742,16 @@ class SOVTree(PhysTree):
             in ``[MOhm/ms]`` at that time point
         """
         if freqs is None:
-            freqs = np.array([0.])
+            freqs = np.array([0.0])
         kernel = self.get_kernels(loc_arg=[loc0, loc1], eps=eps)[0][1]
         return kernel.ft(freqs)
-        
+
     def calc_zt(
         self,
         loc0,
         loc1,
         times=None,
-        eps=0.,
+        eps=0.0,
     ):
         """
         Computes the impulse response kernel between two locations for the provided frequencies
@@ -777,16 +777,16 @@ class SOVTree(PhysTree):
             in ``[MOhm/ms]`` at that time point
         """
         if times is None:
-            times = np.linspace(0.1, 100., 1000)
+            times = np.linspace(0.1, 100.0, 1000)
         kernel = self.get_kernels(loc_arg=[loc0, loc1], eps=eps)[0][1]
         return kernel.t(times)
-        
+
     def calc_impulse_response_matrix(
         self,
         times=None,
         loc_arg=None,
         sov_data=None,
-        eps=0.,
+        eps=0.0,
     ):
         """
         Computes the matrix of impulse response kernels at a given set of
@@ -818,17 +818,17 @@ class SOVTree(PhysTree):
             in ``[MOhm/ms]`` at that time point
         """
         if times is None:
-            times = np.linspace(0.1, 100., 1000)
+            times = np.linspace(0.1, 100.0, 1000)
         kernels = self.get_kernels(loc_arg=loc_arg, sov_data=sov_data, eps=eps)
         zt_mat = np.array([[zk.t(times) for zk in row] for row in kernels])
-        return np.transpose(zt_mat, axes=(2,0,1))
+        return np.transpose(zt_mat, axes=(2, 0, 1))
 
     def calc_impedance_matrix(
         self,
         freqs=None,
         loc_arg=None,
         sov_data=None,
-        eps=0.,
+        eps=0.0,
         mem_limit=500,
     ):
         """

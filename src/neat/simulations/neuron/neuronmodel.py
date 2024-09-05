@@ -1049,10 +1049,10 @@ class NeuronSimTree(PhysTree):
                     pl.show()
 
         return z_mat
-    
+
     def calc_zt(
-        self, 
-        loc0, 
+        self,
+        loc0,
         loc1,
         i_amp=0.001,
         dt_pulse=0.1,
@@ -1106,7 +1106,7 @@ class NeuronSimTree(PhysTree):
         self.set_simulation_parameters(
             dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
         )
-        t0 = 5.
+        t0 = 5.0
         j0 = int(t0 / self.dt)
         nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
@@ -1121,18 +1121,16 @@ class NeuronSimTree(PhysTree):
         self.add_i_clamp(loc0, i_amp, t0, dt_pulse)
         self.store_locs([loc0, loc1], "rec locs", warn=False)
         # simulate
-        res = self.run(t_max + dt_pulse + 3.*t0)
+        res = self.run(t_max + dt_pulse + 3.0 * t0)
         self.delete_model()
         # voltage deflections
         v_trans = (
-            res["v_m"][1][j0 + i0 + dstep : j0 + i0 + dstep + nt]
-            - res["v_m"][1][0]
+            res["v_m"][1][j0 + i0 + dstep : j0 + i0 + dstep + nt] - res["v_m"][1][0]
         )
         # compute impedances
         z_trans = v_trans / (i_amp * dt_pulse)
 
         return res["t"][i0 + dstep : i0 + dstep + nt], z_trans
-        
 
     def calc_impulse_response_matrix(
         self,
@@ -1147,7 +1145,7 @@ class NeuronSimTree(PhysTree):
         v_init=-75.0,
     ):
         """
-        Computes matrix of impulse response kernels between any pairs of locations 
+        Computes matrix of impulse response kernels between any pairs of locations
         in `loc_arg` by measuring the voltage in response to an input current pulse.
 
         Parameters
@@ -1190,7 +1188,7 @@ class NeuronSimTree(PhysTree):
             dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
         )
         locs = self.convert_loc_arg_to_locs(loc_arg)
-        t0 = 5.
+        t0 = 5.0
         j0 = int(t0 / self.dt)
         nt = int(t_max / self.dt) - 1
         i0 = int(dt_pulse / self.dt)
@@ -1209,7 +1207,7 @@ class NeuronSimTree(PhysTree):
                 self.add_i_clamp(loc0, i_amp, t0, dt_pulse)
                 self.store_locs([loc0, loc1], "rec locs", warn=False)
                 # simulate
-                res = self.run(t_max + dt_pulse + 3.*t0)
+                res = self.run(t_max + dt_pulse + 3.0 * t0)
                 self.delete_model()
                 # voltage deflections
                 v_trans = (
