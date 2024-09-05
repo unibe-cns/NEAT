@@ -13,8 +13,8 @@ __pycache__/
 report/
 
 # ignore installed models
-src/neat/tools/simtools/nest/tmp/
-src/neat/tools/simtools/neuron/tmp/
+src/neat/simulations/nest/tmp/
+src/neat/simulations/neuron/tmp/
 
 # cython generated
 neat/simulations/netsim.cpp

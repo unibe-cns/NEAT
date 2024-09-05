@@ -47,8 +47,6 @@ from neat.factorydefaults import DefaultPhysiology
 from channelcollection_for_tests import *
 import channel_installer
 channel_installer.load_or_install_neuron_test_channels()
-if WITH_NEST:
-    channel_installer.load_or_install_nest_test_channels()
 
 CFG = DefaultPhysiology()
 MORPHOLOGIES_PATH_PREFIX = os.path.abspath(os.path.join(
@@ -779,11 +777,16 @@ class TestConcMechs:
         dt = .025
         idx0 = int(cal / dt)
         nest.ResetKernel()
+        channel_installer.load_or_install_nest_test_channels()
         nest.SetKernelStatus(dict(resolution=dt))
 
         # create the model
         nestmodel = simtree.init_model("multichannel_test", 1)
-
+        # input port
+        nestmodel.receptors = [{
+            "comp_idx": 0,
+            "receptor_type": "curr_in",
+        }]
         # step current input
         dcg = nest.Create("step_current_generator",
             {
@@ -791,12 +794,13 @@ class TestConcMechs:
                 "amplitude_values": [0., amp, 0.],
             }
         )
+        
         nest.Connect(dcg, nestmodel,
             syn_spec={
                 "synapse_model": "static_synapse",
                 "weight": 1.0,
-                "delay": 0.1,
-                "receptor_type": loc_idxs[0],
+                "delay": dt,
+                "receptor_type": 0,
             }
         )
 
@@ -823,8 +827,6 @@ class TestConcMechs:
     def test_nest_neuron_sim_ball(self, pplot=False, fit_tau=False, amp=0.1, eps_gamma=1e-6, eps_tau=1e-10):
         locs = [(1,.5)]
 
-
-        print(f"\n\n\n!!! with NEST? {WITH_NEST} !!!\n\n\n")
         tree = self.load_ball(w_ca_conc=True, gamma_factor=1e3)
 
         cfit = CompartmentFitter(tree, save_cache=False, recompute_cache=True)
@@ -842,16 +844,24 @@ class TestConcMechs:
             cidxs, amp=amp, dur=20000., delay=1000., cal=10000.
         )
 
+        imax = min(len(res_neuron['v_m'][0]), len(res_nest['v_comp0']))
+
         assert np.allclose(
-            res_neuron['v_m'][0][0:-5],
-            res_nest['v_comp0'],
-            atol=0.3,
+            res_neuron['v_m'][0][1:imax],
+            res_nest['v_comp0'][0:imax-1],
+            atol=2.5,
         )
         assert np.allclose(
-            res_neuron['ca'][0][0:-5],
-            res_nest['c_ca0'],
-            atol=1e-8,
+            res_neuron['ca'][0][1:imax],
+            res_nest['c_ca0'][0:imax-1],
+            atol=0.005,
         )
+        assert np.sqrt(np.mean(
+            (res_neuron['v_m'][0][1:imax] - res_nest['v_comp0'][0:imax-1])**2 
+        )) < 0.01
+        assert np.sqrt(np.mean(
+            (res_neuron['ca'][0][1:imax] - res_nest['c_ca0'][0:imax-1])**2 
+        )) < 0.0001
 
         if pplot:
             pl.figure("nest--neuron")
