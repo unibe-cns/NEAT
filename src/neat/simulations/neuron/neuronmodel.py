@@ -1049,6 +1049,80 @@ class NeuronSimTree(PhysTree):
                     pl.show()
 
         return z_mat
+    
+    def calc_zt(
+        self, 
+        loc0, 
+        loc1,
+        i_amp=0.001,
+        dt_pulse=0.1,
+        dstep=-2,
+        t_max=100.0,
+        factor_lambda=1.0,
+        t_calibrate=0.0,
+        dt=0.025,
+        v_init=-75.0,
+    ):
+        """
+        Computes the impulse response kernel between two locations by measuring the
+        voltage at `loc1` in response to an input current pulse at `loc0`.
+
+        Parameters
+        ----------
+        loc1: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer kernel is computed
+        loc2: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer kernel is computed
+        i_amp : float, optional
+            amplitude of the input current pulse [nA], by default 0.001
+        dt_pulse : float, optional
+            duration of the input current pulse, by default 0.1
+        dstep : int, optional
+            offset form t=0 in no. of timesteps, by default -2
+        t_max : float, optional
+            simulation time, by default 100.0
+        factor_lambda : float, optional
+            If int, the number of segments per section. If float, multiplies the
+            number of segments given by the standard lambda rule (Carnevale, 2004)
+            to give the number of compartments simulated (default value 1. gives
+            the number given by the lambda rule), by default 1.0
+        t_calibrate : float, optional
+            Time for the model to equilibrate``[ms]``. Not counted as part of the
+            simulation., by default 0.0
+        dt : float, optional
+            Timestep of the simulation, by default 0.025
+        v_init : float, optional
+            The initial voltage at which the model is initialized ``[mV]``
+            Returns, by default -75.0
+
+        Returns
+        -------
+        np.array
+            The time array in [ms]
+        np.array
+            The impulse response kernel in [MOhm/ms]
+        """
+        self.init_model(
+            dt=dt,
+            t_calibrate=t_calibrate,
+            v_init=v_init,
+            factor_lambda=factor_lambda,
+        )
+        self.add_i_clamp(loc0, i_amp, 0.0, dt_pulse)
+        self.store_locs([loc0, loc1], "rec locs", warn=False)
+        # simulate
+        res = self.run(t_max + dt_pulse + 10.0)
+        self.delete_model()
+        # voltage deflections
+        v_trans = (
+            res["v_m"][1][i0 + dstep : i0 + dstep + nt]
+            - self[loc1["node"]].v_ep
+        )
+        # compute impedances
+        z_trans = v_trans / (i_amp * dt_pulse)
+
+        return res["t"][i0 + dstep : i0 + dstep + nt], z_trans
+        
 
     def calc_impulse_response_matrix(
         self,
@@ -1062,6 +1136,46 @@ class NeuronSimTree(PhysTree):
         dt=0.025,
         v_init=-75.0,
     ):
+        """
+        Computes matrix of impulse response kernels between any pairs of locations 
+        in `loc_arg` by measuring the voltage in response to an input current pulse.
+
+        Parameters
+        ----------
+        loc_arg : `list` of locations or string
+            if `list` of locations, specifies the locations for which the
+            impulse response kernels are evaluated, if ``string``, specifies the
+            name under which a set of location is stored
+        i_amp : float, optional
+            amplitude of the input current pulse [nA], by default 0.001
+        dt_pulse : float, optional
+            duration of the input current pulse, by default 0.1
+        dstep : int, optional
+            offset form t=0 in no. of timesteps, by default -2
+        t_max : float, optional
+            simulation time, by default 100.0
+        factor_lambda : float, optional
+            If int, the number of segments per section. If float, multiplies the
+            number of segments given by the standard lambda rule (Carnevale, 2004)
+            to give the number of compartments simulated (default value 1. gives
+            the number given by the lambda rule), by default 1.0
+        t_calibrate : float, optional
+            Time for the model to equilibrate``[ms]``. Not counted as part of the
+            simulation., by default 0.0
+        dt : float, optional
+            Timestep of the simulation, by default 0.025
+        v_init : float, optional
+            The initial voltage at which the model is initialized ``[mV]``
+            Returns, by default -75.0
+
+        Returns
+        -------
+        np.array
+            The time array in [ms]
+        np.ndarray (ndim=3)
+            The impulse response kernel in [MOhm/ms], first dimension corresponds to time,
+            last two dimansion correspond to the lcoations
+        """
         self.set_simulation_parameters(
             dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
         )
