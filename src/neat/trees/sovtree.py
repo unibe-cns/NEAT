@@ -667,7 +667,7 @@ class SOVTree(PhysTree):
         self,
         loc_arg=None,
         sov_data=None,
-        eps=1e-4,
+        eps=0.,
     ):
         """
         Returns the impulse response kernels as a double nested list of "neat.Kernel".
@@ -696,7 +696,7 @@ class SOVTree(PhysTree):
         """
         if loc_arg is not None:
             locs = self.convert_loc_arg_to_locs(loc_arg)
-            alphas, gammas, _ = self.get_important_modes(locs, eps=eps)
+            alphas, gammas = self.get_important_modes(locs, eps=eps)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
@@ -705,17 +705,88 @@ class SOVTree(PhysTree):
                 "One of the kwargs `loc_arg` or `sov_data` must not be ``None``"
             )
         # some renaming
-        nn = len(locs)
+        nn = gammas.shape[1]
         aa = alphas
         cc = np.einsum("ik,kj->kij", gammas.T, gammas)
         return [[Kernel((aa, cc[:, ii, jj])) for ii in range(nn)] for jj in range(nn)]
+    
+    def calc_zf(
+        self,
+        loc0,
+        loc1,
+        freqs=None,
+        eps=0.,
+    ):
+        """
+        Computes the impedance between two locations for the provided frequencies
+
+        Parameters
+        ----------
+        loc1: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        loc2: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        freqs: np.ndarray of complex or None (default)
+            if ``None``, returns the steady state impedance matrix, if
+            a array of complex numbers, returns the impedance matrix for
+            each Fourrier frequency in the array
+        eps: float
+            the cutoff threshold in relative importance below which modes
+            are truncated
+
+        Returns
+        ------
+        `np.ndarray` (``ndim=3``)
+            the matrix of impulse responses, first dimension corresponds to the
+            time axis, second and third dimensions contain the impulse response
+            in ``[MOhm/ms]`` at that time point
+        """
+        if freqs is None:
+            freqs = np.array([0.])
+        kernel = self.get_kernels(loc_arg=[loc0, loc1], eps=eps)[0][1]
+        return kernel.ft(freqs)
+        
+    def calc_zt(
+        self,
+        loc0,
+        loc1,
+        times=None,
+        eps=0.,
+    ):
+        """
+        Computes the impulse response kernel between two locations for the provided frequencies
+
+        Parameters
+        ----------
+        loc1: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        loc2: dict, tuple or `:class:MorphLoc`
+            One of two locations between which the transfer impedance is computed
+        times: np.array
+            The time-points at which to evaluate the kernels. If not provided,
+            evaluates `t = np.linspace(0.1,100.,1000)`
+        eps: float
+            the cutoff threshold in relative importance below which modes
+            are truncated
+
+        Returns
+        ------
+        `np.ndarray` (``ndim=3``)
+            the matrix of impulse responses, first dimension corresponds to the
+            time axis, second and third dimensions contain the impulse response
+            in ``[MOhm/ms]`` at that time point
+        """
+        if times is None:
+            times = np.linspace(0.1, 100., 1000)
+        kernel = self.get_kernels(loc_arg=[loc0, loc1], eps=eps)[0][1]
+        return kernel.t(times)
         
     def calc_impulse_response_matrix(
         self,
-        times,
+        times=None,
         loc_arg=None,
         sov_data=None,
-        eps=1e-4,
+        eps=0.,
     ):
         """
         Computes the matrix of impulse response kernels at a given set of
@@ -724,7 +795,8 @@ class SOVTree(PhysTree):
         Parameters
         ----------
         times: np.array
-            The time-points at which to evaluate the kernels
+            The time-points at which to evaluate the kernels. If not provided,
+            evaluates `t = np.linspace(0.1,100.,1000)`
         loc_arg: None or list of locations
         sov_data: None or tuple of mode matrices
             One of the keyword arguments ``loc_arg`` or ``sov_data``
@@ -745,6 +817,8 @@ class SOVTree(PhysTree):
             time axis, second and third dimensions contain the impulse response
             in ``[MOhm/ms]`` at that time point
         """
+        if t is None:
+            t = np.linspace(0.1, 100., 1000)
         kernels = self.get_kernels(loc_arg=loc_arg, sov_data=sov_data, eps=eps)
         zt_mat = np.array([[zk.t(times) for zk in row] for row in kernels])
         return np.transpose(zt_mat, axes=(2,0,1))
@@ -754,7 +828,7 @@ class SOVTree(PhysTree):
         freqs=None,
         loc_arg=None,
         sov_data=None,
-        eps=1e-4,
+        eps=0.,
         mem_limit=500,
     ):
         """
@@ -789,9 +863,20 @@ class SOVTree(PhysTree):
             frequency dependent impedance matrix if `freqs` is given, with
             the frequency dependence at the first dimension ``[MOhm ]``
         """
+        # remove_dim = False
+        # if freqs is None:
+        #     remove_dim = True
+        #     freqs = np.array([0.])
+
+        # kernels = self.get_kernels(loc_arg=loc_arg, sov_data=sov_data, eps=eps)
+        # zf_mat = np.array([[zk.ft(freqs) for zk in row] for row in kernels])
+
+        # if remove_dim:
+        #     zf_mat[:,:,0]
+        # return np.transpose(zf_mat, axes=(2,0,1))
         if loc_arg is not None:
             locs = self.convert_loc_arg_to_locs(loc_arg)
-            alphas, gammas = self.get_sov_matrices(locs, eps=eps)
+            alphas, gammas = self.get_sov_matrices(locs)
         elif sov_data is not None:
             alphas = sov_data[0]
             gammas = sov_data[1]
