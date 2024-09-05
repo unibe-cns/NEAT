@@ -1069,9 +1069,9 @@ class NeuronSimTree(PhysTree):
 
         Parameters
         ----------
-        loc1: dict, tuple or `:class:MorphLoc`
+        loc0: dict, tuple or `:class:MorphLoc`
             One of two locations between which the transfer kernel is computed
-        loc2: dict, tuple or `:class:MorphLoc`
+        loc1: dict, tuple or `:class:MorphLoc`
             One of two locations between which the transfer kernel is computed
         i_amp : float, optional
             amplitude of the input current pulse [nA], by default 0.001
@@ -1102,21 +1102,31 @@ class NeuronSimTree(PhysTree):
         np.array
             The impulse response kernel in [MOhm/ms]
         """
+        (loc0, loc1) = self.convert_loc_arg_to_locs([loc0, loc1])
+        self.set_simulation_parameters(
+            dt=dt, t_calibrate=t_calibrate, v_init=v_init, factor_lambda=factor_lambda
+        )
+        t0 = 5.
+        j0 = int(t0 / self.dt)
+        nt = int(t_max / self.dt) - 1
+        i0 = int(dt_pulse / self.dt)
+        if dstep < -i0:
+            dstep = -i0
         self.init_model(
             dt=dt,
             t_calibrate=t_calibrate,
             v_init=v_init,
             factor_lambda=factor_lambda,
         )
-        self.add_i_clamp(loc0, i_amp, 0.0, dt_pulse)
+        self.add_i_clamp(loc0, i_amp, t0, dt_pulse)
         self.store_locs([loc0, loc1], "rec locs", warn=False)
         # simulate
-        res = self.run(t_max + dt_pulse + 10.0)
+        res = self.run(t_max + dt_pulse + 3.*t0)
         self.delete_model()
         # voltage deflections
         v_trans = (
-            res["v_m"][1][i0 + dstep : i0 + dstep + nt]
-            - self[loc1["node"]].v_ep
+            res["v_m"][1][j0 + i0 + dstep : j0 + i0 + dstep + nt]
+            - res["v_m"][1][0]
         )
         # compute impedances
         z_trans = v_trans / (i_amp * dt_pulse)
