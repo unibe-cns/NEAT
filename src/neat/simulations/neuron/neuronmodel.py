@@ -1195,27 +1195,25 @@ class NeuronSimTree(PhysTree):
         if dstep < -i0:
             dstep = -i0
         zk_mat = np.zeros((nt, len(locs), len(locs)))
-        for ii, loc0 in enumerate(locs):
-            for jj, loc1 in enumerate(locs):
-                loc1 = locs[jj]
-                self.init_model(
-                    dt=dt,
-                    t_calibrate=t_calibrate,
-                    v_init=v_init,
-                    factor_lambda=factor_lambda,
-                )
-                self.add_i_clamp(loc0, i_amp, t0, dt_pulse)
-                self.store_locs([loc0, loc1], "rec locs", warn=False)
-                # simulate
-                res = self.run(t_max + dt_pulse + 3.0 * t0)
-                self.delete_model()
-                # voltage deflections
-                v_trans = (
-                    res["v_m"][1][j0 + i0 + dstep : j0 + i0 + dstep + nt]
-                    - res["v_m"][1][0]
-                )
-                # compute impedances
-                zk_mat[:, ii, jj] = v_trans / (i_amp * dt_pulse)
+        for ii, loc_in in enumerate(locs):
+            self.init_model(
+                dt=dt,
+                t_calibrate=t_calibrate,
+                v_init=v_init,
+                factor_lambda=factor_lambda,
+            )
+            self.add_i_clamp(loc_in, i_amp, t0, dt_pulse)
+            self.store_locs(locs, "rec locs", warn=False)
+            # simulate
+            res = self.run(t_max + dt_pulse + 3.0 * t0)
+            self.delete_model()
+            # voltage deflections
+            v_trans = (
+                res["v_m"][:, j0 + i0 + dstep : j0 + i0 + dstep + nt]
+                - res["v_m"][:,0:1]
+            )
+            # compute impulse response kernels
+            zk_mat[:, ii, :] = v_trans.T / (i_amp * dt_pulse)
         return res["t"][i0 + dstep : i0 + dstep + nt], zk_mat
 
 
