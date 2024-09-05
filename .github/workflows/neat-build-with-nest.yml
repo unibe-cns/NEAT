@@ -18,6 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with NEST.  If not, see <http://www.gnu.org/licenses/>.
+
 name: NEAT build with NEST
 
 on: [push, pull_request, workflow_dispatch]
@@ -74,7 +75,7 @@ jobs:
         run: |
           pip install nestml
 
-      # Install NEAT (repeated)
+      # Install NEAT
       - name: Install NEAT
         run: |
           export PYTHONPATH=${{ env.PYTHONPATH }}:${{ env.NEST_INSTALL }}/lib/python3.8/site-packages
