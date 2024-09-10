@@ -1,7 +1,16 @@
 # documentation
 sphinx>=2.4.3
+sphinx>=2.4.3
 nbsphinx>=0.5.1
 sphinx-gallery>=0.6.1
-sphinx_rtd_theme>=0.4.3
+sphinx-material>=0.0.35
 nb2plots>=0.6
 pillow>=7.1.2
+numpy>=1.23.1
+matplotlib>=3.5.2
+scipy>=1.9.0
+sympy>=1.10.1
+pytest>=7.1.2
+scikit_learn>=1.1.1
+dill>=0.3.8
+
