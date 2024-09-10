@@ -3,6 +3,7 @@ Sequence discrimination
 =================
 
 .. image:: /figures/sequence_discrimination.png
+   :width: 75%
 """
 
 import sys

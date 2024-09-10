@@ -3,6 +3,7 @@ Basal AP Backprop
 =================
 
 .. image:: /figures/ap_backpropagation.png
+   :width: 75%
 """
 
 import numpy as np
