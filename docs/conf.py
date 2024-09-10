@@ -1,6 +1,5 @@
 from datetime import date
 from sphinx_gallery.sorting import ExplicitOrder
-import sphinx_rtd_theme
 from warnings import filterwarnings
 
 filterwarnings(
