@@ -2,7 +2,7 @@
 Basal AP Backprop
 =================
 
-.. image:: ../../../../figures/ap_backpropagation.png
+.. image:: /figures/ap_backpropagation.png
 """
 
 import numpy as np

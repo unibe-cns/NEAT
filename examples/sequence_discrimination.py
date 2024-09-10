@@ -2,7 +2,7 @@
 Sequence discrimination
 =================
 
-.. image:: ../../../../figures/sequence_discrimination.png
+.. image:: /figures/sequence_discrimination.png
 """
 
 import sys
