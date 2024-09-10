@@ -1,0 +1,96 @@
+/* Define colors*/
+:root {
+    --nest-orange: #ff6633;
+    --nest-blue: #0E6A93;
+    --nest-dkblue: #072f42;
+    --nest-brown: #4b210c;
+
+a {color: var(--nest-orange);}
+a:hover {
+  text-decoration: underline;
+}
+
+ul.md-tabs__list li.md-tabs__item a.md-tabs__link {
+ color: #fff;
+ opacity:0.9;
+}
+a.md-tabs__link, a.md-source {
+  color: #fff;
+}
+[data-md-color-primary=orange] .md-tabs {
+  background-color: var(--nest-orange);
+ }
+
+/* To add matching styling for the header in index.html */
+div[role="main"] .md-header {
+  background-color: var(--nest-orange);
+/*  scale: 140%;
+  padding-top: 0.3rem;
+  height: 2.6rem;
+	transition: background-color .25s,color .25s,box-shadow .25s;
+	box-shadow: 0 0 .2rem rgba(0,0,0,.1),0 .2rem .4rem rgba(0,0,0,.2);
+*/
+}
+
+[data-md-color-primary="orange"] .md-header, [data-md-color-primary="orange"] .md-hero {
+  background-color: var(--nest-orange);
+}
+
+[data-md-color-primary="orange"] .md-typeset a {
+  color: var(--nest-orange);
+	background-color: #ffffff8a;
+	border-radius: 5px;
+}
+.md-nav__link:hover {
+
+	color: var(--nest-brown);
+}
+
+
+/*
+[data-md-color-primary="orange"] .md-nav__link--active, [data-md-color-primary="orange"] .md-nav__link:active {
+	color: var(--nest-orange);
+}
+
+.md-nav__extra_link{
+  color: var(--nest-orange);
+}
+
+.md-nav__link, .md-nav__link:focus{
+	color: var(--nest-orange) !important;
+}
+*/
+.md-typeset .admonition, .md-typeset .admonition.tip {
+  border-left: .2rem solid var(--nest-blue);
+  border-radius: 5px;
+}
+
+.md-typeset .admonition > .admonition-title::before, .md-typeset .admonition.important > .admonition-title::before, .md-typeset .admonition.tip > .admonition-title::before {
+  color: #fff;
+}
+.md-typeset .admonition > .admonition-title, .md-typeset .admonition.tip > .admonition-title {
+  background-color: var(--nest-blue);
+  color: #fff;
+}
+.md-typeset .admonition {
+   background-color: #fff;
+   box-shadow: 0 .125rem .25rem var(--sd-color-shadow);
+   margin-left: 17px;
+   margin-right: 15px;
+}
+.md-typeset .admonition.seealso > .admonition-title, .md-typeset .admonition.important > .admonition-title {
+   background-color: var(--nest-dkblue);
+}
+.md-typeset .admonition.seealso, .md-typeset .admonition.important {
+  border-left: .2rem solid var(--nest-dkblue);
+}
+.md-typeset .admonition.warning {
+   border-left-color: #be1717;
+}
+.md-typeset .admonition.warning > .admonition-title {
+   background-color: #be1717;
+}
+.md-typeset .admonition.danger > .admonition-title {
+   background-color: black;
+}
+

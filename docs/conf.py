@@ -138,7 +138,7 @@ nbsphinx_execute = 'never'
 
 # The name of the Pygments (syntax highlighting) style to use.
 # pygments_style = 'friendly'
-pygments_style = "sphinx"
+pygments_style = "manni"
 
 # A list of prefixs that are ignored when creating the module index. (new in Sphinx 0.6)
 modindex_common_prefix = ["neat."]
@@ -149,12 +149,34 @@ modindex_common_prefix = ["neat."]
 # -----------------------
 
 
-html_theme = "sphinx_rtd_theme"
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme = "sphinx_material"
 
 html_theme_options = {
-    "canonical_url": "https://neat.github.io/documentation/stable/",
-    "navigation_depth": 3,
+    # Set the name of the project to appear in the navigation.
+    # Set you GA account ID to enable tracking
+    # 'google_analytics_account': 'UA-XXXXX',
+    # Specify a base_url used to generate sitemap.xml. If not
+    # specified, then no sitemap will be built.
+    "base_url": "https://neatdend.readthedocs.io/en/latest/",
+    "html_minify": False,
+    "html_prettify": False,
+    "css_minify": True,
+    # Set the color and the accent color
+    "color_primary": "orange",
+    "color_accent": "white",
+    "theme_color": "ff6633",
+    "master_doc": False,
+    # Set the repo location to get a badge with stats
+    "repo_url": "https://github.com/unibe-cns/NEAT",
+    "repo_name": "NEAT",
+    "nav_links": [{"href": "index", "internal": True, "title": "Docs home"}],
+    # Visible levels of the global TOC; -1 means unlimited
+    "globaltoc_depth": 1,
+    # If False, expand all TOC entries
+    "globaltoc_collapse": True,
+    # If True, show hidden TOC entries
+    "globaltoc_includehidden": True,
+    "version_dropdown": False,
 }
 
 
@@ -168,6 +190,9 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+html_css_files = [
+    "custom.css"]
+
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
 html_last_updated_fmt = "%b %d, %Y"
@@ -180,7 +205,7 @@ html_last_updated_fmt = "%b %d, %Y"
 # html_index = 'index.html'
 
 # Custom sidebar templates, maps page names to templates.
-# html_sidebars = {}
+html_sidebars = {"**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]}
 
 # Additional templates that should be rendered to pages, maps page names to
 # templates.
