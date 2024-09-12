@@ -78,11 +78,13 @@ jobs:
       # Install NEAT
       - name: Install NEAT
         run: |
+          source ${{ env.NEST_INSTALL }}/bin/nest_vars.sh
           export PYTHONPATH=${{ env.PYTHONPATH }}:${{ env.NEST_INSTALL }}/lib/python3.8/site-packages
           pip install .
 
       # Run tests that feature NEST functionality
       - name: Run tests
         run: |
+          source ${{ env.NEST_INSTALL }}/bin/nest_vars.sh
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_concmechs.py
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_nesttree.py
