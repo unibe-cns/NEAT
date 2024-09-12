@@ -86,6 +86,5 @@ jobs:
       - name: Run tests
         run: |
           source ${{ env.NEST_INSTALL }}/bin/nest_vars.sh
-          python -m nest
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_concmechs.py
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_nesttree.py
