@@ -1210,7 +1210,7 @@ class NeuronSimTree(PhysTree):
             # voltage deflections
             v_trans = (
                 res["v_m"][:, j0 + i0 + dstep : j0 + i0 + dstep + nt]
-                - res["v_m"][:,0:1]
+                - res["v_m"][:, 0:1]
             )
             # compute impulse response kernels
             zk_mat[:, ii, :] = v_trans.T / (i_amp * dt_pulse)
