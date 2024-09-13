@@ -44,7 +44,7 @@ jobs:
       - name: Setup environment
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.9
 
       # Checkout the repository contents
       - name: Checkout NEAT code
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.8', '3.10', '3.12' ]
+        python-version: [ '3.9', '3.10', '3.12' ]
         
       fail-fast: false
 
