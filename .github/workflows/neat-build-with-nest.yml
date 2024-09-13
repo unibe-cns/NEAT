@@ -89,6 +89,6 @@ jobs:
       - name: Run tests
         run: |
           source ${{ env.NEST_INSTALL }}/bin/nest_vars.sh
-          neatmodels install multichannel_test -s nest neuron -p tests/ channelcollection_for_tests.py
+          neatmodels install multichannel_test -s nest neuron -p tests/channelcollection_for_tests.py
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_concmechs.py
           pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_nesttree.py
