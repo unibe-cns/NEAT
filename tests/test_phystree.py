@@ -26,7 +26,7 @@ import os
 import pytest
 import copy
 
-from neat import PhysTree, MorphTree, CompartmentFitter
+from neat import PhysTree, MorphTree, GreensTree, CompartmentFitter
 
 import channelcollection_for_tests as channelcollection
 import channel_installer
@@ -40,7 +40,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(
 
 
 class TestPhysTree:
-    def load_tree(self, reinitialize=0, segments=False):
+    def load_tree(self, segments=False):
         """
         Load the T-tree morphology in memory
 
@@ -49,11 +49,28 @@ class TestPhysTree:
                 |
                 1
         """
-        if not hasattr(self, "tree") or reinitialize:
-            fname = "Ttree_segments.swc" if segments else "Ttree.swc"
-            self.tree = PhysTree(
-                os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1, 3, 4]
-            )
+        fname = "Ttree_segments.swc" if segments else "Ttree.swc"
+        self.tree = PhysTree(
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1, 3, 4]
+        )
+
+    def load_segments_tree(self):
+        """
+        Load ball and stick dendrite where each segment is decreasing in radius
+
+        1--4--5--6--7--8
+        """
+        self.tree = PhysTree(
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_stick_segments.swc"), types=[1, 3, 4]
+        )
+
+    def load_sticks_tree(self):
+        """
+        Load ball and some sticks dendrite
+        """
+        self.tree = PhysTree(
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_some_sticks.swc"), types=[1, 3, 4]
+        )
 
     def test_string_representation(self):
         self.load_tree()
@@ -89,7 +106,7 @@ class TestPhysTree:
         assert repr(self.tree) == repr_str
 
     def test_leak_distr(self):
-        self.load_tree(reinitialize=1)
+        self.load_tree()
         with pytest.raises(AssertionError):
             self.tree.fit_leak_current(-75.0, -10.0)
         # test simple distribution
@@ -112,7 +129,7 @@ class TestPhysTree:
             assert np.abs(node.v_ep + 75.0) < 1e-9
 
     def test_physiology_setting(self):
-        self.load_tree(reinitialize=1)
+        self.load_tree()
         d2s = {1: 0.0, 4: 50.0, 5: 125.0, 6: 175.0, 7: 125.0, 8: 175.0}
         # passive parameters as float
         c_m = 1.0
@@ -216,7 +233,7 @@ class TestPhysTree:
             self.tree.add_channel_current("test_channel2", g_max, e_rev)
 
     def test_membrane_functions(self):
-        self.load_tree(reinitialize=1)
+        self.load_tree()
         self.tree.set_physiology(1.0, 100 * 1e-6)
         # passive parameters
         c_m = 1.0
@@ -282,7 +299,7 @@ class TestPhysTree:
             assert np.abs(node.calc_i_tot(tree.channel_storage)) < 1e-10
 
     def test_comp_tree(self):
-        self.load_tree(reinitialize=1, segments=True)
+        self.load_tree(segments=True)
 
         # capacitance axial resistance constant
         c_m = 1.0
@@ -327,7 +344,7 @@ class TestPhysTree:
             assert [n.index for n in self.tree] == [1, 5, 6, 7, 8, 9, 10, 12]
 
     def test_create_new_tree(self):
-        self.load_tree(reinitialize=1, segments=True)
+        self.load_tree(segments=True)
         # gmax as potential as float
         e_rev = 100.0
         g_max = 100.0
@@ -341,8 +358,6 @@ class TestPhysTree:
             self.tree.create_new_tree(locs, new_tree=MorphTree())
 
         new_tree = self.tree.create_new_tree(locs)
-        print(self.tree)
-        print(new_tree)
         for new_node, orig_node in zip(new_tree, self.tree):
             for channel_name in orig_node.currents:
                 g_new = new_node.currents[channel_name][0]
@@ -350,7 +365,7 @@ class TestPhysTree:
                 assert g_new == pytest.approx(g_orig)
 
     def test_finite_diff_tree(self, rtol_param=5e-2, rtol_dx=1e-10, pprint=False):
-        self.load_tree(reinitialize=1, segments=1)
+        self.load_tree(segments=1)
         # set capacitance, axial resistance
         c_m = 1.0
         r_a = 100.0 * 1e-6
@@ -396,41 +411,61 @@ class TestPhysTree:
         assert len(ctree_fd) == 91  # soma + 9 segments with 10 compartments each
         _check_dx(ctree_fd, locs_fd, dx=10.0)
 
+        def check_tree_equivalence(locs, ctree_fd, ctree_fit, with_ca=True):
+            if pprint:
+                print("\nchecking tree >>>")
+
+            for ii, loc in enumerate(locs):
+                node_fd = ctree_fd.get_nodes_from_loc_idxs(ii)
+                node_fit = ctree_fit.get_nodes_from_loc_idxs(ii)
+
+                # test capacitance match
+                if pprint:
+                    print(f"> loc {ii}")
+                    print(f"    ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
+                if with_ca:
+                    assert np.abs(node_fd.ca - node_fit.ca) < rtol_param * np.max(
+                        [node_fd.ca, node_fit.ca]
+                    )
+
+                # test coupling cond match
+                if not ctree_fd.is_root(node_fd):
+                    if pprint:
+                        print(f"    gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
+                    assert np.abs(node_fd.g_c - node_fit.g_c) < rtol_param * np.max(
+                        [node_fd.g_c, node_fit.g_c]
+                    )
+
+                # test leak current match
+                for key in node_fd.currents:
+                    g_fd = node_fd.currents[key][0]
+                    g_fit = node_fit.currents[key][0]
+                    if pprint:
+                        print(f"    g_{key}_fd = {g_fd}, g_{key}_fit = {g_fit}")
+                    assert np.abs(g_fd - g_fit) < rtol_param * np.max([g_fd, g_fit])
+
+            if pprint:
+                print("<<< tree check done\n")
+
         # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.0)
         cfit = CompartmentFitter(self.tree, save_cache=False)
         ctree_fit, _ = cfit.fit_model(locs_fd)
-
         # check whether both trees have the same parameters
-        for node_fd, node_fit in zip(ctree_fd, ctree_fit):
+        check_tree_equivalence(locs_fd, ctree_fd, ctree_fit)
 
-            if pprint:
-                print("---")
-            # test capacitance match
-            if pprint:
-                print(f"ca_fd = {node_fd.ca}, ca_fit = {node_fit.ca}")
-            assert np.abs(node_fd.ca - node_fit.ca) < rtol_param * np.max(
-                [node_fd.ca, node_fit.ca]
-            )
+        # compute resistance matrix of all models
+        gt = GreensTree(self.tree)
+        gt.set_impedance(0.)
+        z_orig = gt.calc_impedance_matrix(locs_fd)
+        z_fd = ctree_fd.calc_impedance_matrix()
+        z_fit = ctree_fit.calc_impedance_matrix()
+        assert np.allclose(z_orig, z_fd, atol=.5)
+        assert np.allclose(z_fit, z_fd, atol=2.)
 
-            # test coupling cond match
-            if not ctree_fd.is_root(node_fd):
-                if pprint:
-                    print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
-                assert np.abs(node_fd.g_c - node_fit.g_c) < rtol_param * np.max(
-                    [node_fd.g_c, node_fit.g_c]
-                )
-
-            # test leak current match
-            for key in node_fd.currents:
-                g_fd = node_fd.currents[key][0]
-                g_fit = node_fit.currents[key][0]
-                if pprint:
-                    print(f"g_{key}_fd = {g_fd}, g_{key}_fit = {g_fit}")
-                assert np.abs(g_fd - g_fit) < rtol_param * np.max([g_fd, g_fit])
-
+        ###################################################
         # test tree with varying conductance densities
-        self.load_tree(reinitialize=1, segments=1)
+        self.load_tree( segments=1)
         # set capacitance, axial resistance
         c_m = 1.0
         r_a = 100.0 * 1e-6
@@ -439,6 +474,7 @@ class TestPhysTree:
         e_l = -75.0
         g_l = lambda x: 100.0 + 100.0 * np.exp((x - 400.0) / 400)
         self.tree.set_leak_current(g_l, e_l, node_arg="apical")
+        self.tree.set_leak_current(g_l, e_l, node_arg="basal")
         self.tree.set_leak_current(200.0, e_l, node_arg="somatic")
         # set potassium current
         self.tree.add_channel_current(
@@ -450,32 +486,82 @@ class TestPhysTree:
         # set computational tree
         self.tree.set_comp_tree()
 
-        # print(4*np.pi*self.tree[1].R**2*self.tree[1].currents['L'][0]*1e-8)
-
         # fit a compartmenttree to the same locations
+        ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=52.0)
+        cfit = CompartmentFitter(self.tree, save_cache=False)
+        ctree_fit, _ = cfit.fit_model(locs_fd)
+        # check whether both trees have the same parameters
+        check_tree_equivalence(locs_fd, ctree_fd, ctree_fit, with_ca=False)
+
+        # compute resistance matrix of all models
+        gt = GreensTree(self.tree)
+        gt.set_impedance(0.)
+        z_orig = gt.calc_impedance_matrix(locs_fd)
+        z_fit = ctree_fit.calc_impedance_matrix()
+        z_fd = ctree_fd.calc_impedance_matrix()
+        assert np.allclose(z_orig, z_fd, atol=.5)
+        assert np.allclose(z_fit, z_fd, atol=2.)
+        ###################################################
+
+        ###################################################
+        # test a different morphology
+        self.load_sticks_tree()
+        # set capacitance, axial resistance
+        c_m = 1.0
+        r_a = 100.0 * 1e-6
+        self.tree.set_physiology(c_m, r_a)
+        # set leak current
+        g_l, e_l = 100.0, -75.0
+        self.tree.set_leak_current(g_l, e_l)
+        # set computational tree
+        self.tree.set_comp_tree()
+
+         # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.0)
         cfit = CompartmentFitter(self.tree, save_cache=False)
         ctree_fit, _ = cfit.fit_model(locs_fd)
         # check whether both trees have the same parameters
-        for node_fd, node_fit in zip(ctree_fd, ctree_fit):
+        check_tree_equivalence(locs_fd, ctree_fd, ctree_fit)
 
-            if pprint:
-                print("---")
-            # test coupling cond match
-            if not ctree_fd.is_root(node_fd):
-                if pprint:
-                    print(f"gc_fd = {node_fd.g_c}, gc_fit = {node_fit.g_c}")
-                assert np.abs(node_fd.g_c - node_fit.g_c) < rtol_param * np.max(
-                    [node_fd.g_c, node_fit.g_c]
-                )
+        # compute resistance matrix of all models
+        gt = GreensTree(self.tree)
+        gt.set_impedance(0.)
+        z_orig = gt.calc_impedance_matrix(locs_fd)
+        z_fd = ctree_fd.calc_impedance_matrix()
+        z_fit = ctree_fit.calc_impedance_matrix()
+        assert np.allclose(z_orig, z_fd, atol=1.)
+        assert np.allclose(z_fit, z_fd, atol=1.)
+        ###################################################
 
-            # test leak current match
-            for key in node_fd.currents:
-                g_fd = node_fd.currents[key][0]
-                g_fit = node_fit.currents[key][0]
-                if pprint:
-                    print(f"g{key}_fd = {g_fd}, g{key}_fit = {g_fit}")
-                assert np.abs(g_fd - g_fit) < rtol_param * np.max([g_fd, g_fit])
+        ###################################################
+        # test a different morphology
+        self.load_segments_tree()
+        # set capacitance, axial resistance
+        c_m = 1.0
+        r_a = 100.0 * 1e-6
+        self.tree.set_physiology(c_m, r_a)
+        # set leak current
+        g_l, e_l = 100.0, -75.0
+        self.tree.set_leak_current(g_l, e_l)
+        # set computational tree
+        self.tree.set_comp_tree()
+
+         # fit a compartmenttree to the same locations
+        ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.0)
+        cfit = CompartmentFitter(self.tree, save_cache=False)
+        ctree_fit, _ = cfit.fit_model(locs_fd)
+        # check whether both trees have the same parameters
+        check_tree_equivalence(locs_fd, ctree_fd, ctree_fit)
+
+        # compute resistance matrix of all models
+        gt = GreensTree(self.tree)
+        gt.set_impedance(0.)
+        z_orig = gt.calc_impedance_matrix(locs_fd)
+        z_fd = ctree_fd.calc_impedance_matrix()
+        z_fit = ctree_fit.calc_impedance_matrix()
+        assert np.allclose(z_orig, z_fd, atol=1.)
+        assert np.allclose(z_fit, z_fd, atol=1.)
+        ###################################################
 
 
 if __name__ == "__main__":
@@ -486,4 +572,4 @@ if __name__ == "__main__":
     tphys.test_membrane_functions()
     tphys.test_comp_tree()
     tphys.test_create_new_tree()
-    tphys.test_finite_diff_tree(pprint=False)
+    tphys.test_finite_diff_tree(pprint=True)

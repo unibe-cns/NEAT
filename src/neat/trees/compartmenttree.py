@@ -1104,7 +1104,6 @@ class CompartmentTree(STree):
         if indexing == "locs":
             ca_vec = self._permuteToLocs(ca_vec)
         mat /= ca_vec[:, None]
-        print(mat)
         # compute the eigenvalues
         alphas, phimat = la.eig(mat)
         if max(np.max(np.abs(alphas.imag)), np.max(np.abs(phimat.imag))) < 1e-5:

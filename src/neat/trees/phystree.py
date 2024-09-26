@@ -751,43 +751,43 @@ class PhysTree(MorphTree):
         return rbool
 
     def create_new_tree(
-        self, loc_arg, fake_soma=False, store_loc_idxs=True, new_tree=None
+        self, loc_arg, name="new tree", fake_soma=False, new_tree=None
     ):
         """
-        Creates a new tree where the locs of a given 'name' are now the nodes.
+        Creates a new tree where the provided location in `loc_arg` are now the nodes.
+        Note that if the soma is not in the list of locations, a common root location 
+        might be added if necessary.
+        
         Distance relations between locations are maintained (note that this
         relation is stored in `L` attribute of `neat.MorphNode`, the `p3d`
-        attribute containing the 3d coordinates does not maintain distances).
+        attribute containing the 3d coordinates does not maintain distances)
+        
+        The radius of a node is taken as the average radius between the location 
+        associated with the node and the location associated with the parent node,
+        weighted by the lengths of all individual nodes.
+
         Physiological parameters are copied from the original node on which the
         new node is located.
 
         Parameters
         ----------
-            loc_arg: list of `neat.MorphLoc` or string
-                the locations. If list of locs, they will be stored under the name
-                `new_tree`
-            fake_soma: bool (default `False`)
-                if `True`, finds the common root of the set of locations and
-                uses that as the soma of the new tree. If `False`, the real soma
-                is used.
-            store_loc_idxs: bool (default `False`)
-                store the index of each location in the `content` attribute of the
-                new node (under the key 'loc ind')
-            new_tree: `None` or instance of subclass of `neat.MorphTree`
-                The new tree instance.
+        loc_arg: list of `neat.MorphLoc` or string
+            the locations. If list of locs, they will be stored under the name
+            `new_tree`
+        name: str (default 'new tree')    
+            The name under which the locations associated to the tree are stored.
+        fake_soma: bool (default `False`)
+            if `True`, finds the common root of the set of locations and
+            uses that as the soma of the new tree. If `False`, the real soma
+            is used.
+        new_tree: `None` or instance of subclass of `neat.MorphTree`
+            The new tree instance.
 
         Returns
         -------
-            `neat.MorphTree`
-                The new tree.
+        `neat.MorphTree`
+            The new tree.
         """
-        if isinstance(loc_arg, str):
-            name = loc_arg
-            self._try_name(name)
-        else:
-            name = "new tree"
-            self.store_locs(loc_arg, name)
-
         if new_tree is not None and not issubclass(type(new_tree), PhysTree):
             raise ValueError(
                 f"`new_tree` is an instance of {new_tree.__class__}, "
@@ -795,7 +795,7 @@ class PhysTree(MorphTree):
             )
 
         new_tree = super().create_new_tree(
-            name, fake_soma=fake_soma, store_loc_idxs=store_loc_idxs, new_tree=new_tree
+            loc_arg, name, fake_soma=fake_soma, new_tree=new_tree
         )
         new_locs = self.get_locs(name)
 
@@ -803,7 +803,7 @@ class PhysTree(MorphTree):
         new_ions = set()
         for new_node in new_tree:
 
-            loc = new_locs[new_node.content["loc ind"]]
+            loc = new_locs[new_node.content["loc idx"]]
             orig_node = self[loc["node"]]
 
             # copy over physiological parameters
@@ -882,8 +882,27 @@ class PhysTree(MorphTree):
         if name != "dont store":
             self.store_locs(locs, name)
 
+        self.store_locs(locs, "debug")
+
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
-            assert aux_node.content["loc ind"] == fd_node.loc_idx
+            assert aux_node.content["loc idx"] == fd_node.loc_idx
+
+            loc_fd = locs[fd_node.loc_idx]
+            loc_aux = locs[aux_node.content["loc idx"]]
+
+            idxs = self.get_nearest_loc_idxs([loc], "debug", direction=1)[0]
+            if fd_node.parent_node is not None:
+                loc_fd_ = locs[fd_node.parent_node.loc_idx]
+                loc_aux_ = locs[aux_node.parent_node.content["loc idx"]]
+            else:
+                loc_ = MorphLoc((1,.5), self)
+
+            # print(f'> {ii}', loc, loc_)
+            # if loc['node'] != 1:
+            #     print(f"path-length fd = {self.path_length(loc_fd, loc_fd_)}, {self.path_length(loc, loc_fd_)}; path_length aux = {self.path_length(loc_aux, loc_aux_)}; aux_node.L = {aux_node.L}; ")
+            # print(f"orig node R = {self[loc['node']].R}; aux_node.R = {aux_node.R}")
+
+
 
             # unit conversion [um] -> [cm]
             R_ = aux_node.R * 1e-4
@@ -896,6 +915,9 @@ class PhysTree(MorphTree):
                 # for other nodes we apply the cylindrical approximation
                 # but take only half of it (half for the current node, half
                 # for the parent
+                # if fd_tree.is_root(fd_node.parent_node):
+                #     surf = 2.0 * np.pi * R_ * L_ / 1.0
+                # else: 
                 surf = 2.0 * np.pi * R_ * L_ / 2.0
 
             # set finite difference values for current node
@@ -915,8 +937,8 @@ class PhysTree(MorphTree):
 
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
-                if not fd_tree.is_root(fd_parent):
-                    # if True:
+                # if not fd_tree.is_root(fd_parent):
+                if True:
                     fd_parent.ca += surf * aux_node.c_m
 
                     for chan in aux_node.currents:
@@ -949,6 +971,10 @@ class PhysTree(MorphTree):
                     if cname != "L" and self.channel_storage[cname].ion == ion:
                         ion_factors_aux += aux_node.currents[cname][0]
                         ion_factors_fd += fd_node.currents[cname][0]
+                # if no channels carry the `ion`, revert to leak to compute rescale factors
+                if ion_factors_fd < 1e-12:
+                    ion_factors_aux = aux_node.currents['L'][0]
+                    ion_factors_fd = fd_node.currents['L'][0]
 
                 fd_node.concmechs[ion] = copy.deepcopy(aux_node.concmechs[ion])
                 fd_node.concmechs[ion].gamma *= ion_factors_aux / ion_factors_fd
