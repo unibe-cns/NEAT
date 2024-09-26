@@ -882,27 +882,8 @@ class PhysTree(MorphTree):
         if name != "dont store":
             self.store_locs(locs, name)
 
-        self.store_locs(locs, "debug")
-
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
             assert aux_node.content["loc idx"] == fd_node.loc_idx
-
-            loc_fd = locs[fd_node.loc_idx]
-            loc_aux = locs[aux_node.content["loc idx"]]
-
-            idxs = self.get_nearest_loc_idxs([loc], "debug", direction=1)[0]
-            if fd_node.parent_node is not None:
-                loc_fd_ = locs[fd_node.parent_node.loc_idx]
-                loc_aux_ = locs[aux_node.parent_node.content["loc idx"]]
-            else:
-                loc_ = MorphLoc((1,.5), self)
-
-            # print(f'> {ii}', loc, loc_)
-            # if loc['node'] != 1:
-            #     print(f"path-length fd = {self.path_length(loc_fd, loc_fd_)}, {self.path_length(loc, loc_fd_)}; path_length aux = {self.path_length(loc_aux, loc_aux_)}; aux_node.L = {aux_node.L}; ")
-            # print(f"orig node R = {self[loc['node']].R}; aux_node.R = {aux_node.R}")
-
-
 
             # unit conversion [um] -> [cm]
             R_ = aux_node.R * 1e-4
@@ -915,9 +896,6 @@ class PhysTree(MorphTree):
                 # for other nodes we apply the cylindrical approximation
                 # but take only half of it (half for the current node, half
                 # for the parent
-                # if fd_tree.is_root(fd_node.parent_node):
-                #     surf = 2.0 * np.pi * R_ * L_ / 1.0
-                # else: 
                 surf = 2.0 * np.pi * R_ * L_ / 2.0
 
             # set finite difference values for current node
@@ -937,29 +915,27 @@ class PhysTree(MorphTree):
 
                 # add finite difference contributions to parent
                 fd_parent = fd_node.parent_node
-                # if not fd_tree.is_root(fd_parent):
-                if True:
-                    fd_parent.ca += surf * aux_node.c_m
+                fd_parent.ca += surf * aux_node.c_m
 
-                    for chan in aux_node.currents:
-                        g_node = surf * aux_node.currents[chan][0]
-                        e_node = aux_node.currents[chan][1]
+                for chan in aux_node.currents:
+                    g_node = surf * aux_node.currents[chan][0]
+                    e_node = aux_node.currents[chan][1]
 
-                        if chan in fd_parent.currents:
-                            g_parent = fd_parent.currents[chan][0]
-                            e_parent = fd_parent.currents[chan][1]
-                        else:
-                            g_parent = 0.0
-                            e_parent = aux_node.currents[chan][1]
+                    if chan in fd_parent.currents:
+                        g_parent = fd_parent.currents[chan][0]
+                        e_parent = fd_parent.currents[chan][1]
+                    else:
+                        g_parent = 0.0
+                        e_parent = aux_node.currents[chan][1]
 
-                        if g_parent + g_node > 1e-10:
-                            fd_parent.currents[chan] = (
-                                g_parent + g_node,
-                                (g_parent * e_parent + g_node * e_node)
-                                / (g_parent + g_node),
-                            )
-                        else:
-                            fd_parent.currents[chan] = (0.0, e_parent)
+                    if g_parent + g_node > 1e-10:
+                        fd_parent.currents[chan] = (
+                            g_parent + g_node,
+                            (g_parent * e_parent + g_node * e_node)
+                            / (g_parent + g_node),
+                        )
+                    else:
+                        fd_parent.currents[chan] = (0.0, e_parent)
 
         # set concentration mechanisms in separate pass
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
