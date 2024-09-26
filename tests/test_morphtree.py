@@ -36,7 +36,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(
 
 
 class TestMorphTree:
-    def load_tree(self,  segments=False):
+    def load_tree(self, segments=False):
         """
         Load the T-tree morphology in memory
 
@@ -77,7 +77,8 @@ class TestMorphTree:
         1--4--5--6--7--8
         """
         self.tree = MorphTree(
-            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_stick_segments.swc"), types=[1, 3, 4]
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_stick_segments.swc"),
+            types=[1, 3, 4],
         )
 
     def load_sticks_tree(self):
@@ -86,10 +87,11 @@ class TestMorphTree:
 
         4   5   6   7
         |   |   |   |
-         -----1-----  
+         -----1-----
         """
         self.tree = MorphTree(
-            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_four_sticks.swc"), types=[1, 3, 4]
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_four_sticks.swc"),
+            types=[1, 3, 4],
         )
 
     def test_string_representation(self):
@@ -762,7 +764,7 @@ class TestMorphTree:
                 pl.show()
 
     def test_comp_tree(self):
-        self.load_tree( segments=True)
+        self.load_tree(segments=True)
         self.tree.set_comp_tree()
         # check whether amount of nodes is correct
         assert len(self.tree.nodes) == 10
@@ -878,7 +880,7 @@ class TestMorphTree:
             MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, "wrong_soma.swc"))
 
     def test_copy_construct(self):
-        self.load_tree( segments=True)
+        self.load_tree(segments=True)
         tree1 = MorphTree(self.tree)
 
         self.tree.set_comp_tree()
@@ -904,7 +906,7 @@ class TestMorphTree:
         # test for a tricky bugfix with cachetrees, where the update
         # of tree.__dict__ did not results in an updated tree because
         # the original root was reapplied after the context manager closed
-        self.load_tree( segments=True)
+        self.load_tree(segments=True)
         # modify the tree by adding a node
         tree = MorphTree(self.tree)
         axon_node = tree.create_corresponding_node(13)
@@ -922,63 +924,63 @@ class TestMorphTree:
         self.load_segments_tree()
 
         L4, R4 = self.tree.path_length((4, 0.0), (5, 0.0), compute_radius=True)
-        assert L4 == pytest.approx(200.)
+        assert L4 == pytest.approx(200.0)
         assert R4 == pytest.approx(2.0)
 
         L45, R45 = self.tree.path_length((4, 0.5), (5, 0.5), compute_radius=True)
-        assert L45 == pytest.approx(200.)
-        assert R45 == pytest.approx((.5 * 2.0 + .5 * 1.5))
+        assert L45 == pytest.approx(200.0)
+        assert R45 == pytest.approx((0.5 * 2.0 + 0.5 * 1.5))
 
         L78, R78 = self.tree.path_length((7, 0.2), (8, 0.3), compute_radius=True)
-        assert L78 == pytest.approx(0.8 * 200. + 0.3 * 200.)
-        assert R78 == pytest.approx((.8 * 0.5 + .3 * 0.25) / (.8 + .3))
+        assert L78 == pytest.approx(0.8 * 200.0 + 0.3 * 200.0)
+        assert R78 == pytest.approx((0.8 * 0.5 + 0.3 * 0.25) / (0.8 + 0.3))
 
         self.load_sticks_tree()
 
-        L0, R0 = self.tree.path_length((4, 0.), (5, 0.), compute_radius=True)
-        assert L0 == pytest.approx(0.)
+        L0, R0 = self.tree.path_length((4, 0.0), (5, 0.0), compute_radius=True)
+        assert L0 == pytest.approx(0.0)
         assert math.isnan(R0)
 
         L1, R1 = self.tree.path_length((6, 0.5), (7, 0.5), compute_radius=True)
-        assert L1 == pytest.approx(.5 * 200. + .5 * 600.)
-        assert R1 == pytest.approx((.5 * 200. * 5. + .5 * 600. * 2.) / (.5 * 200. + .5 * 600.))
+        assert L1 == pytest.approx(0.5 * 200.0 + 0.5 * 600.0)
+        assert R1 == pytest.approx(
+            (0.5 * 200.0 * 5.0 + 0.5 * 600.0 * 2.0) / (0.5 * 200.0 + 0.5 * 600.0)
+        )
 
     def test_create_new_tree_segments(self):
         self.load_segments_tree()
 
-        new_tree = self.tree.create_new_tree([(1., .5), (4, 0.), (5, 0.)])
-        assert new_tree[1].R == pytest.approx(12.)
-        assert new_tree[4].R == pytest.approx(2.)
-        assert new_tree[1].L == pytest.approx(0.)
-        assert new_tree[4].L == pytest.approx(200.)
+        new_tree = self.tree.create_new_tree([(1.0, 0.5), (4, 0.0), (5, 0.0)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(2.0)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(200.0)
 
-        new_tree = self.tree.create_new_tree([(1., .5), (4, 1.), (5, 1.)])
-        assert new_tree[1].R == pytest.approx(12.)
-        assert new_tree[4].R == pytest.approx(2.)
+        new_tree = self.tree.create_new_tree([(1.0, 0.5), (4, 1.0), (5, 1.0)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(2.0)
         assert new_tree[5].R == pytest.approx(1.5)
-        assert new_tree[1].L == pytest.approx(0.)
-        assert new_tree[4].L == pytest.approx(200.)
-        assert new_tree[5].L == pytest.approx(200.)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(200.0)
+        assert new_tree[5].L == pytest.approx(200.0)
 
-        new_tree = self.tree.create_new_tree([(1., .5), (4, .5), (5, .5)])
-        assert new_tree[1].R == pytest.approx(12.)
-        assert new_tree[4].R == pytest.approx(2.)
+        new_tree = self.tree.create_new_tree([(1.0, 0.5), (4, 0.5), (5, 0.5)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(2.0)
         assert new_tree[5].R == pytest.approx(1.75)
-        assert new_tree[1].L == pytest.approx(0.)
-        assert new_tree[4].L == pytest.approx(100.)
-        assert new_tree[5].L == pytest.approx(200.)
-
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(100.0)
+        assert new_tree[5].L == pytest.approx(200.0)
 
         self.load_sticks_tree()
 
-        new_tree = self.tree.create_new_tree([(4, .5), (5, .5)])
-        assert new_tree[1].R == pytest.approx(12.)
-        assert new_tree[4].R == pytest.approx(1.)
-        assert new_tree[5].R == pytest.approx(.3)
-        assert new_tree[1].L == pytest.approx(0.)
-        assert new_tree[4].L == pytest.approx(500.)
-        assert new_tree[5].L == pytest.approx(200.)
-
+        new_tree = self.tree.create_new_tree([(4, 0.5), (5, 0.5)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(1.0)
+        assert new_tree[5].R == pytest.approx(0.3)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(500.0)
+        assert new_tree[5].L == pytest.approx(200.0)
 
 
 if __name__ == "__main__":

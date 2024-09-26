@@ -3088,28 +3088,28 @@ class MorphTree(STree):
     def create_new_tree(
         self,
         loc_arg,
-        name='new tree',
+        name="new tree",
         fake_soma=False,
         new_tree=None,
     ):
         """
         Creates a new tree where the provided location in `loc_arg` are now the nodes.
-        Note that if the soma is not in the list of locations, a common root location 
+        Note that if the soma is not in the list of locations, a common root location
         might be added if necessary.
-        
+
         Distance relations between locations are maintained (note that this
         relation is stored in `L` attribute of `neat.MorphNode`, the `p3d`
         attribute containing the 3d coordinates does not maintain distances)
-        
-        The radius of a node is taken as the average radius between the location 
+
+        The radius of a node is taken as the average radius between the location
         associated with the node and the location associated with the parent node,
         weighted by the lengths of all individual nodes.
 
         Parameters
         ----------
         loc_arg: list of `neat.MorphLoc` or string
-            the locations. 
-        name: str (default 'new tree')    
+            the locations.
+        name: str (default 'new tree')
             The name under which the locations associated to the tree are stored.
         fake_soma: bool (default `False`)
             if `True`, finds the common root of the set of locations and
@@ -3137,9 +3137,7 @@ class MorphTree(STree):
             # use the soma as root
             snode = self[1]
         # add the common root to the set of locations, if necessary
-        new_locs = self.unique_locs(
-            [MorphLoc((snode.index, 1.), self)] + locs
-        )
+        new_locs = self.unique_locs([MorphLoc((snode.index, 1.0), self)] + locs)
         self.store_locs(new_locs, name)
 
         # create new tree
@@ -3190,7 +3188,7 @@ class MorphTree(STree):
                 L, R = self.path_length(
                     new_locs[new_node.parent_node.content["loc idx"]],
                     new_locs[new_node.content["loc idx"]],
-                    compute_radius=True
+                    compute_radius=True,
                 )
             else:
                 L = 0.0
@@ -3200,9 +3198,7 @@ class MorphTree(STree):
 
         return new_tree
 
-    def _add_nodes_to_tree(
-        self, node, new_pnode, new_tree, new_nodes, name
-    ):
+    def _add_nodes_to_tree(self, node, new_pnode, new_tree, new_nodes, name):
         # get the specified locs
         xs = self.xs[name]
         # check which locinds are on the branch

@@ -750,19 +750,17 @@ class PhysTree(MorphTree):
 
         return rbool
 
-    def create_new_tree(
-        self, loc_arg, name="new tree", fake_soma=False, new_tree=None
-    ):
+    def create_new_tree(self, loc_arg, name="new tree", fake_soma=False, new_tree=None):
         """
         Creates a new tree where the provided location in `loc_arg` are now the nodes.
-        Note that if the soma is not in the list of locations, a common root location 
+        Note that if the soma is not in the list of locations, a common root location
         might be added if necessary.
-        
+
         Distance relations between locations are maintained (note that this
         relation is stored in `L` attribute of `neat.MorphNode`, the `p3d`
         attribute containing the 3d coordinates does not maintain distances)
-        
-        The radius of a node is taken as the average radius between the location 
+
+        The radius of a node is taken as the average radius between the location
         associated with the node and the location associated with the parent node,
         weighted by the lengths of all individual nodes.
 
@@ -774,7 +772,7 @@ class PhysTree(MorphTree):
         loc_arg: list of `neat.MorphLoc` or string
             the locations. If list of locs, they will be stored under the name
             `new_tree`
-        name: str (default 'new tree')    
+        name: str (default 'new tree')
             The name under which the locations associated to the tree are stored.
         fake_soma: bool (default `False`)
             if `True`, finds the common root of the set of locations and
@@ -949,8 +947,8 @@ class PhysTree(MorphTree):
                         ion_factors_fd += fd_node.currents[cname][0]
                 # if no channels carry the `ion`, revert to leak to compute rescale factors
                 if ion_factors_fd < 1e-12:
-                    ion_factors_aux = aux_node.currents['L'][0]
-                    ion_factors_fd = fd_node.currents['L'][0]
+                    ion_factors_aux = aux_node.currents["L"][0]
+                    ion_factors_fd = fd_node.currents["L"][0]
 
                 fd_node.concmechs[ion] = copy.deepcopy(aux_node.concmechs[ion])
                 fd_node.concmechs[ion].gamma *= ion_factors_aux / ion_factors_fd

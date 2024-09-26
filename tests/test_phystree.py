@@ -61,7 +61,8 @@ class TestPhysTree:
         1--4--5--6--7--8
         """
         self.tree = PhysTree(
-            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_stick_segments.swc"), types=[1, 3, 4]
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_stick_segments.swc"),
+            types=[1, 3, 4],
         )
 
     def load_sticks_tree(self):
@@ -69,7 +70,8 @@ class TestPhysTree:
         Load ball and some sticks dendrite
         """
         self.tree = PhysTree(
-            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_some_sticks.swc"), types=[1, 3, 4]
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_some_sticks.swc"),
+            types=[1, 3, 4],
         )
 
     def test_string_representation(self):
@@ -456,16 +458,16 @@ class TestPhysTree:
 
         # compute resistance matrix of all models
         gt = GreensTree(self.tree)
-        gt.set_impedance(0.)
+        gt.set_impedance(0.0)
         z_orig = gt.calc_impedance_matrix(locs_fd)
         z_fd = ctree_fd.calc_impedance_matrix()
         z_fit = ctree_fit.calc_impedance_matrix()
-        assert np.allclose(z_orig, z_fd, atol=.5)
-        assert np.allclose(z_fit, z_fd, atol=2.)
+        assert np.allclose(z_orig, z_fd, atol=0.5)
+        assert np.allclose(z_fit, z_fd, atol=2.0)
 
         ###################################################
         # test tree with varying conductance densities
-        self.load_tree( segments=1)
+        self.load_tree(segments=1)
         # set capacitance, axial resistance
         c_m = 1.0
         r_a = 100.0 * 1e-6
@@ -495,12 +497,12 @@ class TestPhysTree:
 
         # compute resistance matrix of all models
         gt = GreensTree(self.tree)
-        gt.set_impedance(0.)
+        gt.set_impedance(0.0)
         z_orig = gt.calc_impedance_matrix(locs_fd)
         z_fit = ctree_fit.calc_impedance_matrix()
         z_fd = ctree_fd.calc_impedance_matrix()
-        assert np.allclose(z_orig, z_fd, atol=.5)
-        assert np.allclose(z_fit, z_fd, atol=2.)
+        assert np.allclose(z_orig, z_fd, atol=0.5)
+        assert np.allclose(z_fit, z_fd, atol=2.0)
         ###################################################
 
         ###################################################
@@ -516,7 +518,7 @@ class TestPhysTree:
         # set computational tree
         self.tree.set_comp_tree()
 
-         # fit a compartmenttree to the same locations
+        # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.0)
         cfit = CompartmentFitter(self.tree, save_cache=False)
         ctree_fit, _ = cfit.fit_model(locs_fd)
@@ -525,12 +527,12 @@ class TestPhysTree:
 
         # compute resistance matrix of all models
         gt = GreensTree(self.tree)
-        gt.set_impedance(0.)
+        gt.set_impedance(0.0)
         z_orig = gt.calc_impedance_matrix(locs_fd)
         z_fd = ctree_fd.calc_impedance_matrix()
         z_fit = ctree_fit.calc_impedance_matrix()
-        assert np.allclose(z_orig, z_fd, atol=1.)
-        assert np.allclose(z_fit, z_fd, atol=1.)
+        assert np.allclose(z_orig, z_fd, atol=1.0)
+        assert np.allclose(z_fit, z_fd, atol=1.0)
         ###################################################
 
         ###################################################
@@ -546,7 +548,7 @@ class TestPhysTree:
         # set computational tree
         self.tree.set_comp_tree()
 
-         # fit a compartmenttree to the same locations
+        # fit a compartmenttree to the same locations
         ctree_fd, locs_fd = self.tree.create_finite_difference_tree(dx_max=22.0)
         cfit = CompartmentFitter(self.tree, save_cache=False)
         ctree_fit, _ = cfit.fit_model(locs_fd)
@@ -555,12 +557,12 @@ class TestPhysTree:
 
         # compute resistance matrix of all models
         gt = GreensTree(self.tree)
-        gt.set_impedance(0.)
+        gt.set_impedance(0.0)
         z_orig = gt.calc_impedance_matrix(locs_fd)
         z_fd = ctree_fd.calc_impedance_matrix()
         z_fit = ctree_fit.calc_impedance_matrix()
-        assert np.allclose(z_orig, z_fd, atol=1.)
-        assert np.allclose(z_fit, z_fd, atol=1.)
+        assert np.allclose(z_orig, z_fd, atol=1.0)
+        assert np.allclose(z_fit, z_fd, atol=1.0)
         ###################################################
 
 
