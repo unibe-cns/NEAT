@@ -50,7 +50,6 @@ from .trees.greenstree import GreensNode, SomaGreensNode
 
 from .trees.netree import NET
 from .trees.netree import NETNode
-from .trees.netree import Kernel
 
 from .trees.compartmenttree import CompartmentTree
 from .trees.compartmenttree import CompartmentNode
@@ -70,7 +69,9 @@ try:
 except ModuleNotFoundError:
     warnings.warn("NEST not available", UserWarning)
 
-from .tools.kernelextraction import FourrierTools
+from .tools.kernelextraction import FourierQuadrature
+from .tools.kernelextraction import FourierTools
+from .tools.kernelextraction import Kernel
 
 from .channels.ionchannels import IonChannel
 from .channels.concmechs import ExpConcMech

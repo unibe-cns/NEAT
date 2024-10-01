@@ -577,11 +577,11 @@ Defining ion channels
 Compute Fourrier transforms
 ===========================
 
-.. autoclass:: neat.FourrierTools
+.. autoclass:: neat.FourierQuadrature
 
 .. autosummary::
    :toctree: generated/
 
-   FourrierTools.__call__
-   FourrierTools.ft
-   FourrierTools.ftInv
+   FourierQuadrature.__call__
+   FourierQuadrature.ft
+   FourierQuadrature.ft_inv

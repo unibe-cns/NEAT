@@ -75,7 +75,7 @@ class TestNeuron:
         self.dt = 0.025
         self.tmax = 100.0
         # for frequency derivation
-        self.ft = ke.FourrierTools(np.arange(0.0, self.tmax, self.dt))
+        self.ft = ke.FourierQuadrature(np.arange(0.0, self.tmax, self.dt))
         # load the morphology
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, "Tsovtree.swc")
         self.greenstree = GreensTree(fname, types=[1, 3, 4])
@@ -99,7 +99,7 @@ class TestNeuron:
         self.dt = 0.025
         self.tmax = 100.0
         # for frequency derivation
-        self.ft = ke.FourrierTools(np.arange(0.0, self.tmax, self.dt))
+        self.ft = ke.FourierQuadrature(np.arange(0.0, self.tmax, self.dt))
         # load the morphology
         h_chan = channelcollection.h()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, "Tsovtree.swc")
@@ -125,7 +125,7 @@ class TestNeuron:
         self.dt = 0.025
         self.tmax = 100.0
         # for frequency derivation
-        self.ft = ke.FourrierTools(np.arange(0.0, self.tmax, self.dt))
+        self.ft = ke.FourierQuadrature(np.arange(0.0, self.tmax, self.dt))
         # load the morphology
         test_chan = channelcollection.test_channel2()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, "Tsovtree.swc")
@@ -151,7 +151,7 @@ class TestNeuron:
         self.dt = 0.025
         self.tmax = 100.0
         # for frequency derivation
-        self.ft = ke.FourrierTools(np.arange(0.0, self.tmax, self.dt))
+        self.ft = ke.FourierQuadrature(np.arange(0.0, self.tmax, self.dt))
         # load the morphology
         test_chan = channelcollection.test_channel2()
         fname = os.path.join(MORPHOLOGIES_PATH_PREFIX, "Tsovtree.swc")
@@ -176,7 +176,7 @@ class TestNeuron:
         # convert impedance matrix to time domain
         zk_mat_gf = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for ii, jj in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zk_mat_gf[:, ii, jj] = self.ft.ftInv(zf_mat_gf[:, ii, jj])[1].real * 1e-3
+            zk_mat_gf[:, ii, jj] = self.ft.ft_inv(zf_mat_gf[:, ii, jj])[1].real * 1e-3
         # test the steady state impedance matrix
         z_mat_neuron = self.neurontree.calc_impedance_matrix(
             locs,
@@ -232,7 +232,7 @@ class TestNeuron:
         # convert impedance matrix to time domain
         zk_mat_gf = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for ii, jj in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zk_mat_gf[:, ii, jj] = self.ft.ftInv(zf_mat_gf[:, ii, jj])[1].real * 1e-3
+            zk_mat_gf[:, ii, jj] = self.ft.ft_inv(zf_mat_gf[:, ii, jj])[1].real * 1e-3
         # test the steady state impedance matrix
         z_mat_neuron = self.neurontree.calc_impedance_matrix(
             locs,

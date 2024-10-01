@@ -522,7 +522,7 @@ class TestCompartmentTree:
         # rename for further testing
         ctree = ctree1
         # frequency array
-        ft = ke.FourrierTools(np.linspace(0.0, 50.0, 100))
+        ft = ke.FourierQuadrature(np.linspace(0.0, 50.0, 100))
         freqs = ft.s
         # compute impedance matrix
         v_h = -42.0

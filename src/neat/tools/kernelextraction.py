@@ -25,6 +25,234 @@ from scipy.cluster.vq import kmeans
 
 import math
 import copy
+from typing import Literal
+
+
+class Kernel:
+    """
+    Implements a kernel as a superposition of exponentials:
+
+    .. math:: k(t) = \sum_n c_n e^{ - a_n t}
+
+    Kernels can be added and subtracted, as this class overloads the __add__
+    and __subtract__ functions.
+
+    They can be evaluated as a function of time by calling the object with a
+    time array.
+
+    They can be evaluated in the Fourrier domain with `Kernel.ft`
+
+    Parameters
+    ----------
+    kernel: dict, float, neat.Kernel, tuple or list
+        If dict, has the form {'a': `np.array`, 'c': `np.array`}.
+        If float, sets `c` single exponential prefactor and assumes `a` is 1 kHz.
+        If `neat.Kernel`, copies the object.
+        If tuple or list, sets 'a' as first element and 'c' as last element.
+
+    Attributes
+    ----------
+    a: np.array of float or complex
+        The exponential coefficients (kHz)
+    c: np.array of float or complex
+        The exponential prefactors
+    k_bar: float
+        The total surface area under the kernel
+    """
+
+    def __init__(self, kernel):
+        # set kernel time scales and exponential prefactors
+        if isinstance(kernel, dict):
+            self.a = copy.deepcopy(kernel["a"])
+            self.c = copy.deepcopy(kernel["c"])
+        elif isinstance(kernel, float) or isinstance(kernel, int):
+            self.a = np.array([1.0])
+            self.c = np.array([kernel]).astype(float)
+        elif isinstance(kernel, Kernel):
+            self.a = copy.deepcopy(kernel.a)
+            self.c = copy.deepcopy(kernel.c)
+        else:
+            self.a = copy.deepcopy(kernel[0])
+            self.c = copy.deepcopy(kernel[1])
+        if isinstance(self.a, float):
+            self.a = np.array([self.a])
+        elif not isinstance(self.a, np.ndarray):
+            self.a = np.array(self.a)
+        if isinstance(self.c, float):
+            self.c = np.array([self.c])
+        elif not isinstance(self.c, np.ndarray):
+            self.c = np.array(self.c)
+
+    def __getitem__(self, ind):
+        if ind == 0:
+            return self.a
+        elif ind == 1:
+            return self.c
+        elif ind == "a":
+            return self.a
+        elif ind == "c":
+            return self.c
+        elif ind == "alphas":
+            return self.a
+        elif ind == "gammas":
+            return self.c
+        else:
+            raise IndexError("Index should be '0' or '1'")
+
+    def __call__(self, t_arr):
+        return (
+            np.dot(
+                np.exp(-t_arr[:, np.newaxis] * self.a[np.newaxis, :]),
+                self.c[:, np.newaxis],
+            )
+            .flatten()
+            .real
+        )
+
+    def __add__(self, kernel):
+        if kernel.a.shape[0] == self.a.shape[0] and np.allclose(kernel.a, self.a):
+            a = copy.copy(self.a)
+            c = kernel.c + self.c
+        else:
+            a = np.concatenate((self.a, kernel.a))
+            c = np.concatenate((self.c, kernel.c))
+        return Kernel((a, c))
+
+    def __sub__(self, kernel):
+        if kernel.a.shape[0] == self.a.shape[0] and np.allclose(kernel.a, self.a):
+            a = copy.copy(self.a)
+            c = self.c - kernel.c
+        else:
+            a = np.concatenate((self.a, kernel.a))
+            c = np.concatenate((self.c, -kernel.c))
+        return Kernel((a, c))
+
+    def get_k_bar(self):
+        """
+        The total surface under the kernel
+        """
+        return np.sum(self.c / self.a).real
+
+    def set_k_bar(self, kk):
+        raise AttributeError(
+            "`k_bar` is a read-only attribute, adjust attribute `c` "
+            + "by multiplying with a factor to change `k_bar`"
+        )
+
+    k_bar = property(get_k_bar, set_k_bar)
+
+    def __str__(self, as_timescale=False):
+        if as_timescale:
+            return (
+                "t = "
+                + np.array2string(1.0 / self.a, precision=4, max_line_width=1000)
+                + "\n"
+                + "c = "
+                + np.array2string(self.c, precision=4, max_line_width=1000)
+            )
+        else:
+            return (
+                "a = "
+                + np.array2string(self.a, precision=4, max_line_width=1000)
+                + "\n"
+                + "c = "
+                + np.array2string(self.c, precision=4, max_line_width=1000)
+            )
+
+    def __repr__(self):
+        return repr({"a": self.a, "c": self.c})
+
+    def t(self, t_arr):
+        """
+        Evaluates the kernel in the time domain
+
+        Parameters
+        ----------
+        t_arr: `np.array` of `float`
+            the time array in ``ms`` at which the kernel is evaluated
+
+        Returns
+        -------
+        np.array of float
+            the temporal kernel
+        """
+        return self(t_arr)
+
+    def diff(self, t_arr=None):
+        """
+        Computes the time derivative of the kernel. If a time array is provided,
+        returns an array of corresponding kernel values. If nothing is provided,
+        returns a kernel representing the time derivative.
+
+        Parameters
+        ----------
+        t_arr: `np.array` (optional)
+            the time array
+
+        Returns
+        -------
+        `np.array` or `neat.Kernel`
+            the differentiated kernel
+        """
+        if t_arr is None:
+            return Kernel(
+                {
+                    "a": self.a,
+                    "c": -self.a * self.c,
+                }
+            )
+        else:
+            return (
+                np.dot(
+                    -self.a[np.newaxis, :]
+                    * np.exp(-t_arr[:, np.newaxis] * self.a[np.newaxis, :]),
+                    self.c[:, np.newaxis],
+                )
+                .flatten()
+                .real
+            )
+
+    def ft(self, s_arr):
+        """
+        Evaluates the kernel in the Fourrier domain
+
+        Parameters
+        ----------
+        s_arr: np.array of complex
+            The frequencies in ``Hz`` at which the kernel is to be evaluated
+
+        Returns
+        -------
+        np.array of complex
+            The Fourrier transform of the kernel
+
+        """
+        return np.sum(
+            self.c[:, None] * 1e3 / (self.a[:, None] * 1e3 + s_arr[None, :]), 0
+        )
+
+    def fit_c(self, t_arr, func_arr, w=None):
+        """
+        Perform a linear least squares fit of the exponential prefactors in the
+        time domain
+
+        Parameters
+        ----------
+        t_arr: `np.array` of float
+            the time array in ``ms`` at which the kernel is evaluated
+        k_arr: `np.array` of float
+            the to be fitted kernel array
+
+        Returns
+        -------
+        `np.ndarray` of float (`ndim = 2`)
+            The feature matrix
+        """
+        if w is None:
+            w = np.ones_like(t_arr)
+        A = np.exp(-t_arr[:, None] * self.a[None, :])
+
+        self.c = np.linalg.lstsq(w[:, None] * A, w * func_arr, rcond=None)[0]
 
 
 class Fitter(object):
@@ -1233,7 +1461,7 @@ def create_logspace_freqarray(fmax=7, base=10, num=200):
     return 1j * np.concatenate((-a[::-1], b[1:-1], a))
 
 
-class FourrierTools(object):
+class FourierQuadrature(object):
     """
     Performs an accurate Fourrier transform on functions
     evaluated at a given array of temporal grid points
@@ -1389,7 +1617,7 @@ class FourrierTools(object):
         """
         return self(arr)
 
-    def ftInv(self, arr):
+    def ft_inv(self, arr):
         """
         Evaluate the inverse Fourrier transform of `arr`
 
@@ -1524,7 +1752,7 @@ class expExtractor(object):
 class IzExtractor(expExtractor):
     def __init__(self, Iz, yarr):
         self.tarr = Iz
-        FT = FourrierTools(self.tarr)
+        FT = FourierQuadrature(self.tarr)
         self.s_f, self.k_f = FT(yarr)
         # for storing kernel fit results
         self.kfit = {}
@@ -1543,7 +1771,7 @@ class simpleExpExtractor(expExtractor):
         else:
             vwindow = np.ones(self.tarr.shape)
         # compute Fourrier transform
-        FT = FourrierTools(
+        FT = FourierQuadrature(
             self.tarr, fmax=np.log10(1.0 / (dt * 1e-3)), base=10.0, num=200
         )
         self.s_f, self.k_f = FT(self.k_t)
@@ -1603,7 +1831,7 @@ class kernelExtractor(expExtractor):
         self.vdend_ = vdend_[istart:] * vwindow
         self.vsoma_ = vsoma_[istart:] * vwindow
         # fourrier transform
-        FT = FourrierTools(
+        FT = FourierQuadrature(
             self.tarr, fmax=np.log10(1.0 / (dt * 1e-3)), base=10.0, num=200
         )
         self.s_f, self.vdend_f = FT(self.vdend_)
@@ -1629,3 +1857,131 @@ class expNReducer(expExtractor):
         self.kfit = {}
         # initial fit
         self(30)
+
+
+class FourierTools:
+    def __init__(self, t_inp):
+        self._set_freq_and_time_arrays(t_inp)
+
+    def _set_default_freq_array_vector_fit(self):
+        # reasonable parameters to construct frequency array
+        dt = 0.1 * 1e-3  # s
+        N = 2**12
+        smax = np.pi / dt  # Hz
+        ds = np.pi / (N * dt)  # Hz
+
+        # frequency array for vector fitting
+        self.freqs_vfit = np.arange(-smax, smax, ds) * 1j  # Hz
+
+    def _set_default_freq_array_quadrature(self, t_inp):
+        self.t = t_inp
+        if isinstance(t_inp, FourierQuadrature):
+            self.t = t_inp.t
+        # reasonable parameters for FourierQuadrature
+        self.fq = FourierQuadrature(self.t, fmax=7.0, base=10.0, num=200)
+
+    def _set_freq_and_time_arrays(self, t_inp):
+        self._set_default_freq_array_vector_fit()
+        self._set_default_freq_array_quadrature(t_inp)
+
+        self._slice_vfit = np.s_[: len(self.freqs_vfit)]
+        self._slice_quad = np.s_[len(self.freqs_vfit) :]
+        self.freqs = np.concatenate((self.freqs_vfit, self.fq.s))
+
+    def inverse_fourier(
+        self,
+        func_vals_f,
+        method: Literal["", "exp fit", "quadrature"] = "",
+        compute_time_derivative=True,
+    ):
+        if method not in ["", "exp fit", "quadrature"]:
+            raise IOError("Method should be empty string, 'exp fit' or 'quadrature'")
+
+        # compute in time domain, method depends on ratio between spectral
+        # power in zero frequency vs max frequency component
+        # typically, this will mean exponential fit is chosen for input
+        # impedances and explicit quadrature for transfer impedances
+        f_arr = func_vals_f[self._slice_quad]
+        criterion_eval = np.abs(f_arr[-1]) / np.abs(f_arr[self.fq.ind_0s])
+        criterion = criterion_eval <= 1e-3
+
+        if criterion_eval > 1e-10:
+            # if there is substantial spectral power in the max frequency
+            # components, we smooth the function with a squared cosine window
+            # to reduce oscillations
+            window = np.cos(np.pi * self.fq.s.imag / (2.0 * np.abs(self.fq.s[-1]))) ** 2
+        else:
+            window = np.ones_like(self.fq.s)
+
+        # compute kernel through quadrature method
+        func_vals_t = (
+            self.fq.ft_inv(window * func_vals_f[self._slice_quad])[1].real * 1e-3
+        )  # MOhm/s -> MOhm/ms
+        if compute_time_derivative:
+            # compute differentiated kernel
+            dfunc_vals_t_dt = (
+                self.fq.ft_inv(self.fq.s * window * func_vals_f[self._slice_quad])[
+                    1
+                ].real
+                * 1e-6
+            )  # MOhm/s^2 -> MOhm/ms^2
+
+        # when the criterion is satified, or if the default method is
+        # overridden to 'quadrature', we always return the the quadrature result
+        if (method == "" and criterion) or method == "quadrature":
+            if compute_time_derivative:
+                return func_vals_t, dfunc_vals_t_dt
+            else:
+                return func_vals_t
+
+        # this code will only be reached when `method` is "exp_fit", or when
+        # `method` is "" but the criterion is not satisfied
+
+        # we set a custom set of initial poles for the vector fit algorithm
+        # NOTE: not used at the moment, have to figure out why
+        # initpoles = np.concatenate((
+        #     np.linspace(.5, 10**1.3, 40)[:-1],
+        #     np.logspace(
+        #         1.3, np.log10(self.freqs[self._slice_vfit][-1].imag),
+        #         num=40, base=10,
+        #     )
+        # ))
+
+        # compute kernel as superposition of exponentials in the frequency domain
+        f_exp_fitter = fExpFitter()
+        alpha, gamma, pairs, rms = f_exp_fitter.fitFExp(
+            self.freqs[self._slice_vfit],
+            func_vals_f[self._slice_vfit],
+            deg=40,
+            initpoles="log10",
+            realpoles=True,
+            zerostart=False,
+            constrained=True,
+            reduce_numexp=False,
+        )
+        zk = Kernel({"a": alpha * 1e-3, "c": gamma * 1e-3})
+        if compute_time_derivative:
+            dzk_dt = zk.diff()
+        # linear fit of c in the time domain to the quadrature-computed kernels
+        # can improve accuracy
+        # NOTE: not used at the moment, have to figure out why
+        # w = np.concatenate(
+        #     (self.fq.t[self.fq.t < 1.], np.ones_like(self.fq.t[self.fq.t >= 1.]))
+        # )
+        # zk.fit_c(self.fq.t, func_vals_t, w=w)
+
+        # evaluate kernel in the time domain
+        func_vals_t = zk(self.fq.t)
+
+        if compute_time_derivative:
+            # linear fit of c in the time domain to the quadrature-computed kernels
+            # can improve accuracy
+            # NOTE: not used at the moment, have to figure out why
+            # dzk_dt.fit_c(self.fq.t, dfunc_vals_t_dt, w=w)
+            # compute differentiated kernel
+            dfunc_vals_t_dt = zk.diff(self.fq.t)
+
+            return func_vals_t, dfunc_vals_t_dt
+
+        else:
+            return func_vals_t
