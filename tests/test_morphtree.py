@@ -584,9 +584,9 @@ class TestMorphTree:
         self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             with pytest.raises(IOError):
-                self.tree.distribute_locs_on_nodes(np.array([90.0, 140.0, 190.0]), [])
+                self.tree.distribute_locs_at_d2s(np.array([90.0, 140.0, 190.0]), [])
         # test loc distribution on nodes
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([90.0, 140.0, 190.0]), [self.tree[6], self.tree[8]]
         )
         assert (
@@ -594,36 +594,36 @@ class TestMorphTree:
             and locs[1] == {"node": 8, "x": 4.0 / 5.0}
             and len(locs) == 2
         )
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([190.0, 190.0]), [self.tree[6]]
         )
         assert locs[0] == locs[1] and locs[0] == {"node": 6, "x": 4.0 / 5.0}
-        locs = self.tree.distribute_locs_on_nodes(np.array([]), [self.tree[6]])
+        locs = self.tree.distribute_locs_at_d2s(np.array([]), [self.tree[6]])
         assert len(locs) == 0
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([100.0]), [self.tree[4], self.tree[5]]
         )
         assert locs[0] == {"node": 4, "x": 1.0}
         # derived loc distribution functions
-        locs = self.tree.distribute_locs_on_nodes(np.array([150.0, 100.0]))
+        locs = self.tree.distribute_locs_at_d2s(np.array([150.0, 100.0]))
         assert (
             locs[0] == {"node": 4, "x": 1.0}
             and locs[1] == {"node": 5, "x": 1.0}
             and locs[2] == {"node": 7, "x": 1.0}
         )
         nodes = self.tree.path_between_nodes(self.tree[5], self.tree[6])
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([50.0, 120.0, 170.0]), node_arg=nodes
         )
         assert locs[0] == {"node": 5, "x": 2.0 / 5.0} and locs[1] == {
             "node": 6,
             "x": 2.0 / 5.0,
         }
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([70.0, 120.0]), node_arg="basal"
         )
         assert len(locs) == 0
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([70.0, 120.0]), node_arg="apical"
         )
         assert (
@@ -632,7 +632,7 @@ class TestMorphTree:
             and locs[2] == {"node": 7, "x": 2.0 / 5.0}
         )
         nodes = self.tree.get_nodes_in_subtree(self.tree[6], self.tree[4])
-        locs = self.tree.distribute_locs_on_nodes(np.array([70.0, 120]), node_arg=nodes)
+        locs = self.tree.distribute_locs_at_d2s(np.array([70.0, 120]), node_arg=nodes)
         assert locs[0] == {"node": 4, "x": 7.0 / 10.0} and locs[1] == {
             "node": 5,
             "x": 2.0 / 5.0,

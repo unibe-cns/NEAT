@@ -476,7 +476,7 @@ class CachedGreensTree(GreensTree, CachedTree):
         # distribute locs on nodes
         st_nodes = self.gather_nodes(self[root_loc["node"]])
         d2s_loc = self.path_length(root_loc, (1, 0.5))
-        net_locs = self.distribute_locs_on_nodes(
+        net_locs = self.distribute_locs_at_d2s(
             d2s=np.arange(d2s_loc, 5000.0, dx), node_arg=st_nodes, name="net eval"
         )
         # compute the impedance matrix for net calculation

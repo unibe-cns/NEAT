@@ -29,7 +29,7 @@ import numpy as np
 
 from ...trees.morphtree import MorphLoc
 from ...trees.phystree import PhysTree, PhysNode
-from ...trees.compartmenttree import CompartmentTree 
+from ...trees.compartmenttree import CompartmentTree
 from ...factorydefaults import DefaultPhysiology
 
 try:
@@ -937,7 +937,11 @@ class NeuronSimTree(PhysTree):
             res["dv_dt"] = np.array(res["dv_dt"])
         # cast recordings into numpy arrays
         res["t"] = np.array(res["t"])[indstart:][::downsample] - self.t_calibrate
-        for key in set(res.keys()) - {"t", "chan", "dv_dt", "spikes"} - default_phys.conc.keys():
+        for key in (
+            set(res.keys())
+            - {"t", "chan", "dv_dt", "spikes"}
+            - default_phys.conc.keys()
+        ):
             if key in res and len(res[key]) > 0:
                 arrlist = []
                 for reslist in res[key]:

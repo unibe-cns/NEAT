@@ -963,7 +963,11 @@ class CompartmentTree(STree):
         )
 
     def calc_impulse_response_matrix(
-        self, t_inp, channel_names=None, indexing="locs", use_conc=False,
+        self,
+        t_inp,
+        channel_names=None,
+        indexing="locs",
+        use_conc=False,
         compute_time_derivative=False,
         method: Literal["", "exp fit", "quadrature"] = "",
     ):

@@ -2137,10 +2137,10 @@ class MorphTree(STree):
                     self.d2b[name].append(0.0)
             return self.d2b[name]
 
-    def distribute_locs_on_nodes(self, d2s, node_arg=None, name="dont save"):
+    def distribute_locs_at_d2s(self, d2s, node_arg=None, name="dont save"):
         """
-        Distributes locs on a given set of nodes at specified distances from the
-        soma. If the specified distances are on the specified nodes, the list
+        Distributes locs on a given set of nodes at specified distances to the
+        soma ('d2s'). If the specified distances are on the specified nodes, the list
         of locations will be empty. The locations are stored if the name is set
         to be something other than 'dont save'. On each node, locations are
         ordered from low to high x-values.
@@ -2329,6 +2329,55 @@ class MorphTree(STree):
         for node in self:
             if "tag" in node.content:
                 del node.content["tag"]
+
+    def distribute_locs_finite_diff(self, dx_max=15.0, node_arg=None, name="dont store"):
+        """
+        Distribute locs in such a way that they correspond to the compartment
+        locations under NEAT's finite difference approximation.
+
+        Parameters
+        ----------
+        dx_max: float
+            Maximum distance step between compartments (in [um]). By default,
+            each node of this tree will correspond to at least one compartment,
+            and thus one node in the comparment tree. If the length of a node
+            exceeds `dx_max`, there will be the smallest possible number of
+            equally spaced comparments so that the distance between them does
+            not exceed `dx_max`. Note that if the computational tree is active,
+            the computational nodes will be taken as a reference for placing
+            the compartment locations.
+        node_arg (optional):
+            see documentation of `MorphTree.convert_node_arg_to_nodes`
+        name: string (optional)
+            the name under which the locations are stored. Defaults to 'dont save'
+            which means the locations are not stored
+
+        Returns
+        -------
+        list of `neat.MorphLoc`
+            the locations
+        """
+        set_as_comploc = self.check_computational_tree_active()
+
+        locs = []
+        for node in self.convert_node_arg_to_nodes(node_arg):
+            if self.is_root(node):
+                locs.append(
+                    MorphLoc((node.index, 0.5), self, set_as_comploc=set_as_comploc)
+                )
+            else:
+                n_comp = np.ceil(node.L / dx_max).astype(int)
+
+                for cc in range(1, n_comp + 1):
+                    new_loc = MorphLoc(
+                        (node.index, cc / n_comp), self, set_as_comploc=set_as_comploc
+                    )
+                    locs.append(new_loc)
+
+        if name != "dont store":
+            self.store_locs(locs, name)
+
+        return locs
 
     def extend_with_bifurcation_locs(self, loc_arg, name="dont save"):
         """

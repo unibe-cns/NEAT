@@ -368,7 +368,9 @@ class TestGreensTreeTime:
         # convert impedance matrix to time domain
         zt_mat_expl = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for ii, jj in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zt_mat_expl[:, ii, jj] = self.ft.ft_inv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            zt_mat_expl[:, ii, jj] = (
+                self.ft.ft_inv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            )
         # simulate the temporal matrix
         tk, zt_mat_sim = sim_tree.calc_impulse_response_matrix(
             locs,
@@ -487,7 +489,9 @@ class TestGreensTreeTime:
         # convert impedance matrix to time domain
         zt_mat_expl = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for ii, jj in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zt_mat_expl[:, ii, jj] = self.ft.ft_inv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            zt_mat_expl[:, ii, jj] = (
+                self.ft.ft_inv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            )
         # simulate the temporal matrix
         tk, zt_mat_sim = sim_tree.calc_impulse_response_matrix(
             locs,

@@ -654,7 +654,7 @@ class PhysTree(MorphTree):
         ion: string
             the ion the mechanism is for
         params: dict
-            parameters for the concentration mechanism (only used for NEURON model)
+            parameters for the concentration mechanism
         node_arg:
             see documentation of :func:`MorphTree.convert_node_arg_to_nodes`.
             Defaults to None
@@ -856,29 +856,27 @@ class PhysTree(MorphTree):
             The location corresponding to the compartments of the finite
             difference approximation
         """
-        set_as_comploc = self.check_computational_tree_active()
 
         # create the list of compartment locations for FD approximation
-        locs = []
-        for node in self:
-            if self.is_root(node):
-                locs.append(
-                    MorphLoc((node.index, 0.5), self, set_as_comploc=set_as_comploc)
-                )
-            else:
-                n_comp = np.ceil(node.L / dx_max).astype(int)
+        # locs = []
+        # for node in self:
+        #     if self.is_root(node):
+        #         locs.append(
+        #             MorphLoc((node.index, 0.5), self, set_as_comploc=set_as_comploc)
+        #         )
+        #     else:
+        #         n_comp = np.ceil(node.L / dx_max).astype(int)
 
-                for cc in range(1, n_comp + 1):
-                    new_loc = MorphLoc(
-                        (node.index, cc / n_comp), self, set_as_comploc=set_as_comploc
-                    )
-                    locs.append(new_loc)
+        #         for cc in range(1, n_comp + 1):
+        #             new_loc = MorphLoc(
+        #                 (node.index, cc / n_comp), self, set_as_comploc=set_as_comploc
+        #             )
+        #             locs.append(new_loc)
+
+        locs = self.distribute_locs_finite_diff(dx_max=dx_max, name=name)
 
         aux_tree = self.create_new_tree(locs, new_tree=PhysTree())
         fd_tree = self.create_compartment_tree(locs)
-
-        if name != "dont store":
-            self.store_locs(locs, name)
 
         for ii, (fd_node, aux_node, loc) in enumerate(zip(fd_tree, aux_tree, locs)):
             assert aux_node.content["loc idx"] == fd_node.loc_idx
