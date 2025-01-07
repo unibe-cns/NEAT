@@ -26,6 +26,7 @@ import matplotlib.patches as patches
 import matplotlib.cm as cm
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from interval import interval
 
 import copy
 import pathlib
@@ -2242,11 +2243,12 @@ class MorphTree(STree):
         return locs
 
     def distribute_locs_random(
-        self, num, dx=0.001, node_arg=None, add_soma=True, 
-        replace_nodes=False, name="dont save", seed=None,
+        self, num, dx=0.001, node_arg=None, add_soma=True, name="dont save", seed=None,
     ):
         """
-        Returns a list of input locations randomly distributed on the tree
+        Returns a list of input locations randomly distributed on the tree.
+        Locations are distributed uniformly, with the optional exclusion of an interval
+        of size `dx` around each location.
 
         Parameters
         ----------
@@ -2270,7 +2272,14 @@ class MorphTree(STree):
         list of `neat.MorphLoc`
             the locations
         """
-        np.random.seed(seed)
+        rng = np.random.default_rng(seed=seed)
+
+        # setup, tag all nodes as empty intervals (no space is excluded for sampling)
+        # when a location is sampled, we add an interval around that location to the tag,
+        # which will exclude that interval from being sampled
+        for node in self:
+            node.content["tag"] = interval()
+
         # use the requested subset of nodes
         nodes = [
             node for node in self.convert_node_arg_to_nodes(node_arg) if node.index != 1
@@ -2278,69 +2287,119 @@ class MorphTree(STree):
         # initialize the loclist with or without soma
         if add_soma:
             locs = [MorphLoc({"node": 1, "x": 0.0}, self)]
-            self.root.content["tag"] = 1
+            self.root.content["tag"] = interval([0.,1.])
         else:
             locs = []
 
         nodes_left = [node.index for node in nodes]
-        # add the nodes
-        for ii in range(num):
-            # stops the loop and filters out node_args that result in empty node lists
-            if len(nodes_left) < 1:
-                break
+        probs_left = np.array([node.L for node in nodes])
+        probs_left /= np.sum(probs_left)
 
-            index = np.random.choice(nodes_left)
-            x = np.random.random()
-            locs.append(MorphLoc((index, x), self))
+        jj = num
+        while jj > 0 and len(nodes_left) > 0:
+            index = rng.choice(nodes_left, p=probs_left, replace=True)
+            node = self[index]
 
-            if not replace_nodes:
-                node = self[index]
-                self._tag_nodes_from_root(node, node, dx=dx)
-                self._tag_nodes_to_root(node, node, dx=dx)
-
-                nodes_left = [node.index for node in nodes if "tag" not in node.content]
-        
-        if not replace_nodes:
-            self._removeTags()
+            # draw an x-value not in the tagged intervals
+            x = rng.uniform()
+            ii = 0
+            while x in node.content["tag"] and ii < 100:
+                x = rng.uniform()
+                ii += 1
             
+            if ii == 100:
+                node.content["tag"] = interval([0., 1.])
+
+            # add a note
+            locs.append(MorphLoc((index, x), self))
+            jj -= 1
+
+            # tag new intervals
+            self._tag_nodes_from_root(locs[-1], node, dx=dx)
+            self._tag_nodes_to_root(locs[-1], node, dx=dx)
+
+            # if node is full, remove it from sampling set
+            nodes_left_ = []
+            probs_left_ = []
+            for nidx, prob in zip(nodes_left, probs_left):
+                if interval([0,1]) not in self[nidx].content["tag"]:
+                    nodes_left_.append(nidx)
+                    probs_left_.append(prob)
+            nodes_left = nodes_left_
+            probs_left = np.array(probs_left_) / np.sum(probs_left_)
+
+        self._remove_tags()
+
         # store the locations
         if name != "dont save":
             self.store_locs(locs, name=name)
         return locs
 
-    def _tag_nodes_from_root(self, start_node, node, dx=0.001):
-        if "tag" not in node.content:
-            if node.index == start_node.index:
-                length = 0.0
-            else:
-                length = self.path_length(
-                    {"node": start_node.index, "x": 1.0}, {"node": node.index, "x": 0.0}
-                )
-            if length < dx:
-                node.content["tag"] = 1
-                for cnode in node.child_nodes:
-                    self._tag_nodes_from_root(start_node, cnode, dx=dx)
-
-    def _tag_nodes_to_root(self, start_node, node, cnode=None, dx=0.001):
-        if node.index == start_node.index:
-            length = 0.0
+    def _tag_nodes_from_root(self, start_loc, node, dx=0.001):
+        """
+        tag intervals within dx from the start_loc, away from root
+        """
+        if dx <= 0:
+            return
+        
+        # check if we are on the first node or deeper into the recursion
+        if node.index == start_loc['node']:
+            _loc = start_loc
         else:
-            length = self.path_length(
-                {"node": start_node.index, "x": 1.0}, {"node": node.index, "x": 1.0}
-            )
-        if length < dx:
-            node.content["tag"] = 1
-            cnodes = node.child_nodes
-            if len(cnodes) > 1:
-                if cnode != None:
-                    cnodes = list(set(cnodes) - set([cnode]))
-                for cn in cnodes:
-                    self._tag_nodes_from_root(start_node, cn, dx=dx)
+            _loc = MorphLoc((node.index, 0.), self)
+
+        d0 = _loc['x'] * node.L 
+        d1 = d0 + dx
+
+        if d1 > node.L:
+            # append the interval to the excluded zone and continue
+            node.content["tag"] = node.content["tag"] | interval([_loc['x'], 1.])
+
+            # leftover part of dx
+            dx -= node.L - d0
+
+            for cnode in node.child_nodes:
+                self._tag_nodes_from_root(start_loc, cnode, dx=dx)
+        else:
+            # append the interval to the excluded zone
+            node.content["tag"] = node.content["tag"] | interval([_loc['x'], d1 / node.L])
+    
+    def _tag_nodes_to_root(self, start_loc, node, cnode=None, dx=0.001):
+        """
+        tag intervals within dx from the start_loc, towards from root
+        """
+        # check if we are on the first node or deeper into the recursion
+        if node.index == start_loc['node']:
+            _loc = start_loc
+        else:
+            _loc = MorphLoc((node.index, 1.), self)
+        
+        d0 = _loc['x'] * node.L 
+        d1 = d0 - dx
+
+        if d1 < 0.:
+            node.content["tag"] = node.content["tag"] | interval([0., _loc['x']])
+
+            dx -= d0  
+
+            # if we are deeper in the recursion, we also have to assess
+            # sibling branches at bifurcations
+            if _loc != start_loc:
+                cnodes = node.child_nodes
+                if len(cnodes) > 1:
+                    if cnode != None:
+                        cnodes = list(set(cnodes) - set([cnode]))
+                    for cn in cnodes:
+                        self._tag_nodes_from_root(start_loc, cn, dx=dx)
+
             pnode = node.get_parent_node()
             if pnode != None:
-                self._tag_nodes_to_root(start_node, pnode, node, dx=dx)
+                self._tag_nodes_to_root(start_loc, pnode, node, dx=dx)
 
-    def _removeTags(self):
+        else: 
+            node.content["tag"] = node.content["tag"] | interval([d1 / node.L, start_loc['x']])
+
+    def _remove_tags(self):
         for node in self:
             if "tag" in node.content:
                 del node.content["tag"]

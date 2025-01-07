@@ -655,17 +655,19 @@ class TestMorphTree:
         for loc, checkloc in zip(locs, checklocs):
             assert loc == checkloc
         # test random loc distribution
-        locs = self.tree.distribute_locs_random(10)
-        assert len(locs) > 0
+        locs = self.tree.distribute_locs_random(10, dx=100)
+        assert len(locs)> 0 and len(locs) < 10
         for node in self.tree:
             assert "tag" not in node.content
         locs = self.tree.distribute_locs_random(10, node_arg="basal", add_soma=0)
         assert len(locs) == 0
         with pytest.raises(IOError):
             self.tree.distribute_locs_random(10, node_arg="bad type")
-        locs = self.tree.distribute_locs_random(10, replace_nodes=True)
+        locs = self.tree.distribute_locs_random(10)
         assert len(locs) == 11
-        locs = self.tree.distribute_locs_random(10, add_soma=False, replace_nodes=True)
+        locs = self.tree.distribute_locs_random(10, dx=0.)
+        assert len(locs) == 11
+        locs = self.tree.distribute_locs_random(10, add_soma=False)
         assert len(locs) == 10
 
     def test_tree_creation(self):
@@ -989,22 +991,22 @@ class TestMorphTree:
 
 if __name__ == "__main__":
     tmt = TestMorphTree()
-    tmt.test_string_representation()
-    tmt.test_plotting(pshow=True)
-    tmt.test_comp_tree_0()
-    tmt.test_input_arg_conversion()
-    tmt.test_loc_functionality()
+    # tmt.test_string_representation()
+    # tmt.test_plotting(pshow=True)
+    # tmt.test_comp_tree_0()
+    # tmt.test_input_arg_conversion()
+    # tmt.test_loc_functionality()
     tmt.test_loc_distribution()
-    tmt.test_unique_locs()
-    tmt.test_loc_storage_retrieval_lookup()
-    tmt.test_nearest_neighbours()
-    tmt.test_comp_tree()
-    tmt.test_multi_cylinder_soma()
-    tmt.test_one_point_soma()
-    tmt.test_three_point_soma()
-    tmt.test_wrong_soma()
-    tmt.test_copy_construct()
-    tmt.test_root_modification()
-    tmt.test_tree_creation()
-    tmt.test_path_length_segments()
-    tmt.test_create_new_tree_segments()
+    # tmt.test_unique_locs()
+    # tmt.test_loc_storage_retrieval_lookup()
+    # tmt.test_nearest_neighbours()
+    # tmt.test_comp_tree()
+    # tmt.test_multi_cylinder_soma()
+    # tmt.test_one_point_soma()
+    # tmt.test_three_point_soma()
+    # tmt.test_wrong_soma()
+    # tmt.test_copy_construct()
+    # tmt.test_root_modification()
+    # tmt.test_tree_creation()
+    # tmt.test_path_length_segments()
+    # tmt.test_create_new_tree_segments()
