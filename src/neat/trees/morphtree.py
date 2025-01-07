@@ -2242,7 +2242,8 @@ class MorphTree(STree):
         return locs
 
     def distribute_locs_random(
-        self, num, dx=0.001, node_arg=None, add_soma=True, name="dont save", seed=None
+        self, num, dx=0.001, node_arg=None, add_soma=True, 
+        replace_nodes=False, name="dont save", seed=None,
     ):
         """
         Returns a list of input locations randomly distributed on the tree
@@ -2280,18 +2281,28 @@ class MorphTree(STree):
             self.root.content["tag"] = 1
         else:
             locs = []
+
+        nodes_left = [node.index for node in nodes]
         # add the nodes
         for ii in range(num):
-            nodes_left = [node.index for node in nodes if "tag" not in node.content]
+            # stops the loop and filters out node_args that result in empty node lists
             if len(nodes_left) < 1:
                 break
+
             index = np.random.choice(nodes_left)
             x = np.random.random()
             locs.append(MorphLoc((index, x), self))
-            node = self[index]
-            self._tag_nodes_from_root(node, node, dx=dx)
-            self._tag_nodes_to_root(node, node, dx=dx)
-        self._removeTags()
+
+            if not replace_nodes:
+                node = self[index]
+                self._tag_nodes_from_root(node, node, dx=dx)
+                self._tag_nodes_to_root(node, node, dx=dx)
+
+                nodes_left = [node.index for node in nodes if "tag" not in node.content]
+        
+        if not replace_nodes:
+            self._removeTags()
+            
         # store the locations
         if name != "dont save":
             self.store_locs(locs, name=name)

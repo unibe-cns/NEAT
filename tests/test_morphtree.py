@@ -663,6 +663,10 @@ class TestMorphTree:
         assert len(locs) == 0
         with pytest.raises(IOError):
             self.tree.distribute_locs_random(10, node_arg="bad type")
+        locs = self.tree.distribute_locs_random(10, replace_nodes=True)
+        assert len(locs) == 11
+        locs = self.tree.distribute_locs_random(10, add_soma=False, replace_nodes=True)
+        assert len(locs) == 10
 
     def test_tree_creation(self):
         self.load_tree()
@@ -990,6 +994,7 @@ if __name__ == "__main__":
     tmt.test_comp_tree_0()
     tmt.test_input_arg_conversion()
     tmt.test_loc_functionality()
+    tmt.test_loc_distribution()
     tmt.test_unique_locs()
     tmt.test_loc_storage_retrieval_lookup()
     tmt.test_nearest_neighbours()
