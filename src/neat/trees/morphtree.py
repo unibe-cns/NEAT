@@ -1393,6 +1393,7 @@ class MorphTree(STree):
         else:
             return L
 
+    @original_tree_decorator
     def store_locs(self, locs, name, warn=True):
         """
         Store locations under a specified name
@@ -1427,6 +1428,7 @@ class MorphTree(STree):
         self.locs[name] = locs_
         self._nids_orig[name] = np.array([loc["node"] for loc in locs_])
         self._xs_orig[name] = np.array([loc["x"] for loc in locs_])
+
         if self._computational_root != None:
             self._store_comp_locs(name)
 
@@ -2191,11 +2193,13 @@ class MorphTree(STree):
         self, dx, node_arg=None, add_bifurcations=False, name="dont save"
     ):
         """
-        Distributes locations as uniform as possible, i.e. for a given distance
+        Distributes locations as uniformly, i.e. for a given distance
         between locations `dx`, locations are distributed equidistantly on each
         given node in the computational tree and their amount is computed
         so that the distance in between them is as close to `dx` as possible.
-        Depth-first ordering.
+        Note that if a (computational tree) node has `L < dx / 2`, no locations 
+        will be distributed on that node.
+        Locations in the list follow a depth-first ordering.
 
         Parameters
         ----------
@@ -2787,7 +2791,7 @@ class MorphTree(STree):
                 the ax object on which the plot will be drawn
             node_arg:
                 see documentation of `MorphTree.convert_node_arg_to_nodes`
-            cs: dict {int: float}, None or 'x_color'
+            cs: dict {int: float}, None or 'node_color'
                 If dict, node indices are keys and the float value will
                 correspond to the plotted color. If None, the color of the tree
                 will be the one specified in ``plotargs``. Note that the dict
@@ -2795,8 +2799,7 @@ class MorphTree(STree):
                 featured in the dict are plot in the color specified in ``plotargs``.
                 If 'node_color', colors will be those stored on the nodes. Note
                 that choosing this option when there are nodes without 'color'
-                as an entry in ``node.content`` will result in an error. Node
-                colors can be set with `MorphTree.setNodeColor()``
+                as an entry in ``node.content`` will result in an error.
             cminmax: (float, float) or None (default)
                 The min and max values of the color scale (if cs is provided).
                 If None, the min and max values of cs are used.
@@ -2863,7 +2866,7 @@ class MorphTree(STree):
         elif "c" not in plotargs:
             plotargs["c"] = "k"
         # define a norm for the colors, if defined
-        if cs == "x_color":
+        if cs == "node_color":
             cs = {node.index: node.content["color"] for node in self}
         if cs is not None:
             if cminmax is None:
