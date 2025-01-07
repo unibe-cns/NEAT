@@ -2309,10 +2309,10 @@ class MorphTree(STree):
             
             if ii == 100:
                 node.content["tag"] = interval([0., 1.])
-
-            # add a note
-            locs.append(MorphLoc((index, x), self))
-            jj -= 1
+            else:
+                # add the location
+                locs.append(MorphLoc((index, x), self))
+                jj -= 1
 
             # tag new intervals
             self._tag_nodes_from_root(locs[-1], node, dx=dx)
