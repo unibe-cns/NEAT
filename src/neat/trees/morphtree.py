@@ -593,7 +593,7 @@ class MorphTree(STree):
 
     def set_nodes(self, illegal):
         raise AttributeError(
-            "`nodes` is a read-only attribute. "
+            f"Property 'nodes' of '{self.__class__.__name__}' object has no setter."
             "Add nodes to the tree with `tree.add_node_with_parent(node)`"
         )
 
@@ -621,10 +621,7 @@ class MorphTree(STree):
         """
         return [node for node in self if self.is_leaf(node)]
 
-    def set_leafs(self, illegal):
-        raise AttributeError("`leafs` is a read-only attribute")
-
-    leafs = property(get_leafs, set_leafs)
+    leafs = property(get_leafs)
 
     def get_nodes_in_basal_subtree(self):
         """
@@ -636,6 +633,8 @@ class MorphTree(STree):
                 List of all nodes in the basal subtree
         """
         return [node for node in self if node.swc_type in [3]]
+    
+    basal_nodes = property(get_nodes_in_basal_subtree)
 
     def get_nodes_in_apical_subtree(self):
         """
@@ -647,6 +646,8 @@ class MorphTree(STree):
                 List of all nodes in the apical subtree
         """
         return [node for node in self if node.swc_type in [4]]
+    
+    apical_nodes = property(get_nodes_in_apical_subtree)
 
     def get_nodes_in_axonal_subtree(self):
         """
@@ -2747,22 +2748,48 @@ class MorphTree(STree):
             lines.append(line[0])
         return lines
 
-    def _add_scalebar(self, ax, borderpad=-1.8, sep=2):
-        from neat.tools.plottools import scalebars
+    def _add_scalebar(self, ax, 
+            xlabel=f" $\mu$m", fstr_xlabel=r'%.0f ',
+            lx_offset=.1, ly_offset=.1,
+            bx_offset=.05, by_offset=.05, bc_offset=0.,
+            sb_width=4.,
+            text_kwargs_x=dict(size=15., rotation=0, va='center')
+        ):
+        xticks = ax.get_xticks()
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
 
-        scalebars.addScalebar(
-            ax,
-            hidex=False,
-            hidey=False,
-            matchy=False,
-            labelx="μm",
-            loc=8,
-            borderpad=borderpad,
-            sep=sep,
-        )
-        ax.set_xticklabels([])
+        transf = ax.transData.inverted() + ax.transAxes
+        p0, p1 = transf.transform((0., 0.)), transf.transform((0.,1.))
+        bcx_offset = p1[0] - p0[0]
+        bcy_offset = p1[1] - p0[1]
+        p0, p1 = transf.transform((0., 0.)), transf.transform((by_offset,-bx_offset))
+        bx_offset = p1[1] - p0[1]
+        by_offset = p1[0] - p0[0]
+        p0, p1 = transf.transform((0., 0.)), transf.transform((ly_offset,-lx_offset))
+        lx_offset = p1[1] - p0[1]
+        ly_offset = p1[0] - p0[0]
 
-    def color_x_axis(self, ax, cmap, addScalebar=1, borderpad=-1.8):
+        # position and length
+        sblen = xticks[-1] - xticks[-2]
+        xpos = (xlim[0] + xlim[1]) / 2. + bcx_offset
+        ypos = ylim[0] + bx_offset
+
+        px = (xpos, ypos)
+        xbar = ((xpos - sblen / 2., xpos + sblen / 2.), (ypos, ypos))
+
+        # draw the scale bar
+        ax.plot(*xbar, 'k-', lw=sb_width, clip_on=False)
+        ax.annotate(fstr_xlabel%sblen + xlabel,
+                        xy=px, xytext=(px[0], px[1]+lx_offset), annotation_clip=False, transform=ax.transData,
+                        ha='center',
+                        **text_kwargs_x)
+
+        ax.tick_params(axis='x', which='both', length=0, color='none')
+
+        ax.set_xlim(xlim)
+
+    def color_x_axis(self, ax, cmap, add_scalebar=1):
         """
         Color the x-axis of a plot according to the morphology.
 
@@ -2781,8 +2808,6 @@ class MorphTree(STree):
             sizex: float
                 Size of scalebar (in micron). If set to None, no scalebar is
                 plotted.
-            borderpad: float
-                Borderpad of scalebar
         """
         locs = self.locs["xaxis"]
         # list of colors for plotting
@@ -2823,8 +2848,8 @@ class MorphTree(STree):
                 )
         ax.set_ylim((ylim[0], ylim[1]))
         # add scalebar
-        if addScalebar:
-            self._add_scalebar(ax, borderpad=borderpad)
+        if add_scalebar:
+            self._add_scalebar(ax)
         ax.axes.get_xaxis().set_visible(False)
 
     def plot_2d_morphology(
