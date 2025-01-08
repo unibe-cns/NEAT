@@ -633,7 +633,7 @@ class MorphTree(STree):
                 List of all nodes in the basal subtree
         """
         return [node for node in self if node.swc_type in [3]]
-    
+
     basal_nodes = property(get_nodes_in_basal_subtree)
 
     def get_nodes_in_apical_subtree(self):
@@ -646,7 +646,7 @@ class MorphTree(STree):
                 List of all nodes in the apical subtree
         """
         return [node for node in self if node.swc_type in [4]]
-    
+
     apical_nodes = property(get_nodes_in_apical_subtree)
 
     def get_nodes_in_axonal_subtree(self):
@@ -2199,7 +2199,7 @@ class MorphTree(STree):
         between locations `dx`, locations are distributed equidistantly on each
         given node in the computational tree and their amount is computed
         so that the distance in between them is as close to `dx` as possible.
-        Note that if a (computational tree) node has `L < dx / 2`, no locations 
+        Note that if a (computational tree) node has `L < dx / 2`, no locations
         will be distributed on that node.
         Locations in the list follow a depth-first ordering.
 
@@ -2244,7 +2244,13 @@ class MorphTree(STree):
         return locs
 
     def distribute_locs_random(
-        self, num, dx=0.001, node_arg=None, add_soma=True, name="dont save", seed=None,
+        self,
+        num,
+        dx=0.001,
+        node_arg=None,
+        add_soma=True,
+        name="dont save",
+        seed=None,
     ):
         """
         Returns a list of input locations randomly distributed on the tree.
@@ -2288,7 +2294,7 @@ class MorphTree(STree):
         # initialize the loclist with or without soma
         if add_soma:
             locs = [MorphLoc({"node": 1, "x": 0.0}, self)]
-            self.root.content["tag"] = interval([0.,1.])
+            self.root.content["tag"] = interval([0.0, 1.0])
         else:
             locs = []
 
@@ -2307,9 +2313,9 @@ class MorphTree(STree):
             while x in node.content["tag"] and ii < 100:
                 x = rng.uniform()
                 ii += 1
-            
+
             if ii == 100:
-                node.content["tag"] = interval([0., 1.])
+                node.content["tag"] = interval([0.0, 1.0])
             else:
                 # add the location
                 locs.append(MorphLoc((index, x), self))
@@ -2323,7 +2329,7 @@ class MorphTree(STree):
             nodes_left_ = []
             probs_left_ = []
             for nidx, prob in zip(nodes_left, probs_left):
-                if interval([0,1]) not in self[nidx].content["tag"]:
+                if interval([0, 1]) not in self[nidx].content["tag"]:
                     nodes_left_.append(nidx)
                     probs_left_.append(prob)
             nodes_left = nodes_left_
@@ -2342,19 +2348,19 @@ class MorphTree(STree):
         """
         if dx <= 0:
             return
-        
+
         # check if we are on the first node or deeper into the recursion
-        if node.index == start_loc['node']:
+        if node.index == start_loc["node"]:
             _loc = start_loc
         else:
-            _loc = MorphLoc((node.index, 0.), self)
+            _loc = MorphLoc((node.index, 0.0), self)
 
-        d0 = _loc['x'] * node.L 
+        d0 = _loc["x"] * node.L
         d1 = d0 + dx
 
         if d1 > node.L:
             # append the interval to the excluded zone and continue
-            node.content["tag"] = node.content["tag"] | interval([_loc['x'], 1.])
+            node.content["tag"] = node.content["tag"] | interval([_loc["x"], 1.0])
 
             # leftover part of dx
             dx -= node.L - d0
@@ -2363,25 +2369,27 @@ class MorphTree(STree):
                 self._tag_nodes_from_root(start_loc, cnode, dx=dx)
         else:
             # append the interval to the excluded zone
-            node.content["tag"] = node.content["tag"] | interval([_loc['x'], d1 / node.L])
-    
+            node.content["tag"] = node.content["tag"] | interval(
+                [_loc["x"], d1 / node.L]
+            )
+
     def _tag_nodes_to_root(self, start_loc, node, cnode=None, dx=0.001):
         """
         tag intervals within dx from the start_loc, towards from root
         """
         # check if we are on the first node or deeper into the recursion
-        if node.index == start_loc['node']:
+        if node.index == start_loc["node"]:
             _loc = start_loc
         else:
-            _loc = MorphLoc((node.index, 1.), self)
-        
-        d0 = _loc['x'] * node.L 
+            _loc = MorphLoc((node.index, 1.0), self)
+
+        d0 = _loc["x"] * node.L
         d1 = d0 - dx
 
-        if d1 < 0.:
-            node.content["tag"] = node.content["tag"] | interval([0., _loc['x']])
+        if d1 < 0.0:
+            node.content["tag"] = node.content["tag"] | interval([0.0, _loc["x"]])
 
-            dx -= d0  
+            dx -= d0
 
             # if we are deeper in the recursion, we also have to assess
             # sibling branches at bifurcations
@@ -2397,15 +2405,19 @@ class MorphTree(STree):
             if pnode != None:
                 self._tag_nodes_to_root(start_loc, pnode, node, dx=dx)
 
-        else: 
-            node.content["tag"] = node.content["tag"] | interval([d1 / node.L, start_loc['x']])
+        else:
+            node.content["tag"] = node.content["tag"] | interval(
+                [d1 / node.L, start_loc["x"]]
+            )
 
     def _remove_tags(self):
         for node in self:
             if "tag" in node.content:
                 del node.content["tag"]
 
-    def distribute_locs_finite_diff(self, dx_max=15.0, node_arg=None, name="dont store"):
+    def distribute_locs_finite_diff(
+        self, dx_max=15.0, node_arg=None, name="dont store"
+    ):
         """
         Distribute locs in such a way that they correspond to the compartment
         locations under NEAT's finite difference approximation.
@@ -2748,44 +2760,55 @@ class MorphTree(STree):
             lines.append(line[0])
         return lines
 
-    def _add_scalebar(self, ax, 
-            xlabel=f" $\mu$m", fstr_xlabel=r'%.0f ',
-            lx_offset=.1, ly_offset=.1,
-            bx_offset=.05, by_offset=.05, bc_offset=0.,
-            sb_width=4.,
-            text_kwargs_x=dict(size=15., rotation=0, va='center')
-        ):
+    def _add_scalebar(
+        self,
+        ax,
+        xlabel=f" $\mu$m",
+        fstr_xlabel=r"%.0f ",
+        lx_offset=0.1,
+        ly_offset=0.1,
+        bx_offset=0.05,
+        by_offset=0.05,
+        bc_offset=0.0,
+        sb_width=4.0,
+        text_kwargs_x=dict(size=15.0, rotation=0, va="center"),
+    ):
         xticks = ax.get_xticks()
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
 
         transf = ax.transData.inverted() + ax.transAxes
-        p0, p1 = transf.transform((0., 0.)), transf.transform((0.,1.))
+        p0, p1 = transf.transform((0.0, 0.0)), transf.transform((0.0, 1.0))
         bcx_offset = p1[0] - p0[0]
         bcy_offset = p1[1] - p0[1]
-        p0, p1 = transf.transform((0., 0.)), transf.transform((by_offset,-bx_offset))
+        p0, p1 = transf.transform((0.0, 0.0)), transf.transform((by_offset, -bx_offset))
         bx_offset = p1[1] - p0[1]
         by_offset = p1[0] - p0[0]
-        p0, p1 = transf.transform((0., 0.)), transf.transform((ly_offset,-lx_offset))
+        p0, p1 = transf.transform((0.0, 0.0)), transf.transform((ly_offset, -lx_offset))
         lx_offset = p1[1] - p0[1]
         ly_offset = p1[0] - p0[0]
 
         # position and length
         sblen = xticks[-1] - xticks[-2]
-        xpos = (xlim[0] + xlim[1]) / 2. + bcx_offset
+        xpos = (xlim[0] + xlim[1]) / 2.0 + bcx_offset
         ypos = ylim[0] + bx_offset
 
         px = (xpos, ypos)
-        xbar = ((xpos - sblen / 2., xpos + sblen / 2.), (ypos, ypos))
+        xbar = ((xpos - sblen / 2.0, xpos + sblen / 2.0), (ypos, ypos))
 
         # draw the scale bar
-        ax.plot(*xbar, 'k-', lw=sb_width, clip_on=False)
-        ax.annotate(fstr_xlabel%sblen + xlabel,
-                        xy=px, xytext=(px[0], px[1]+lx_offset), annotation_clip=False, transform=ax.transData,
-                        ha='center',
-                        **text_kwargs_x)
+        ax.plot(*xbar, "k-", lw=sb_width, clip_on=False)
+        ax.annotate(
+            fstr_xlabel % sblen + xlabel,
+            xy=px,
+            xytext=(px[0], px[1] + lx_offset),
+            annotation_clip=False,
+            transform=ax.transData,
+            ha="center",
+            **text_kwargs_x,
+        )
 
-        ax.tick_params(axis='x', which='both', length=0, color='none')
+        ax.tick_params(axis="x", which="both", length=0, color="none")
 
         ax.set_xlim(xlim)
 
