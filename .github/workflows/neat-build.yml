@@ -76,6 +76,7 @@ jobs:
       # Install NEAT
       - name: Install NEAT
         run: |
+          pip install setuptools
           pip install .
 
       # Unit tests
