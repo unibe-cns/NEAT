@@ -1411,6 +1411,7 @@ class MorphTree(STree):
                 to the soma. Choose ``False`` if this is desired to remove
                 the warning.
         """
+
         # copy list and store in MorphLoc if necessary
         locs_ = []
         n1 = 0
@@ -3365,6 +3366,9 @@ class MorphTree(STree):
                 R = self[1].R
             new_node.L = L
             new_node.R = R
+
+        # store the created root as the root of the original tree
+        new_tree._original_root = new_tree.root
 
         return new_tree
 
