@@ -690,6 +690,12 @@ class TestMorphTree:
             assert np.allclose(new_xyzs[ii], new_node.xyz)
             assert new_inds[ii] == new_node.index
 
+        assert new_tree._original_root is not None
+        with new_tree.as_original_tree:
+            assert new_tree.root is not None
+        assert new_tree.root is not None
+
+
     def test_plotting(self, pshow=0):
         self.load_tree()
         self.tree.set_comp_tree()
