@@ -118,10 +118,10 @@ def runCalciumCoinc(recompute_ctree=False, recompute_biophys=False, axdict=None,
 
     # single branch initiation zone
     branch = sim_tree.path_to_root(sim_tree[236])[::-1]
-    locs_sb = sim_tree.distribute_locs_on_nodes(D2S_CASPIKE, node_arg=branch, name='single branch')
+    locs_sb = sim_tree.distribute_locs_at_d2s(D2S_CASPIKE, node_arg=branch, name='single branch')
     # abpical trunk locations
     apic = sim_tree.path_to_root(sim_tree[221])[::-1]
-    locs_apic = sim_tree.distribute_locs_on_nodes(D2S_APIC, node_arg=apic, name='apic connection')
+    locs_apic = sim_tree.distribute_locs_at_d2s(D2S_APIC, node_arg=apic, name='apic connection')
 
     # store set of locations
     fit_locs = [(1, .5)] + locs_apic + locs_sb

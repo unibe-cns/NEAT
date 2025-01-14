@@ -28,7 +28,7 @@ from matplotlib.lines import Line2D
 from ..trees.stree import STree
 from ..trees.phystree import PhysTree
 from ..trees.compartmenttree import CompartmentTree
-from ..trees.netree import Kernel
+from ..tools.kernelextraction import Kernel
 from ..channels.ionchannels import SPDict
 from ..factorydefaults import FitParams, MechParams
 from .cachetrees import CachedGreensTree, CachedSOVTree, EquilibriumTree

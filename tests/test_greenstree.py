@@ -135,7 +135,7 @@ class TestGreensTree:
     def test_basic_properties(self):
         self.load_T_tree()
         # test Fourrier impedance matrix
-        ft = ke.FourrierTools(np.arange(0.0, 100.0, 0.1))
+        ft = ke.FourierQuadrature(np.arange(0.0, 100.0, 0.1))
         # set the impedances
         self.tree.set_impedance(ft.s)
 
@@ -207,7 +207,7 @@ class TestGreensTree:
         self.load_T_tree()
         self.load_sov_T_tree()
         # test Fourrier impedance matrix
-        ft = ke.FourrierTools(np.arange(0.0, 100.0, 0.1))
+        ft = ke.FourierQuadrature(np.arange(0.0, 100.0, 0.1))
         # set the impedances
         self.tree.set_impedance(ft.s)
         # sets of location
@@ -234,7 +234,7 @@ class TestGreensTree:
         self.load_validation_tree()
         self.load_sov_validation_tree()
         # test Fourrier impedance matrix
-        ft = ke.FourrierTools(np.arange(0.0, 100.0, 0.1))
+        ft = ke.FourierQuadrature(np.arange(0.0, 100.0, 0.1))
         # set the impedances
         self.tree.set_impedance(ft.s)
         # set of locations
@@ -263,7 +263,7 @@ class TestGreensTreeTime:
         self.dt = 0.025
         self.tmax = 100.0
         # for frequency derivation
-        self.ft = ke.FourrierTools(np.arange(0.0, self.tmax, self.dt))
+        self.ft = ke.FourierQuadrature(np.arange(0.0, self.tmax, self.dt))
 
     def load_T_tree(self):
         """
@@ -368,7 +368,9 @@ class TestGreensTreeTime:
         # convert impedance matrix to time domain
         zt_mat_expl = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for ii, jj in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zt_mat_expl[:, ii, jj] = self.ft.ftInv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            zt_mat_expl[:, ii, jj] = (
+                self.ft.ft_inv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            )
         # simulate the temporal matrix
         tk, zt_mat_sim = sim_tree.calc_impulse_response_matrix(
             locs,
@@ -487,7 +489,9 @@ class TestGreensTreeTime:
         # convert impedance matrix to time domain
         zt_mat_expl = np.zeros((len(self.ft.t), len(locs), len(locs)))
         for ii, jj in itertools.product(list(range(len(locs))), list(range(len(locs)))):
-            zt_mat_expl[:, ii, jj] = self.ft.ftInv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            zt_mat_expl[:, ii, jj] = (
+                self.ft.ft_inv(zf_mat_gtf[:, ii, jj])[1].real * 1e-3
+            )
         # simulate the temporal matrix
         tk, zt_mat_sim = sim_tree.calc_impulse_response_matrix(
             locs,

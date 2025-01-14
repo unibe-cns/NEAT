@@ -226,7 +226,7 @@ locations
    MorphTree.get_leaf_loc_idxs
    MorphTree.distances_to_soma
    MorphTree.distances_to_bifurcation
-   MorphTree.distribute_locs_on_nodes
+   MorphTree.distribute_locs_at_d2s
    MorphTree.distribute_locs_uniform
    MorphTree.distribute_locs_random
    MorphTree.extend_with_bifurcation_locs
@@ -577,11 +577,11 @@ Defining ion channels
 Compute Fourrier transforms
 ===========================
 
-.. autoclass:: neat.FourrierTools
+.. autoclass:: neat.FourierQuadrature
 
 .. autosummary::
    :toctree: generated/
 
-   FourrierTools.__call__
-   FourrierTools.ft
-   FourrierTools.ftInv
+   FourierQuadrature.__call__
+   FourierQuadrature.ft
+   FourierQuadrature.ft_inv

@@ -33,6 +33,7 @@ import warnings
 import itertools
 from operator import mul
 from functools import reduce
+from typing import Literal
 
 
 CFG = DefaultPhysiology()
@@ -933,17 +934,17 @@ class CompartmentTree(STree):
 
         Parameters
         ----------
-            freqs: np.array (dtype = complex) or float
-                Frequencies at which the matrix is evaluated [Hz]
-            channel_names: ``None`` (default) or `list` of `str`
-                The channels to be included in the matrix. If ``None``, all
-                channels present on the tree are included in the calculation
-            use_conc: bool
-                wheter or not to use the concentration dynamics
-            indexing: 'tree' or 'locs'
-                Whether the indexing order of the matrix corresponds to the tree
-                nodes (order in which they occur in the iteration) or to the
-                locations on which the reduced model is based
+        freqs: np.array (dtype = complex) or float
+            Frequencies at which the matrix is evaluated [Hz]
+        channel_names: ``None`` (default) or `list` of `str`
+            The channels to be included in the matrix. If ``None``, all
+            channels present on the tree are included in the calculation
+        use_conc: bool
+            wheter or not to use the concentration dynamics
+        indexing: 'tree' or 'locs'
+            Whether the indexing order of the matrix corresponds to the tree
+            nodes (order in which they occur in the iteration) or to the
+            locations on which the reduced model is based
 
         Returns
         -------
@@ -960,6 +961,92 @@ class CompartmentTree(STree):
                 use_conc=use_conc,
             )
         )
+
+    def calc_impulse_response_matrix(
+        self,
+        t_inp,
+        channel_names=None,
+        indexing="locs",
+        use_conc=False,
+        compute_time_derivative=False,
+        method: Literal["", "exp fit", "quadrature"] = "",
+    ):
+        """
+        Computes the matrix of impulse response kernels at a given set of
+        locations for all time-points defined in `self.ft.t` (the input times
+        provided to `set_impedance()`).
+
+        Parameters
+        ----------
+        t_inp : `np.array` (`ndim=1`, `dtype=real`)
+            The time array at which the kernels are to be evaluated
+        channel_names: ``None`` (default) or `list` of `str`
+            The channels to be included in the matrix. If ``None``, all
+            channels present on the tree are included in the calculation
+        use_conc: bool
+            wheter or not to use the concentration dynamics
+        indexing: 'tree' or 'locs'
+            Whether the indexing order of the matrix corresponds to the tree
+            nodes (order in which they occur in the iteration) or to the
+            locations on which the reduced model is based
+        compute_time_derivative: bool
+            if ``True``, also returns the time derivatives of the kernels
+        method: str ("", "exp fit", "quadrature")
+            The method to use when computing the kernel. "quadrature" for
+            explicit integration of the inverse Fourrier integral, "exp fit" for
+            a frequency domain fit with the Fourrier transforms of time domain
+            exponentials, or "" choses the most appropriate method based on the
+            case
+
+        Returns
+        -------
+        `np.ndarray` (``ndim = 3``)
+            the matrix of impulse responses, first dimension corresponds to the
+            time axis, second and third dimensions contain the impulse response
+            in ``[MOhm/ms]`` at that time point
+
+        """
+        ft = ke.FourierTools(t_inp)
+
+        zf_mat = self.calc_impedance_matrix(
+            freqs=ft.freqs,
+            channel_names=channel_names,
+            indexing=indexing,
+            use_conc=use_conc,
+        )
+
+        nt = len(ft.t)  # number of time points
+        nl = len(self)  # number of compartments
+        zt_mat = np.zeros((nt, nl, nl))
+        if compute_time_derivative:
+            dzt_dt_mat = np.zeros((nt, nl, nl))
+
+        for ii in range(len(self)):
+            for jj in range(len(self)):
+
+                if jj > ii:
+                    break
+
+                if compute_time_derivative:
+                    zt_mat[:, ii, jj], dzt_dt_mat[:, ii, jj] = ft.inverse_fourier(
+                        zf_mat[:, ii, jj],
+                        compute_time_derivative=True,
+                        method=method,
+                    )
+                    dzt_dt_mat[:, jj, ii] = dzt_dt_mat[:, ii, jj]
+
+                else:
+                    zt_mat[:, ii, jj] = ft.inverse_fourier(
+                        zf_mat[:, ii, jj],
+                        compute_time_derivative=False,
+                        method=method,
+                    )
+                zt_mat[:, jj, ii] = zt_mat[:, ii, jj]
+
+        if compute_time_derivative:
+            return zt_mat, dzt_dt_mat
+        else:
+            return zt_mat
 
     def calc_conductance_matrix(self, indexing="locs"):
         """
@@ -1104,7 +1191,6 @@ class CompartmentTree(STree):
         if indexing == "locs":
             ca_vec = self._permuteToLocs(ca_vec)
         mat /= ca_vec[:, None]
-        print(mat)
         # compute the eigenvalues
         alphas, phimat = la.eig(mat)
         if max(np.max(np.abs(alphas.imag)), np.max(np.abs(phimat.imag))) < 1e-5:

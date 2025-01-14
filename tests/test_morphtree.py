@@ -21,7 +21,9 @@
 
 import numpy as np
 import matplotlib.pyplot as pl
+
 import os
+import math
 
 import pytest
 
@@ -34,7 +36,7 @@ MORPHOLOGIES_PATH_PREFIX = os.path.abspath(
 
 
 class TestMorphTree:
-    def load_tree(self, reinitialize=0, segments=False):
+    def load_tree(self, segments=False):
         """
         Load the T-tree morphology in memory
 
@@ -63,11 +65,34 @@ class TestMorphTree:
                 |
                 1
         """
-        if not hasattr(self, "tree") or reinitialize:
-            fname = "Ttree_segments.swc" if segments else "Ttree.swc"
-            self.tree = MorphTree(
-                os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1, 3, 4]
-            )
+        fname = "Ttree_segments.swc" if segments else "Ttree.swc"
+        self.tree = MorphTree(
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, fname), types=[1, 3, 4]
+        )
+
+    def load_segments_tree(self):
+        """
+        Load ball and stick dendrite where each segment is decreasing in radius
+
+        1--4--5--6--7--8
+        """
+        self.tree = MorphTree(
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_stick_segments.swc"),
+            types=[1, 3, 4],
+        )
+
+    def load_sticks_tree(self):
+        """
+        Load ball and stick dendrite where each segment is decreasing in radius
+
+        4   5   6   7
+        |   |   |   |
+         -----1-----
+        """
+        self.tree = MorphTree(
+            os.path.join(MORPHOLOGIES_PATH_PREFIX, "ball_and_four_sticks.swc"),
+            types=[1, 3, 4],
+        )
 
     def test_string_representation(self):
         self.load_tree()
@@ -184,7 +209,7 @@ class TestMorphTree:
         assert leaf2.swc_type == 4
 
     def test_comp_tree_0(self):
-        self.load_tree(reinitialize=1)
+        self.load_tree()
         # check exception when computational tree has not been set
         with pytest.raises(AttributeError):
             with self.tree.as_computational_tree:
@@ -559,9 +584,9 @@ class TestMorphTree:
         self.tree.set_comp_tree()
         with self.tree.as_computational_tree:
             with pytest.raises(IOError):
-                self.tree.distribute_locs_on_nodes(np.array([90.0, 140.0, 190.0]), [])
+                self.tree.distribute_locs_at_d2s(np.array([90.0, 140.0, 190.0]), [])
         # test loc distribution on nodes
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([90.0, 140.0, 190.0]), [self.tree[6], self.tree[8]]
         )
         assert (
@@ -569,36 +594,36 @@ class TestMorphTree:
             and locs[1] == {"node": 8, "x": 4.0 / 5.0}
             and len(locs) == 2
         )
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([190.0, 190.0]), [self.tree[6]]
         )
         assert locs[0] == locs[1] and locs[0] == {"node": 6, "x": 4.0 / 5.0}
-        locs = self.tree.distribute_locs_on_nodes(np.array([]), [self.tree[6]])
+        locs = self.tree.distribute_locs_at_d2s(np.array([]), [self.tree[6]])
         assert len(locs) == 0
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([100.0]), [self.tree[4], self.tree[5]]
         )
         assert locs[0] == {"node": 4, "x": 1.0}
         # derived loc distribution functions
-        locs = self.tree.distribute_locs_on_nodes(np.array([150.0, 100.0]))
+        locs = self.tree.distribute_locs_at_d2s(np.array([150.0, 100.0]))
         assert (
             locs[0] == {"node": 4, "x": 1.0}
             and locs[1] == {"node": 5, "x": 1.0}
             and locs[2] == {"node": 7, "x": 1.0}
         )
         nodes = self.tree.path_between_nodes(self.tree[5], self.tree[6])
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([50.0, 120.0, 170.0]), node_arg=nodes
         )
         assert locs[0] == {"node": 5, "x": 2.0 / 5.0} and locs[1] == {
             "node": 6,
             "x": 2.0 / 5.0,
         }
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([70.0, 120.0]), node_arg="basal"
         )
         assert len(locs) == 0
-        locs = self.tree.distribute_locs_on_nodes(
+        locs = self.tree.distribute_locs_at_d2s(
             np.array([70.0, 120.0]), node_arg="apical"
         )
         assert (
@@ -607,7 +632,7 @@ class TestMorphTree:
             and locs[2] == {"node": 7, "x": 2.0 / 5.0}
         )
         nodes = self.tree.get_nodes_in_subtree(self.tree[6], self.tree[4])
-        locs = self.tree.distribute_locs_on_nodes(np.array([70.0, 120]), node_arg=nodes)
+        locs = self.tree.distribute_locs_at_d2s(np.array([70.0, 120]), node_arg=nodes)
         assert locs[0] == {"node": 4, "x": 7.0 / 10.0} and locs[1] == {
             "node": 5,
             "x": 2.0 / 5.0,
@@ -630,17 +655,23 @@ class TestMorphTree:
         for loc, checkloc in zip(locs, checklocs):
             assert loc == checkloc
         # test random loc distribution
-        locs = self.tree.distribute_locs_random(10)
-        assert len(locs) > 0
+        locs = self.tree.distribute_locs_random(10, dx=100)
+        assert len(locs)> 0 and len(locs) < 10
         for node in self.tree:
             assert "tag" not in node.content
         locs = self.tree.distribute_locs_random(10, node_arg="basal", add_soma=0)
         assert len(locs) == 0
         with pytest.raises(IOError):
             self.tree.distribute_locs_random(10, node_arg="bad type")
+        locs = self.tree.distribute_locs_random(10)
+        assert len(locs) == 11
+        locs = self.tree.distribute_locs_random(10, dx=0.)
+        assert len(locs) == 11
+        locs = self.tree.distribute_locs_random(10, add_soma=False)
+        assert len(locs) == 10
 
     def test_tree_creation(self):
-        self.load_tree(self)
+        self.load_tree()
         locs = [(1, 0.5), (4, 0.5), (4, 1.0), (5, 1.0), (6, 1.0), (7, 1.0), (8, 1.0)]
         self.tree.store_locs(locs, "newtree_test")
         # create the new tree
@@ -739,7 +770,7 @@ class TestMorphTree:
                 pl.show()
 
     def test_comp_tree(self):
-        self.load_tree(reinitialize=1, segments=True)
+        self.load_tree(segments=True)
         self.tree.set_comp_tree()
         # check whether amount of nodes is correct
         assert len(self.tree.nodes) == 10
@@ -855,7 +886,7 @@ class TestMorphTree:
             MorphTree(os.path.join(MORPHOLOGIES_PATH_PREFIX, "wrong_soma.swc"))
 
     def test_copy_construct(self):
-        self.load_tree(reinitialize=True, segments=True)
+        self.load_tree(segments=True)
         tree1 = MorphTree(self.tree)
 
         self.tree.set_comp_tree()
@@ -881,7 +912,7 @@ class TestMorphTree:
         # test for a tricky bugfix with cachetrees, where the update
         # of tree.__dict__ did not results in an updated tree because
         # the original root was reapplied after the context manager closed
-        self.load_tree(reinitialize=True, segments=True)
+        self.load_tree(segments=True)
         # modify the tree by adding a node
         tree = MorphTree(self.tree)
         axon_node = tree.create_corresponding_node(13)
@@ -895,21 +926,87 @@ class TestMorphTree:
 
         assert len(tree) == len(self.tree)
 
+    def test_path_length_segments(self):
+        self.load_segments_tree()
+
+        L4, R4 = self.tree.path_length((4, 0.0), (5, 0.0), compute_radius=True)
+        assert L4 == pytest.approx(200.0)
+        assert R4 == pytest.approx(2.0)
+
+        L45, R45 = self.tree.path_length((4, 0.5), (5, 0.5), compute_radius=True)
+        assert L45 == pytest.approx(200.0)
+        assert R45 == pytest.approx((0.5 * 2.0 + 0.5 * 1.5))
+
+        L78, R78 = self.tree.path_length((7, 0.2), (8, 0.3), compute_radius=True)
+        assert L78 == pytest.approx(0.8 * 200.0 + 0.3 * 200.0)
+        assert R78 == pytest.approx((0.8 * 0.5 + 0.3 * 0.25) / (0.8 + 0.3))
+
+        self.load_sticks_tree()
+
+        L0, R0 = self.tree.path_length((4, 0.0), (5, 0.0), compute_radius=True)
+        assert L0 == pytest.approx(0.0)
+        assert math.isnan(R0)
+
+        L1, R1 = self.tree.path_length((6, 0.5), (7, 0.5), compute_radius=True)
+        assert L1 == pytest.approx(0.5 * 200.0 + 0.5 * 600.0)
+        assert R1 == pytest.approx(
+            (0.5 * 200.0 * 5.0 + 0.5 * 600.0 * 2.0) / (0.5 * 200.0 + 0.5 * 600.0)
+        )
+
+    def test_create_new_tree_segments(self):
+        self.load_segments_tree()
+
+        new_tree = self.tree.create_new_tree([(1.0, 0.5), (4, 0.0), (5, 0.0)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(2.0)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(200.0)
+
+        new_tree = self.tree.create_new_tree([(1.0, 0.5), (4, 1.0), (5, 1.0)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(2.0)
+        assert new_tree[5].R == pytest.approx(1.5)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(200.0)
+        assert new_tree[5].L == pytest.approx(200.0)
+
+        new_tree = self.tree.create_new_tree([(1.0, 0.5), (4, 0.5), (5, 0.5)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(2.0)
+        assert new_tree[5].R == pytest.approx(1.75)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(100.0)
+        assert new_tree[5].L == pytest.approx(200.0)
+
+        self.load_sticks_tree()
+
+        new_tree = self.tree.create_new_tree([(4, 0.5), (5, 0.5)])
+        assert new_tree[1].R == pytest.approx(12.0)
+        assert new_tree[4].R == pytest.approx(1.0)
+        assert new_tree[5].R == pytest.approx(0.3)
+        assert new_tree[1].L == pytest.approx(0.0)
+        assert new_tree[4].L == pytest.approx(500.0)
+        assert new_tree[5].L == pytest.approx(200.0)
+
 
 if __name__ == "__main__":
     tmt = TestMorphTree()
-    tmt.test_string_representation()
-    tmt.test_plotting(pshow=True)
-    tmt.test_comp_tree_0()
-    tmt.test_input_arg_conversion()
-    tmt.test_loc_functionality()
-    tmt.test_unique_locs()
-    tmt.test_loc_storage_retrieval_lookup()
-    tmt.test_nearest_neighbours()
-    tmt.test_comp_tree()
-    tmt.test_multi_cylinder_soma()
-    tmt.test_one_point_soma()
-    tmt.test_three_point_soma()
-    tmt.test_wrong_soma()
-    tmt.test_copy_construct()
-    tmt.test_root_modification()
+    # tmt.test_string_representation()
+    # tmt.test_plotting(pshow=True)
+    # tmt.test_comp_tree_0()
+    # tmt.test_input_arg_conversion()
+    # tmt.test_loc_functionality()
+    tmt.test_loc_distribution()
+    # tmt.test_unique_locs()
+    # tmt.test_loc_storage_retrieval_lookup()
+    # tmt.test_nearest_neighbours()
+    # tmt.test_comp_tree()
+    # tmt.test_multi_cylinder_soma()
+    # tmt.test_one_point_soma()
+    # tmt.test_three_point_soma()
+    # tmt.test_wrong_soma()
+    # tmt.test_copy_construct()
+    # tmt.test_root_modification()
+    # tmt.test_tree_creation()
+    # tmt.test_path_length_segments()
+    # tmt.test_create_new_tree_segments()

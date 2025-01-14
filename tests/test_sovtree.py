@@ -150,7 +150,7 @@ class TestSOVTree:
         for ii, z_row in enumerate(z_mat_a):
             assert np.argmax(z_row) == ii
         # test Fourrier impedance matrix
-        ft = ke.FourrierTools(np.arange(0.0, 100.0, 0.1))
+        ft = ke.FourierQuadrature(np.arange(0.0, 100.0, 0.1))
         z_mat_ft = self.tree.calc_impedance_matrix(loc_arg="1", eps=1e-10, freqs=ft.s)
         assert np.allclose(
             z_mat_ft[ft.ind_0s, :, :].real, z_mat_a, atol=1e-1

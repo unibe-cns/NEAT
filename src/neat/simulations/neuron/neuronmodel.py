@@ -30,6 +30,7 @@ import numpy as np
 from ...trees.morphtree import MorphLoc
 from ...trees.phystree import PhysTree, PhysNode
 from ...trees.compartmenttree import CompartmentTree
+from ...factorydefaults import DefaultPhysiology
 
 try:
     import neuron
@@ -926,6 +927,8 @@ class NeuronSimTree(PhysTree):
             print(">>> Elapsed time: " + str(stop - start) + " seconds. <<<")
         runtime = stop - start
 
+        # contains default concentrations
+        default_phys = DefaultPhysiology()
         # compute derivative
         if "dv_dt" in res:
             for ii, loc in enumerate(self.get_locs("rec locs")):
@@ -934,7 +937,11 @@ class NeuronSimTree(PhysTree):
             res["dv_dt"] = np.array(res["dv_dt"])
         # cast recordings into numpy arrays
         res["t"] = np.array(res["t"])[indstart:][::downsample] - self.t_calibrate
-        for key in set(res.keys()) - {"t", "chan", "dv_dt", "spikes"}:
+        for key in (
+            set(res.keys())
+            - {"t", "chan", "dv_dt", "spikes"}
+            - default_phys.conc.keys()
+        ):
             if key in res and len(res[key]) > 0:
                 arrlist = []
                 for reslist in res[key]:
@@ -942,6 +949,23 @@ class NeuronSimTree(PhysTree):
                         np.array(reslist)[indstart:][::downsample]
                         if len(reslist) > 0
                         else np.zeros_like(res["t"])
+                    )
+                    arrlist.append(arr)
+                res[key] = np.array(arrlist)
+                # res[key] = np.array([np.array(reslist)[indstart:][::downsample] \
+                #                      for reslist in res[key]])
+                if key in ("i_syn", "i_clamp", "i_vclamp"):
+                    res[key] *= -1.0
+        # cast concentration recordings into numpy arrays, substitute default concentration
+        # if no concentration recording is found
+        for key in default_phys.conc.keys():
+            if key in res and len(res[key]) > 0:
+                arrlist = []
+                for reslist in res[key]:
+                    arr = (
+                        np.array(reslist)[indstart:][::downsample]
+                        if len(reslist) > 0
+                        else np.ones_like(res["t"]) * default_phys.conc[key]
                     )
                     arrlist.append(arr)
                 res[key] = np.array(arrlist)

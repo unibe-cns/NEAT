@@ -29,7 +29,6 @@ from . import morphtree
 from .morphtree import MorphLoc
 from .phystree import PhysNode, PhysTree
 from .stree import STree
-from .netree import Kernel
 from ..channels import ionchannels
 from ..tools import kernelextraction as ke
 from ..factorydefaults import DefaultPhysiology
@@ -775,19 +774,13 @@ class GreensTreeTime(GreensTree):
 
     Attributes
     ----------
-    freqs_vfit : `np.array` (`ndim=1`, `dtype=complex`)
-        Frequencies for the vector fitting algorithm, used
-        to transform input impedance kernels back to the time domain
-    ft: `neat.FourrierTools`
+    ft: `neat.FourierTools`
         Helper class instance to transform transfer impedance kernels
         back to the time domain through quadrature
     """
 
     def __init__(self, *args, **kwargs):
-        self.freqs_vfit = None
         self.ft = None
-        self._slice_vfit = None
-        self._slice_quad = None
         super().__init__(*args, **kwargs)
 
     def _get_repr_dict(self):
@@ -797,37 +790,10 @@ class GreensTreeTime(GreensTree):
         return repr_dict
 
     def _check_instantiated(self):
-        if self.freqs_vfit is None or self.ft is None:
+        if self.ft is None:
             raise AttributeError(
                 "Frequency arrays are not instatiated, call `set_impedance()` first"
             )
-
-    def _set_default_freq_array_vector_fit(self):
-        # reasonable parameters to construct frequency array
-        dt = 0.1 * 1e-3  # s
-        N = 2**12
-        smax = np.pi / dt  # Hz
-        ds = np.pi / (N * dt)  # Hz
-
-        # frequency array for vector fitting
-        self.freqs_vfit = np.arange(-smax, smax, ds) * 1j  # Hz
-
-    def _set_default_freq_array_quadrature(self, t_inp):
-        # frequency array for time domain evaluation of the kernels through
-        # quadrature is contained in `FourrierTools.s`
-        if isinstance(t_inp, ke.FourrierTools):
-            self.ft = t_inp
-        else:
-            # reasonable parameters for FourrierTools
-            self.ft = ke.FourrierTools(t_inp, fmax=7.0, base=10.0, num=200)
-
-    def _set_freq_and_time_arrays(self, t_inp):
-        self._set_default_freq_array_vector_fit()
-        self._set_default_freq_array_quadrature(t_inp)
-
-        self._slice_vfit = np.s_[: len(self.freqs_vfit)]
-        self._slice_quad = np.s_[len(self.freqs_vfit) :]
-        self.freqs = np.concatenate((self.freqs_vfit, self.ft.s))
 
     def set_impedance(self, t_inp):
         """
@@ -838,106 +804,9 @@ class GreensTreeTime(GreensTree):
         t_inp : `np.array` (`ndim=1`, `dtype=real`)
             The time array at which the Green's function has to be evaluated
         """
-        self._set_freq_and_time_arrays(t_inp)
-        super().set_impedance(self.freqs)
-
-    def _inverse_fourrier(
-        self,
-        func_vals_f,
-        method: Literal["", "exp fit", "quadrature"] = "",
-        compute_time_derivative=True,
-    ):
-        if method not in ["", "exp fit", "quadrature"]:
-            raise IOError("Method should be empty string, 'exp fit' or 'quadrature'")
-
-        # compute in time domain, method depends on ratio between spectral
-        # power in zero frequency vs max frequency component
-        # typically, this will mean exponential fit is chosen for input
-        # impedances and explicit quadrature for transfer impedances
-        f_arr = func_vals_f[self._slice_quad]
-        criterion_eval = np.abs(f_arr[-1]) / np.abs(f_arr[self.ft.ind_0s])
-        criterion = criterion_eval <= 1e-3
-
-        if criterion_eval > 1e-10:
-            # if there is substantial spectral power in the max frequency
-            # components, we smooth the function with a squared cosine window
-            # to reduce oscillations
-            window = np.cos(np.pi * self.ft.s.imag / (2.0 * np.abs(self.ft.s[-1]))) ** 2
-        else:
-            window = np.ones_like(self.ft.s)
-
-        # compute kernel through quadrature method
-        func_vals_t = (
-            self.ft.ftInv(window * func_vals_f[self._slice_quad])[1].real * 1e-3
-        )  # MOhm/s -> MOhm/ms
-        if compute_time_derivative:
-            # compute differentiated kernel
-            dfunc_vals_t_dt = (
-                self.ft.ftInv(self.ft.s * window * func_vals_f[self._slice_quad])[
-                    1
-                ].real
-                * 1e-6
-            )  # MOhm/s^2 -> MOhm/ms^2
-
-        # when the criterion is satified, or if the default method is
-        # overridden to 'quadrature', we always return the the quadrature result
-        if (method == "" and criterion) or method == "quadrature":
-            if compute_time_derivative:
-                return func_vals_t, dfunc_vals_t_dt
-            else:
-                return func_vals_t
-
-        # this code will only be reached when `method` is "exp_fit", or when
-        # `method` is "" but the criterion is not satisfied
-
-        # we set a custom set of initial poles for the vector fit algorithm
-        # NOTE: not used at the moment, have to figure out why
-        # initpoles = np.concatenate((
-        #     np.linspace(.5, 10**1.3, 40)[:-1],
-        #     np.logspace(
-        #         1.3, np.log10(self.freqs[self._slice_vfit][-1].imag),
-        #         num=40, base=10,
-        #     )
-        # ))
-
-        # compute kernel as superposition of exponentials in the frequency domain
-        f_exp_fitter = ke.fExpFitter()
-        alpha, gamma, pairs, rms = f_exp_fitter.fitFExp(
-            self.freqs[self._slice_vfit],
-            func_vals_f[self._slice_vfit],
-            deg=40,
-            initpoles="log10",
-            realpoles=True,
-            zerostart=False,
-            constrained=True,
-            reduce_numexp=False,
-        )
-        zk = Kernel({"a": alpha * 1e-3, "c": gamma * 1e-3})
-        if compute_time_derivative:
-            dzk_dt = zk.diff()
-        # linear fit of c in the time domain to the quadrature-computed kernels
-        # can improve accuracy
-        # NOTE: not used at the moment, have to figure out why
-        # w = np.concatenate(
-        #     (self.ft.t[self.ft.t < 1.], np.ones_like(self.ft.t[self.ft.t >= 1.]))
-        # )
-        # zk.fit_c(self.ft.t, func_vals_t, w=w)
-
-        # evaluate kernel in the time domain
-        func_vals_t = zk(self.ft.t)
-
-        if compute_time_derivative:
-            # linear fit of c in the time domain to the quadrature-computed kernels
-            # can improve accuracy
-            # NOTE: not used at the moment, have to figure out why
-            # dzk_dt.fit_c(self.ft.t, dfunc_vals_t_dt, w=w)
-            # compute differentiated kernel
-            dfunc_vals_t_dt = zk.diff(self.ft.t)
-
-            return func_vals_t, dfunc_vals_t_dt
-
-        else:
-            return func_vals_t
+        # self._set_freq_and_time_arrays(t_inp)
+        self.ft = ke.FourierTools(t_inp)
+        super().set_impedance(self.ft.freqs)
 
     @morphtree.computational_tree_decorator
     def calc_zt(
@@ -978,7 +847,7 @@ class GreensTreeTime(GreensTree):
         zf = self.calc_zf(loc1, loc2) if _zf is None else _zf
 
         # convert frequency impedances to time domain kernels
-        return self._inverse_fourrier(
+        return self.ft.inverse_fourier(
             zf, method=method, compute_time_derivative=compute_time_derivative
         )
 
@@ -1121,7 +990,7 @@ class GreensTreeTime(GreensTree):
 
                     # convert frequency impedances to time domain kernels
                     (crt[channel_name][svar_name], dcrt_dt[channel_name][svar_name]) = (
-                        self._inverse_fourrier(
+                        self.ft.inverse_fourier(
                             crf[channel_name][svar_name],
                             method=method,
                             compute_time_derivative=compute_time_derivative,
@@ -1130,7 +999,7 @@ class GreensTreeTime(GreensTree):
 
                 else:
                     # convert frequency impedances to time domain kernels
-                    crt[channel_name][svar_name] = self._inverse_fourrier(
+                    crt[channel_name][svar_name] = self.ft.inverse_fourier(
                         crf[channel_name][svar_name],
                         method=method,
                         compute_time_derivative=compute_time_derivative,
