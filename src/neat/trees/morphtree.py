@@ -26,7 +26,6 @@ import matplotlib.patches as patches
 import matplotlib.cm as cm
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from interval import interval
 
 import copy
 import pathlib
@@ -37,6 +36,7 @@ from contextlib import contextmanager
 
 from .stree import SNode, STree
 from .compartmenttree import CompartmentNode, CompartmentTree
+from ..tools.interval import interval
 
 
 def computational_tree_decorator(fun):
