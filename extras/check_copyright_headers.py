@@ -50,6 +50,7 @@ exclude_dirs = [
     'docs',
     'src/neat/simulations/nest/tmp',
     'src/neat/simulations/neuron/tmp',
+    'src/neat/tools/interval',
 ]
 
 # match all file names against these regular expressions. if a match
