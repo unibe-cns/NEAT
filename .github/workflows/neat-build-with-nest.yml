@@ -1,0 +1,94 @@
+# -*- coding: utf-8 -*-
+#
+# neat-build-with-nest.yml
+#
+# This file is part of NEST.
+#
+# Copyright (C) 2004 The NEST Initiative
+#
+# NEST is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# NEST is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with NEST.  If not, see <http://www.gnu.org/licenses/>.
+
+name: NEAT build with NEST
+
+on: [push, pull_request, workflow_dispatch]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_and_test_neat_with_nest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nest_branch: ["v3.8", "master"]
+      fail-fast: false
+    steps:
+      # Checkout the repository contents
+      - name: Checkout NEAT code
+        uses: actions/checkout@v4
+
+      # Setup Python version
+      - name: Setup Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+
+      # Install dependencies
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libltdl7-dev libgsl0-dev libncurses5-dev libreadline6-dev pkg-config
+          sudo apt-get install python3-all-dev python3-matplotlib python3-numpy python3-scipy ipython3
+
+      # Install NEST simulator
+      - name: NEST simulator
+        run: |
+          pip install cython
+          echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
+          NEST_SIMULATOR=$(pwd)/nest-simulator
+          NEST_INSTALL=$(pwd)/nest_install
+          echo "NEST_SIMULATOR = $NEST_SIMULATOR"
+          echo "NEST_INSTALL = $NEST_INSTALL"
+
+          git clone --depth=1 https://github.com/nest/nest-simulator --branch ${{ matrix.nest_branch }}
+          mkdir nest_install
+          echo "NEST_INSTALL=$NEST_INSTALL" >> $GITHUB_ENV
+          cd nest_install
+          cmake -DCMAKE_INSTALL_PREFIX=$NEST_INSTALL $NEST_SIMULATOR
+          make && make install
+          cd ..
+
+      # Install NESTML
+      - name: Install NESTML
+        run: |
+          git clone --depth=1 https://github.com/nest/nestml --branch master
+          cd nestml/
+          pip install .
+          cd ..
+
+      # Install NEAT
+      - name: Install NEAT
+        run: |
+          source ${{ env.NEST_INSTALL }}/bin/nest_vars.sh
+          export PYTHONPATH=${{ env.PYTHONPATH }}:${{ env.NEST_INSTALL }}/lib/python3.9/site-packages
+          pip install .
+
+      # Run tests that feature NEST functionality
+      - name: Run tests
+        run: |
+          source ${{ env.NEST_INSTALL }}/bin/nest_vars.sh
+          neatmodels install multichannel_test -s nest neuron -p tests/channelcollection_for_tests.py
+          pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_concmechs.py
+          pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests/test_nesttree.py

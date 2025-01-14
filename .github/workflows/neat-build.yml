@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+#
+# neat-build.yml
+#
+# This file is part of NEST.
+#
+# Copyright (C) 2004 The NEST Initiative
+#
+# NEST is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# NEST is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with NEST.  If not, see <http://www.gnu.org/licenses/>.
+
+name: NEAT build
+
+on: [push, pull_request, workflow_dispatch]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check_codestyle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "./src"
+
+  check_copyright_headers:
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Setup environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+
+      # Checkout the repository contents
+      - name: Checkout NEAT code
+        uses: actions/checkout@v4
+
+      - name: Copyright header check
+        run: |
+          python extras/check_copyright_headers.py
+
+  build_and_test_neat:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.9', '3.10', '3.12' ]
+        
+      fail-fast: false
+
+    steps:
+      # Checkout the repository contents
+      - name: Checkout NEAT code
+        uses: actions/checkout@v4
+
+      # Setup Python version
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Install NEAT
+      - name: Install NEAT
+        run: |
+          pip install .
+
+      # Unit tests
+      - name: Run tests
+        run: |
+          pytest -s -o norecursedirs='*' -o log_cli=true -o log_cli_level="DEBUG" tests
