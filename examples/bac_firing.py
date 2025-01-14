@@ -2,7 +2,7 @@
 Bac firing
 =================
 
-.. image:: ../../../../figures/bac_firing.png
+.. image:: /figures/bac_firing.png
 """
 
 import numpy as np

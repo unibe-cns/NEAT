@@ -1,3 +1,10 @@
+"""
+Bac firing NEST
+===============
+
+``compilechannels nest models/channels/channels_hay.py --name bac_firing --nestmlresource bac_firing_syns.nestml``
+"""
+
 import numpy as np
 import nest
 
@@ -8,9 +15,6 @@ import pickle
 from models.L5_pyramid import getL5Pyramid
 from plotutil import *
 
-"""
-compilechannels nest models/channels/channels_hay.py --name bac_firing --nestmlresource bac_firing_syns.nestml
-"""
 nest.Install("bac_firing_neatmodule")
 
 
