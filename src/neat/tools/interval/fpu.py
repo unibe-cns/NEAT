@@ -29,17 +29,19 @@ def _init_libm():  # pragma: nocover
     global _fe_upward, _fe_downward, _fegetround, _fesetround
 
     import platform
+
     processor = platform.processor()
-    if processor == 'powerpc':
+    if processor == "powerpc":
         _fe_upward, _fe_downward = 2, 3
-    elif processor == 'sparc':
+    elif processor == "sparc":
         _fe_upward, _fe_downward = 0x80000000, 0xC0000000
     else:
         _fe_upward, _fe_downward = 0x0800, 0x0400
 
     from ctypes import cdll
     from ctypes.util import find_library
-    libm = cdll.LoadLibrary(find_library('m'))
+
+    libm = cdll.LoadLibrary(find_library("m"))
     _fegetround, _fesetround = libm.fegetround, libm.fesetround
 
 
@@ -48,6 +50,7 @@ def _init_msvc():  # pragma: nocover
     global _fe_upward, _fe_downward, setup, _fegetround, _fesetround
 
     from ctypes import cdll
+
     global _controlfp
     _controlfp = cdll.msvcrt._controlfp
     _fe_upward, _fe_downward = 0x0200, 0x0100
@@ -71,21 +74,28 @@ def _init():  # pragma: nocover
             break
     else:
         import warnings
+
         warnings.warn(
             "Cannot determine FPU control primitives. "
             "The fpu module is not correcly initialized.",
-            stacklevel=2)
+            stacklevel=2,
+        )
+
+
 _init()
 
 
 def infinity():
     global infinity, nan
     try:
-        infinity = float('inf')
+        infinity = float("inf")
     except:  # pragma: nocover; useful only for Python < 2.6
         import struct
-        infinity = struct.unpack('!d', b'\x7f\xf0\x00\x00\x00\x00\x00\x00')[0]
+
+        infinity = struct.unpack("!d", b"\x7f\xf0\x00\x00\x00\x00\x00\x00")[0]
     nan = infinity / infinity
+
+
 infinity()
 
 
@@ -145,12 +155,15 @@ def max(l):
 try:
     long
 except NameError:  # pragma: PY3 only
+
     def isinteger(n):
-        "True if the argument is an instance of an integer type."""
+        "True if the argument is an instance of an integer type." ""
         return isinstance(n, int)
-else:              # pragma: PY2 only
+
+else:  # pragma: PY2 only
+
     def isinteger(n):
-        "True if the argument is an instance of an integer type."""
+        "True if the argument is an instance of an integer type." ""
         return isinstance(n, (int, long))
 
 
@@ -176,7 +189,7 @@ def power_ru(x, n):
     if x >= 0:
         return up(lambda: power_rn(x, n))
     elif n % 2:
-        return - down(lambda: power_rn(-x, n))
+        return -down(lambda: power_rn(-x, n))
     else:
         return up(lambda: power_rn(-x, n))
 
@@ -186,6 +199,6 @@ def power_rd(x, n):
     if x >= 0:
         return down(lambda: power_rn(x, n))
     elif n % 2:
-        return - up(lambda: power_rn(-x, n))
+        return -up(lambda: power_rn(-x, n))
     else:
         return down(lambda: power_rn(-x, n))

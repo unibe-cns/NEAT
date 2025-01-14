@@ -17,6 +17,7 @@ into the current namespace:
 
 from six import with_metaclass
 from . import fpu
+
 inf = fpu.infinity
 
 
@@ -29,6 +30,7 @@ def coercing(f):
             return f(self, self.cast(other))
         except self.ScalarError:
             return NotImplemented
+
     return wrapper
 
 
@@ -39,11 +41,11 @@ def comp_by_comp(f):
     def wrapper(self, other):
         try:
             return self._canonical(
-                self.Component(*f(x, y))
-                for x in self
-                for y in self.cast(other))
+                self.Component(*f(x, y)) for x in self for y in self.cast(other)
+            )
         except self.ScalarError:
             return NotImplemented
+
     return wrapper
 
 
@@ -95,9 +97,10 @@ class interval(with_metaclass(Metaclass, tuple)):
 
         def process(x):
             try:
-                return make_component(*x if hasattr(x, '__iter__') else (x,))
+                return make_component(*x if hasattr(x, "__iter__") else (x,))
             except:
                 raise cls.ComponentError("Invalid interval component: " + repr(x))
+
         return cls.union(process(x) for x in args)
 
     def __getnewargs__(self):
@@ -150,15 +153,14 @@ class interval(with_metaclass(Metaclass, tuple)):
 
         @wraps(f)
         def wrapper(x):
-            return cls._canonical(
-                cls.Component(*t)
-                for c in cls.cast(x)
-                for t in f(c))
+            return cls._canonical(cls.Component(*t) for c in cls.cast(x) for t in f(c))
+
         return wrapper
 
     @classmethod
     def _canonical(cls, components):
         from operator import itemgetter
+
         components = [c for c in components if c.inf <= c.sup]
         components.sort(key=itemgetter(0))
         l = []
@@ -199,7 +201,14 @@ class interval(with_metaclass(Metaclass, tuple)):
 
         """
         components = [c for i in intervals for c in i]
-        return cls.new((cls.Component(fpu.min(c.inf for c in components), fpu.max(c.sup for c in components)),))
+        return cls.new(
+            (
+                cls.Component(
+                    fpu.min(c.inf for c in components),
+                    fpu.max(c.sup for c in components),
+                ),
+            )
+        )
 
     @property
     def components(self):
@@ -234,7 +243,14 @@ class interval(with_metaclass(Metaclass, tuple)):
             'interval([-2.1, +3.4])'
 
         """
-        return type(self).__name__ + '(' + ', '.join('[' + ', '.join(fs % x for x in sorted(set(c))) + ']' for c in self) + ')'
+        return (
+            type(self).__name__
+            + "("
+            + ", ".join(
+                "[" + ", ".join(fs % x for x in sorted(set(c))) + "]" for c in self
+            )
+            + ")"
+        )
 
     def __pos__(self):
         return self
@@ -258,8 +274,17 @@ class interval(with_metaclass(Metaclass, tuple)):
     @comp_by_comp
     def __mul__(x, y):
         return (
-            fpu.down(lambda: fpu.min((x.inf * y.inf, x.inf * y.sup, x.sup * y.inf, x.sup * y.sup))),
-            fpu.up  (lambda: fpu.max((x.inf * y.inf, x.inf * y.sup, x.sup * y.inf, x.sup * y.sup))))
+            fpu.down(
+                lambda: fpu.min(
+                    (x.inf * y.inf, x.inf * y.sup, x.sup * y.inf, x.sup * y.sup)
+                )
+            ),
+            fpu.up(
+                lambda: fpu.max(
+                    (x.inf * y.inf, x.inf * y.sup, x.sup * y.inf, x.sup * y.sup)
+                )
+            ),
+        )
 
     def __rmul__(self, other):
         return self * other
@@ -280,11 +305,14 @@ class interval(with_metaclass(Metaclass, tuple)):
         if not fpu.isinteger(n):
             return NotImplemented
         if n < 0:
-            return (self ** -n).inverse()
+            return (self**-n).inverse()
         if n % 2:
+
             def pow(c):
                 return (fpu.power_rd(c.inf, n), fpu.power_ru(c.sup, n))
+
         else:
+
             def pow(c):
                 if c.inf > 0:
                     return (fpu.power_rd(c.inf, n), fpu.power_ru(c.sup, n))
@@ -292,6 +320,7 @@ class interval(with_metaclass(Metaclass, tuple)):
                     return (fpu.power_rd(c.sup, n), fpu.power_ru(c.inf, n))
                 else:
                     return (0.0, fpu.max(fpu.power_ru(x, n) for x in c))
+
         return self._canonical(self.Component(*pow(c)) for c in self)
 
     @comp_by_comp
@@ -357,6 +386,7 @@ class interval(with_metaclass(Metaclass, tuple)):
 
         """
         if tracer_cb is None:
+
             def tracer_cb(tag, interval):
                 pass
 
@@ -373,13 +403,13 @@ class interval(with_metaclass(Metaclass, tuple)):
                 _range = xrange
             except NameError:  # pragma: PY3 only
                 _range = range
-            tracer_cb('branch', current)
+            tracer_cb("branch", current)
             for n in _range(maxiter):
                 previous = current
                 for anchor in some(current):
                     current = step(anchor, current)
                     if current != previous:
-                        tracer_cb('step', current)
+                        tracer_cb("step", current)
                         break
                 else:
                     return current
@@ -395,15 +425,19 @@ class interval(with_metaclass(Metaclass, tuple)):
     def inverse(c):
         """Return self ** -1, or, equivalently, 1 / self."""
         if c.inf <= 0 <= c.sup:
-            return ((-fpu.infinity, c.inf_inv if c.inf != 0 else -fpu.infinity),
-                    (c.sup_inv if c.sup != 0 else +fpu.infinity, +fpu.infinity))
+            return (
+                (-fpu.infinity, c.inf_inv if c.inf != 0 else -fpu.infinity),
+                (c.sup_inv if c.sup != 0 else +fpu.infinity, +fpu.infinity),
+            )
         else:
-            return (c.sup_inv, c.inf_inv),
+            return ((c.sup_inv, c.inf_inv),)
 
 
 # The decorator interval.function can only be used from outside
 # the original class scope.
-interval.inverse = interval.function(getattr(interval.inverse, '__func__', interval.inverse))
+interval.inverse = interval.function(
+    getattr(interval.inverse, "__func__", interval.inverse)
+)
 
 
 # Clean up the namespace
