@@ -1,3 +1,85 @@
-# https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#basic-setup-py
+# -*- coding: utf-8 -*-
+#
+# pyproject.toml
+#
+# This file is part of NEST.
+#
+# Copyright (C) 2004 The NEST Initiative
+#
+# NEST is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# NEST is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with NEST.  If not, see <http://www.gnu.org/licenses/>.
+
 [build-system]
-requires = ["setuptools", "wheel", "Cython", "numpy"]
+requires = [
+    "setuptools",
+    "wheel",
+    "Cython",
+    "numpy",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'nest-neat'
+version = '1.0-rc1'
+authors = [
+    {name = 'Willem Wybo'}, 
+    {name = 'Jakob Jordan'}, 
+    {name = 'Benjamin Ellenberger'}, 
+    {name = 'Benjamin Torben-Nielsen'},
+]
+maintainers = [
+    {name = "Willem Wybo", email = "willem.a.m.wybo@gmail.com"}
+]
+license = {file = "LICENSE.txt"}
+readme = 'README.rst'
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Programming Language :: Python :: 3',
+]
+requires-python = ">= 3.9"
+dependencies = [
+    "numpy >= 1.24",
+    "matplotlib >= 3.5.2",
+    "Cython >= 3.0",
+    "scipy >= 1.9.0",
+    "sympy >= 1.10.1",
+    "pytest >= 7.1.2",
+    "scikit_learn >= 1.1.1",
+    "neuron >= 8.2.0",
+    "dill >= 0.3.8",
+]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx >= 2.4.3",
+    "nbsphinx >= 0.5.1",
+    "sphinx-gallery >= 0.6.1",
+    "sphinx_rtd_theme >= 0.4.3",
+    "nb2plots >= 0.6",
+    "pillow >= 7.1.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"neat.simulations.neuron.mech_storage" = ["*.mod"]
+"neat.simulations.nest" = ["*.nestml"]
+
+[project.scripts]
+neatmodels = "neat.actions.neatmodels:main"
+
+[project.urls]
+Documentation = "https://neatdend.readthedocs.io/"
+Repository = "https://github.com/unibe-cns/NEAT"
+Changelog = "https://github.com/unibe-cns/NEAT/blob/master/changelog/v1.0.0.md"
