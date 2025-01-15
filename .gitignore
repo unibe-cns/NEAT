@@ -1,10 +1,29 @@
-*~
+# python caches
 .pytest_cache/
-__version__.pyc
 build/
-neat/simulations/netsim.cpp
-tests/__pycache__/
-.DS_Store
-*__pycache__
+__pycache__/
 *cache/
+*.egg-info/
+*.pyc
+
+# other
+*~
+.DS_Store
 .vscode
+report/
+
+# ignore installed models
+src/neat/simulations/nest/tmp/
+src/neat/simulations/neuron/tmp/
+
+# cython generated
+neat/simulations/netsim.cpp
+
+# c++
+*.bin
+*.cpp
+*.so
+
+# neuron generated
+*x86_64/
+*arm64/

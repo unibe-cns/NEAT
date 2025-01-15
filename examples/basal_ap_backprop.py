@@ -140,7 +140,7 @@ def basalAPBackProp(recompute_ctree=False, recompute_biophys=False, axes=None, p
     # distribute locations to measure backAPs on branches
     leafs_basal = [node for node in sim_tree.leafs if node.swc_type == 3]
     branches    = [sim_tree.path_to_root(leaf)[::-1] for leaf in leafs_basal]
-    locslist    = [sim_tree.distribute_locs_on_nodes(D2S_BASAL, node_arg=branch) for branch in branches]
+    locslist    = [sim_tree.distribute_locs_at_d2s(D2S_BASAL, node_arg=branch) for branch in branches]
     branchlist  = [b for ii, b in enumerate(branches) if len(locslist[ii]) == 3]
     locs    = [locs for locs in locslist if len(locs) == 3][1]
     # do back prop sims

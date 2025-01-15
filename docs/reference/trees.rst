@@ -31,6 +31,7 @@ Basic tree
    STree.is_leaf
    STree.root
    STree.is_root
+   STree.create_corresponding_node
    STree.add_node_with_parent_from_index
    STree.add_node_with_parent
    STree.soft_remove_node
@@ -54,7 +55,12 @@ Basic tree
 
 
 .. autoclass:: neat.SNode
+   :toctree: generated/
 
+   SNode.__getitem__
+   SNode.__setitem__
+   SNode.make_empty
+   SNode.remove_child
 
 Compartment Tree
 ================
@@ -64,12 +70,20 @@ Compartment Tree
 .. autosummary::
    :toctree: generated/
 
+   CompartmentTree.create_corresponding_node
+   CompartmentTree.get_nodes_from_loc_idxs
+   CompartmentTree.permute_to_tree_idxs
+   CompartmentTree.permute_to_locs_idxs
+   CompartmentTree.get_equivalent_locs
    CompartmentTree.add_channel_current
+   CompartmentTree.add_conc_mech
    CompartmentTree.set_expansion_points
+   CompartmentTree.remove_expansion_points
    CompartmentTree.set_e_eq
    CompartmentTree.get_e_eq
+   CompartmentTree.set_conc_eq
+   CompartmentTree.get_conc_eq
    CompartmentTree.fit_e_leak
-   CompartmentTree.get_equivalent_locs
    CompartmentTree.calc_impedance_matrix
    CompartmentTree.calc_conductance_matrix
    CompartmentTree.calc_system_matrix
@@ -77,8 +91,6 @@ Compartment Tree
    CompartmentTree.compute_gmc
    CompartmentTree.compute_g_channels
    CompartmentTree.compute_g_single_channel
-   CompartmentTree.compute_concMechGamma
-   CompartmentTree.compute_concMechTau
    CompartmentTree.compute_c
    CompartmentTree.reset_fit_data
    CompartmentTree.run_fit
@@ -86,6 +98,15 @@ Compartment Tree
    CompartmentTree.plot_dendrogram
 
 .. autoclass:: neat.CompartmentNode
+   :toctree: generated/
+
+   CompartmentNode.set_conc_eq
+   CompartmentNode.set_expansion_point
+   CompartmentNode.calc_membrane_conductance_terms
+   CompartmentNode.calc_membrane_concentration_terms
+   CompartmentNode.calc_g_tot
+   CompartmentNode.calc_i_tot
+   CompartmentNode.calc_linear_statevar_terms
 
 
 Neural Evaluation Tree
@@ -96,17 +117,18 @@ Neural Evaluation Tree
 .. autosummary::
    :toctree: generated/
 
-    NET.get_loc_idxs
-    NET.get_leaf_loc_node
-    NET.set_new_loc_idxs
-    NET.get_reduced_tree
-    NET.calc_total_impedance
-    NET.calc_i_z
-    NET.calc_i_z_matrix
-    NET.calc_impedance_matrix
-    NET.calc_impedance_matrix
-    NET.calc_compartmentalization
-    NET.plot_dendrogram
+   NET.create_corresponding_node
+   NET.get_loc_idxs
+   NET.get_leaf_loc_node
+   NET.set_new_loc_idxs
+   NET.get_reduced_tree
+   NET.calc_total_impedance
+   NET.calc_i_z
+   NET.calc_i_z_matrix
+   NET.calc_impedance_matrix
+   NET.calc_impedance_matrix
+   NET.calc_compartmentalization
+   NET.plot_dendrogram
 
 
 .. autoclass:: neat.NETNode
@@ -122,20 +144,6 @@ Neural Evaluation Tree
    Kernel.ft
 
 
-Simulate reduced compartmental models
-======================================
-
-.. autoclass:: neat.simulations.neuron.neuronmodel.NeuronCompartmentTree
-
-.. autosummary::
-   :toctree: generated/
-
-.. autofunction:: neat.simulations.neuron.neuronmodel.createReducedNeuronModel
-
-.. autosummary::
-   :toctree: generated/
-
-
 *******************
 Morphological Trees
 *******************
@@ -143,7 +151,6 @@ Morphological Trees
 
 Morphology Tree
 ===============
-
 
 .. autoclass:: neat.MorphTree
 
@@ -155,17 +162,24 @@ Read a morphology from an SWC file
    MorphTree.read_swc_tree_from_file
    MorphTree.determine_soma_type
 
+Note that in the '.swc' format,
+nodes 2 and 3 contain extra information on the soma geometry. By default, these
+nodes are skipped in the `neat.MorphTree` iteration and getitem functions.
+
 .. autosummary::
    :toctree: generated/
 
    MorphTree.__getitem__
    MorphTree.__iter__
+   MorphTree.__copy__
+   MorphTree.reset_indices
 
-Get specific nodes or sets of nodes from the tree.
+Get specific nodes or sets of nodes from the tree. 
 
 .. autosummary::
    :toctree: generated/
 
+   MorphTree.create_corresponding_node
    MorphTree.root
    MorphTree.get_nodes
    MorphTree.nodes
@@ -181,9 +195,10 @@ Relating to the computational tree.
 .. autosummary::
    :toctree: generated/
 
-   MorphTree.setTreetype
-   MorphTree.treetype
-   MorphTree.read_swc_tree_from_file
+   MorphTree.set_default_tree
+   MorphTree.as_computational_tree
+   MorphTree.as_original_tree
+   MorphTree.check_computational_tree_active
    MorphTree.set_comp_tree
    MorphTree._evaluate_comp_criteria
    MorphTree.remove_comp_tree
@@ -211,7 +226,7 @@ locations
    MorphTree.get_leaf_loc_idxs
    MorphTree.distances_to_soma
    MorphTree.distances_to_bifurcation
-   MorphTree.distribute_locs_on_nodes
+   MorphTree.distribute_locs_at_d2s
    MorphTree.distribute_locs_uniform
    MorphTree.distribute_locs_random
    MorphTree.extend_with_bifurcation_locs
@@ -253,8 +268,8 @@ Creating new trees from the existing tree.
 .. autosummary::
    :toctree: generated/
 
-    MorphNode.set_p3d
-    MorphNode.child_nodes
+   MorphNode.set_p3d
+   MorphNode.child_nodes
 
 .. autoclass:: neat.MorphLoc
 
@@ -269,15 +284,37 @@ Physiology Tree
 
    PhysTree.as_passive_membrane
    PhysTree.set_v_ep
+   PhysTree.set_conc_ep
    PhysTree.set_physiology
    PhysTree.set_leak_current
    PhysTree.add_channel_current
-   PhysTree.get_channels_in_tree
+   PhysTree.add_conc_mech
    PhysTree.fit_leak_current
+   PhysTree.get_channels_in_tree
+
+Pertaining to the computational tree create, which for the `neat.PhysTree`
+also takes the physiological parameters into account.
+
+.. autosummary::
+   :toctree: generated/
    PhysTree._evaluate_comp_criteria
+
+NEAT implements the functionality to construct a `neat.CompartmentTree` 
+whose parameters represent the 2nd order finite difference approximation 
+to the cable equation.
+
+.. autosummary::
+   :toctree: generated/
+   PhysTree.create_new_tree
+   PhysTree.create_finite_difference_tree
 
 .. autoclass:: neat.PhysNode
 
+.. autosummary::
+   :toctree: generated/
+   PhysNode.calc_g_tot
+   PhysNode.calc_i_tot
+   PhysNode.as_passive_membrane
 
 Separation of Variables Tree
 ============================
@@ -287,6 +324,7 @@ Separation of Variables Tree
 .. autosummary::
    :toctree: generated/
 
+   SOVTree.create_corresponding_node
    SOVTree.calc_sov_equations
    SOVTree.get_mode_importance
    SOVTree.get_important_modes
@@ -305,10 +343,13 @@ Greens Tree
 .. autosummary::
    :toctree: generated/
 
+   GreensTree.create_corresponding_node
    GreensTree.remove_expansion_points
    GreensTree.set_impedance
    GreensTree.calc_zf
    GreensTree.calc_impedance_matrix
+   GreensTree.calc_channel_response_f
+   GreensTree.calc_channel_response_matrix
 
 .. autoclass:: neat.GreensNode
 
@@ -318,14 +359,130 @@ Greens Tree
     GreensNode.set_expansion_point
 
 
-Simulate NEURON models
-======================
+Greens Tree Time
+================
 
-.. autoclass:: neat.simulations.neuron.neuronmodel.NeuronSimTree
+.. autoclass:: neat.GreensTreeTime
 
 .. autosummary::
    :toctree: generated/
 
+   GreensTreeTime.set_impedance
+   GreensTreeTime.calc_zt
+   GreensTreeTime.calc_impulse_response_matrix
+   GreensTreeTime.calc_channel_response_t
+   GreensTreeTime.calc_channel_response_matrix
+
+
+**********
+CacheTrees
+**********
+
+Compute equilibrium potentials and concentrations
+=================================================
+
+.. autoclass:: neat.EquilibriumTree
+
+.. autosummary::
+   :toctree: generated/
+
+   EquilibriumTree.calc_e_eq
+   EquilibriumTree.set_e_eq
+
+
+Cacheing the Greens function and separation of variables expansion
+==================================================================
+
+.. autoclass:: neat.CachedGreensTree
+
+.. autosummary::
+   :toctree: generated/
+
+   CachedGreensTree.set_impedances_in_tree
+
+.. autoclass:: neat.CachedGreensTreeTime
+
+.. autosummary::
+   :toctree: generated/
+
+   CachedGreensTree.set_impedances_in_tree
+
+.. autoclass:: neat.CachedSOVTree
+
+.. autosummary::
+   :toctree: generated/
+
+   CachedGreensTree.set_sov_in_tree
+
+
+Fitting reduced models
+======================
+
+.. autoclass:: neat.CompartmentFitter
+
+To implement the default methodology.
+
+.. autosummary::
+   :toctree: generated/
+   CompartmentFitter.fit_model
+
+To get stored fit results and associated location lists
+
+.. autosummary::
+   :toctree: generated/
+   CompartmentFitter.convert_fit_arg
+
+To check the faithfullness of the passive reduction, the following functions
+implement vizualisation of impedance kernels.
+
+.. autosummary::
+   :toctree: generated/
+
+   CompartmentFitter.check_passive
+   CompartmentFitter.get_kernels
+   CompartmentFitter.plot_kernels
+
+Individual fit functions.
+
+.. autosummary::
+   :toctree: generated/
+
+   CompartmentFitter.set_ctree
+   CompartmentFitter.create_tree_gf
+   CompartmentFitter.create_tree_sov
+   CompartmentFitter.fit_leak_only
+   CompartmentFitter.fit_passive
+   CompartmentFitter.fit_channels
+   CompartmentFitter.fit_concentration
+   CompartmentFitter.fit_capacitance
+   CompartmentFitter.fit_syn_rescale
+   CompartmentFitter.fit_e_eq
+
+`neat.CompartmentFitter` can also computed conductance rescale values for synapses
+at sites on the original morphology, when they are shifted to compartment locations
+on the reduced morphology. For this, the average conductances of each synapses need
+to be known.
+
+.. autosummary::
+   :toctree: generated/
+
+   CompartmentFitter.fit_syn_rescale
+
+
+**********************************
+Simulating full and reduced models
+**********************************
+
+
+Simulate full models in NEURON
+==============================
+
+.. autoclass:: neat.NeuronSimTree
+
+.. autosummary::
+   :toctree: generated/
+
+   NeuronSimTree.create_corresponding_node
    NeuronSimTree.init_model
    NeuronSimTree.delete_model
    NeuronSimTree.add_shunt
@@ -344,60 +501,57 @@ Simulate NEURON models
    NeuronSimTree.run
    NeuronSimTree.calc_e_eq
 
+.. autoclass:: neat.NeuronSimNode
 
-Compute equilibrium potentials and concentrations
-=================================================
 
-.. autoclass:: neat.EquilibriumTree
+Simulate reduced compartmental models in NEURON
+===============================================
+
+.. autoclass:: neat.NeuronCompartmentTree
 
 .. autosummary::
    :toctree: generated/
 
-   EquilibriumTree.calc_e_eq
-   EquilibriumTree.set_e_eq
+   NeuronCompartmentTree.create_corresponding_node
+   NeuronCompartmentTree.set_rec_locs
+   NeuronCompartmentTree.add_shunt
+   NeuronCompartmentTree.add_double_exp_current
+   NeuronCompartmentTree.add_exp_synapse
+   NeuronCompartmentTree.add_double_exp_synapse
+   NeuronCompartmentTree.add_nmda_synapse
+   NeuronCompartmentTree.add_double_exp_nmda_synapse
+   NeuronCompartmentTree.add_i_clamp
+   NeuronCompartmentTree.add_sin_clamp
+   NeuronCompartmentTree.add_ou_clamp
+   NeuronCompartmentTree.add_ou_conductance
+   NeuronCompartmentTree.add_v_clamp
+
+.. autoclass:: neat.NeuronCompartmentNode
+
+
+Simulate reduced compartmental models in NEST
+=============================================
+
+.. autoclass:: neat.NestCompartmentTree
+
+.. autosummary::
+   :toctree: generated/
+
+   NestCompartmentTree.create_corresponding_node
+   NestCompartmentTree.init_model
+
+.. autoclass:: neat.NestCompartmentNode
+
+
+Neural evaluation tree simulator
+================================
+
+.. autoclass:: neat.netsim.NETSim
 
 
 *************
-Other Classes
+Miscellaneous
 *************
-
-Fitting reduced models
-======================
-
-.. autoclass:: neat.CompartmentFitter
-
-To implement the default methodology.
-
-.. autosummary::
-   :toctree: generated/
-
-   CompartmentFitter.set_ctree
-   CompartmentFitter.fit_model
-
-To check the faithfullness of the passive reduction, the following functions
-implement vizualisation of impedance kernels.
-
-.. autosummary::
-   :toctree: generated/
-
-   CompartmentFitter.check_passive
-   CompartmentFitter.get_kernels
-   CompartmentFitter.plot_kernels
-
-Individual fit functions.
-
-.. autosummary::
-   :toctree: generated/
-
-   CompartmentFitter.create_tree_gf
-   CompartmentFitter.create_tree_sov
-   CompartmentFitter.fit_leak_only
-   CompartmentFitter.fit_passive
-   CompartmentFitter.eval_channel
-   CompartmentFitter.fit_channels
-   CompartmentFitter.fit_concentration
-   CompartmentFitter.fit_capacitance
-   CompartmentFitter.fit_syn_rescale
 
 
 Defining ion channels
@@ -420,25 +574,14 @@ Defining ion channels
    IonChannel.compute_lin_conc
 
 
-Neural evaluation tree simulator
-================================
-
-.. autoclass:: neat.netsim.NETSim
-
-
 Compute Fourrier transforms
 ===========================
 
-.. autoclass:: neat.FourrierTools
+.. autoclass:: neat.FourierQuadrature
 
 .. autosummary::
    :toctree: generated/
 
-   FourrierTools.__call__
-   FourrierTools.ft
-   FourrierTools.ftInv
-
-
-
-
-
+   FourierQuadrature.__call__
+   FourierQuadrature.ft
+   FourierQuadrature.ft_inv
